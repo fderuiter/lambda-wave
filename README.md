@@ -1,4 +1,6 @@
-# mmWave-SGRT-hs###A Fail-Safe, Real-Time Surface Guided Radiation Therapy System utilizing 60 GHz Radar and Haskell.**mmWave-SGRT-hs** is a research-grade implementation of a patient positioning and respiratory gating system for Radiation Oncology. It replaces traditional optical cameras with **60 GHz Millimeter-Wave (FMCW) Radar** to monitor patient breathing with sub-millimeter precision, regardless of room lighting, skin tone, or obstructions.
+# mmWave-SGRT-hs
+
+### A Fail-Safe, Real-Time Surface Guided Radiation Therapy System utilizing 60 GHz Radar and Haskell.**mmWave-SGRT-hs** is a research-grade implementation of a patient positioning and respiratory gating system for Radiation Oncology. It replaces traditional optical cameras with **60 GHz Millimeter-Wave (FMCW) Radar** to monitor patient breathing with sub-millimeter precision, regardless of room lighting, skin tone, or obstructions.
 
 Built in **Haskell**, the architecture prioritizes correctness, type safety, and bounded latency over raw throughput, utilizing **Software Transactional Memory (STM)** to create a concurrent, mathematically provable gating engine.
 
