@@ -1,10 +1,10 @@
-#mmWave-SGRT-hs###A Fail-Safe, Real-Time Surface Guided Radiation Therapy System utilizing 60 GHz Radar and Haskell.**mmWave-SGRT-hs** is a research-grade implementation of a patient positioning and respiratory gating system for Radiation Oncology. It replaces traditional optical cameras with **60 GHz Millimeter-Wave (FMCW) Radar** to monitor patient breathing with sub-millimeter precision, regardless of room lighting, skin tone, or obstructions.
+# mmWave-SGRT-hs###A Fail-Safe, Real-Time Surface Guided Radiation Therapy System utilizing 60 GHz Radar and Haskell.**mmWave-SGRT-hs** is a research-grade implementation of a patient positioning and respiratory gating system for Radiation Oncology. It replaces traditional optical cameras with **60 GHz Millimeter-Wave (FMCW) Radar** to monitor patient breathing with sub-millimeter precision, regardless of room lighting, skin tone, or obstructions.
 
 Built in **Haskell**, the architecture prioritizes correctness, type safety, and bounded latency over raw throughput, utilizing **Software Transactional Memory (STM)** to create a concurrent, mathematically provable gating engine.
 
 ---
 
-##🏥 Clinical Context: The DIBH ImperativeIn radiation therapy for left-sided breast cancer, the **Deep Inspiration Breath Hold (DIBH)** technique is used to physically separate the heart from the chest wall, reducing radiation-induced cardiac toxicity.
+## 🏥 Clinical Context: The DIBH ImperativeIn radiation therapy for left-sided breast cancer, the **Deep Inspiration Breath Hold (DIBH)** technique is used to physically separate the heart from the chest wall, reducing radiation-induced cardiac toxicity.
 
 Current optical systems (cameras) suffer from:
 
@@ -20,18 +20,18 @@ Current optical systems (cameras) suffer from:
 
 ---
 
-##🏗️ System ArchitectureThe software is designed as a pipeline of isolated, concurrent actors to handle the noisy "sparkle" of radar data while guaranteeing fail-safe operation.
+## 🏗️ System ArchitectureThe software is designed as a pipeline of isolated, concurrent actors to handle the noisy "sparkle" of radar data while guaranteeing fail-safe operation.
 
-###Layer 1: The Ingestion Engine (Zero-Copy)To mitigate Haskell's Garbage Collection (GC) pauses ("Stop-the-World"), we utilize **Pinned Memory Ring Buffers**.
+### Layer 1: The Ingestion Engine (Zero-Copy)To mitigate Haskell's Garbage Collection (GC) pauses ("Stop-the-World"), we utilize **Pinned Memory Ring Buffers**.
 
 * **Mechanism:** A dedicated thread reads OS UART buffers directly into `mallocPlainForeignPtrBytes` (off-heap memory).
 * **Result:** Immune to GC latency; prevents packet drops at 921,600 baud.
 
-###Layer 2: Parser & ROI Filter* **Parsing:** Extracts TLV (Type-Length-Value) packets from the byte stream.
+### Layer 2: Parser & ROI Filter* **Parsing:** Extracts TLV (Type-Length-Value) packets from the byte stream.
 * **Coordinate Transform:** Converts Sensor Space (X,Y,Z) to Room Coordinates (IEC 61217) based on gantry angle.
 * **ROI Clipping:** A spatial gate discards multipath reflections (walls, floor) outside the treatment couch.
 
-###Layer 3: Surface Meshing (Polynomial Fitting)Raw radar data is sparse (~100 points) and noisy. We treat the torso as a smooth mathematical manifold.
+### Layer 3: Surface Meshing (Polynomial Fitting)Raw radar data is sparse (~100 points) and noisy. We treat the torso as a smooth mathematical manifold.
 
 * **Algorithm:** Bi-Quadratic Polynomial Least Squares Regression.
 
@@ -46,7 +46,7 @@ Current optical systems (cameras) suffer from:
 
 ---
 
-##⚡ Hardware Requirements1. **Sensor:** Texas Instruments **IWR6843ISK** (60-64 GHz mmWave Sensor).
+## ⚡ Hardware Requirements1. **Sensor:** Texas Instruments **IWR6843ISK** (60-64 GHz mmWave Sensor).
 2. **Carrier:** MMWAVEICBOOST or simple USB breakout.
 3. **Mounting:** Standard tripod or Gantry mount (requires calibration).
 4. **Host PC:**
@@ -57,7 +57,7 @@ Current optical systems (cameras) suffer from:
 
 ---
 
-##🛠️ Software Prerequisites* **GHC** (Glasgow Haskell Compiler) >= 9.2
+## 🛠️ Software Prerequisites* **GHC** (Glasgow Haskell Compiler) >= 9.2
 * **Stack** or **Cabal**
 * **System Libraries:**
 * `liblapack-dev`, `libblas-dev` (for `hmatrix`)
@@ -65,7 +65,7 @@ Current optical systems (cameras) suffer from:
 
 
 
-###Dependencies (Haskell)```cabal
+### Dependencies (Haskell)```cabal
 dependencies:
   - base >= 4.7 && < 5
   - stm                 # Software Transactional Memory
@@ -113,7 +113,7 @@ stack run -- /dev/ttyACM1 /dev/ttyACM0
 
 ---
 
-##📊 Code Example: The ROI Filter```haskell
+## 📊 Code Example: The ROI Filter```haskell
 -- Simple bounding box logic to remove multipath ghosts
 inROI :: Point3D -> Bool
 inROI p = 
@@ -123,7 +123,7 @@ inROI p =
 
 ```
 
-##⚠️ Safety & Disclaimer**THIS SOFTWARE IS FOR RESEARCH PURPOSES ONLY.**
+## ⚠️ Safety & Disclaimer**THIS SOFTWARE IS FOR RESEARCH PURPOSES ONLY.**
 
 * **Not FDA Cleared:** This system has not been evaluated by the FDA or any regulatory body.
 * **Not for Clinical Use:** Do not use this software to control radiation delivery on human patients.
@@ -133,7 +133,7 @@ inROI p =
 
 ---
 
-##📚 References1. *Texas Instruments IWR6843 Technical Reference Manual*
+## 📚 References1. *Texas Instruments IWR6843 Technical Reference Manual*
 2. *Real-Time Non-Contact Millimeter Wave Radar-Based Vital Sign Detection*, PMC NIH.
 3. *Marlow, S.* "Parallel and Concurrent Programming in Haskell." O'Reilly Media.
 
