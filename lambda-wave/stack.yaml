@@ -1,0 +1,7 @@
+resolver: lts-20.26
+
+packages:
+- .
+
+extra-deps:
+- serialport-0.5.5
