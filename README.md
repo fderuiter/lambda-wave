@@ -51,7 +51,9 @@ A high-priority thread monitors the system clock. If the Gating Thread fails to 
 
 ---
 
-## ⚡ Hardware Requirements1. **Sensor:** Texas Instruments **IWR6843ISK** (60-64 GHz mmWave Sensor).
+## ⚡ Hardware Requirements
+
+1. **Sensor:** Texas Instruments **IWR6843ISK** (60-64 GHz mmWave Sensor).
 2. **Carrier:** MMWAVEICBOOST or simple USB breakout.
 3. **Mounting:** Standard tripod or Gantry mount (requires calibration).
 4. **Host PC:**
@@ -70,7 +72,8 @@ A high-priority thread monitors the system clock. If the Gating Thread fails to 
 
 
 
-### Dependencies (Haskell)```cabal
+### Dependencies (Haskell)
+```cabal
 dependencies:
   - base >= 4.7 && < 5
   - stm                 # Software Transactional Memory
@@ -118,7 +121,8 @@ stack run -- /dev/ttyACM1 /dev/ttyACM0
 
 ---
 
-## 📊 Code Example: The ROI Filter```haskell
+## 📊 Code Example: The ROI Filter
+```haskell
 -- Simple bounding box logic to remove multipath ghosts
 inROI :: Point3D -> Bool
 inROI p = 
@@ -144,5 +148,5 @@ inROI p =
 
 ---
 
-**Maintainer:** [Your Name/Lab Name]
-**Contact:** [Email]
+**Maintainer:** [Ayoola Okuribido and Frederick de Ruiter]
+**Contact:** [fpderuiter@gmail.com]
