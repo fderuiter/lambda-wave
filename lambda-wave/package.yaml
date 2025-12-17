@@ -45,6 +45,7 @@ tests:
     dependencies:
     - lambda-wave
     - QuickCheck
+    - hmatrix
 
 benchmarks:
   lambda-wave-bench:
