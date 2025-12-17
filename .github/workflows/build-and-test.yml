@@ -17,7 +17,7 @@ jobs:
       - name: Install system dependencies
         run: |
           apt-get update
-          apt-get install -y build-essential liblapack-dev libblas-dev
+          apt-get install -y build-essential liblapack-dev libblas-dev libgl1-mesa-dev libglu1-mesa-dev freeglut3-dev
 
       - name: Update Cabal
         run: cabal update
