@@ -59,6 +59,7 @@ library
       cbits/src/ring_buffer.c
   cxx-sources:
       cbits/src/RingBufferCheck.cpp
+      cbits/src/ring_buffer.cpp
   cc-options: -Wall -O2
   cxx-options: -std=c++11 -Wall -O2
 
