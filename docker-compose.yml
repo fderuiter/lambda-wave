@@ -1,0 +1,13 @@
+version: '3.8'
+services:
+  sgrt-app:
+    build: .
+    volumes:
+      - .:/app
+    environment:
+      - SGRT_SENSOR_PORT=/dev/ttyUSB0
+      - SGRT_CLI_PORT=/dev/ttyUSB1
+    devices:
+      - /dev/ttyUSB0:/dev/ttyUSB0
+      - /dev/ttyUSB1:/dev/ttyUSB1
+    command: cabal run
