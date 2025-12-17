@@ -22,9 +22,10 @@ Current optical systems (cameras) suffer from:
 
 ---
 
-## 🏗️ System ArchitectureThe software is designed as a pipeline of isolated, concurrent actors to handle the noisy "sparkle" of radar data while guaranteeing fail-safe operation.
+## 🏗️ System Architecture: The software is designed as a pipeline of isolated, concurrent actors to handle the noisy "sparkle" of radar data while guaranteeing fail-safe operation.
 
-### Layer 1: The Ingestion Engine (Zero-Copy)To mitigate Haskell's Garbage Collection (GC) pauses ("Stop-the-World"), we utilize **Pinned Memory Ring Buffers**.
+### Layer 1: The Ingestion Engine (Zero-Copy)
+To mitigate Haskell's Garbage Collection (GC) pauses ("Stop-the-World"), we utilize **Pinned Memory Ring Buffers**.
 
 * **Mechanism:** A dedicated thread reads OS UART buffers directly into `mallocPlainForeignPtrBytes` (off-heap memory).
 * **Result:** Immune to GC latency; prevents packet drops at 921,600 baud.
@@ -33,7 +34,8 @@ Current optical systems (cameras) suffer from:
 * **Coordinate Transform:** Converts Sensor Space (X,Y,Z) to Room Coordinates (IEC 61217) based on gantry angle.
 * **ROI Clipping:** A spatial gate discards multipath reflections (walls, floor) outside the treatment couch.
 
-### Layer 3: Surface Meshing (Polynomial Fitting)Raw radar data is sparse (~100 points) and noisy. We treat the torso as a smooth mathematical manifold.
+### Layer 3: Surface Meshing (Polynomial Fitting)
+Raw radar data is sparse (~100 points) and noisy. We treat the torso as a smooth mathematical manifold.
 
 * **Algorithm:** Bi-Quadratic Polynomial Least Squares Regression.
 
@@ -44,7 +46,8 @@ Current optical systems (cameras) suffer from:
 ###Layer 4: The Gating Logic & Kalman Filter* **Latency Compensation:** A Constant Velocity Kalman Filter predicts chest position 50ms into the future to neutralize LINAC beam-off hardware lag.
 * **Hysteresis:** Schmidt Trigger logic prevents rapid beam cycling ("chattering").
 
-###Layer 5: The Watchdog (Dead Man's Switch)A high-priority thread monitors the system clock. If the Gating Thread fails to "kick" the watchdog (due to crash, infinite loop, or USB disconnect) within **100ms**, the beam is forced OFF.
+###Layer 5: The Watchdog (Dead Man's Switch)
+A high-priority thread monitors the system clock. If the Gating Thread fails to "kick" the watchdog (due to crash, infinite loop, or USB disconnect) within **100ms**, the beam is forced OFF.
 
 ---
 
