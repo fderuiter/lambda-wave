@@ -2,12 +2,8 @@
 FROM haskell:9.4
 
 # Install system dependencies
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    liblapack-dev \
-    libblas-dev \
-    clang-format \
-    && rm -rf /var/lib/apt/lists/*
+COPY scripts/setup_env.sh /tmp/setup_env.sh
+RUN chmod +x /tmp/setup_env.sh && /tmp/setup_env.sh
 
 # Set working directory
 WORKDIR /app
