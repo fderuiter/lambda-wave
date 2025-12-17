@@ -66,6 +66,12 @@ main() {
                     freeglut3-dev \
                     libgl1-mesa-dev \
                     libglu1-mesa-dev \
+                    libx11-dev \
+                    libxrandr-dev \
+                    libxinerama-dev \
+                    libxcursor-dev \
+                    libxi-dev \
+                    pkg-config \
                     clang-format
 
                 # Clean up apt cache to keep images small (only if running as root/docker context usually, but good practice)
