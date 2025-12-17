@@ -1,0 +1,31 @@
+name: Lint
+
+on:
+  push:
+    branches:
+      - 'feature/*'
+      - 'bugfix/*'
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Haskell
+        uses: haskell/actions/setup@v2
+        with:
+          ghc-version: '9.4'
+          cabal-version: 'latest'
+
+      - name: Install HLint
+        run: cabal install hlint
+
+      - name: Run HLint
+        run: hlint src/
+
+      - name: Install clang-format
+        run: sudo apt-get install -y clang-format
+
+      - name: Run clang-format
+        run: find cbits -name "*.c" -o -name "*.h" | xargs clang-format -n -Werror

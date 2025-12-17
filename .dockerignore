@@ -1,6 +1,4 @@
 dist-newstyle/
 .stack-work/
-*.o
-*.hi
+.git/
 .env
-.DS_Store

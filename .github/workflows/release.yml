@@ -1,0 +1,44 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    container:
+      image: haskell:9.4
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install system dependencies
+        run: |
+          apt-get update
+          apt-get install -y build-essential liblapack-dev libblas-dev
+
+      - name: Update Cabal
+        run: cabal update
+
+      - name: Build dependencies
+        run: cabal build --only-dependencies
+
+      - name: Build Binary
+        run: cabal build
+
+      - name: Prepare Artifact
+        run: |
+          mkdir release
+          cp $(cabal list-bin sgrt-radar-system-exe) release/sgrt-radar-system
+          cd release
+          sha256sum sgrt-radar-system > sgrt-radar-system.sha256
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            release/sgrt-radar-system
+            release/sgrt-radar-system.sha256
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
