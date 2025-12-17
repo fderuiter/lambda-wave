@@ -7,7 +7,7 @@ import Graphics.UI.GLUT
 renderLoop :: TVar SystemState -> IO ()
 renderLoop stateVar = do
     displayCallback $= display stateVar
-    idleCallback $= Just postRedisplay
+    idleCallback $= Just (postRedisplay Nothing)
     mainLoop
 
 display :: TVar SystemState -> IO ()

@@ -53,7 +53,7 @@ ingestionLoop rawDataChan portPath = do
     c_init_ring_buffer
 
     -- 1. Open Serial Port (921600 baud for IWR6843)
-    s <- openSerial portPath defaultSerialSettings { commSpeed = CS921600 }
+    s <- openSerial portPath defaultSerialSettings { commSpeed = CS 921600 }
     putStrLn $ "[Hardware] Listening on " ++ portPath
 
     -- We spin up a thread to pump data from Serial to C Ring Buffer
