@@ -72,7 +72,13 @@ main() {
                     libxcursor-dev \
                     libxi-dev \
                     pkg-config \
-                    clang-format
+                    clang-format \
+                    cabal-install \
+                    ghc \
+                    curl \
+                    git \
+                    hlint \
+                    ormolu
 
                 # Clean up apt cache to keep images small (only if running as root/docker context usually, but good practice)
                 if [ -n "${DOCKER_CONTAINER:-}" ] || [ -f /.dockerenv ]; then
@@ -87,7 +93,12 @@ main() {
                     make automake gcc gcc-c++ kernel-devel \
                     lapack-devel blas-devel \
                     freeglut-devel mesa-libGL-devel mesa-libGLU-devel \
-                    clang-tools-extra
+                    clang-tools-extra \
+                    cabal-install \
+                    ghc \
+                    git \
+                    curl \
+                    hlint
             else
                 log_error "Unsupported Linux distribution. Please install dependencies manually."
                 exit 1
@@ -101,7 +112,7 @@ main() {
                 # Brew bundle or direct install? Direct install for simplicity.
                 # lapack/openblas are keg-only in brew usually, might need env vars.
                 # But installing them is the first step.
-                brew install lapack openblas freeglut mesa clang-format
+                brew install lapack openblas freeglut mesa clang-format cabal-install ghc git curl hlint ormolu
 
                 log_info "Note: You may need to set LDFLAGS/CPPFLAGS for openblas/lapack."
             else
