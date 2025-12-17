@@ -60,10 +60,22 @@ import Foreign.Ptr
 import Foreign.C.Types
 import Data.Word
 
+-- | Haskell view of the C++ ring buffer control block.
+--
+-- Note: On the C++ side, @writeOffset@ is a @std::atomic<size_t>@.
+-- This Haskell representation uses a plain 'Word64' and the 'Storable'
+-- instance below performs ordinary loads and stores (via 'peekByteOff' and
+-- 'pokeByteOff') with no atomic or memory-ordering guarantees.
+--
+-- As a result, this type and its 'Storable' instance must /not/ be used for
+-- concurrent access to @writeOffset@. All atomic operations on that field
+-- must be performed through dedicated FFI functions that implement the
+-- required atomic semantics. The 'Storable' instance is intended only for
+-- layout-compatible, non-concurrent inspection/initialisation of the struct.
 data RingBufferControl = RingBufferControl
-    { writeOffset :: Word64  -- atomic size_t
-    , bufferStart :: Ptr CChar
-    , bufferSize  :: Word64  -- size_t
+    { writeOffset :: Word64      -- ^ Corresponds to std::atomic<size_t> (non-atomic here; do NOT access concurrently via 'Storable').
+    , bufferStart :: Ptr CChar   -- ^ Start of the data buffer.
+    , bufferSize  :: Word64      -- ^ size_t; buffer capacity in bytes (non-atomic).
     } deriving (Show, Eq)
 
 instance Storable RingBufferControl where
