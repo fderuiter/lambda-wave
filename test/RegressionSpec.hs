@@ -42,12 +42,12 @@ spec = do
            -- coeffs should be [c0, c2, c4]
            [c0, c2, c4] = toList coeffs
 
-           -- c4 should be approx 1.0
-           c4 `shouldSatisfy` (\v -> abs (v - 1.0) < 0.1)
-           -- c0 should be approx 1.0
-           c0 `shouldSatisfy` (\v -> abs (v - 1.0) < 0.1)
-           -- c2 should be approx 0.0
-           c2 `shouldSatisfy` (\v -> abs v < 0.1)
+       -- c4 should be approx 1.0
+       c4 `shouldSatisfy` (\v -> abs (v - 1.0) < 0.1)
+       -- c0 should be approx 1.0
+       c0 `shouldSatisfy` (\v -> abs (v - 1.0) < 0.1)
+       -- c2 should be approx 0.0
+       c2 `shouldSatisfy` (\v -> abs v < 0.1)
 
   describe "Design Matrix" $ do
     it "creates correct dimensions" $ do

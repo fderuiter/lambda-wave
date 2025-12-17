@@ -6,7 +6,7 @@ import Graphics.UI.GLUT
 
 handleInput :: TVar SystemState -> IO ()
 handleInput stateVar = do
-    keyboardCallback $= Just (keyboardHandler stateVar)
+    keyboardMouseCallback $= Just (keyboardHandler stateVar)
 
 keyboardHandler :: TVar SystemState -> KeyboardMouseCallback
 keyboardHandler stateVar key _ _ _ = case key of
