@@ -10,7 +10,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     container:
-      image: haskell:9.4
+      image: haskell:9.8
     steps:
       - uses: actions/checkout@v3
 
