@@ -1,5 +1,58 @@
 {-# LANGUAGE ForeignFunctionInterface #-}
 
+{-|
+Module: FFI.RingBuffer.Types
+
+FFI bindings for the ring buffer control structure shared between C++
+and Haskell.
+
+This module defines 'RingBufferControl', a Haskell-side representation of
+the control block that is allocated and owned on the C++ side
+(see @RingBuffer.h@). The layout and size of this structure must remain
+exactly in sync with the corresponding C++ definition in order to
+preserve the Application Binary Interface (ABI) between the two
+languages.
+
+==== Memory layout
+
+The 'Storable' instance below hard-codes the following layout, which
+must match the C++ @struct RingBufferControl@:
+
+* Total size: 64 bytes
+* Alignment: 64 bytes
+* Field offsets (in bytes from the start of the struct):
+
+    * @writeOffset :: Word64@ at offset 0
+    * @bufferStart :: Ptr CChar@ at offset 8
+    * @bufferSize  :: Word64@ at offset 16
+
+Any padding between fields and up to the full 64-byte size is owned by
+the C++ side. Do not change 'sizeOf', 'alignment', or the offsets in
+'peek'/'poke' without making corresponding, coordinated changes in
+@RingBuffer.h@ and re-validating the ABI.
+
+==== Concurrency and safety
+
+This structure is typically accessed concurrently by C++ and Haskell
+code (e.g. a producer on the C++ side and a consumer on the Haskell
+side). In particular:
+
+* 'writeOffset' is expected to be updated atomically on the C++ side
+  (e.g. as an atomic @size_t@). Haskell code must treat it as a
+  concurrently-modified variable and must follow the memory ordering and
+  synchronization protocol defined in @RingBuffer.h@.
+* 'bufferStart' and 'bufferSize' are usually initialized once on the
+  C++ side and then treated as read-only by Haskell.
+
+Because this is used within a safety-critical medical device system,
+any change to the fields, their types, or their layout must be
+carefully reviewed, synchronized with the C++ definition, and
+re-tested. Incorrect assumptions about concurrent access or memory
+layout can lead to data corruption and undefined behaviour.
+
+See also: @RingBuffer.h@ for the authoritative C++ definition and
+documentation of the ring buffer control structure and protocol.
+-}
 module FFI.RingBuffer.Types where
 
 import Foreign.Storable
