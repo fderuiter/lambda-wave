@@ -2,9 +2,12 @@ import Test.Hspec
 import Test.QuickCheck
 import qualified LambdaWave.Hardware.Parser as Parser
 import qualified LambdaWave.Core.Gating as Gating
+import qualified RegressionSpec
 
 main :: IO ()
 main = hspec $ do
+  RegressionSpec.spec
+
   describe "Parser" $ do
     it "parses a known binary correctly" $ do
       -- Placeholder for Golden test
