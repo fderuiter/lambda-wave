@@ -1,3 +1,4 @@
+{-# LANGUAGE ScopedTypeVariables #-}
 module FFI.RingBuffer.TypesSpec (spec) where
 
 import Test.Hspec
@@ -13,3 +14,9 @@ spec = do
 
     it "has alignment 64" $ do
       alignment (undefined :: RingBufferControl) `shouldBe` 64
+
+    it "matches ABI expectations (QuickCheck)" $ property $
+      \(_ :: Int) ->
+        let sz = sizeOf (undefined :: RingBufferControl)
+            al = alignment (undefined :: RingBufferControl)
+        in sz == 64 && al == 64
