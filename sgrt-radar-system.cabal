@@ -42,6 +42,7 @@ library
       Control.UI.Renderer
       Data.Config
       Data.Types
+      FFI.RingBuffer.IO
       FFI.RingBuffer.Types
       Hardware.Ingestion
       Hardware.Control
