@@ -2,6 +2,7 @@ module Safety.Audit (logDecision, auditLoop) where
 
 import Data.Types
 import Control.Concurrent.STM
+import qualified Control.Concurrent
 import System.IO
 import Control.Monad (forever)
 import System.Clock

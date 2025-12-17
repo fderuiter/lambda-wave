@@ -13,9 +13,9 @@ import Numeric.LinearAlgebra
 createDesignMatrix :: Vector R -> Matrix R
 createDesignMatrix xVec = fromColumns [ ones
                                       , xVec
-                                      , xVec ^ 2
-                                      , xVec ^ 3
-                                      , xVec ^ 4
+                                      , xVec ^ (2::Int)
+                                      , xVec ^ (3::Int)
+                                      , xVec ^ (4::Int)
                                       ]
   where
     n    = size xVec
@@ -24,7 +24,7 @@ createDesignMatrix xVec = fromColumns [ ones
 -- | Construct the Design Matrix for "Strict" Bi-Quadratic
 -- This forces odd coefficients to be 0 (y = ax^4 + bx^2 + c)
 createStrictBiQuadraticMatrix :: Vector R -> Matrix R
-createStrictBiQuadraticMatrix xVec = fromColumns [ ones, xVec ^ 2, xVec ^ 4 ]
+createStrictBiQuadraticMatrix xVec = fromColumns [ ones, xVec ^ (2::Int), xVec ^ (4::Int) ]
   where
     n    = size xVec
     ones = n |> repeat 1.0

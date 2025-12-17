@@ -10,14 +10,12 @@ jobs:
   build:
     runs-on: ubuntu-latest
     container:
-      image: haskell:9.4
+      image: haskell:9.8
     steps:
       - uses: actions/checkout@v3
 
       - name: Install system dependencies
-        run: |
-          apt-get update
-          apt-get install -y build-essential liblapack-dev libblas-dev
+        run: scripts/setup_env.sh
 
       - name: Update Cabal
         run: cabal update

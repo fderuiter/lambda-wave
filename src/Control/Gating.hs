@@ -8,12 +8,12 @@ import System.Clock
 
 -- | The main logic function called every frame
 processFrame :: TVar SystemState -> [Point3D] -> IO ()
-processFrame stateVar points = do
+processFrame stateVar pts = do
     -- 1. Mesh the surface
-    let coeffs = fitPolynomialSurface points
+    let _coeffs = fitPolynomialSurface pts
     -- (In a real system, we'd use coeffs to calculate amplitude at isocenter)
 
-    let avgHeight = if null points then 0 else sum (map pz points) / fromIntegral (length points)
+    let avgHeight = if null pts then 0 else sum (map pz pts) / fromIntegral (length pts)
 
     -- 2. Schmidt Trigger Logic / Hysteresis
     -- (Simplified for skeleton)
@@ -23,7 +23,7 @@ processFrame stateVar points = do
 
     currTime <- getTime Monotonic
     atomically $ modifyTVar stateVar $ \s -> s
-        { currentPoints = points
+        { currentPoints = pts
         , beamState = newState
         , lastFrameTime = currTime
         }

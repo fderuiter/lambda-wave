@@ -1,10 +1,8 @@
-module Hardware.Parser (parserLoop, parseRadarFrame) where
+module Hardware.Parser (parserLoop) where
 
 import Control.Monad (forever)
 import Control.Concurrent (threadDelay)
 import qualified Data.ByteString as B
-import qualified Data.ByteString.Lazy as BL
-import Data.Binary.Get
 import Data.Types
 import Hardware.Ingestion (readChunkFromC)
 import qualified Control.Gating as Gating
