@@ -76,6 +76,7 @@ executable sgrt-radar-system-exe
   hs-source-dirs:
       app
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  extra-libraries: stdc++
   build-depends:
       sgrt-radar-system
 
