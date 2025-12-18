@@ -32,6 +32,7 @@ RingBufferControl* create_ring_buffer(size_t size) {
     // Initialize Control structure using placement new
     RingBufferControl* control = new (control_mem) RingBufferControl();
     control->write_offset.store(0, std::memory_order_relaxed);
+    control->read_offset.store(0, std::memory_order_relaxed);
     control->buffer_start = static_cast<char*>(buffer_mem);
     control->buffer_size = size;
 
@@ -73,6 +74,16 @@ ssize_t read_from_uart(RingBufferControl* handle, int uart_fd) {
     }
 
     return bytes_read;
+}
+
+size_t get_write_offset(RingBufferControl* handle) {
+    if (!handle) return 0;
+    return handle->write_offset.load(std::memory_order_acquire);
+}
+
+void set_read_offset(RingBufferControl* handle, size_t offset) {
+    if (!handle) return;
+    handle->read_offset.store(offset, std::memory_order_release);
 }
 
 }

@@ -7,6 +7,7 @@
 
 struct RingBufferControl {
     alignas(64) std::atomic<size_t> write_offset;
+    std::atomic<size_t> read_offset; // Added for consumer flow control
     char* buffer_start;
     size_t buffer_size;
 };

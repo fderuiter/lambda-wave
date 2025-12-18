@@ -15,6 +15,8 @@ module FFI.RingBuffer.IO
     , readFromUart
     , withRingBuffer
     , ingestionLoop
+    , getWriteOffset
+    , setReadOffset
     ) where
 
 import Foreign.Ptr (Ptr)
@@ -41,6 +43,16 @@ foreign import ccall unsafe "free_ring_buffer"
 foreign import ccall unsafe "read_from_uart"
     c_read_from_uart :: Ptr RingBufferControl -> CInt -> IO CSsize
 
+-- | Gets the current write offset with acquire semantics.
+-- Corresponds to C++ `size_t get_write_offset(RingBufferControl* handle)`
+foreign import ccall unsafe "get_write_offset"
+    c_get_write_offset :: Ptr RingBufferControl -> IO CSize
+
+-- | Sets the current read offset with release semantics.
+-- Corresponds to C++ `void set_read_offset(RingBufferControl* handle, size_t offset)`
+foreign import ccall unsafe "set_read_offset"
+    c_set_read_offset :: Ptr RingBufferControl -> CSize -> IO ()
+
 -- | Wrapper for create_ring_buffer
 createRingBuffer :: Int -> IO (Ptr RingBufferControl)
 createRingBuffer size = c_create_ring_buffer (fromIntegral size)
@@ -54,6 +66,16 @@ readFromUart :: Ptr RingBufferControl -> Fd -> IO Int
 readFromUart ptr (Fd fd) = do
     bytesRead <- c_read_from_uart ptr (fromIntegral fd)
     return (fromIntegral bytesRead)
+
+-- | Wrapper for get_write_offset
+getWriteOffset :: Ptr RingBufferControl -> IO Int
+getWriteOffset ptr = do
+    off <- c_get_write_offset ptr
+    return (fromIntegral off)
+
+-- | Wrapper for set_read_offset
+setReadOffset :: Ptr RingBufferControl -> Int -> IO ()
+setReadOffset ptr off = c_set_read_offset ptr (fromIntegral off)
 
 -- | Resource Management: Guarantees cleanup of the ring buffer.
 withRingBuffer :: Int -> (Ptr RingBufferControl -> IO a) -> IO a
