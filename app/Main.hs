@@ -6,13 +6,11 @@ import System.Clock
 import System.Environment (lookupEnv)
 import Data.Maybe (fromMaybe)
 import System.Posix.IO (openFd, OpenMode(..), defaultFileFlags, OpenFileFlags(..))
-import System.Posix.Types (Fd(..))
-import qualified System.Hardware.Serialport as SP
+import System.Posix.Files (ownerReadMode, ownerWriteMode, unionFileModes)
 
 import Data.Types
 import qualified FFI.RingBuffer.IO as RingBuffer
 import Hardware.Consumer (consumerLoop)
-import Hardware.Control
 import Safety.Watchdog
 import Safety.Audit
 import Control.UI.Window
@@ -56,10 +54,10 @@ main = do
     -- In a real system, we would configure it here using termios.
     -- For this task, we assume the environment or a startup script handled 'stty'.
 
-    fd <- openFd sensorPort ReadWrite Nothing defaultFileFlags { nonBlock = False }
+    fd <- openFd sensorPort ReadWrite (Just (ownerReadMode `unionFileModes` ownerWriteMode)) defaultFileFlags { nonBlock = False }
 
     -- 2. Hardware Ingestion (Dedicated Thread)
-    _ <- forkOS $ RingBuffer.ingestionLoop ringBuffer fd
+    _ <- RingBuffer.ingestionLoop ringBuffer fd
 
     -- 3. Consumer/Parser (Dedicated Thread)
     _ <- forkOS $ consumerLoop ringBuffer systemState
