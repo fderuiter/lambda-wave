@@ -66,6 +66,7 @@ library
       cbits/src/ring_buffer.cpp
   cc-options: -Wall -O2
   cxx-options: -std=c++11 -Wall -O2
+  extra-libraries: stdc++
 
 executable sgrt-radar-system-exe
   import: common-options
