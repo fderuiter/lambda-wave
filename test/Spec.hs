@@ -1,14 +1,13 @@
 import Test.Hspec
-import Test.QuickCheck
-import qualified Hardware.Parser as Parser
-import qualified Control.Gating as Gating
 import qualified RegressionSpec
 import qualified FFI.RingBuffer.TypesSpec
+import qualified Hardware.ConsumerSpec
 
 main :: IO ()
 main = hspec $ do
   RegressionSpec.spec
   FFI.RingBuffer.TypesSpec.spec
+  Hardware.ConsumerSpec.spec
 
   describe "Parser" $ do
     it "parses a known binary correctly" $ do
