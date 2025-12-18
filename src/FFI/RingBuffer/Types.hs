@@ -23,8 +23,9 @@ must match the C++ @struct RingBufferControl@:
 * Field offsets (in bytes from the start of the struct):
 
     * @writeOffset :: Word64@ at offset 0
-    * @bufferStart :: Ptr CChar@ at offset 8
-    * @bufferSize  :: Word64@ at offset 16
+    * @readOffset  :: Word64@ at offset 8
+    * @bufferStart :: Ptr CChar@ at offset 16
+    * @bufferSize  :: Word64@ at offset 24
 
 Any padding between fields and up to the full 64-byte size is owned by
 the C++ side. Do not change 'sizeOf', 'alignment', or the offsets in
@@ -73,7 +74,8 @@ import Data.Word
 -- required atomic semantics. The 'Storable' instance is intended only for
 -- layout-compatible, non-concurrent inspection/initialisation of the struct.
 data RingBufferControl = RingBufferControl
-    { writeOffset :: Word64      -- ^ Corresponds to std::atomic<size_t> (non-atomic here; do NOT access concurrently via 'Storable').
+    { writeOffset :: Word64      -- ^ Corresponds to std::atomic<size_t>
+    , readOffset  :: Word64      -- ^ Corresponds to std::atomic<size_t>
     , bufferStart :: Ptr CChar   -- ^ Start of the data buffer.
     , bufferSize  :: Word64      -- ^ size_t; buffer capacity in bytes (non-atomic).
     } deriving (Show, Eq)
@@ -82,11 +84,13 @@ instance Storable RingBufferControl where
     sizeOf _ = 64
     alignment _ = 64
     peek ptr = do
-        off <- peekByteOff ptr 0
-        start <- peekByteOff ptr 8
-        sz <- peekByteOff ptr 16
-        return $ RingBufferControl off start sz
-    poke ptr (RingBufferControl off start sz) = do
-        pokeByteOff ptr 0 off
-        pokeByteOff ptr 8 start
-        pokeByteOff ptr 16 sz
+        woff <- peekByteOff ptr 0
+        roff <- peekByteOff ptr 8
+        start <- peekByteOff ptr 16
+        sz <- peekByteOff ptr 24
+        return $ RingBufferControl woff roff start sz
+    poke ptr (RingBufferControl woff roff start sz) = do
+        pokeByteOff ptr 0 woff
+        pokeByteOff ptr 8 roff
+        pokeByteOff ptr 16 start
+        pokeByteOff ptr 24 sz

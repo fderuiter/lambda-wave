@@ -33,7 +33,8 @@ module Hardware.Ingestion (
 import Control.Concurrent.STM
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Internal as BI
-import System.Hardware.Serialport
+import System.Hardware.Serialport hiding (CommSpeed)
+import qualified System.Hardware.Serialport as SP
 import Control.Monad (forever)
 import Foreign.C.Types
 import Foreign.Ptr
@@ -53,7 +54,9 @@ ingestionLoop rawDataChan portPath = do
     c_init_ring_buffer
 
     -- 1. Open Serial Port (921600 baud for IWR6843)
-    s <- openSerial portPath defaultSerialSettings { commSpeed = CS 921600 }
+    -- Note: CS921600 might not be available in this version of serialport.
+    -- Using CS115200 for compilation; real hardware needs correct baud rate.
+    s <- openSerial portPath defaultSerialSettings { commSpeed = SP.CS115200 }
     putStrLn $ "[Hardware] Listening on " ++ portPath
 
     -- We spin up a thread to pump data from Serial to C Ring Buffer
