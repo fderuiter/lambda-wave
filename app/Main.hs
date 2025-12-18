@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 module Main where
 
 import Control.Concurrent (forkOS)
@@ -54,7 +55,12 @@ main = do
     -- In a real system, we would configure it here using termios.
     -- For this task, we assume the environment or a startup script handled 'stty'.
 
+#if MIN_VERSION_unix(2,8,0)
+    let flags = defaultFileFlags { nonBlock = False, creat = Just (ownerReadMode `unionFileModes` ownerWriteMode) }
+    fd <- openFd sensorPort ReadWrite flags
+#else
     fd <- openFd sensorPort ReadWrite (Just (ownerReadMode `unionFileModes` ownerWriteMode)) defaultFileFlags { nonBlock = False }
+#endif
 
     -- 2. Hardware Ingestion (Dedicated Thread)
     _ <- RingBuffer.ingestionLoop ringBuffer fd
