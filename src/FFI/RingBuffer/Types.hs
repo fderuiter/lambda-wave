@@ -74,10 +74,10 @@ import Data.Word
 -- required atomic semantics. The 'Storable' instance is intended only for
 -- layout-compatible, non-concurrent inspection/initialisation of the struct.
 data RingBufferControl = RingBufferControl
-    { writeOffset :: Word64      -- ^ Corresponds to std::atomic<size_t>
-    , readOffset  :: Word64      -- ^ Corresponds to std::atomic<size_t>
-    , bufferStart :: Ptr CChar   -- ^ Start of the data buffer.
-    , bufferSize  :: Word64      -- ^ size_t; buffer capacity in bytes (non-atomic).
+    { writeOffset :: !Word64      -- ^ Corresponds to std::atomic<size_t>
+    , readOffset  :: !Word64      -- ^ Corresponds to std::atomic<size_t>
+    , bufferStart :: !(Ptr CChar)   -- ^ Start of the data buffer.
+    , bufferSize  :: !Word64      -- ^ size_t; buffer capacity in bytes (non-atomic).
     } deriving (Show, Eq)
 
 instance Storable RingBufferControl where

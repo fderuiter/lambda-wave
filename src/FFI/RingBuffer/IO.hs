@@ -19,13 +19,14 @@ module FFI.RingBuffer.IO
     , setReadOffset
     ) where
 
-import Foreign.Ptr (Ptr)
+import Foreign.Ptr (Ptr, nullPtr)
 import Foreign.C.Types (CSize(..), CInt(..))
 import System.Posix.Types (CSsize(..), Fd(..))
-import Control.Exception (bracket)
-import Control.Concurrent (forkOS, ThreadId)
-import Control.Monad (unless)
+import Control.Exception (bracket, throwIO)
+import Control.Concurrent (forkOS, ThreadId, threadDelay)
+import Control.Monad (when)
 import FFI.RingBuffer.Types (RingBufferControl)
+import System.IO.Error (userError)
 
 -- | Creates a ring buffer of the specified size.
 -- Corresponds to C++ `RingBufferControl* create_ring_buffer(size_t size)`
@@ -39,8 +40,8 @@ foreign import ccall unsafe "free_ring_buffer"
 
 -- | Reads from UART into the ring buffer.
 -- Corresponds to C++ `ssize_t read_from_uart(RingBufferControl* handle, int uart_fd)`
--- Imported as unsafe for optimization to block GC during call, as per requirements.
-foreign import ccall unsafe "read_from_uart"
+-- Imported as safe to allow other Haskell threads to run (GC) while this blocks/waits.
+foreign import ccall safe "read_from_uart"
     c_read_from_uart :: Ptr RingBufferControl -> CInt -> IO CSsize
 
 -- | Gets the current write offset with acquire semantics.
@@ -55,7 +56,11 @@ foreign import ccall unsafe "set_read_offset"
 
 -- | Wrapper for create_ring_buffer
 createRingBuffer :: Int -> IO (Ptr RingBufferControl)
-createRingBuffer size = c_create_ring_buffer (fromIntegral size)
+createRingBuffer size = do
+    ptr <- c_create_ring_buffer (fromIntegral size)
+    if ptr == nullPtr
+        then throwIO (userError "Failed to allocate Ring Buffer (C++ create_ring_buffer returned NULL)")
+        else return ptr
 
 -- | Wrapper for free_ring_buffer
 freeRingBuffer :: Ptr RingBufferControl -> IO ()
@@ -64,7 +69,7 @@ freeRingBuffer = c_free_ring_buffer
 -- | Wrapper for read_from_uart
 readFromUart :: Ptr RingBufferControl -> Fd -> IO Int
 readFromUart ptr (Fd fd) = do
-    bytesRead <- c_read_from_uart ptr (fromIntegral fd)
+    bytesRead <- c_read_from_uart ptr fd
     return (fromIntegral bytesRead)
 
 -- | Wrapper for get_write_offset
@@ -85,12 +90,15 @@ withRingBuffer size action = bracket
     action
 
 -- | Ingestion Thread: Spawns a bound thread that loops calling read_from_uart.
--- The loop terminates if read_from_uart returns 0 (EOF) or a negative value (Error).
+-- The loop terminates if read_from_uart returns a negative value (Error).
+-- If it returns 0 (Full or EOF), we pause briefly and retry.
 ingestionLoop :: Ptr RingBufferControl -> Fd -> IO ThreadId
 ingestionLoop ptr fd = forkOS loop
   where
     loop = do
         bytesRead <- readFromUart ptr fd
-        -- If bytesRead > 0, we continue.
-        -- If bytesRead == 0 (EOF) or bytesRead < 0 (Error), we stop.
-        unless (bytesRead <= 0) loop
+        if bytesRead < 0
+            then return () -- Error, terminate thread
+            else do
+                when (bytesRead == 0) $ threadDelay 1000 -- 1ms pause if full or empty
+                loop
