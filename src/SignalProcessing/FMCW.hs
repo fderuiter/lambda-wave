@@ -1,0 +1,98 @@
+{-# LANGUAGE StrictData #-}
+module SignalProcessing.FMCW
+    ( -- * Core Radar Principles
+      calculateBeatFreq
+    , calculateRangeResolution
+      -- * Chirp Z-Transform (CZT)
+    , chirpZTransform
+    , CZTParams(..)
+      -- * Phase-Based Motion Tracking
+    , calculatePhase
+    , calculateDisplacement
+    ) where
+
+import Numeric.LinearAlgebra
+
+-- | Equation (1): Verified
+-- Calculate the beat frequency from a target range.
+-- f_FFT = (2 * B * R) / (c * T)
+calculateBeatFreq :: Double -- ^ Bandwidth B (Hz)
+                  -> Double -- ^ Chirp Duration T (s)
+                  -> Double -- ^ Range R (m)
+                  -> Double -- ^ Beat Frequency (Hz)
+calculateBeatFreq bw duration targetRange = (2 * bw * targetRange) / (c * duration)
+  where
+    c = 3.0e8
+
+-- | Range Resolution Limit
+-- Delta R = c / (2 * B)
+calculateRangeResolution :: Double -- ^ Bandwidth B (Hz)
+                         -> Double -- ^ Resolution (m)
+calculateRangeResolution bw = c / (2 * bw)
+  where
+    c = 3.0e8
+
+-- | Parameters for the Chirp Z-Transform
+data CZTParams = CZTParams
+    { cztStartFreq :: Double -- ^ f_0: Start frequency of the zoom window (Hz)
+    , cztBandwidth :: Double -- ^ B_zoom: Bandwidth of the zoom window (Hz)
+    , cztSteps     :: Int    -- ^ K: Number of frequency steps in the output
+    , cztSampleRate :: Double -- ^ f_s: Sampling rate of the IF signal (Hz)
+    } deriving (Show, Eq)
+
+-- | Equation (2): Corrected & Verified
+-- X_{k, CZT} = sum_{n=0}^{N-1} x_n * exp(-i * 2 * pi * n * (f_0 + B_zoom * k / K) / f_s)
+--
+-- Note: This is a direct implementation of the summation. For large N and K,
+-- a formulation using convolution (Bluestein's algorithm) would be faster,
+-- but the prompt asks for the specific equation implementation.
+chirpZTransform :: CZTParams
+                -> Vector (Complex Double) -- ^ Input signal x_n
+                -> Vector (Complex Double) -- ^ Output spectrum X_k
+chirpZTransform params x_n = fromList [ calculateBin k | k <- [0 .. k_max - 1] ]
+  where
+    n_samples = size x_n
+    k_max = cztSteps params
+    f0 = cztStartFreq params
+    b_zoom = cztBandwidth params
+    fs = cztSampleRate params
+
+    -- Helper to calculate the value for a specific frequency bin k
+    calculateBin :: Int -> Complex Double
+    calculateBin k =
+        let
+            k_idx = fromIntegral k
+            k_total = fromIntegral k_max
+
+            -- f_k = f_0 + B_zoom * (k / K)
+            freq_k = f0 + b_zoom * (k_idx / k_total)
+
+            -- Phase term: -i * 2 * pi * n * (freq_k / f_s)
+            -- We want exp(phase_term)
+            -- Argument for cis is: -2 * pi * n * freq_k / f_s
+            theta_scale = (-2 * pi * freq_k) / fs
+
+            -- Create a vector of complex exponentials for each n
+            -- exp_vec[n] = cis (theta_scale * n)
+            exp_vec = cmap (\n -> cis (theta_scale * n)) (fromList [0 .. fromIntegral (n_samples - 1)])
+
+        in
+            -- Dot product of input signal and the complex exponentials
+            -- hmatrix <.> is Hermitian (sum(conj(x) * y)), so we must conjugate x_n first
+            -- to get sum(x_n * exp_vec).
+            conj x_n <.> exp_vec
+
+-- | Equation (4): Verified
+-- Extract the phase from the complex value at the peak index.
+calculatePhase :: Complex Double -> Double
+calculatePhase = phase
+
+-- | Equation (5): Verified
+-- Calculate displacement from phase change.
+-- d = (c * delta_phi) / (4 * pi * f_min)
+calculateDisplacement :: Double -- ^ f_min: Start frequency of the chirp (Hz) (e.g. 77e9)
+                      -> Double -- ^ Delta Phi: Phase change (radians)
+                      -> Double -- ^ Displacement d (m)
+calculateDisplacement f_min delta_phi = (c * delta_phi) / (4 * pi * f_min)
+  where
+    c = 3.0e8
