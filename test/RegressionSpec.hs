@@ -2,7 +2,7 @@ module RegressionSpec (spec) where
 
 import Test.Hspec
 import Numeric.LinearAlgebra
-import SignalProcessing.Regression
+import SignalProcessing.Fitting
 
 spec :: Spec
 spec = do
