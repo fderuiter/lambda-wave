@@ -103,3 +103,56 @@ $$
 2. **Fine Search (Zoom 1):** Perform CZT centered at $f_{FFT}$ with bandwidth $2F_s/K$.
 3. **Fine Search (Zoom 2):** Perform CZT centered at the new peak with bandwidth $2F_s/K^2$.
 4. **Displacement:** Extract phase from the final CZT peak and unwrap it over time to track motion $d$.
+
+---
+
+## 5. The "Fonzi" Formula Stack (2025 Upgrade)
+
+Based on recent research (Rong et al., 2025; arXiv 2025), the system is upgraded with an advanced processing chain to handle "Human Shape Geometric Error" (smearing) and improve resolution.
+
+### 5.1 Step 1: The "Zoom" (Bluestein CZT)
+
+The Chirp Z-Transform is implemented using **Bluestein's Algorithm** for $O((N+K) \log (N+K))$ efficiency, enabling millimeter-level pixel resolution.
+
+$$
+X_k = \sum_{n=0}^{N-1} x(n) A^{-n} W^{nk}
+$$
+
+Where:
+* $A = A_0 e^{j 2\pi \theta_0}$ (Start frequency)
+* $W = W_0 e^{j 2\pi \phi_0}$ (Step size / resolution)
+
+### 5.2 Step 2: The "Motion" (Phase Extraction)
+
+Phase is extracted using the In-phase (I) and Quadrature (Q) components:
+
+$$
+\phi[n] = \arctan\left(\frac{Q[n]}{I[n]}\right)
+$$
+
+### 5.3 Step 3: The "Unwrapping" (Differential Phase)
+
+To track breathing motion larger than the wavelength ($\approx 3.9$ mm), a differential unwrapper is applied:
+
+$$
+\Delta \phi[n] = \phi[n] - \phi[n-1]
+$$
+*Logic Check:* If $|\Delta \phi| > \pi$, adjust by $\pm 2\pi$.
+
+**Final Displacement:**
+$$
+D[n] = D[n-1] + \frac{\lambda}{4\pi} \Delta \phi[n]
+$$
+
+### 5.4 Step 4: The "Targeting" (MIMO Beamforming)
+
+Digital Beamforming is used to focus the radar beam on specific reflection points (e.g., sternum vs. abdomen), acting as a "Digital Lens".
+
+$$
+y(t) = \sum_{k=1}^{M} w_k \cdot x_k(t) \cdot e^{-j \frac{2\pi}{\lambda} d_k \sin(\theta)}
+$$
+
+* $M$: Number of antennas.
+* $w_k$: Tapering weights.
+* $\theta$: Steering angle.
+* $d_k$: Antenna position (distance).

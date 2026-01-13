@@ -3,11 +3,13 @@ import qualified RegressionSpec
 import qualified FFI.RingBuffer.TypesSpec
 import qualified Hardware.ConsumerSpec
 import qualified SignalProcessing.FMCWSpec
+import qualified SignalProcessing.AdvancedSpec
 
 main :: IO ()
 main = hspec $ do
   RegressionSpec.spec
   SignalProcessing.FMCWSpec.spec
+  SignalProcessing.AdvancedSpec.spec
   FFI.RingBuffer.TypesSpec.spec
   Hardware.ConsumerSpec.spec
 

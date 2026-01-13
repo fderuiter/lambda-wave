@@ -54,6 +54,7 @@ library
       Safety.Watchdog
       SignalProcessing.FMCW
       SignalProcessing.Regression
+      SignalProcessing.Advanced
   other-modules:
       Paths_sgrt_radar_system
   hs-source-dirs:
