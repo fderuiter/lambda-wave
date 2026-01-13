@@ -11,22 +11,22 @@ hardware via C++ FFI calls.
 -}
 module FFI.RingBuffer.IO
     ( createRingBuffer
-    , freeRingBuffer
+    , freeRingBuffer -- Deprecated/No-op as ForeignPtr handles it, but kept for API compat if needed, or removed?
     , readFromUart
-    , withRingBuffer
+    , withRingBuffer -- Deprecated
     , ingestionLoop
     , getWriteOffset
     , setReadOffset
     ) where
 
-import Foreign.Ptr (Ptr, nullPtr)
+import Foreign.Ptr (Ptr, nullPtr, FunPtr)
+import Foreign.ForeignPtr (ForeignPtr, newForeignPtr, withForeignPtr, finalizeForeignPtr)
 import Foreign.C.Types (CSize(..), CInt(..))
 import System.Posix.Types (CSsize(..), Fd(..))
-import Control.Exception (bracket, throwIO)
+import Control.Exception (throwIO)
 import Control.Concurrent (forkOS, ThreadId, threadDelay)
 import Control.Monad (when)
 import FFI.RingBuffer.Types (RingBufferControl)
-import System.IO.Error (userError)
 
 -- | Creates a ring buffer of the specified size.
 -- Corresponds to C++ `RingBufferControl* create_ring_buffer(size_t size)`
@@ -35,8 +35,8 @@ foreign import ccall unsafe "create_ring_buffer"
 
 -- | Frees the ring buffer.
 -- Corresponds to C++ `void free_ring_buffer(RingBufferControl* handle)`
-foreign import ccall unsafe "free_ring_buffer"
-    c_free_ring_buffer :: Ptr RingBufferControl -> IO ()
+foreign import ccall unsafe "&free_ring_buffer"
+    c_free_ring_buffer_ptr :: FunPtr (Ptr RingBufferControl -> IO ())
 
 -- | Reads from UART into the ring buffer.
 -- Corresponds to C++ `ssize_t read_from_uart(RingBufferControl* handle, int uart_fd)`
@@ -54,49 +54,53 @@ foreign import ccall unsafe "get_write_offset"
 foreign import ccall unsafe "set_read_offset"
     c_set_read_offset :: Ptr RingBufferControl -> CSize -> IO ()
 
--- | Wrapper for create_ring_buffer
-createRingBuffer :: Int -> IO (Ptr RingBufferControl)
+-- | Wrapper for create_ring_buffer.
+-- Returns a ForeignPtr with a finalizer ensuring memory is freed.
+createRingBuffer :: Int -> IO (ForeignPtr RingBufferControl)
 createRingBuffer size = do
     ptr <- c_create_ring_buffer (fromIntegral size)
     if ptr == nullPtr
         then throwIO (userError "Failed to allocate Ring Buffer (C++ create_ring_buffer returned NULL)")
-        else return ptr
+        else newForeignPtr c_free_ring_buffer_ptr ptr
 
--- | Wrapper for free_ring_buffer
-freeRingBuffer :: Ptr RingBufferControl -> IO ()
-freeRingBuffer = c_free_ring_buffer
+-- | Manual free is generally not needed with ForeignPtr, but provided for explicit cleanup if necessary.
+-- Note: usage is dangerous if other threads hold the ForeignPtr!
+freeRingBuffer :: ForeignPtr RingBufferControl -> IO ()
+freeRingBuffer = finalizeForeignPtr
 
 -- | Wrapper for read_from_uart
-readFromUart :: Ptr RingBufferControl -> Fd -> IO Int
-readFromUart ptr (Fd fd) = do
+readFromUart :: ForeignPtr RingBufferControl -> Fd -> IO Int
+readFromUart fp (Fd fd) = withForeignPtr fp $ \ptr -> do
     bytesRead <- c_read_from_uart ptr fd
     return (fromIntegral bytesRead)
 
 -- | Wrapper for get_write_offset
-getWriteOffset :: Ptr RingBufferControl -> IO Int
-getWriteOffset ptr = do
+getWriteOffset :: ForeignPtr RingBufferControl -> IO Int
+getWriteOffset fp = withForeignPtr fp $ \ptr -> do
     off <- c_get_write_offset ptr
     return (fromIntegral off)
 
 -- | Wrapper for set_read_offset
-setReadOffset :: Ptr RingBufferControl -> Int -> IO ()
-setReadOffset ptr off = c_set_read_offset ptr (fromIntegral off)
+setReadOffset :: ForeignPtr RingBufferControl -> Int -> IO ()
+setReadOffset fp off = withForeignPtr fp $ \ptr ->
+    c_set_read_offset ptr (fromIntegral off)
 
 -- | Resource Management: Guarantees cleanup of the ring buffer.
-withRingBuffer :: Int -> (Ptr RingBufferControl -> IO a) -> IO a
-withRingBuffer size action = bracket
-    (createRingBuffer size)
-    freeRingBuffer
-    action
+-- Kept for backward compatibility, but implementation uses ForeignPtr.
+withRingBuffer :: Int -> (ForeignPtr RingBufferControl -> IO a) -> IO a
+withRingBuffer size action = do
+    fp <- createRingBuffer size
+    action fp
 
 -- | Ingestion Thread: Spawns a bound thread that loops calling read_from_uart.
 -- The loop terminates if read_from_uart returns a negative value (Error).
 -- If it returns 0 (Full or EOF), we pause briefly and retry.
-ingestionLoop :: Ptr RingBufferControl -> Fd -> IO ThreadId
-ingestionLoop ptr fd = forkOS loop
+-- Accepts ForeignPtr to ensure the buffer is not freed while thread is running.
+ingestionLoop :: ForeignPtr RingBufferControl -> Fd -> IO ThreadId
+ingestionLoop fp fd = forkOS loop
   where
     loop = do
-        bytesRead <- readFromUart ptr fd
+        bytesRead <- readFromUart fp fd
         if bytesRead < 0
             then return () -- Error, terminate thread
             else do
