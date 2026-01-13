@@ -22,8 +22,7 @@ import Control.Concurrent.STM
 import Control.Monad (unless)
 import Data.Word (Word8)
 import Data.Int (Int64)
-import Foreign.ForeignPtr (newForeignPtr_, ForeignPtr, castForeignPtr)
-import Foreign.Ptr (Ptr)
+import Foreign.ForeignPtr (newForeignPtr_, ForeignPtr, castForeignPtr, withForeignPtr)
 import Foreign.Storable (peek)
 import Foreign.C.Types (CChar)
 import qualified Data.ByteString as B
@@ -42,8 +41,8 @@ import Data.Types
 -- * If new data exists, creates a Lazy ByteString referencing the buffer (Zero-Copy).
 -- * Parses frames using 'Data.Binary.Get'.
 -- * Updates 'SystemState'.
-consumerLoop :: Ptr RingBufferControl -> TVar SystemState -> IO ()
-consumerLoop controlPtr stateVar = do
+consumerLoop :: ForeignPtr RingBufferControl -> TVar SystemState -> IO ()
+consumerLoop controlFp stateVar = withForeignPtr controlFp $ \controlPtr -> do
     -- Read initial control block (non-atomic for immutable fields)
     ctrl <- peek controlPtr
     let bufStart = bufferStart ctrl
@@ -57,7 +56,9 @@ consumerLoop controlPtr stateVar = do
     -- Internal Loop State
     let loop readOff = do
             -- 1. Poll Write Offset (Atomic Acquire)
-            writeOff <- getWriteOffset controlPtr
+            -- Pass the ForeignPtr to ensure safety, although we are already inside withForeignPtr,
+            -- this double check is fine or we rely on the fact that controlFp is alive.
+            writeOff <- getWriteOffset controlFp
 
             if writeOff == readOff
                 then do
@@ -100,7 +101,7 @@ consumerLoop controlPtr stateVar = do
                     -- 7. Notify Producer (Release Semantics)
                     -- We must update the shared read offset so the producer can reclaim space
                     -- (if it implements flow control) or just for monitoring.
-                    setReadOffset controlPtr newReadOff
+                    setReadOffset controlFp newReadOff
 
                     loop newReadOff
 

@@ -42,7 +42,9 @@ main = do
     -- forkOS $ configureSensor cliPort
 
     -- 1. Setup Ring Buffer (4MB)
-    -- We use the new FFI.RingBuffer.IO directly
+    -- We use the new FFI.RingBuffer.IO directly.
+    -- NOW RETURNS ForeignPtr RingBufferControl.
+    -- This ensures the buffer is automatically freed when all references (Main thread, consumer thread, ingestion thread) are gone.
     ringBuffer <- RingBuffer.createRingBuffer (4 * 1024 * 1024)
 
     -- Open Serial Port using POSIX for the C++ driver
@@ -63,9 +65,11 @@ main = do
 #endif
 
     -- 2. Hardware Ingestion (Dedicated Thread)
+    -- ingestionLoop accepts ForeignPtr
     _ <- RingBuffer.ingestionLoop ringBuffer fd
 
     -- 3. Consumer/Parser (Dedicated Thread)
+    -- consumerLoop accepts ForeignPtr
     _ <- forkOS $ consumerLoop ringBuffer systemState
 
     -- 3. Safety Watchdog (High Priority Thread)
