@@ -5,7 +5,8 @@ import System.Clock (TimeSpec)
 import qualified Data.ByteString as B
 import Foreign.Storable
 
--- | 3D Point in Room Coordinates (mm)
+-- | 3D Point in Room Coordinates (Meters)
+-- Note: Comments previously said mm, but TI sensor output is Meters.
 data Point3D = Point3D
   { px :: Double
   , py :: Double
@@ -47,6 +48,9 @@ data SystemState = SystemState
   , beamState :: BeamState
   , lastFrameTime :: TimeSpec -- For Watchdog
   , isocenter :: Point3D      -- Calibration zero
+  , surfaceCoefficients :: [Double] -- ^ Polynomial coefficients c0..c5
+  , virtualMesh :: [Point3D]        -- ^ 20x20 grid for visualization
+  , breathingAmplitude :: Double    -- ^ The signal used for gating (Meters)
   }
 
 -- | Raw parsed structure from the sensor

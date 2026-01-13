@@ -9,12 +9,37 @@ radarMountOffset = 0.0 -- mm
 gantryAngle :: Double
 gantryAngle = 0.0 -- degrees
 
--- | Gating logic
-gatingTolerance :: Double
-gatingTolerance = 3.0 -- mm
+-- | ROI Configuration (Meters)
+-- Based on typical patient torso dimensions
+-- Coordinate System: Sensor Coordinates (Z is Range)
+roiMinX :: Double
+roiMinX = -0.3
 
-targetHeight :: Double
-targetHeight = 10.0 -- mm (Example target)
+roiMaxX :: Double
+roiMaxX = 0.3
+
+roiMinY :: Double
+roiMinY = 0.0
+
+roiMaxY :: Double
+roiMaxY = 0.5
+
+roiMinZ :: Double
+roiMinZ = 0.5 -- 50cm min range
+
+roiMaxZ :: Double
+roiMaxZ = 1.5 -- 1.5m max range
+
+-- | Meshing Configuration
+meshGridSize :: Int
+meshGridSize = 20 -- 20x20 grid
+
+-- | Gating logic
+gatingToleranceMeters :: Double
+gatingToleranceMeters = 0.005 -- 5mm tolerance
+
+targetHeightMeters :: Double
+targetHeightMeters = 1.0 -- 1.0m (Patient chest distance from radar)
 
 -- | Safety
 watchdogTimeoutNS :: Integer

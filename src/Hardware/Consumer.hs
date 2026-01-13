@@ -35,6 +35,7 @@ import qualified Data.Vector.Storable as V
 import FFI.RingBuffer.Types (RingBufferControl(..))
 import FFI.RingBuffer.IO (getWriteOffset, setReadOffset)
 import Data.Types
+import qualified Control.Gating as Gating
 
 -- | The Consumer Thread Loop
 --
@@ -83,10 +84,14 @@ consumerLoop controlPtr stateVar = do
                     let (frames, bytesConsumed) = parseStream lbs
 
                     -- 5. Update State
+                    -- We only process the LATEST frame to minimize latency.
+                    -- processing multiple old frames is useless for real-time gating.
                     unless (null frames) $ do
-                        atomically $ modifyTVar' stateVar $ \s ->
-                            s { currentPoints = concatMap points frames } -- Simplified integration
-                        -- putStrLn $ "[Consumer] Parsed " ++ show (length frames) ++ " frames."
+                        let latestFrame = last frames
+                        Gating.processFrame stateVar (points latestFrame)
+
+                        -- Debug info if needed
+                        -- putStrLn $ "[Consumer] Parsed " ++ show (length frames) ++ " frames. Using last."
 
                     -- 6. Update Read Offset
                     -- In a real ring buffer, we advance readOff by how much we processed.

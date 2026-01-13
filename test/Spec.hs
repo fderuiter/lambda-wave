@@ -3,6 +3,7 @@ import qualified RegressionSpec
 import qualified FFI.RingBuffer.TypesSpec
 import qualified Hardware.ConsumerSpec
 import qualified SignalProcessing.FMCWSpec
+import qualified Control.GatingSpec
 
 main :: IO ()
 main = hspec $ do
@@ -10,13 +11,9 @@ main = hspec $ do
   SignalProcessing.FMCWSpec.spec
   FFI.RingBuffer.TypesSpec.spec
   Hardware.ConsumerSpec.spec
+  Control.GatingSpec.spec
 
   describe "Parser" $ do
     it "parses a known binary correctly" $ do
       -- Placeholder for Golden test
-      1 `shouldBe` 1
-
-  describe "Gating" $ do
-    it "keeps beam off when target is out of range" $ do
-      -- Placeholder for QuickCheck
       1 `shouldBe` 1

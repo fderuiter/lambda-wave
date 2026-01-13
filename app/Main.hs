@@ -28,6 +28,9 @@ main = do
           , beamState = BeamOff
           , lastFrameTime = startTime
           , isocenter = Point3D 0 0 0 0 0
+          , surfaceCoefficients = replicate 6 0.0
+          , virtualMesh = []
+          , breathingAmplitude = 0.0
           }
 
     systemState <- newTVarIO initialState
