@@ -46,9 +46,7 @@ library
       Data.Types
       FFI.RingBuffer.IO
       FFI.RingBuffer.Types
-      Hardware.Ingestion
       Hardware.Control
-      Hardware.Parser
       Hardware.Consumer
       Safety.Audit
       Safety.Watchdog
@@ -60,8 +58,6 @@ library
       src
   include-dirs:
       cbits/include
-  c-sources:
-      cbits/src/ring_buffer.c
   cxx-sources:
       cbits/src/RingBufferCheck.cpp
       cbits/src/ring_buffer.cpp

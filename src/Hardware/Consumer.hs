@@ -20,7 +20,7 @@ module Hardware.Consumer (
 import Control.Concurrent (threadDelay)
 import Control.Concurrent.STM
 import Control.Monad (unless)
-import Data.Word (Word8, Word64)
+import Data.Word (Word8)
 import Data.Int (Int64)
 import Foreign.ForeignPtr (newForeignPtr_, ForeignPtr, castForeignPtr)
 import Foreign.Ptr (Ptr)
