@@ -20,6 +20,8 @@ module Hardware.Consumer (
 import Control.Concurrent (threadDelay)
 import Control.Concurrent.STM
 import Control.Monad (unless)
+import Control.DeepSeq (force)
+import Control.Exception (evaluate)
 import Data.Word (Word8)
 import Data.Int (Int64)
 import Foreign.ForeignPtr (newForeignPtr_, ForeignPtr, castForeignPtr, withForeignPtr)
@@ -83,13 +85,19 @@ consumerLoop controlFp stateVar = withForeignPtr controlFp $ \controlPtr -> do
 
                     let (frames, bytesConsumed) = parseStream lbs
 
-                    -- 5. Update State
+                    -- 5. Force Evaluation (Critical for FFI Safety)
+                    -- We must ensure all data is copied out of the Ring Buffer (via Lazy ByteString)
+                    -- BEFORE we update the read_offset. If we don't, the producer might overwrite
+                    -- the memory while we are lazily parsing it.
+                    _ <- evaluate (force frames)
+
+                    -- 6. Update State
                     unless (null frames) $ do
                         atomically $ modifyTVar' stateVar $ \s ->
                             s { currentPoints = concatMap points frames } -- Simplified integration
                         -- putStrLn $ "[Consumer] Parsed " ++ show (length frames) ++ " frames."
 
-                    -- 6. Update Read Offset
+                    -- 7. Update Read Offset
                     -- In a real ring buffer, we advance readOff by how much we processed.
                     -- But here, the producer might overwrite us if we are slow.
                     -- Also, we constructed 'lbs' from *all* available data.
@@ -98,7 +106,7 @@ consumerLoop controlFp stateVar = withForeignPtr controlFp $ \controlPtr -> do
 
                     let newReadOff = (readOff + fromIntegral bytesConsumed) `rem` bufSize
 
-                    -- 7. Notify Producer (Release Semantics)
+                    -- 8. Notify Producer (Release Semantics)
                     -- We must update the shared read offset so the producer can reclaim space
                     -- (if it implements flow control) or just for monitoring.
                     setReadOffset controlFp newReadOff
