@@ -32,6 +32,7 @@ common common-options
     , unix
     , OpenGL
     , GLUT
+    , deepseq
   default-language: Haskell2010
 
 library
