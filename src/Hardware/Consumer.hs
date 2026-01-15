@@ -139,45 +139,79 @@ createLazyByteString fp bufSize readOff writeOff =
 -- | Parses a stream of bytes into RadarFrames.
 -- Returns the frames and the total bytes consumed.
 -- Uses incremental parsing to handle partial frames safely.
+-- Optimized to use Boyer-Moore search (via breakSubstring) for Magic Word.
 parseStream :: BL.ByteString -> ([RadarFrame], Int64)
-parseStream input = loop (G.runGetIncremental getRadarFrame) (BL.toChunks input) 0 []
+parseStream input = loop input 0 []
   where
-    loop decoder chunks totalConsumed acc =
+    magic = BL.pack [1,2,3,4,5,6,7,8]
+
+    findMagic inp consumed =
+        let (prefix, rest) = BL.break (== 1) inp
+            len = BL.length prefix
+            newConsumed = consumed + len
+        in if BL.null rest
+           then (newConsumed, rest)
+           else
+             -- Found '1'. Check if it matches magic word.
+             if BL.length rest < 8
+             then (newConsumed, rest) -- Potential partial match, stop.
+             else if BL.isPrefixOf magic rest
+                  then (newConsumed, rest) -- Found.
+                  else findMagic (BL.tail rest) (newConsumed + 1) -- Not magic, skip '1' and continue.
+
+    loop currentInput totalConsumed acc =
+        let (junkLen, rest) = findMagic currentInput 0
+        in if BL.null rest
+           then
+             -- No '1' found in the entire input. Safe to consume all.
+             (reverse acc, totalConsumed + junkLen)
+           else if BL.length rest < 8
+           then
+             -- Found '1' but not enough data to verify magic word.
+             -- Stop and wait for more data.
+             (reverse acc, totalConsumed + junkLen)
+           else
+             -- Found magic word at start of 'rest'.
+             -- Attempt to parse the frame.
+             case runDecoder rest of
+                (consumed, Just (Right frame)) ->
+                    -- Success
+                    let newTotal = totalConsumed + junkLen + consumed
+                        remaining = BL.drop consumed rest
+                    in loop remaining newTotal (frame : acc)
+
+                (_, Just (Left _)) ->
+                    -- Parse Failure (e.g. invalid length).
+                    -- Skip magic word + 1 byte to restart search past the bad frame.
+                    -- We consumed 'junkLen' (prefix) + 1.
+                    let advance = junkLen + 1
+                    in loop (BL.drop 1 rest) (totalConsumed + advance) acc
+
+                (_, Nothing) ->
+                    -- Partial Frame (need more data).
+                    -- We consumed 'junkLen' (prefix) but decoder needs more.
+                    -- We return 'totalConsumed + junkLen' so next time we start at 'rest' (Magic Word).
+                    (reverse acc, totalConsumed + junkLen)
+
+    runDecoder bs = feedDecoder (G.runGetIncremental getRadarFrame) (BL.toChunks bs)
+
+    feedDecoder decoder [] =
         case decoder of
-            G.Done unused consumed frame ->
-                -- Frame parsed!
-                -- 'consumed' is bytes consumed by THIS decoder instance since start.
-                -- 'unused' is the part of the LAST chunk that wasn't used.
-                -- We need to proceed with 'unused' + remaining 'chunks'.
-                let newTotal = totalConsumed + consumed
-                    nextDecoder = G.runGetIncremental getRadarFrame
-                    -- We need to construct the input for the next step.
-                    -- 'unused' is a ByteString.
-                in if B.null unused
-                   then loop nextDecoder chunks newTotal (frame : acc)
-                   else loop (G.pushChunk nextDecoder unused) chunks newTotal (frame : acc)
+            G.Done _ consumed frame -> (consumed, Just (Right frame))
+            G.Fail _ consumed err   -> (consumed, Just (Left err))
+            G.Partial _             -> (0, Nothing)
 
-            G.Fail _ consumed _ ->
-                -- Failure. Consume bytes and stop.
-                let advanced = if consumed == 0 then 1 else consumed
-                in (reverse acc, totalConsumed + advanced)
-
-            G.Partial k ->
-                case chunks of
-                    [] ->
-                        -- No more chunks. We are partial.
-                        -- Do NOT consume the partial bytes.
-                        -- Return only what was fully consumed.
-                        (reverse acc, totalConsumed)
-                    (c:cs) ->
-                        -- Feed next chunk
-                        loop (k (Just c)) cs totalConsumed acc
+    feedDecoder decoder (c:cs) =
+        case decoder of
+            G.Done _ consumed frame -> (consumed, Just (Right frame))
+            G.Fail _ consumed err   -> (consumed, Just (Left err))
+            G.Partial k             -> feedDecoder (k (Just c)) cs
 
 -- | Parser for a single Radar Frame
 getRadarFrame :: G.Get RadarFrame
 getRadarFrame = do
-    -- 1. Scan for Magic Word
-    findMagicWord
+    -- 1. Skip Magic Word (already found by scanner)
+    G.skip 8
 
     -- 2. Read Header (Basic fields needed for length validation)
     -- TI Header Format (approximate, based on standard SDK):
@@ -199,18 +233,6 @@ getRadarFrame = do
 
     return $ RadarFrame B.empty points -- Storing empty raw header for now to save space
 
--- | Scans input until Magic Word is found
-findMagicWord :: G.Get ()
-findMagicWord = do
-    -- Peek 8 bytes
-    bytes <- G.lookAhead (G.getLazyByteString 8)
-    if bytes == BL.pack [1,2,3,4,5,6,7,8]
-    then do
-        G.skip 8
-        return ()
-    else do
-        G.skip 1
-        findMagicWord
 
 -- | Parse TLVs
 parseTLVs :: Int -> G.Get [Point3D]

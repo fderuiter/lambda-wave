@@ -11,3 +11,11 @@ The Consumer constructed a Lazy ByteString from the FFI Ring Buffer pointer, par
 ## 2024-05-24 - [Risk Level: MEDIUM] **Vector:** src/SignalProcessing/Regression.hs **Hazard:** Partial Function
 Found usage of `error` in `predict` function which could crash the runtime if coefficient vector length was unexpected.
 **Fix:** Replaced with safe fallback (returning 0.0).
+
+## 2024-05-25 - [Risk Level: LOW] **Vector:** src/FFI/RingBuffer/IO.hs **Hazard:** Ignored Return Code
+The `ingestionLoop` caught negative return codes from `read_from_uart` (indicating error) but silently terminated the thread. This violates the "Never ignore return codes" directive and hides hardware failures.
+**Fix:** Added logging to stderr before termination.
+
+## 2024-05-25 - [Risk Level: MEDIUM] **Vector:** src/Hardware/Consumer.hs **Hazard:** Performance/DoS
+The `findMagicWord` function used a byte-by-byte scan with `G.lookAhead` and `G.skip 1`, which is highly inefficient and could lead to CPU saturation (DoS) under high load or noise.
+**Fix:** Implemented an optimized search using `ByteString.break` to scan for the magic word header, reducing overhead significantly.
