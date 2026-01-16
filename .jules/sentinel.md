@@ -11,3 +11,7 @@ The Consumer constructed a Lazy ByteString from the FFI Ring Buffer pointer, par
 ## 2024-05-24 - [Risk Level: MEDIUM] **Vector:** src/SignalProcessing/Regression.hs **Hazard:** Partial Function
 Found usage of `error` in `predict` function which could crash the runtime if coefficient vector length was unexpected.
 **Fix:** Replaced with safe fallback (returning 0.0).
+
+## 2024-05-24 - [Risk Level: MEDIUM] **Vector:** src/FFI/RingBuffer/IO.hs **Hazard:** Silent Failure
+The `ingestionLoop` function checks if `readFromUart` returns a negative value (error), but it simply returns `()` (terminates the thread) without logging the error. This leaves the system in a zombie state where the consumer waits forever for new data that will never arrive.
+**Fix:** Added logging to `stderr` before thread termination.

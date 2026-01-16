@@ -26,6 +26,7 @@ import System.Posix.Types (CSsize(..), Fd(..))
 import Control.Exception (throwIO)
 import Control.Concurrent (forkOS, ThreadId, threadDelay)
 import Control.Monad (when)
+import System.IO (hPutStrLn, stderr)
 import FFI.RingBuffer.Types (RingBufferControl)
 
 -- | Creates a ring buffer of the specified size.
@@ -102,7 +103,7 @@ ingestionLoop fp fd = forkOS loop
     loop = do
         bytesRead <- readFromUart fp fd
         if bytesRead < 0
-            then return () -- Error, terminate thread
+            then hPutStrLn stderr $ "[RingBuffer] Error reading from UART: " ++ show bytesRead
             else do
                 when (bytesRead == 0) $ threadDelay 1000 -- 1ms pause if full or empty
                 loop
