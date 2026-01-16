@@ -1,8 +1,9 @@
 {-# LANGUAGE CPP #-}
 module Main where
 
-import Control.Concurrent (forkOS)
+import Control.Concurrent (forkOS, getNumCapabilities, setNumCapabilities)
 import Control.Concurrent.STM
+import Control.Monad (when)
 import System.Clock
 import System.Environment (lookupEnv)
 import Data.Maybe (fromMaybe)
@@ -21,6 +22,15 @@ import Control.UI.Input
 main :: IO ()
 main = do
     putStrLn "Initializing Lambda-Wave System..."
+
+    -- 1.1 Toolchain & RTS Locking: Enforce minimum capabilities
+    caps <- getNumCapabilities
+    putStrLn $ "Initial Capabilities: " ++ show caps
+    when (caps < 2) $ do
+        putStrLn "Warning: Capabilities < 2. Enforcing minimum of 2 for safety."
+        setNumCapabilities 2
+        newCaps <- getNumCapabilities
+        putStrLn $ "Adjusted Capabilities: " ++ show newCaps
 
     startTime <- getTime Monotonic
     let initialState = SystemState
