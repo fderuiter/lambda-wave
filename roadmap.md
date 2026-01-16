@@ -33,13 +33,13 @@
 
 **Goal:** Achieve reliable, zero-copy data ingestion from the TI IWR6843ISK.
 
-* \[ \] **2.1. C++ Ring Buffer Completion**  
-  * \[ \] **Task:** Complete the implementation of cbits/src/ring\_buffer.cpp to handle atomic write pointers.  
-  * \[ \] **Requirement:** FR-DAQ-001, FR-DAQ-004  
-  * \[ \] **Implementation:** Ensure std::atomic\<size\_t\> is used for head/tail.  
-  * \[ \] **Validation:**  
-    * \[ \] **Unit Test:** test/FFI/RingBuffer/IOSpec.hs \- Write 1M items, read 1M items, ensure 0 drops.  
-    * \[ \] **Memcheck:** Run valgrind to ensure no leaks in C++ layer.  
+* [x] **2.1. C++ Ring Buffer Completion**
+  * [x] **Task:** Complete the implementation of cbits/src/ring_buffer.cpp to handle atomic write pointers.
+  * [x] **Requirement:** FR-DAQ-001, FR-DAQ-004
+  * [x] **Implementation:** Ensure std::atomic<size_t> is used for head/tail.
+  * [x] **Validation:**
+    * [x] **Unit Test:** test/FFI/RingBuffer/IOSpec.hs - Write 1M items, read 1M items, ensure 0 drops.
+    * [x] **Memcheck:** Run valgrind to ensure no leaks in C++ layer.
 * \[ \] **2.2. UDP Packet Parser**  
   * \[ \] **Task:** Implement the packet parser in src/Hardware/Consumer.hs to handle TI TLV (Type-Length-Value) formats.  
   * \[ \] **Requirement:** FR-DAQ-003  
