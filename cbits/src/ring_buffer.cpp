@@ -31,6 +31,7 @@ RingBufferControl* create_ring_buffer(size_t size) {
 
     // Initialize Control structure using placement new
     RingBufferControl* control = new (control_mem) RingBufferControl();
+    // Relaxed ordering is sufficient for initialization as the pointer is not yet published
     control->write_offset.store(0, std::memory_order_relaxed);
     control->read_offset.store(0, std::memory_order_relaxed);
     control->buffer_start = static_cast<char*>(buffer_mem);
@@ -51,7 +52,9 @@ void free_ring_buffer(RingBufferControl* handle) {
 ssize_t read_from_uart(RingBufferControl* handle, int uart_fd) {
     if (!handle) return -1;
 
+    // Load write_offset relaxed: we are the only writer to it.
     size_t current_offset = handle->write_offset.load(std::memory_order_relaxed);
+    // Load read_offset acquire: ensures we see the latest value updated by the consumer
     size_t read_offset = handle->read_offset.load(std::memory_order_acquire);
     char* buf_start = handle->buffer_start;
     size_t size = handle->buffer_size;
@@ -94,6 +97,8 @@ ssize_t read_from_uart(RingBufferControl* handle, int uart_fd) {
         }
 
         // Publish the new offset with release semantics
+        // This ensures the data written to the buffer is visible to the consumer
+        // before they see the updated write_offset.
         handle->write_offset.store(new_offset, std::memory_order_release);
     }
 
@@ -102,6 +107,7 @@ ssize_t read_from_uart(RingBufferControl* handle, int uart_fd) {
 
 size_t get_write_offset(RingBufferControl* handle) {
     if (!handle) return 0;
+    // Acquire semantics to ensure we see the data committed before this offset update
     return handle->write_offset.load(std::memory_order_acquire);
 }
 
