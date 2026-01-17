@@ -11,3 +11,7 @@ The Consumer constructed a Lazy ByteString from the FFI Ring Buffer pointer, par
 ## 2024-05-24 - [Risk Level: MEDIUM] **Vector:** src/SignalProcessing/Regression.hs **Hazard:** Partial Function
 Found usage of `error` in `predict` function which could crash the runtime if coefficient vector length was unexpected.
 **Fix:** Replaced with safe fallback (returning 0.0).
+
+## 2024-05-25 - [Risk Level: HIGH] **Vector:** src/Hardware/Consumer.hs **Hazard:** Infinite Spin on Garbage Data
+The `parseStream` function relies on `Data.Binary.Get` to parse frames. If the input stream contains garbage (e.g., due to UART noise or baud rate mismatch) that lacks the Magic Word, `getRadarFrame` would fail or partial parse without consuming sufficient bytes to advance the stream past the garbage. This caused the Consumer Loop to repeatedly attempt parsing the same garbage block, leading to an infinite CPU spin and potential system freeze (Watchdog trip).
+**Fix:** Implemented `findMagicOffset` using `Data.ByteString.Lazy.elemIndex` to efficiently scan and skip garbage bytes *before* invoking the parser. Refactored `parseStream` to be tail-recursive and robustly advance the read pointer even when no valid frames are found.

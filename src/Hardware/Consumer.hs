@@ -1,5 +1,6 @@
 {-# LANGUAGE ForeignFunctionInterface #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 {-|
 Module      : Hardware.Consumer
@@ -136,52 +137,79 @@ createLazyByteString fp bufSize readOff writeOff =
       castPtr :: ForeignPtr a -> ForeignPtr Word8
       castPtr = castForeignPtr
 
+-- | Helper to find the offset of the Magic Word in a Lazy ByteString
+findMagicOffset :: BL.ByteString -> Maybe Int64
+findMagicOffset lbs = go 0 lbs
+  where
+    magic = BL.pack [1,2,3,4,5,6,7,8]
+    go skipped input =
+        case BL.elemIndex 1 input of -- Find 0x01
+            Nothing -> Nothing
+            Just off ->
+                let candidate = BL.drop off input
+                in if BL.take 8 candidate == magic
+                   then Just (skipped + off)
+                   else go (skipped + off + 1) (BL.drop (off + 1) input)
+
 -- | Parses a stream of bytes into RadarFrames.
 -- Returns the frames and the total bytes consumed.
 -- Uses incremental parsing to handle partial frames safely.
+-- Now resilient to garbage via 'findMagicOffset' and tail-recursive.
 parseStream :: BL.ByteString -> ([RadarFrame], Int64)
-parseStream input = loop (G.runGetIncremental getRadarFrame) (BL.toChunks input) 0 []
+parseStream input = go input 0 []
   where
-    loop decoder chunks totalConsumed acc =
+    go currentInput totalConsumed accFrames =
+        case findMagicOffset currentInput of
+            Nothing ->
+                -- Magic word not found.
+                -- Be conservative: Keep the last 7 bytes in case magic word is split.
+                let len = BL.length currentInput
+                    skipped = if len > 7 then len - 7 else 0
+                in (reverse accFrames, totalConsumed + skipped)
+            Just off ->
+                -- Magic word found at 'off'.
+                -- We invoke the parser on the stream starting at 'off'.
+                let input' = BL.drop off currentInput
+                    -- Use parseLoop to parse *one* frame or run until failure/partial
+                    -- We pass 'off' as already consumed garbage.
+                in parseLoop (G.runGetIncremental getRadarFrame) (BL.toChunks input') (totalConsumed + off) accFrames
+
+    parseLoop decoder chunks currentConsumed accFrames =
         case decoder of
             G.Done unused consumed frame ->
                 -- Frame parsed!
-                -- 'consumed' is bytes consumed by THIS decoder instance since start.
-                -- 'unused' is the part of the LAST chunk that wasn't used.
-                -- We need to proceed with 'unused' + remaining 'chunks'.
-                let newTotal = totalConsumed + consumed
-                    nextDecoder = G.runGetIncremental getRadarFrame
-                    -- We need to construct the input for the next step.
-                    -- 'unused' is a ByteString.
-                in if B.null unused
-                   then loop nextDecoder chunks newTotal (frame : acc)
-                   else loop (G.pushChunk nextDecoder unused) chunks newTotal (frame : acc)
+                let newConsumed = currentConsumed + consumed
+                    -- Re-construct remaining input to find NEXT frame (or skip garbage)
+                    remainingLBS = BL.fromChunks (unused : chunks)
+                in
+                    -- Tail Call: Continue parsing from the remaining input
+                    go remainingLBS newConsumed (frame : accFrames)
 
             G.Fail _ consumed _ ->
-                -- Failure. Consume bytes and stop.
+                -- Failure (e.g. malformed frame).
+                -- consume bytes and stop.
                 let advanced = if consumed == 0 then 1 else consumed
-                in (reverse acc, totalConsumed + advanced)
+                in (reverse accFrames, currentConsumed + advanced)
 
             G.Partial k ->
                 case chunks of
                     [] ->
                         -- No more chunks. We are partial.
-                        -- Do NOT consume the partial bytes.
-                        -- Return only what was fully consumed.
-                        (reverse acc, totalConsumed)
+                        (reverse accFrames, currentConsumed)
                     (c:cs) ->
                         -- Feed next chunk
-                        loop (k (Just c)) cs totalConsumed acc
+                        parseLoop (k (Just c)) cs currentConsumed accFrames
 
 -- | Parser for a single Radar Frame
 getRadarFrame :: G.Get RadarFrame
 getRadarFrame = do
-    -- 1. Scan for Magic Word
-    findMagicWord
+    -- 1. Verify Magic Word (It should be there because we searched for it)
+    bytes <- G.getLazyByteString 8
+    if bytes /= BL.pack [1,2,3,4,5,6,7,8]
+    then fail "Magic Word Mismatch"
+    else return ()
 
-    -- 2. Read Header (Basic fields needed for length validation)
-    -- TI Header Format (approximate, based on standard SDK):
-    -- Magic (8), Version (4), TotalPacketLen (4), Platform (4), FrameNum (4), Time (4), NumTLVs (4), SubFrame (4)
+    -- 2. Read Header
     _version <- G.getWord32le
     _totalLen <- G.getWord32le
     _platform <- G.getWord32le
@@ -191,18 +219,13 @@ getRadarFrame = do
     _subFrameNum <- G.getWord32le
 
     -- 3. Parse TLVs
-    -- Total Header size = 8 + 4*7 = 36 bytes (excluding magic word? No, magic is part of header)
-    -- We already consumed Magic (8). Then 7 words (28). Total 36.
-
-    -- We need to parse 'numTLVs'
     points <- parseTLVs (fromIntegral numTLVs)
 
-    return $ RadarFrame B.empty points -- Storing empty raw header for now to save space
+    return $ RadarFrame B.empty points
 
--- | Scans input until Magic Word is found
+-- | Scans input until Magic Word is found (Deprecated/Unused in favor of outer search)
 findMagicWord :: G.Get ()
 findMagicWord = do
-    -- Peek 8 bytes
     bytes <- G.lookAhead (G.getLazyByteString 8)
     if bytes == BL.pack [1,2,3,4,5,6,7,8]
     then do
@@ -216,32 +239,22 @@ findMagicWord = do
 parseTLVs :: Int -> G.Get [Point3D]
 parseTLVs 0 = return []
 parseTLVs n = do
-    -- TLV Header: Type (4), Length (4)
     tlvType <- G.getWord32le
     tlvLen <- G.getWord32le
 
     case tlvType of
         1 -> do -- Detected Points
-            -- Payload: Array of Point {x,y,z,v} (4 * 4 = 16 bytes)
-            -- Num points = (tlvLen - 8) / 16 ?? No, tlvLen usually includes header?
-            -- TI SDK: tlvLen is length of Value? Or Type+Length+Value?
-            -- Usually it's length of Value. But sometimes it includes header.
             -- Let's assume standard TI: Length is payload length.
             let numPoints = fromIntegral tlvLen `div` 16
             points <- getPoints numPoints
             rest <- parseTLVs (n - 1)
             return (points ++ rest)
         _ -> do
-            -- Skip unknown TLV
             G.skip (fromIntegral tlvLen)
             parseTLVs (n - 1)
 
 getPoints :: Int -> G.Get [Point3D]
 getPoints n = do
-    -- Using Vector Storable would be more efficient here but 'Data.Types' uses [Point3D].
-    -- We will read into Vector Storable Point first (Zero Copy-ish if we could cast,
-    -- but ByteString is not guaranteed aligned, so we must copy to Storable Vector or read one by one).
-    -- Since we need to convert to Point3D (Double) anyway, we read floats and convert.
     rawPoints <- V.replicateM n getPoint
     return $ map toPoint3D (V.toList rawPoints)
 
