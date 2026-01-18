@@ -26,6 +26,7 @@ import System.Posix.Types (CSsize(..), Fd(..))
 import Control.Exception (throwIO)
 import Control.Concurrent (forkOS, ThreadId, threadDelay)
 import Control.Monad (when)
+import System.IO (hPutStrLn, stderr)
 import FFI.RingBuffer.Types (RingBufferControl)
 
 -- | Creates a ring buffer of the specified size.
@@ -58,6 +59,7 @@ foreign import ccall unsafe "set_read_offset"
 -- Returns a ForeignPtr with a finalizer ensuring memory is freed.
 createRingBuffer :: Int -> IO (ForeignPtr RingBufferControl)
 createRingBuffer size = do
+    when (size <= 0) $ throwIO (userError "Ring Buffer size must be positive")
     ptr <- c_create_ring_buffer (fromIntegral size)
     if ptr == nullPtr
         then throwIO (userError "Failed to allocate Ring Buffer (C++ create_ring_buffer returned NULL)")
@@ -102,7 +104,7 @@ ingestionLoop fp fd = forkOS loop
     loop = do
         bytesRead <- readFromUart fp fd
         if bytesRead < 0
-            then return () -- Error, terminate thread
+            then hPutStrLn stderr "[RingBuffer] Error: read_from_uart returned error code. Terminating ingestion thread."
             else do
                 when (bytesRead == 0) $ threadDelay 1000 -- 1ms pause if full or empty
                 loop

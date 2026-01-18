@@ -25,6 +25,10 @@ spec = do
       ptr <- createRingBuffer 1024
       getWriteOffset ptr `shouldReturn` 0
 
+    it "throws exception for invalid size" $ do
+      createRingBuffer 0 `shouldThrow` anyException
+      createRingBuffer (-1) `shouldThrow` anyException
+
     it "ingestionLoop reads data from pipe into ring buffer" $ do
       (readFd, writeFd) <- createPipe
 

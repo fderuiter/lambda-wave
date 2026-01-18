@@ -11,3 +11,8 @@ The Consumer constructed a Lazy ByteString from the FFI Ring Buffer pointer, par
 ## 2024-05-24 - [Risk Level: MEDIUM] **Vector:** src/SignalProcessing/Regression.hs **Hazard:** Partial Function
 Found usage of `error` in `predict` function which could crash the runtime if coefficient vector length was unexpected.
 **Fix:** Replaced with safe fallback (returning 0.0).
+
+## 2024-05-25 - [Risk Level: HIGH] **Vector:** src/FFI/RingBuffer/IO.hs **Hazard:** Unchecked Allocation / Silent Failure
+`createRingBuffer` allowed size <= 0, passing invalid arguments to C++ `posix_memalign` and `mlock`.
+`ingestionLoop` silently terminated on C++ `read_from_uart` error (negative return), hiding hardware failures.
+**Fix:** Enforced `size > 0` in `createRingBuffer`. Added stderr logging to `ingestionLoop` error path.
