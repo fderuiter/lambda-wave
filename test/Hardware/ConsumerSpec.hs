@@ -7,6 +7,7 @@ import qualified Data.ByteString.Lazy as BL
 import qualified Data.Binary.Put as P
 import Foreign.ForeignPtr
 import Foreign.Storable
+import qualified Data.ByteString as B
 
 import Data.Types
 import Hardware.Consumer
@@ -60,13 +61,14 @@ spec = do
             garbage = BL.pack (replicate 10 0xFF)
             input = garbage <> payload
 
-            (frames, consumed) = parseStream input
+            (frames, consumed, corrupted) = parseStream input
 
         length frames `shouldBe` 1
         let frame = head frames
         length (Data.Types.points frame) `shouldBe` 2
         -- consumed should be length garbage + length payload
         consumed `shouldBe` (BL.length garbage + BL.length payload)
+        corrupted `shouldBe` False
 
     it "Handles partial frames correctly (does not consume)" $ do
         -- Test that a partial frame at the end is NOT consumed
@@ -75,16 +77,54 @@ spec = do
         -- Full valid frame
         let magic = mapM_ P.putWord8 [1, 2, 3, 4, 5, 6, 7, 8]
             header = do
-                P.putWord32le 0; P.putWord32le 32; P.putWord32le 0; P.putWord32le 0
+                P.putWord32le 0; P.putWord32le 36; P.putWord32le 0; P.putWord32le 0
                 P.putWord32le 0; P.putWord32le 0; P.putWord32le 0 -- No TLVs
             frame = P.runPut (magic >> header) -- 36 bytes
 
         let input = frame <> partialMagic
-        let (frames, consumed) = parseStream input
+        let (frames, consumed, corrupted) = parseStream input
 
         length frames `shouldBe` 1
         -- Should consume the frame (36) but NOT the partial magic (4)
         consumed `shouldBe` BL.length frame
+        corrupted `shouldBe` False
+
+    it "Fuzz Testing: Handles random garbage without crashing" $ property $ \bytes -> do
+        let input = BL.fromStrict (B.pack bytes)
+            (frames, consumed, corrupted) = parseStream input
+
+        -- We don't expect it to crash.
+        -- If it found frames, good.
+        -- If it consumed bytes, good.
+        if BL.null input
+           then do
+             consumed `shouldBe` 0
+             corrupted `shouldBe` False
+           else
+             -- Just ensure evaluation doesn't crash
+             consumed `shouldSatisfy` (>= 0)
+
+    it "Fuzz Testing: Detects corruption in invalid streams" $ do
+        -- Inject a Magic Word but with invalid Length
+        let magic = mapM_ P.putWord8 [1, 2, 3, 4, 5, 6, 7, 8]
+            header = do
+                P.putWord32le 0
+                P.putWord32le 10 -- Invalid length (too small, < 36)
+                P.putWord32le 0
+                P.putWord32le 0
+                P.putWord32le 0
+                P.putWord32le 0
+                P.putWord32le 0
+
+            payload = P.runPut (magic >> header)
+
+            -- We expect parseStream to fail on this
+            (frames, consumed, corrupted) = parseStream payload
+
+        -- Should return corrupted = True
+        corrupted `shouldBe` True
+        -- And probably 0 frames
+        length frames `shouldBe` 0
 
 instance Arbitrary Point where
     arbitrary = Point <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary
