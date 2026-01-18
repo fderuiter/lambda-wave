@@ -40,12 +40,12 @@
   * [x] **Validation:**
     * [x] **Unit Test:** test/FFI/RingBuffer/IOSpec.hs - Write 1M items, read 1M items, ensure 0 drops.
     * [x] **Memcheck:** Run valgrind to ensure no leaks in C++ layer.
-* \[ \] **2.2. UDP Packet Parser**  
-  * \[ \] **Task:** Implement the packet parser in src/Hardware/Consumer.hs to handle TI TLV (Type-Length-Value) formats.  
-  * \[ \] **Requirement:** FR-DAQ-003  
-  * \[ \] **Implementation:** Parse "Magic Word" 0x0102030405060708 and TLV headers.  
-  * \[ \] **Validation:**  
-    * \[ \] **Fuzz Testing:** Feed random ByteStrings; ensure system does not crash but logs "Corrupt Packet".  
+* [x] **2.2. UDP Packet Parser**
+  * [x] **Task:** Implement the packet parser in src/Hardware/Consumer.hs to handle TI TLV (Type-Length-Value) formats.
+  * [x] **Requirement:** FR-DAQ-003
+  * [x] **Implementation:** Parse "Magic Word" 0x0102030405060708 and TLV headers.
+  * [x] **Validation:**
+    * [x] **Fuzz Testing:** Feed random ByteStrings; ensure system does not crash but logs "Corrupt Packet".
     * \[ \] **Integration:** Replay a captured .bin file from TI mmWave Studio and verify frame count matches.  
 * \[ \] **2.3. Sensor Configuration**  
   * \[ \] **Task:** Implement serial port writer to send .cfg to the sensor.  
