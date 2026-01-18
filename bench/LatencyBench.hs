@@ -1,4 +1,4 @@
-module LatencyBench (main) where
+module Main (main) where
 
 import Criterion.Main
 import Control.Mesher

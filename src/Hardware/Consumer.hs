@@ -32,6 +32,7 @@ import qualified Data.ByteString.Internal as BI
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.Binary.Get as G
 import qualified Data.Vector.Storable as V
+import System.IO (hPutStrLn, stderr)
 
 import FFI.RingBuffer.Types (RingBufferControl(..))
 import FFI.RingBuffer.IO (getWriteOffset, setReadOffset)
@@ -83,13 +84,17 @@ consumerLoop controlFp stateVar = withForeignPtr controlFp $ \controlPtr -> do
                     -- the decoder state across loops.
                     -- specific requirement: "Synchronization: Scan for Magic Word"
 
-                    let (frames, bytesConsumed) = parseStream lbs
+                    let (frames, bytesConsumed, corrupted) = parseStream lbs
 
                     -- 5. Force Evaluation (Critical for FFI Safety)
                     -- We must ensure all data is copied out of the Ring Buffer (via Lazy ByteString)
                     -- BEFORE we update the read_offset. If we don't, the producer might overwrite
                     -- the memory while we are lazily parsing it.
                     _ <- evaluate (force frames)
+
+                    -- Log corruption if detected
+                    when corrupted $ do
+                         hPutStrLn stderr "[Consumer] Corrupt Packet detected."
 
                     -- 6. Update State
                     unless (null frames) $ do
@@ -140,9 +145,9 @@ createLazyByteString fp bufSize readOff writeOff =
       castPtr = castForeignPtr
 
 -- | Parses a stream of bytes into RadarFrames.
--- Returns the frames and the total bytes consumed.
+-- Returns the frames, the total bytes consumed, and a boolean indicating corruption.
 -- Uses incremental parsing to handle partial frames safely.
-parseStream :: BL.ByteString -> ([RadarFrame], Int64)
+parseStream :: BL.ByteString -> ([RadarFrame], Int64, Bool)
 parseStream input = loop (G.runGetIncremental getRadarFrame) (BL.toChunks input) 0 []
   where
     loop decoder chunks totalConsumed acc =
@@ -163,7 +168,7 @@ parseStream input = loop (G.runGetIncremental getRadarFrame) (BL.toChunks input)
             G.Fail _ consumed _ ->
                 -- Failure. Consume bytes and stop.
                 let advanced = if consumed == 0 then 1 else consumed
-                in (reverse acc, totalConsumed + advanced)
+                in (reverse acc, totalConsumed + advanced, True)
 
             G.Partial k ->
                 case chunks of
@@ -171,7 +176,7 @@ parseStream input = loop (G.runGetIncremental getRadarFrame) (BL.toChunks input)
                         -- No more chunks. We are partial.
                         -- Do NOT consume the partial bytes.
                         -- Return only what was fully consumed.
-                        (reverse acc, totalConsumed)
+                        (reverse acc, totalConsumed, False)
                     (c:cs) ->
                         -- Feed next chunk
                         loop (k (Just c)) cs totalConsumed acc
@@ -186,12 +191,21 @@ getRadarFrame = do
     -- TI Header Format (approximate, based on standard SDK):
     -- Magic (8), Version (4), TotalPacketLen (4), Platform (4), FrameNum (4), Time (4), NumTLVs (4), SubFrame (4)
     _version <- G.getWord32le
-    _totalLen <- G.getWord32le
+    totalLen <- G.getWord32le
     _platform <- G.getWord32le
     _frameNum <- G.getWord32le
     _cpuCycles <- G.getWord32le
     numTLVs <- G.getWord32le
     _subFrameNum <- G.getWord32le
+
+    -- Sanity Checks to enable Fail on corruption
+    if totalLen < 36 || totalLen > 1000000
+       then fail "Invalid Packet Length"
+       else return ()
+
+    if numTLVs > 200
+       then fail "Too many TLVs"
+       else return ()
 
     -- 3. Parse TLVs
     -- Total Header size = 8 + 4*7 = 36 bytes (excluding magic word? No, magic is part of header)
