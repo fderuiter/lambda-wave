@@ -19,7 +19,7 @@ module Hardware.Consumer (
 
 import Control.Concurrent (threadDelay)
 import Control.Concurrent.STM
-import Control.Monad (unless)
+import Control.Monad (unless, when)
 import Control.DeepSeq (force)
 import Control.Exception (evaluate)
 import Data.Word (Word8)
@@ -96,6 +96,9 @@ consumerLoop controlFp stateVar = withForeignPtr controlFp $ \controlPtr -> do
                         atomically $ modifyTVar' stateVar $ \s ->
                             s { currentPoints = concatMap points frames } -- Simplified integration
                         -- putStrLn $ "[Consumer] Parsed " ++ show (length frames) ++ " frames."
+
+                    when (bytesConsumed > 0 && null frames) $
+                        putStrLn "[Consumer] Warning: Skipped garbage data (Magic Word search or Parse Error)."
 
                     -- 7. Update Read Offset
                     -- In a real ring buffer, we advance readOff by how much we processed.

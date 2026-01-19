@@ -11,7 +11,6 @@ hardware via C++ FFI calls.
 -}
 module FFI.RingBuffer.IO
     ( createRingBuffer
-    , freeRingBuffer -- Deprecated/No-op as ForeignPtr handles it, but kept for API compat if needed, or removed?
     , readFromUart
     , withRingBuffer -- Deprecated
     , ingestionLoop
@@ -20,12 +19,13 @@ module FFI.RingBuffer.IO
     ) where
 
 import Foreign.Ptr (Ptr, nullPtr, FunPtr)
-import Foreign.ForeignPtr (ForeignPtr, newForeignPtr, withForeignPtr, finalizeForeignPtr)
+import Foreign.ForeignPtr (ForeignPtr, newForeignPtr, withForeignPtr)
 import Foreign.C.Types (CSize(..), CInt(..))
 import System.Posix.Types (CSsize(..), Fd(..))
 import Control.Exception (throwIO)
 import Control.Concurrent (forkOS, ThreadId, threadDelay)
 import Control.Monad (when)
+import System.IO (hPutStrLn, stderr)
 import FFI.RingBuffer.Types (RingBufferControl)
 
 -- | Creates a ring buffer of the specified size.
@@ -56,17 +56,14 @@ foreign import ccall unsafe "set_read_offset"
 
 -- | Wrapper for create_ring_buffer.
 -- Returns a ForeignPtr with a finalizer ensuring memory is freed.
+-- Throws userError if size <= 0 or allocation fails.
 createRingBuffer :: Int -> IO (ForeignPtr RingBufferControl)
 createRingBuffer size = do
+    when (size <= 0) $ throwIO (userError "Ring Buffer size must be positive")
     ptr <- c_create_ring_buffer (fromIntegral size)
     if ptr == nullPtr
         then throwIO (userError "Failed to allocate Ring Buffer (C++ create_ring_buffer returned NULL)")
         else newForeignPtr c_free_ring_buffer_ptr ptr
-
--- | Manual free is generally not needed with ForeignPtr, but provided for explicit cleanup if necessary.
--- Note: usage is dangerous if other threads hold the ForeignPtr!
-freeRingBuffer :: ForeignPtr RingBufferControl -> IO ()
-freeRingBuffer = finalizeForeignPtr
 
 -- | Wrapper for read_from_uart
 readFromUart :: ForeignPtr RingBufferControl -> Fd -> IO Int
@@ -102,7 +99,7 @@ ingestionLoop fp fd = forkOS loop
     loop = do
         bytesRead <- readFromUart fp fd
         if bytesRead < 0
-            then return () -- Error, terminate thread
+            then hPutStrLn stderr "Error: readFromUart returned negative value. Ingestion thread terminating."
             else do
                 when (bytesRead == 0) $ threadDelay 1000 -- 1ms pause if full or empty
                 loop
