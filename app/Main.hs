@@ -1,7 +1,7 @@
 {-# LANGUAGE CPP #-}
 module Main where
 
-import Control.Concurrent (forkOS)
+import Control.Concurrent (forkOS, setNumCapabilities)
 import Control.Concurrent.STM
 import System.Clock
 import System.Environment (lookupEnv)
@@ -20,6 +20,8 @@ import Control.UI.Input
 
 main :: IO ()
 main = do
+    -- lock capabilities to specific cores
+    setNumCapabilities 2
     putStrLn "Initializing Lambda-Wave System..."
 
     startTime <- getTime Monotonic

@@ -73,7 +73,7 @@ executable sgrt-radar-system-exe
       Paths_sgrt_radar_system
   hs-source-dirs:
       app
-  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
   extra-libraries: stdc++
   build-depends:
       sgrt-radar-system
@@ -88,9 +88,10 @@ test-suite sgrt-radar-system-test
       FFI.RingBuffer.IOSpec
       RegressionSpec
       Hardware.ConsumerSpec
+      System.RTSSpec
   hs-source-dirs:
       test
-  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
   build-depends:
       sgrt-radar-system
     , hspec
