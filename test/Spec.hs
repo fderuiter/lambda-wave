@@ -4,6 +4,7 @@ import qualified FFI.RingBuffer.TypesSpec
 import qualified FFI.RingBuffer.IOSpec
 import qualified Hardware.ConsumerSpec
 import qualified SignalProcessing.FMCWSpec
+import qualified System.RTSSpec
 
 main :: IO ()
 main = hspec $ do
@@ -12,6 +13,7 @@ main = hspec $ do
   FFI.RingBuffer.TypesSpec.spec
   FFI.RingBuffer.IOSpec.spec
   Hardware.ConsumerSpec.spec
+  System.RTSSpec.spec
 
   describe "Parser" $ do
     it "parses a known binary correctly" $ do

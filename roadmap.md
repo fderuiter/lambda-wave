@@ -10,13 +10,13 @@
 
 **Goal:** Establish a deterministic runtime environment and rigid CI/CD pipeline capable of supporting Class C safety claims.
 
-* \[ \] **1.1. Toolchain & RTS Locking**  
-  * \[ \] **Task:** Configure GHC Runtime System (RTS) flags in cabal.project and Main.hs to lock capabilities to specific cores.  
-  * \[ \] **Requirement:** SR-SOUP-001  
-  * \[ \] **Implementation:** Use \-N2 (min) and \-qa (affinity). Implement Control.Concurrent.setNumCapabilities.  
-  * \[ \] **Validation:**  
-    * \[ \] Run threadscope on the binary.  
-    * \[ \] Verify GC pause times are \< 5ms under load using \+RTS \-s.  
+* [x] **1.1. Toolchain & RTS Locking**
+  * [x] **Task:** Configure GHC Runtime System (RTS) flags in cabal.project and Main.hs to lock capabilities to specific cores.
+  * [x] **Requirement:** SR-SOUP-001
+  * [x] **Implementation:** Use \-N2 (min) and \-qa (affinity). Implement Control.Concurrent.setNumCapabilities.
+  * [x] **Validation:**
+    * [x] Run threadscope on the binary.
+    * [x] Verify GC pause times are \< 5ms under load using \+RTS \-s.
 * \[ \] **1.2. CI/CD Strictness**  
   * \[ \] **Task:** Update .github/workflows/build-and-test.yml to fail on *any* compiler warning (-Werror).  
   * \[ \] **Requirement:** IEC 62304 (Code Standards)  
