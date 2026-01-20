@@ -47,12 +47,13 @@
   * [x] **Validation:**
     * [x] **Fuzz Testing:** Feed random ByteStrings; ensure system does not crash but logs "Corrupt Packet".
     * \[ \] **Integration:** Replay a captured .bin file from TI mmWave Studio and verify frame count matches.  
-* \[ \] **2.3. Sensor Configuration**  
-  * \[ \] **Task:** Implement serial port writer to send .cfg to the sensor.  
-  * \[ \] **Requirement:** FR-DAQ-002  
-  * \[ \] **Implementation:** Use System.Hardware.Serialport (or equivalent) in src/Hardware/Control.hs.  
-  * \[ \] **Validation:**  
-    * \[ \] Connect sensor, run init; verify console output from sensor says "Done".
+* [x] **2.3. Sensor Configuration**
+  * [x] **Task:** Implement serial port writer to send .cfg to the sensor.
+  * [x] **Requirement:** FR-DAQ-002
+  * [x] **Implementation:** Use System.Hardware.Serialport (or equivalent) in src/Hardware/Control.hs. Refactored to `MonadSerial` for mockability.
+  * [x] **Validation:**
+    * [x] **Simulation:** Unit test `test/Hardware/ControlSpec.hs` verified correct parsing and command transmission using `MockSerial`.
+    * \[ \] **Hardware:** Connect sensor, run init; verify console output from sensor says "Done".
 
 ## **Phase 3: Signal Processing Core (Physics Engine)**
 
