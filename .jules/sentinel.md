@@ -11,3 +11,11 @@ The Consumer constructed a Lazy ByteString from the FFI Ring Buffer pointer, par
 ## 2024-05-24 - [Risk Level: MEDIUM] **Vector:** src/SignalProcessing/Regression.hs **Hazard:** Partial Function
 Found usage of `error` in `predict` function which could crash the runtime if coefficient vector length was unexpected.
 **Fix:** Replaced with safe fallback (returning 0.0).
+
+## 2024-05-25 - [Risk Level: HIGH] **Vector:** src/Hardware/Consumer.hs **Hazard:** Garbage Scan Livelock
+The parser used a byte-by-byte `Data.Binary.Get` loop (`findMagicWord`) to search for the Magic Word. If the buffer contained significant garbage (e.g., lost sync), this would trigger a `Partial` result from the decoder without advancing the consumer state, causing the `consumerLoop` to read the same garbage repeatedly in a tight loop (Livelock/High CPU).
+**Fix:** Implemented `skipToMagicWord` using `ByteString.elemIndex` to efficiently skip garbage bytes before invoking the parser. Updated `parseStream` to correctly report skipped bytes as consumed, allowing `consumerLoop` to advance the Ring Buffer `read_offset` past the garbage.
+
+## 2024-05-25 - [Risk Level: MEDIUM] **Vector:** src/SignalProcessing/Regression.hs **Hazard:** Runtime Exception (Partial Function)
+The functions `solveBiQuadratic` and `solveStrictBiQuadratic` used `hmatrix`'s `<\>` operator (Least Squares) which throws a runtime exception if the dimensions of inputs `x` and `y` mismatch.
+**Fix:** Added guard clauses to verify `size x == size y`. Returns a zero-coefficient vector as a safe fallback if dimensions mismatch, converting a potential crash into a handled failure state.
