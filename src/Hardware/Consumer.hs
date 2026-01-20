@@ -1,5 +1,7 @@
 {-# LANGUAGE ForeignFunctionInterface #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE BangPatterns #-}
 
 {-|
 Module      : Hardware.Consumer
@@ -37,6 +39,10 @@ import System.IO (hPutStrLn, stderr)
 import FFI.RingBuffer.Types (RingBufferControl(..))
 import FFI.RingBuffer.IO (getWriteOffset, setReadOffset)
 import Data.Types
+
+-- | The Magic Word sequence for TI Millimeter Wave Radar
+magicPattern :: BL.ByteString
+magicPattern = BL.pack [1, 2, 3, 4, 5, 6, 7, 8]
 
 -- | The Consumer Thread Loop
 --
@@ -82,7 +88,6 @@ consumerLoop controlFp stateVar = withForeignPtr controlFp $ \controlPtr -> do
                     -- Here, we simplify by attempting to parse as much as possible
                     -- from the current snapshot. A robust implementation would maintain
                     -- the decoder state across loops.
-                    -- specific requirement: "Synchronization: Scan for Magic Word"
 
                     let (frames, bytesConsumed, corrupted) = parseStream lbs
 
@@ -144,13 +149,40 @@ createLazyByteString fp bufSize readOff writeOff =
       castPtr :: ForeignPtr a -> ForeignPtr Word8
       castPtr = castForeignPtr
 
+-- | Skips garbage until a potential magic word start is found.
+-- Efficiently scans for 0x01 using elemIndex instead of Get monad.
+-- Uses tail recursion with strict accumulator to avoid stack overflow.
+-- Returns (bytesSkipped, remainingInput)
+skipToMagicWord :: BL.ByteString -> (Int64, BL.ByteString)
+skipToMagicWord input = go 0 input
+  where
+    go !acc bs =
+        case BL.elemIndex 1 bs of
+            Nothing -> (acc + BL.length bs, BL.empty) -- No magic word start found, consume all
+            Just idx ->
+                let candidate = BL.drop idx bs
+                in if BL.isPrefixOf magicPattern candidate
+                   then (acc + idx, candidate) -- Found exact match
+                   else
+                       if BL.length candidate < 8
+                       then (acc + idx, candidate) -- Keep partial match (might be valid end of buffer)
+                       else
+                           -- Found 0x01 but not followed by correct sequence (Garbage)
+                           -- Skip the 0x01 and recurse
+                           go (acc + idx + 1) (BL.drop 1 candidate)
+
+
 -- | Parses a stream of bytes into RadarFrames.
 -- Returns the frames, the total bytes consumed, and a boolean indicating corruption.
 -- Uses incremental parsing to handle partial frames safely.
+-- Optimization: Pre-scans for Magic Word to skip garbage efficiently.
 parseStream :: BL.ByteString -> ([RadarFrame], Int64, Bool)
-parseStream input = loop (G.runGetIncremental getRadarFrame) (BL.toChunks input) 0 []
+parseStream input =
+    let (skipped, cleanInput) = skipToMagicWord input
+        (frames, consumed, corrupted) = parseLoop (G.runGetIncremental getRadarFrame) (BL.toChunks cleanInput) 0 []
+    in (frames, skipped + consumed, corrupted)
   where
-    loop decoder chunks totalConsumed acc =
+    parseLoop decoder chunks totalConsumed acc =
         case decoder of
             G.Done unused consumed frame ->
                 -- Frame parsed!
@@ -162,8 +194,8 @@ parseStream input = loop (G.runGetIncremental getRadarFrame) (BL.toChunks input)
                     -- We need to construct the input for the next step.
                     -- 'unused' is a ByteString.
                 in if B.null unused
-                   then loop nextDecoder chunks newTotal (frame : acc)
-                   else loop (G.pushChunk nextDecoder unused) chunks newTotal (frame : acc)
+                   then parseLoop nextDecoder chunks newTotal (frame : acc)
+                   else parseLoop (G.pushChunk nextDecoder unused) chunks newTotal (frame : acc)
 
             G.Fail _ consumed _ ->
                 -- Failure. Consume bytes and stop.
@@ -179,13 +211,15 @@ parseStream input = loop (G.runGetIncremental getRadarFrame) (BL.toChunks input)
                         (reverse acc, totalConsumed, False)
                     (c:cs) ->
                         -- Feed next chunk
-                        loop (k (Just c)) cs totalConsumed acc
+                        parseLoop (k (Just c)) cs totalConsumed acc
 
 -- | Parser for a single Radar Frame
 getRadarFrame :: G.Get RadarFrame
 getRadarFrame = do
     -- 1. Scan for Magic Word
-    findMagicWord
+    -- (We assume we are positioned at Magic Word or Partial Magic Word by skipToMagicWord)
+    magic <- G.getLazyByteString 8
+    unless (magic == magicPattern) $ fail "Invalid Magic Word"
 
     -- 2. Read Header (Basic fields needed for length validation)
     -- TI Header Format (approximate, based on standard SDK):
@@ -215,19 +249,6 @@ getRadarFrame = do
     points <- parseTLVs (fromIntegral numTLVs)
 
     return $ RadarFrame B.empty points -- Storing empty raw header for now to save space
-
--- | Scans input until Magic Word is found
-findMagicWord :: G.Get ()
-findMagicWord = do
-    -- Peek 8 bytes
-    bytes <- G.lookAhead (G.getLazyByteString 8)
-    if bytes == BL.pack [1,2,3,4,5,6,7,8]
-    then do
-        G.skip 8
-        return ()
-    else do
-        G.skip 1
-        findMagicWord
 
 -- | Parse TLVs
 parseTLVs :: Int -> G.Get [Point3D]

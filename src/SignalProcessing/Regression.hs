@@ -30,8 +30,11 @@ createStrictBiQuadraticMatrix xVec = fromColumns [ ones, xVec ^ (2::Int), xVec ^
     ones = n |> repeat 1.0
 
 -- | Perform the Regression
+-- Checks for dimension mismatch to prevent runtime exceptions.
 solveBiQuadratic :: Vector R -> Vector R -> Vector R
-solveBiQuadratic x y = flatten result
+solveBiQuadratic x y
+    | size x /= size y = 5 |> repeat 0.0 -- Return zero coefficients on mismatch
+    | otherwise = flatten result
   where
     designM = createDesignMatrix x
     -- linearSolveLS solves the overdetermined system A * x = B in a least-squares sense
@@ -40,7 +43,9 @@ solveBiQuadratic x y = flatten result
 
 -- | Perform the Regression for "Strict" Bi-Quadratic
 solveStrictBiQuadratic :: Vector R -> Vector R -> Vector R
-solveStrictBiQuadratic x y = flatten result
+solveStrictBiQuadratic x y
+    | size x /= size y = 3 |> repeat 0.0 -- Return zero coefficients on mismatch
+    | otherwise = flatten result
   where
     designM = createStrictBiQuadraticMatrix x
     result  = designM <\> asColumn y
