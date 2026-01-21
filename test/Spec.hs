@@ -3,6 +3,7 @@ import qualified RegressionSpec
 import qualified FFI.RingBuffer.TypesSpec
 import qualified FFI.RingBuffer.IOSpec
 import qualified Hardware.ConsumerSpec
+import qualified Hardware.ControlSpec
 import qualified SignalProcessing.FMCWSpec
 import qualified System.RTSSpec
 
@@ -13,6 +14,7 @@ main = hspec $ do
   FFI.RingBuffer.TypesSpec.spec
   FFI.RingBuffer.IOSpec.spec
   Hardware.ConsumerSpec.spec
+  Hardware.ControlSpec.spec
   System.RTSSpec.spec
 
   describe "Parser" $ do
