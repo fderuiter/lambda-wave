@@ -20,12 +20,14 @@ spec = do
           yData = vector [ 70.0, 11.0, 2.0, 1.0, 2.0, 19.0, 85.0 ]
 
           coeffs = solveBiQuadratic xData yData
-          [b0, b1, b2, b3, b4] = toList coeffs
 
-      -- Based on the guide description: "beta_4 approx 1.0 and beta_0 approx 1.0"
-      -- Actually guide says "beta_4 approx 1.0 and beta_0 approx 1.0 (with other terms near zero)"
-      -- Let's check if they are close.
-      b4 `shouldSatisfy` (\v -> abs (v - 1.0) < 0.2)
+      case toList coeffs of
+        [_, _, _, _, b4] -> do
+            -- Based on the guide description: "beta_4 approx 1.0 and beta_0 approx 1.0"
+            -- Actually guide says "beta_4 approx 1.0 and beta_0 approx 1.0 (with other terms near zero)"
+            -- Let's check if they are close.
+            b4 `shouldSatisfy` (\v -> abs (v - 1.0) < 0.2)
+        _ -> fail "Expected 5 coefficients from solveBiQuadratic"
 
       -- Let's verify prediction for x=2.5
       -- Guide says: "Prediction at x=2.5 is y=..." (It doesn't say the value, but we can compute)
@@ -40,14 +42,16 @@ spec = do
 
            coeffs = solveStrictBiQuadratic xData yData
            -- coeffs should be [c0, c2, c4]
-           [c0, c2, c4] = toList coeffs
 
-       -- c4 should be approx 1.0
-       c4 `shouldSatisfy` (\v -> abs (v - 1.0) < 0.1)
-       -- c0 should be approx 1.0
-       c0 `shouldSatisfy` (\v -> abs (v - 1.0) < 0.1)
-       -- c2 should be approx 0.0
-       c2 `shouldSatisfy` (\v -> abs v < 0.1)
+       case toList coeffs of
+           [c0, c2, c4] -> do
+               -- c4 should be approx 1.0
+               c4 `shouldSatisfy` (\v -> abs (v - 1.0) < 0.1)
+               -- c0 should be approx 1.0
+               c0 `shouldSatisfy` (\v -> abs (v - 1.0) < 0.1)
+               -- c2 should be approx 0.0
+               c2 `shouldSatisfy` (\v -> abs v < 0.1)
+           _ -> fail "Expected 3 coefficients from solveStrictBiQuadratic"
 
   describe "Design Matrix" $ do
     it "creates correct dimensions" $ do
