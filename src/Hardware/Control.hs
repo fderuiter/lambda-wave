@@ -4,9 +4,11 @@ import System.Hardware.Serialport
 import Control.Monad (forM_)
 import Control.Concurrent (threadDelay)
 import qualified Data.ByteString.Char8 as BC
+import Control.Exception (try, IOException, bracket)
 
 -- | Configures the sensor by sending commands from profile_3d.cfg
-configureSensor :: FilePath -> IO ()
+-- Returns Left error message on failure, Right () on success.
+configureSensor :: FilePath -> IO (Either String ())
 configureSensor portPath = do
     putStrLn $ "[Control] Configuring sensor on " ++ portPath
     -- In a real app, read from a file. Here we mock the commands.
@@ -25,11 +27,25 @@ configureSensor portPath = do
             , "sensorStart"
             ]
 
-    s <- openSerial portPath defaultSerialSettings { commSpeed = CS115200 }
+    -- Wrap the whole operation in try to catch IOExceptions (e.g. port not found)
+    result <- try $ bracket
+        (openSerial portPath defaultSerialSettings { commSpeed = CS115200 })
+        closeSerial
+        (\s -> do
+            forM_ commands $ \cmd -> do
+                let packet = BC.pack (cmd ++ "\n")
+                bytesSent <- send s packet
+                -- Check if all bytes were written
+                if bytesSent < BC.length packet
+                    then ioError (userError $ "Failed to send complete command: " ++ cmd)
+                    else threadDelay 100000 -- 100ms delay between commands
+        )
 
-    forM_ commands $ \cmd -> do
-        _ <- send s (BC.pack (cmd ++ "\n"))
-        threadDelay 100000 -- 100ms delay between commands
-
-    closeSerial s
-    putStrLn "[Control] Configuration Complete."
+    case result of
+        Left ex -> do
+            let msg = "[Control] Configuration Failed: " ++ show (ex :: IOException)
+            putStrLn msg
+            return (Left msg)
+        Right _ -> do
+            putStrLn "[Control] Configuration Complete."
+            return (Right ())

@@ -19,3 +19,7 @@ The parser used a byte-by-byte `Data.Binary.Get` loop (`findMagicWord`) to searc
 ## 2024-05-25 - [Risk Level: MEDIUM] **Vector:** src/SignalProcessing/Regression.hs **Hazard:** Runtime Exception (Partial Function)
 The functions `solveBiQuadratic` and `solveStrictBiQuadratic` used `hmatrix`'s `<\>` operator (Least Squares) which throws a runtime exception if the dimensions of inputs `x` and `y` mismatch.
 **Fix:** Added guard clauses to verify `size x == size y`. Returns a zero-coefficient vector as a safe fallback if dimensions mismatch, converting a potential crash into a handled failure state.
+
+## 2026-05-27 - [Risk Level: MEDIUM] **Vector:** src/Hardware/Control.hs **Hazard:** Unchecked IO / Return Code
+The `configureSensor` function ignored the return value of `send`, potentially assuming a command was fully sent when it was partial or failed. It also did not catch `IOException` from `openSerial`, which could crash the runtime if the port was missing.
+**Fix:** Wrapped `openSerial` and `send` in `try` block. Implemented a check for `bytesSent < length packet`. Changed return type to `IO (Either String ())` to force error handling in caller.
