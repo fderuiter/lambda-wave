@@ -23,3 +23,11 @@ The functions `solveBiQuadratic` and `solveStrictBiQuadratic` used `hmatrix`'s `
 ## 2026-05-27 - [Risk Level: MEDIUM] **Vector:** src/Hardware/Control.hs **Hazard:** Unchecked IO / Return Code
 The `configureSensor` function ignored the return value of `send`, potentially assuming a command was fully sent when it was partial or failed. It also did not catch `IOException` from `openSerial`, which could crash the runtime if the port was missing.
 **Fix:** Wrapped `openSerial` and `send` in `try` block. Implemented a check for `bytesSent < length packet`. Changed return type to `IO (Either String ())` to force error handling in caller.
+
+## 2024-05-28 - [Risk Level: MEDIUM] **Vector:** src/Control/Gating.hs **Hazard:** Thunk Leak
+The `processFrame` function used `sum (map pz pts)` to calculate the average height. For large point clouds, `map` constructs a list of thunks which remains in memory until `sum` forces it. This causes short-term GC pressure and potential space leaks.
+**Fix:** Refactored to use a strict left fold (`foldl'`) to compute sum and count in a single pass without intermediate list allocation.
+
+## 2024-05-28 - [Risk Level: HIGH] **Vector:** src/Hardware/Consumer.hs **Hazard:** Data Corruption / Stream Desynchronization
+The `parseTLVs` function assumed `tlvLen` perfectly matched the size of the point payload (16 bytes per point). If the sensor sent padding bytes or the `tlvLen` included headers differently than expected, the parser would not consume the extra bytes. This would leave the stream pointer misaligned for the next TLV or frame, causing the parser to interpret garbage as headers.
+**Fix:** Updated `parseTLVs` to calculate the actual bytes read and explicitly `G.skip` any remaining bytes defined by `tlvLen`.

@@ -89,6 +89,59 @@ spec = do
         consumed `shouldBe` BL.length frame
         corrupted `shouldBe` False
 
+    it "Handles Padded TLVs correctly" $ do
+        let point = Point 1.0 2.0 3.0 4.0
+            testPoints = [point] -- 1 point = 16 bytes
+
+            -- Magic Word
+            magic = mapM_ P.putWord8 [1, 2, 3, 4, 5, 6, 7, 8]
+
+            -- TLV Construction with Padding
+            -- Payload is 16 bytes.
+            -- But we claim Length is 28 (16 bytes payload + 4 bytes padding + 8 bytes Header)
+            -- Header size = 8
+
+            -- If we say tlvLen = 28. payloadLen = 20. numPoints = 1. bytesRead = 16. padding = 4.
+            -- So we need to put 20 bytes of "Value" (16 bytes point + 4 bytes junk).
+            -- AND TLV Header (8 bytes).
+            -- So Total Packet Len should account for this.
+
+            tlvLenVal = 28 -- 16 bytes point + 4 bytes padding + 8 bytes header
+
+            testHeader = do
+                P.putWord32le 0 -- Version
+                P.putWord32le (36 + 28) -- Total Len = Header(36) + TLV(28) = 64
+                P.putWord32le 0 -- Platform
+                P.putWord32le 1 -- Frame Num
+                P.putWord32le 0 -- CPU
+                P.putWord32le 1 -- Num TLVs
+                P.putWord32le 0 -- SubFrame
+
+            tlv = do
+                P.putWord32le 1 -- Type
+                P.putWord32le tlvLenVal -- Length (Total TLV Length)
+                mapM_ putPoint testPoints
+                P.putWord32le 0xDEADBEEF -- 4 bytes padding
+
+            putPoint (Point x y z v) = do
+                P.putFloatle x
+                P.putFloatle y
+                P.putFloatle z
+                P.putFloatle v
+
+            payload = P.runPut (magic >> testHeader >> tlv)
+
+            -- Append another frame to verify alignment is maintained
+            payload2 = payload <> payload
+
+            (frames, consumed, corrupted) = parseStream payload2
+
+        -- Should parse both frames
+        length frames `shouldBe` 2
+        corrupted `shouldBe` False
+        consumed `shouldBe` BL.length payload2
+
+
     it "Fuzz Testing: Handles random garbage without crashing" $ property $ \bytes -> do
         let input = BL.fromStrict (B.pack bytes)
             (frames, consumed, corrupted) = parseStream input
