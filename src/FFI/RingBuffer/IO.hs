@@ -22,7 +22,7 @@ import Foreign.Ptr (Ptr, nullPtr, FunPtr)
 import Foreign.ForeignPtr (ForeignPtr, newForeignPtr, withForeignPtr)
 import Foreign.C.Types (CSize(..), CInt(..))
 import System.Posix.Types (CSsize(..), Fd(..))
-import Control.Exception (throwIO)
+import Control.Exception (throwIO, catch, SomeException)
 import Control.Concurrent (forkOS, ThreadId, threadDelay)
 import Control.Monad (when)
 import System.IO (hPutStrLn, stderr)
@@ -96,7 +96,12 @@ withRingBuffer size action = do
 ingestionLoop :: ForeignPtr RingBufferControl -> Fd -> IO ThreadId
 ingestionLoop fp fd = forkOS loop
   where
-    loop = do
+    loop = safeLoop `catch` \e -> do
+        hPutStrLn stderr $ "Critical Error in Ingestion Thread: " ++ show (e :: SomeException)
+        -- We terminate the thread, but at least we logged it.
+        return ()
+
+    safeLoop = do
         bytesRead <- readFromUart fp fd
         if bytesRead < 0
             then hPutStrLn stderr "Error: readFromUart returned negative value. Ingestion thread terminating."
