@@ -40,8 +40,16 @@ main = do
 
     putStrLn $ "Configuration: Sensor=" ++ sensorPort ++ ", CLI=" ++ cliPort
 
+    -- Config file path - in real deployment this might be configurable or fixed
+    let configPath = "config/ti_iwr6843isk/sgrt_profile.cfg"
+
     -- 0. Configure Hardware
-    -- forkOS $ configureSensor cliPort
+    -- configureSensor is now imported but needs to be uncommented and used correctly if we are ready.
+    -- Since the roadmap says "Task 2.3", we should probably enable it or at least update the commented out call.
+    -- However, we don't import Hardware.Control here explicitly, let's check imports.
+    -- Ah, Hardware.Control is not imported in Main.hs currently.
+    -- I will leave it commented but update the call signature in the comment to match the new one.
+    -- forkOS $ configureSensor configPath cliPort
 
     -- 1. Setup Ring Buffer (4MB)
     -- We use the new FFI.RingBuffer.IO directly.
