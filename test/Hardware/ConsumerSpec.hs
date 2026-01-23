@@ -126,5 +126,32 @@ spec = do
         -- And probably 0 frames
         length frames `shouldBe` 0
 
+    it "Rejects TLV with length exceeding Total Length" $ do
+        -- Magic Word
+        let magic = mapM_ P.putWord8 [1, 2, 3, 4, 5, 6, 7, 8]
+            -- Valid Header with Total Len 100
+            testHeader = do
+                P.putWord32le 0 -- Version
+                P.putWord32le 100 -- Total Len
+                P.putWord32le 0 -- Platform
+                P.putWord32le 1 -- Frame Num
+                P.putWord32le 0 -- CPU
+                P.putWord32le 1 -- Num TLVs
+                P.putWord32le 0 -- SubFrame
+
+            -- TLV: Type 1, Len 0xFFFFFFFF (Huge)
+            tlv = do
+                P.putWord32le 1 -- Type
+                P.putWord32le 0xFFFFFFFF -- Length (Huge!)
+
+            payload = P.runPut (magic >> testHeader >> tlv)
+
+            -- parseStream
+            (frames, consumed, corrupted) = parseStream payload
+
+        -- Should return corrupted = True (due to fail "TLV Length...")
+        corrupted `shouldBe` True
+        length frames `shouldBe` 0
+
 instance Arbitrary Point where
     arbitrary = Point <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary

@@ -23,3 +23,7 @@ The functions `solveBiQuadratic` and `solveStrictBiQuadratic` used `hmatrix`'s `
 ## 2026-05-27 - [Risk Level: MEDIUM] **Vector:** src/Hardware/Control.hs **Hazard:** Unchecked IO / Return Code
 The `configureSensor` function ignored the return value of `send`, potentially assuming a command was fully sent when it was partial or failed. It also did not catch `IOException` from `openSerial`, which could crash the runtime if the port was missing.
 **Fix:** Wrapped `openSerial` and `send` in `try` block. Implemented a check for `bytesSent < length packet`. Changed return type to `IO (Either String ())` to force error handling in caller.
+
+## 2026-05-28 - [Risk Level: HIGH] **Vector:** src/Hardware/Consumer.hs **Hazard:** Memory Denial of Service
+The parser trusted 'tlvLen' from the packet header to allocate memory (via 'V.replicateM') without validating it against the total packet length. A malicious packet with 'tlvLen' of 4GB could cause an OOM crash.
+**Fix:** Passed 'totalLen' to 'parseTLVs' and enforced 'tlvLen <= totalLen' and a sanity cap.

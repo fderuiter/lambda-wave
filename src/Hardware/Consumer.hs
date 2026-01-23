@@ -24,7 +24,7 @@ import Control.Concurrent.STM
 import Control.Monad (unless, when)
 import Control.DeepSeq (force)
 import Control.Exception (evaluate)
-import Data.Word (Word8)
+import Data.Word (Word8, Word32)
 import Data.Int (Int64)
 import Foreign.ForeignPtr (newForeignPtr_, ForeignPtr, castForeignPtr, withForeignPtr)
 import Foreign.Storable (peek)
@@ -246,17 +246,22 @@ getRadarFrame = do
     -- We already consumed Magic (8). Then 7 words (28). Total 36.
 
     -- We need to parse 'numTLVs'
-    points <- parseTLVs (fromIntegral numTLVs)
+    points <- parseTLVs (fromIntegral numTLVs) totalLen
 
     return $ RadarFrame B.empty points -- Storing empty raw header for now to save space
 
 -- | Parse TLVs
-parseTLVs :: Int -> G.Get [Point3D]
-parseTLVs 0 = return []
-parseTLVs n = do
+parseTLVs :: Int -> Word32 -> G.Get [Point3D]
+parseTLVs 0 _ = return []
+parseTLVs n maxLen = do
     -- TLV Header: Type (4), Length (4)
     tlvType <- G.getWord32le
     tlvLen <- G.getWord32le
+
+    -- Security Check: Ensure TLV length is within packet bounds
+    if tlvLen > maxLen || tlvLen > 1000000
+       then fail "TLV Length exceeds Packet Length or Sanity Limit"
+       else return ()
 
     case tlvType of
         1 -> do -- Detected Points
@@ -267,12 +272,12 @@ parseTLVs n = do
             -- Let's assume standard TI: Length is payload length.
             let numPoints = fromIntegral tlvLen `div` 16
             points <- getPoints numPoints
-            rest <- parseTLVs (n - 1)
+            rest <- parseTLVs (n - 1) maxLen
             return (points ++ rest)
         _ -> do
             -- Skip unknown TLV
             G.skip (fromIntegral tlvLen)
-            parseTLVs (n - 1)
+            parseTLVs (n - 1) maxLen
 
 getPoints :: Int -> G.Get [Point3D]
 getPoints n = do
