@@ -88,6 +88,8 @@ test-suite sgrt-radar-system-test
       FFI.RingBuffer.IOSpec
       RegressionSpec
       Hardware.ConsumerSpec
+      Hardware.ControlSpec
+      SignalProcessing.FMCWSpec
       System.RTSSpec
   hs-source-dirs:
       test
