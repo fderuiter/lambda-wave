@@ -1,7 +1,7 @@
 module SignalProcessing.FMCWSpec (spec) where
 
 import Test.Hspec
-import Test.QuickCheck
+import Test.QuickCheck ()
 import Data.Complex
 import Numeric.LinearAlgebra
 import SignalProcessing.FMCW
@@ -31,6 +31,7 @@ spec = describe "SignalProcessing.FMCW" $ do
             -- Scenario: Signal has a frequency component at 100 Hz.
             -- We scan from 50 Hz to 150 Hz.
             let fs = 1000.0 -- Sample rate
+                n_samples :: Int
                 n_samples = 100
                 target_freq = 100.0
 
@@ -52,9 +53,9 @@ spec = describe "SignalProcessing.FMCW" $ do
                     , cztSampleRate = fs
                     }
 
-                output = chirpZTransform params signal
-                magnitudes = cmap magnitude output
-                max_mag = maxElement magnitudes
+                result = chirpZTransform params signal
+                magnitudes = cmap magnitude result
+                _max_mag = maxElement magnitudes
                 max_idx = maxIndex magnitudes
 
                 -- Calculate which frequency the max index corresponds to
