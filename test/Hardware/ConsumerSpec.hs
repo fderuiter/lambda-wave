@@ -126,5 +126,54 @@ spec = do
         -- And probably 0 frames
         length frames `shouldBe` 0
 
+    it "Handles unknown TLVs by skipping correct amount" $ do
+        -- Construct a frame with Type 99 (Unknown) followed by Type 1 (Known)
+        let point = Point 1.0 2.0 3.0 4.0
+        let magic = mapM_ P.putWord8 [1, 2, 3, 4, 5, 6, 7, 8]
+
+            -- Header
+            -- 8 (Magic) + 28 (Rest of Header: 7 * 4) + 24 (TLV 99) + 24 (TLV 1) = 84 bytes
+            header = do
+                P.putWord32le 0 -- Version
+                P.putWord32le 84 -- Total Len
+                P.putWord32le 0 -- Platform
+                P.putWord32le 1 -- Frame Num
+                P.putWord32le 0 -- CPU
+                P.putWord32le 2 -- Num TLVs (One unknown, one known)
+                P.putWord32le 0 -- SubFrame
+
+            -- TLV 1: Unknown Type 99
+            -- Length = 24 (8 Header + 16 Payload)
+            tlvUnknown = do
+                P.putWord32le 99 -- Type
+                P.putWord32le 24 -- Length
+                P.putWord32le 0xDEADBEEF -- Payload (16 bytes)
+                P.putWord32le 0xDEADBEEF
+                P.putWord32le 0xDEADBEEF
+                P.putWord32le 0xDEADBEEF
+
+            -- TLV 2: Known Type 1
+            -- Length = 24 (8 Header + 16 Payload -> 1 point)
+            tlvKnown = do
+                P.putWord32le 1 -- Type
+                P.putWord32le 24 -- Length
+                -- 1 Point (16 bytes)
+                P.putFloatle 1.0
+                P.putFloatle 2.0
+                P.putFloatle 3.0
+                P.putFloatle 4.0
+
+            payload = P.runPut (magic >> header >> tlvUnknown >> tlvKnown)
+
+            (frames, consumed, corrupted) = parseStream payload
+
+        -- If parsing is correct, we should get 1 frame with 1 point.
+        length frames `shouldBe` 1
+        let frame = head frames
+        length (Data.Types.points frame) `shouldBe` 1
+
+        corrupted `shouldBe` False
+        consumed `shouldBe` 84
+
 instance Arbitrary Point where
     arbitrary = Point <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary

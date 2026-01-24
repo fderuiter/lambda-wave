@@ -23,3 +23,11 @@ The functions `solveBiQuadratic` and `solveStrictBiQuadratic` used `hmatrix`'s `
 ## 2026-05-27 - [Risk Level: MEDIUM] **Vector:** src/Hardware/Control.hs **Hazard:** Unchecked IO / Return Code
 The `configureSensor` function ignored the return value of `send`, potentially assuming a command was fully sent when it was partial or failed. It also did not catch `IOException` from `openSerial`, which could crash the runtime if the port was missing.
 **Fix:** Wrapped `openSerial` and `send` in `try` block. Implemented a check for `bytesSent < length packet`. Changed return type to `IO (Either String ())` to force error handling in caller.
+
+## 2026-05-28 - [Risk Level: HIGH] **Vector:** src/Hardware/Consumer.hs **Hazard:** TLV Desynchronization
+The `parseTLVs` logic skipped `tlvLen` bytes when encountering an unknown TLV or after parsing, but `tlvLen` includes the 8-byte header which was already read. This caused the parser to skip 8 bytes too many, desynchronizing the stream and interpreting payload data as the next TLV header, leading to potential garbage interpretation or crashes.
+**Fix:** Updated `parseTLVs` to subtract 8 from `tlvLen` (the header size) before determining the payload size. Added boundary checks for `tlvLen` against packet size.
+
+## 2026-05-28 - [Risk Level: MEDIUM] **Vector:** src/FFI/RingBuffer/IO.hs **Hazard:** Uncaught Ingestion Exception
+The `ingestionLoop` thread did not catch Haskell `IOException`s (e.g. from `readFromUart` if it were to throw). While `readFromUart` wraps a safe C call, any disruption in the Haskell runtime or IO layer could kill the ingestion thread silently, stopping data flow.
+**Fix:** Wrapped `ingestionLoop` body in `Control.Exception.try`. Logs any `IOException` to stderr before terminating, ensuring failure visibility.
