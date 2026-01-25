@@ -261,12 +261,20 @@ parseTLVs n = do
     case tlvType of
         1 -> do -- Detected Points
             -- Payload: Array of Point {x,y,z,v} (4 * 4 = 16 bytes)
-            -- Num points = (tlvLen - 8) / 16 ?? No, tlvLen usually includes header?
-            -- TI SDK: tlvLen is length of Value? Or Type+Length+Value?
-            -- Usually it's length of Value. But sometimes it includes header.
-            -- Let's assume standard TI: Length is payload length.
-            let numPoints = fromIntegral tlvLen `div` 16
+            -- TI SDK: Length usually includes the header (8 bytes).
+            -- We assume tlvLen = Header(8) + Payload.
+            let len = fromIntegral tlvLen
+                -- Use max to prevent negative if malformed
+                payloadLen = if len >= 8 then len - 8 else 0
+                numPoints = payloadLen `div` 16
+                bytesRead = numPoints * 16
+                padding = payloadLen - bytesRead
+
             points <- getPoints numPoints
+
+            -- Sentinel: Ensure we align to the next TLV boundary by skipping padding
+            when (padding > 0) $ G.skip padding
+
             rest <- parseTLVs (n - 1)
             return (points ++ rest)
         _ -> do

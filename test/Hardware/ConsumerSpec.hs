@@ -70,6 +70,59 @@ spec = do
         consumed `shouldBe` (BL.length garbage + BL.length payload)
         corrupted `shouldBe` False
 
+    it "Handles TLV padding correctly (Alignment Hazard)" $ do
+        let point = Point 1.0 1.0 1.0 1.0
+
+            magic = mapM_ P.putWord8 [1, 2, 3, 4, 5, 6, 7, 8]
+
+            -- Header
+            -- Num TLVs = 2
+            -- Total Len calculation:
+            -- Header: 36 (inc magic)
+            -- TLV 1: 8 (Head) + 20 (Val) = 28
+            -- TLV 2: 8 (Head) + 16 (Val) = 24
+            -- Total = 36 + 28 + 24 = 88
+            header = do
+                P.putWord32le 0
+                P.putWord32le 88
+                P.putWord32le 0
+                P.putWord32le 1
+                P.putWord32le 0
+                P.putWord32le 2 -- 2 TLVs
+                P.putWord32le 0
+
+            putPoint (Point x y z v) = do
+                P.putFloatle x
+                P.putFloatle y
+                P.putFloatle z
+                P.putFloatle v
+
+            -- TLV 1: Type 1, Length 28 (8 Header + 20 Payload). Payload: 1 point (16) + 4 bytes padding.
+            tlv1 = do
+                P.putWord32le 1 -- Type
+                P.putWord32le 28 -- Length
+                putPoint point
+                P.putWord32le 0xDEADBEEF -- Padding
+
+            -- TLV 2: Type 1, Length 24 (8 Header + 16 Payload). Payload: 1 point (16).
+            tlv2 = do
+                P.putWord32le 1 -- Type
+                P.putWord32le 24 -- Length
+                putPoint point
+
+            payload = P.runPut (magic >> header >> tlv1 >> tlv2)
+
+            (frames, _, corrupted) = parseStream payload
+
+        corrupted `shouldBe` False
+        length frames `shouldBe` 1
+        let pts = Data.Types.points (head frames)
+        -- Debugging
+        -- print (length pts)
+        -- Should find both points if alignment is correct.
+        -- If buggy, it will fail to read the second point.
+        length pts `shouldBe` 2
+
     it "Handles partial frames correctly (does not consume)" $ do
         -- Test that a partial frame at the end is NOT consumed
         let partialMagic = BL.pack [1, 2, 3, 4] -- First 4 bytes of Magic Word
