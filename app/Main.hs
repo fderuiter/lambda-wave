@@ -1,5 +1,5 @@
 {-# LANGUAGE CPP #-}
-module Main where
+module Main (main) where
 
 import Control.Concurrent (forkOS, setNumCapabilities)
 import Control.Concurrent.STM
