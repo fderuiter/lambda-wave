@@ -89,3 +89,47 @@ spec = describe "SignalProcessing.FMCW" $ do
                 d = calculateDisplacement f_min delta_phi
 
             d `shouldBe` (lambda / 2.0)
+
+    describe "Static Clutter Removal (Requirement FR-DSP-001)" $ do
+        it "converges to zero for static input" $ do
+            let n_bins = 10
+                alpha = 0.1
+                -- Static input: Constant vector of 1.0 + 0i
+                input = fromList (replicate n_bins (1.0 :+ 0.0)) :: Vector (Complex Double)
+                -- Initial mean: Zero
+                initialMean = fromList (replicate n_bins (0.0 :+ 0.0)) :: Vector (Complex Double)
+
+                -- Simulate 100 frames
+                simulate :: Int -> Vector (Complex Double) -> Vector (Complex Double)
+                simulate 0 mean = mean
+                simulate k mean =
+                    let (newMean, _) = applyStaticClutterRemoval alpha mean input
+                    in simulate (k - 1) newMean
+
+                finalMean = simulate 100 initialMean
+                (_, output) = applyStaticClutterRemoval alpha finalMean input
+
+                -- Output should be input - mean. If mean converges to input, output should be close to 0.
+                mag = norm_2 output
+
+            mag `shouldSatisfy` (< 1.0e-3)
+
+        it "preserves dynamic signal components" $ do
+            let n_bins = 10
+                alpha = 0.01 -- Slow learning rate
+                inputStatic = fromList (replicate n_bins (10.0 :+ 0.0)) :: Vector (Complex Double)
+                inputDynamic = fromList (replicate n_bins (1.0 :+ 0.0)) :: Vector (Complex Double)
+
+                -- Pre-trained mean on static (perfectly learned)
+                mean = inputStatic
+
+                -- New frame has static + dynamic
+                inputTotal = inputStatic + inputDynamic
+
+                (_, output) = applyStaticClutterRemoval alpha mean inputTotal
+
+                -- Output should be roughly inputDynamic
+                diff = norm_2 (output - inputDynamic)
+
+            -- Should differ slightly due to alpha update, but be close
+            diff `shouldSatisfy` (< 0.5)
