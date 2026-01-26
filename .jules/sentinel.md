@@ -23,3 +23,7 @@ The functions `solveBiQuadratic` and `solveStrictBiQuadratic` used `hmatrix`'s `
 ## 2026-05-27 - [Risk Level: MEDIUM] **Vector:** src/Hardware/Control.hs **Hazard:** Unchecked IO / Return Code
 The `configureSensor` function ignored the return value of `send`, potentially assuming a command was fully sent when it was partial or failed. It also did not catch `IOException` from `openSerial`, which could crash the runtime if the port was missing.
 **Fix:** Wrapped `openSerial` and `send` in `try` block. Implemented a check for `bytesSent < length packet`. Changed return type to `IO (Either String ())` to force error handling in caller.
+
+## 2026-06-03 - [Risk Level: CRITICAL] **Vector:** src/Hardware/Consumer.hs **Hazard:** Denial of Service / Livelock
+The `parseTLVs` function lacked bounds checking for `tlvLen` against the remaining packet payload. A corrupted packet could declare a huge `tlvLen`, causing the parser to attempt to skip/read more data than available. `runGetIncremental` would return `Partial` indefinitely, causing the consumer loop to stall (Livelock) waiting for data that would never arrive, effectively blinding the radar system.
+**Fix:** Updated `parseTLVs` to accept `maxLen` (remaining payload size). Implemented strict checks: `tlvLen < 8` and `tlvLen > maxLen`. If violated, the parser now fails immediately with "TLV Length Exceeds Packet" or "Invalid TLV Length", triggering the corruption handler in `parseStream` and allowing the system to skip the bad packet and recover.

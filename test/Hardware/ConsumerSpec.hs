@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# OPTIONS_GHC -Wno-orphans #-}
 module Hardware.ConsumerSpec (spec) where
 
 import Test.Hspec
@@ -49,11 +50,11 @@ spec = do
                 P.putWord32le 40 -- Length (Header + Payload)
                 mapM_ putPoint testPoints
 
-            putPoint (Point x y z v) = do
+            putPoint (Point x y z vVal) = do
                 P.putFloatle x
                 P.putFloatle y
                 P.putFloatle z
-                P.putFloatle v
+                P.putFloatle vVal
 
             payload = P.runPut (magic >> testHeader >> tlv)
 
@@ -76,10 +77,10 @@ spec = do
 
         -- Full valid frame
         let magic = mapM_ P.putWord8 [1, 2, 3, 4, 5, 6, 7, 8]
-            header = do
+            hdr = do
                 P.putWord32le 0; P.putWord32le 36; P.putWord32le 0; P.putWord32le 0
                 P.putWord32le 0; P.putWord32le 0; P.putWord32le 0 -- No TLVs
-            frame = P.runPut (magic >> header) -- 36 bytes
+            frame = P.runPut (magic >> hdr) -- 36 bytes
 
         let input = frame <> partialMagic
         let (frames, consumed, corrupted) = parseStream input
@@ -91,7 +92,7 @@ spec = do
 
     it "Fuzz Testing: Handles random garbage without crashing" $ property $ \bytes -> do
         let input = BL.fromStrict (B.pack bytes)
-            (frames, consumed, corrupted) = parseStream input
+            (_frames, consumed, corrupted) = parseStream input
 
         -- We don't expect it to crash.
         -- If it found frames, good.
@@ -107,7 +108,7 @@ spec = do
     it "Fuzz Testing: Detects corruption in invalid streams" $ do
         -- Inject a Magic Word but with invalid Length
         let magic = mapM_ P.putWord8 [1, 2, 3, 4, 5, 6, 7, 8]
-            header = do
+            hdr = do
                 P.putWord32le 0
                 P.putWord32le 10 -- Invalid length (too small, < 36)
                 P.putWord32le 0
@@ -116,15 +117,37 @@ spec = do
                 P.putWord32le 0
                 P.putWord32le 0
 
-            payload = P.runPut (magic >> header)
+            payload = P.runPut (magic >> hdr)
 
             -- We expect parseStream to fail on this
-            (frames, consumed, corrupted) = parseStream payload
+            (frames, _consumed, corrupted) = parseStream payload
 
         -- Should return corrupted = True
         corrupted `shouldBe` True
         -- And probably 0 frames
         length frames `shouldBe` 0
+
+    it "Detects corruption when TLV length exceeds packet length" $ do
+        let magic = mapM_ P.putWord8 [1, 2, 3, 4, 5, 6, 7, 8]
+            -- Total Len = 36 + 8 (TLV Header) + 16 (1 point) = 60
+            -- We lie and say Total Len is 60.
+            hdr = do
+                P.putWord32le 0; P.putWord32le 60; P.putWord32le 0; P.putWord32le 0
+                P.putWord32le 0; P.putWord32le 1; P.putWord32le 0
+
+            -- TLV: Type 1, but Length = 1000 (Exceeds 60)
+            tlv = do
+                P.putWord32le 1 -- Type
+                P.putWord32le 1000 -- Length (Huge!)
+                -- We only provide a few bytes of payload
+                P.putFloatle 0; P.putFloatle 0; P.putFloatle 0; P.putFloatle 0
+
+            payload = P.runPut (magic >> hdr >> tlv)
+
+            (_frames, _consumed, corrupted) = parseStream payload
+
+        -- Desired behavior: corrupted should be True
+        corrupted `shouldBe` True
 
 instance Arbitrary Point where
     arbitrary = Point <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary

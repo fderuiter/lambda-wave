@@ -246,33 +246,44 @@ getRadarFrame = do
     -- We already consumed Magic (8). Then 7 words (28). Total 36.
 
     -- We need to parse 'numTLVs'
-    points <- parseTLVs (fromIntegral numTLVs)
+    -- Calculate available payload length for bounds checking
+    let payloadLen = fromIntegral totalLen - 36
+    points <- parseTLVs (fromIntegral numTLVs) payloadLen
 
     return $ RadarFrame B.empty points -- Storing empty raw header for now to save space
 
 -- | Parse TLVs
-parseTLVs :: Int -> G.Get [Point3D]
-parseTLVs 0 = return []
-parseTLVs n = do
+parseTLVs :: Int -> Int -> G.Get [Point3D]
+parseTLVs 0 _ = return []
+parseTLVs n maxLen = do
     -- TLV Header: Type (4), Length (4)
     tlvType <- G.getWord32le
     tlvLen <- G.getWord32le
 
+    -- Safety Check: TLV Length must be reasonable
+    when (tlvLen < 8) $ fail "Invalid TLV Length"
+
+    -- Safety Check: TLV must fit within the packet
+    -- tlvLen includes the 8 byte header we just read + payload.
+    -- maxLen is the remaining payload of the packet (starting from TLV header).
+    when (fromIntegral tlvLen > maxLen) $ fail "TLV Length Exceeds Packet"
+
     case tlvType of
         1 -> do -- Detected Points
             -- Payload: Array of Point {x,y,z,v} (4 * 4 = 16 bytes)
-            -- Num points = (tlvLen - 8) / 16 ?? No, tlvLen usually includes header?
-            -- TI SDK: tlvLen is length of Value? Or Type+Length+Value?
-            -- Usually it's length of Value. But sometimes it includes header.
-            -- Let's assume standard TI: Length is payload length.
+            -- Num points = (tlvLen - 8) / 16
             let numPoints = fromIntegral tlvLen `div` 16
             points <- getPoints numPoints
-            rest <- parseTLVs (n - 1)
+            -- Update maxLen for next TLV: Subtract what we consumed (tlvLen)
+            rest <- parseTLVs (n - 1) (maxLen - fromIntegral tlvLen)
             return (points ++ rest)
         _ -> do
             -- Skip unknown TLV
-            G.skip (fromIntegral tlvLen)
-            parseTLVs (n - 1)
+            -- tlvLen includes 8-byte header. We read 8 bytes.
+            -- So we must skip (tlvLen - 8) bytes.
+            let skipLen = fromIntegral tlvLen - 8
+            if skipLen < 0 then fail "Invalid TLV Length" else G.skip skipLen
+            parseTLVs (n - 1) (maxLen - fromIntegral tlvLen)
 
 getPoints :: Int -> G.Get [Point3D]
 getPoints n = do
