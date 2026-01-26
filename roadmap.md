@@ -59,12 +59,12 @@
 
 **Goal:** Convert raw radar ADC data/Point Clouds into sub-millimeter respiratory signals.
 
-* \[ \] **3.1. Background Subtraction**  
-  * \[ \] **Task:** Implement static clutter removal in src/SignalProcessing/FMCW.hs.  
-  * \[ \] **Requirement:** FR-DSP-001  
-  * \[ \] **Implementation:** ![][image1].  
-  * \[ \] **Validation:**  
-    * \[ \] **Scenario:** Place static metal object (trihedral reflector). Run algorithm. Resulting signal amplitude should be \~0.  
+* [x] **3.1. Background Subtraction**
+  * [x] **Task:** Implement static clutter removal in src/SignalProcessing/FMCW.hs.
+  * [x] **Requirement:** FR-DSP-001
+  * [x] **Implementation:** ![][image1].
+  * [x] **Validation:**
+    * [x] **Scenario:** Place static metal object (trihedral reflector). Run algorithm. Resulting signal amplitude should be ~0.
 * \[ \] **3.2. Phase Extraction & Unwrapping**  
   * \[ \] **Task:** Implement atan2(Q, I) and the unwrap logic to handle jumps ![][image2].  
   * \[ \] **Requirement:** FR-DSP-002, FR-DSP-004  

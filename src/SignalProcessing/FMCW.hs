@@ -6,6 +6,8 @@ module SignalProcessing.FMCW
       -- * Chirp Z-Transform (CZT)
     , chirpZTransform
     , CZTParams(..)
+      -- * Static Clutter Removal
+    , applyStaticClutterRemoval
       -- * Phase-Based Motion Tracking
     , calculatePhase
     , calculateDisplacement
@@ -96,3 +98,23 @@ calculateDisplacement :: Double -- ^ f_min: Start frequency of the chirp (Hz) (e
 calculateDisplacement f_min delta_phi = (c * delta_phi) / (4 * pi * f_min)
   where
     c = 3.0e8
+
+-- | Requirement FR-DSP-001: Static Clutter Removal
+-- Implements an Exponential Moving Average (EMA) high-pass filter to remove
+-- static background (clutter) from the range profile.
+--
+-- Mean[k] = (1 - alpha) * Mean[k-1] + alpha * Input[k]
+-- Output[k] = Input[k] - Mean[k]
+--
+-- This ensures that static objects (constant amplitude/phase over time) are
+-- subtracted, leaving only moving targets.
+applyStaticClutterRemoval :: Double                  -- ^ Alpha (Learning Rate, e.g., 0.05)
+                          -> Vector (Complex Double) -- ^ Previous Mean (State)
+                          -> Vector (Complex Double) -- ^ Current Frame Input
+                          -> (Vector (Complex Double), Vector (Complex Double)) -- ^ (New Mean, Output Frame)
+applyStaticClutterRemoval alpha prevMean input = (newMean, output)
+  where
+    -- Weighted sum: (1-alpha)*prev + alpha*input
+    -- Note: scale requires the scalar to match the element type (Complex Double)
+    newMean = scale ((1.0 - alpha) :+ 0) prevMean + scale (alpha :+ 0) input
+    output = input - newMean
