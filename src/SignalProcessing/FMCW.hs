@@ -10,10 +10,12 @@ module SignalProcessing.FMCW
     , applyStaticClutterRemoval
       -- * Phase-Based Motion Tracking
     , calculatePhase
+    , unwrapPhase
     , calculateDisplacement
     ) where
 
 import Numeric.LinearAlgebra
+import qualified Data.Vector.Storable as VS
 
 -- | Equation (1): Verified
 -- Calculate the beat frequency from a target range.
@@ -88,6 +90,25 @@ chirpZTransform params x_n = fromList [ calculateBin k | k <- [0 .. k_max - 1] ]
 -- Extract the phase from the complex value at the peak index.
 calculatePhase :: Complex Double -> Double
 calculatePhase = phase
+
+-- | Requirement FR-DSP-002: Phase Unwrapping
+-- Corrects phase jumps greater than pi by adding/subtracting 2*pi.
+-- p[n]_unwrapped = p[n] - 2 * pi * round((p[n] - p[n-1]) / (2 * pi))_accumulated
+unwrapPhase :: Vector Double -> Vector Double
+unwrapPhase phase
+    | VS.null phase = phase
+    | otherwise = phase - corrections
+  where
+    -- Calculate differences between consecutive phases: p[i] - p[i-1]
+    diffs = VS.zipWith (-) (VS.tail phase) (VS.init phase)
+
+    -- Calculate required jumps (multiples of 2*pi)
+    -- If diff is around 2*pi, we want to subtract 2*pi.
+    -- If diff is around -2*pi, we want to add 2*pi (subtract -2*pi).
+    jumps = VS.map (\d -> fromIntegral (round (d / (2 * pi))) * (2 * pi)) diffs
+
+    -- Cumulative correction
+    corrections = VS.scanl (+) 0.0 jumps
 
 -- | Equation (5): Verified
 -- Calculate displacement from phase change.
