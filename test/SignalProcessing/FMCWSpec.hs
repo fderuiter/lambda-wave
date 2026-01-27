@@ -66,6 +66,29 @@ spec = describe "SignalProcessing.FMCW" $ do
             -- Bin width = 100 / 20 = 5 Hz
             abs (detected_freq - target_freq) `shouldSatisfy` (< 5.0)
 
+    describe "Phase Unwrapping (Requirement FR-DSP-002)" $ do
+        it "correctly unwraps a synthetic wrapping signal" $ do
+            -- Generate true phase: linear ramp from 0 to 6*pi (3 wraps)
+            let n_samples = 100
+                true_phase = fromList [ 6 * pi * (fromIntegral i / fromIntegral n_samples) | i <- [0..n_samples-1] ] :: Vector Double
+
+                -- Wrap function: (x + pi) % 2pi - pi
+                -- Note: floor returns Integer
+                wrap x = (x + pi) - (2 * pi) * fromIntegral ((floor ((x + pi) / (2 * pi))) :: Int) - pi
+
+                wrapped_phase = cmap wrap true_phase
+                unwrapped = unwrapPhase wrapped_phase
+
+                -- The unwrapped phase should match true_phase exactly as it starts at 0
+                diff = norm_2 (unwrapped - true_phase)
+
+            diff `shouldSatisfy` (< 1.0e-5)
+
+        it "leaves non-wrapping signals unchanged" $ do
+            let signal = fromList [0.1, 0.2, 0.5, 0.1, -0.5] :: Vector Double
+                unwrapped = unwrapPhase signal
+            norm_2 (unwrapped - signal) `shouldSatisfy` (< 1.0e-10)
+
     describe "Phase Displacement (Equation 5)" $ do
         it "calculates displacement from phase change correctly" $ do
             let f_min = 77.0e9 -- 77 GHz

@@ -65,12 +65,12 @@
   * [x] **Implementation:** ![][image1].
   * [x] **Validation:**
     * [x] **Scenario:** Place static metal object (trihedral reflector). Run algorithm. Resulting signal amplitude should be ~0.
-* \[ \] **3.2. Phase Extraction & Unwrapping**  
-  * \[ \] **Task:** Implement atan2(Q, I) and the unwrap logic to handle jumps ![][image2].  
-  * \[ \] **Requirement:** FR-DSP-002, FR-DSP-004  
-  * \[ \] **Implementation:** SignalProcessing.FMCW.unwrapPhase.  
-  * \[ \] **Validation:**  
-    * \[ \] **Math Test:** Feed synthetic sine wave with phase wrap; verify output is a smooth continuous sine wave.  
+* [x] **3.2. Phase Extraction & Unwrapping**
+  * [x] **Task:** Implement atan2(Q, I) and the unwrap logic to handle jumps ![][image2].
+  * [x] **Requirement:** FR-DSP-002, FR-DSP-004
+  * [x] **Implementation:** SignalProcessing.FMCW.unwrapPhase.
+  * [x] **Validation:**
+    * [x] **Math Test:** Feed synthetic sine wave with phase wrap; verify output is a smooth continuous sine wave.
 * \[ \] **3.3. Kalman Filter Integration**  
   * \[ \] **Task:** Implement the State Estimation vector ![][image3] in src/SignalProcessing/Regression.hs.  
   * \[ \] **Requirement:** FR-DSP-003  
