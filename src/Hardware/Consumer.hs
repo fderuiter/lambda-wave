@@ -39,6 +39,7 @@ import System.IO (hPutStrLn, stderr)
 import FFI.RingBuffer.Types (RingBufferControl(..))
 import FFI.RingBuffer.IO (getWriteOffset, setReadOffset)
 import Data.Types
+import Control.Gating (processFrame)
 
 -- | The Magic Word sequence for TI Millimeter Wave Radar
 magicPattern :: BL.ByteString
@@ -103,9 +104,8 @@ consumerLoop controlFp stateVar = withForeignPtr controlFp $ \controlPtr -> do
 
                     -- 6. Update State
                     unless (null frames) $ do
-                        atomically $ modifyTVar' stateVar $ \s ->
-                            s { currentPoints = concatMap points frames } -- Simplified integration
-                        -- putStrLn $ "[Consumer] Parsed " ++ show (length frames) ++ " frames."
+                        let allPoints = concatMap points frames
+                        processFrame stateVar allPoints
 
                     when (bytesConsumed > 0 && null frames) $
                         putStrLn "[Consumer] Warning: Skipped garbage data (Magic Word search or Parse Error)."
@@ -281,7 +281,10 @@ parseTLVs n = do
             return (points ++ rest)
         _ -> do
             -- Skip unknown TLV
-            G.skip (fromIntegral tlvLen)
+            -- tlvLen includes the 8-byte header we just read.
+            -- So we skip tlvLen - 8 bytes.
+            let skipLen = if tlvLen >= 8 then tlvLen - 8 else 0
+            G.skip (fromIntegral skipLen)
             parseTLVs (n - 1)
 
 getPoints :: Int -> G.Get [Point3D]

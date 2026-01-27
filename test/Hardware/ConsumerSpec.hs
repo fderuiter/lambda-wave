@@ -179,5 +179,57 @@ spec = do
         -- And probably 0 frames
         length frames `shouldBe` 0
 
+    it "Handles Unknown TLVs correctly (does not skip too much)" $ do
+        let point = Point 1.0 2.0 3.0 4.0
+            testPoints = [point]
+
+            -- Magic Word
+            magic = mapM_ P.putWord8 [1, 2, 3, 4, 5, 6, 7, 8]
+
+            -- TLV 1: Unknown Type (99)
+            -- Length 20 (8 bytes header + 12 bytes payload)
+            -- If the bug exists, it will skip 20 bytes (header + payload),
+            -- but it should only skip 12 bytes (payload).
+            tlvUnknown = do
+                P.putWord32le 99 -- Type 99 (Unknown)
+                P.putWord32le 20 -- Length
+                P.putWord32le 0xAABBCCDD -- Payload Word 1 (4 bytes)
+                P.putWord32le 0x11223344 -- Payload Word 2 (4 bytes)
+                P.putWord32le 0x55667788 -- Payload Word 3 (4 bytes)
+                                       -- Total Payload = 12 bytes
+
+            -- TLV 2: Known Type (1)
+            -- If TLV 1 skips too much (8 extra bytes), we will land
+            -- in the middle of this TLV or garbage, failing to parse.
+            tlvKnown = do
+                P.putWord32le 1 -- Type
+                P.putWord32le 24 -- Length (8 header + 16 payload)
+                putPoint point
+
+            putPoint (Point x y z v) = do
+                P.putFloatle x
+                P.putFloatle y
+                P.putFloatle z
+                P.putFloatle v
+
+            header = do
+                P.putWord32le 0 -- Version
+                P.putWord32le (36 + 20 + 24) -- Total Len = Header(36) + TLV1(20) + TLV2(24) = 80
+                P.putWord32le 0 -- Platform
+                P.putWord32le 1 -- Frame Num
+                P.putWord32le 0 -- CPU
+                P.putWord32le 2 -- Num TLVs (One unknown, one known)
+                P.putWord32le 0 -- SubFrame
+
+            payload = P.runPut (magic >> header >> tlvUnknown >> tlvKnown)
+
+            (frames, consumed, corrupted) = parseStream payload
+
+        -- Should parse 1 frame
+        length frames `shouldBe` 1
+        -- Should have parsed the point from the second TLV
+        length (Data.Types.points (head frames)) `shouldBe` 1
+        corrupted `shouldBe` False
+
 instance Arbitrary Point where
     arbitrary = Point <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary

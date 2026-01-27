@@ -31,3 +31,11 @@ The `processFrame` function used `sum (map pz pts)` to calculate the average hei
 ## 2024-05-28 - [Risk Level: HIGH] **Vector:** src/Hardware/Consumer.hs **Hazard:** Data Corruption / Stream Desynchronization
 The `parseTLVs` function assumed `tlvLen` perfectly matched the size of the point payload (16 bytes per point). If the sensor sent padding bytes or the `tlvLen` included headers differently than expected, the parser would not consume the extra bytes. This would leave the stream pointer misaligned for the next TLV or frame, causing the parser to interpret garbage as headers.
 **Fix:** Updated `parseTLVs` to calculate the actual bytes read and explicitly `G.skip` any remaining bytes defined by `tlvLen`.
+
+## 2024-05-29 - [Risk Level: CRITICAL] **Vector:** src/Hardware/Consumer.hs **Hazard:** Denial of Service / Watchdog Trip
+The `consumerLoop` logic updated `SystemState` but failed to call `processFrame`. Since `processFrame` is responsible for updating the `lastFrameTime` heartbeat, the safety `Watchdog` (monitoring `lastFrameTime`) would trip shortly after startup, killing the application (Beam Off).
+**Fix:** Updated `consumerLoop` to explicitly call `processFrame` with parsed points, ensuring the heartbeat is maintained and gating logic is executed.
+
+## 2024-05-29 - [Risk Level: HIGH] **Vector:** src/Hardware/Consumer.hs **Hazard:** Data Corruption / Stream Desynchronization
+The `parseTLVs` function incorrectly skipped `tlvLen` bytes for unknown TLV types. Since `tlvLen` includes the 8-byte header (which was already consumed), the parser skipped 8 bytes too many, potentially landing in the middle of the next TLV or frame. This leads to persistent stream desynchronization and data loss.
+**Fix:** Adjusted skip logic to `G.skip (tlvLen - 8)` (clamped to 0) to correctly align with the next TLV.
