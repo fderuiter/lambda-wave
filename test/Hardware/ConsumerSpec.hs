@@ -179,5 +179,55 @@ spec = do
         -- And probably 0 frames
         length frames `shouldBe` 0
 
+    it "Correctly skips Unknown TLVs and parses subsequent TLVs" $ do
+        let point = Point 1.0 2.0 3.0 4.0
+            testPoints = [point]
+
+            -- Magic Word
+            magic = mapM_ P.putWord8 [1, 2, 3, 4, 5, 6, 7, 8]
+
+            -- TLV 1: Unknown (Type 999)
+            -- Total Length 20 (8 Header + 12 Payload)
+            unknownTlv = do
+                P.putWord32le 999 -- Type
+                P.putWord32le 20  -- Length
+                P.putWord32le 0xAAAAAAAA -- Payload 1
+                P.putWord32le 0xBBBBBBBB -- Payload 2
+                P.putWord32le 0xCCCCCCCC -- Payload 3
+
+            -- TLV 2: Valid Points (Type 1)
+            -- Total Length 24 (8 Header + 16 Payload)
+            validTlv = do
+                P.putWord32le 1 -- Type
+                P.putWord32le 24 -- Length
+                mapM_ putPoint testPoints
+
+            putPoint (Point x y z v) = do
+                P.putFloatle x
+                P.putFloatle y
+                P.putFloatle z
+                P.putFloatle v
+
+            -- Header
+            -- Total Packet Len = 36 (Header) + 20 (Unknown) + 24 (Valid) = 80
+            header = do
+                P.putWord32le 0 -- Version
+                P.putWord32le 80 -- Total Len
+                P.putWord32le 0 -- Platform
+                P.putWord32le 1 -- Frame Num
+                P.putWord32le 0 -- CPU
+                P.putWord32le 2 -- Num TLVs
+                P.putWord32le 0 -- SubFrame
+
+            payload = P.runPut (magic >> header >> unknownTlv >> validTlv)
+
+            (frames, consumed, corrupted) = parseStream payload
+
+        corrupted `shouldBe` False
+        length frames `shouldBe` 1
+        let frame = head frames
+        length (Data.Types.points frame) `shouldBe` 1
+        consumed `shouldBe` 80
+
 instance Arbitrary Point where
     arbitrary = Point <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary

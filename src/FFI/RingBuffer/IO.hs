@@ -97,14 +97,14 @@ ingestionLoop :: ForeignPtr RingBufferControl -> Fd -> IO ThreadId
 ingestionLoop fp fd = forkOS loop
   where
     loop = safeLoop `catch` \e -> do
-        hPutStrLn stderr $ "Critical Error in Ingestion Thread: " ++ show (e :: SomeException)
+        hPutStrLn stderr $ "CRITICAL FAILURE in Ingestion Thread: " ++ show (e :: SomeException)
         -- We terminate the thread, but at least we logged it.
         return ()
 
     safeLoop = do
         bytesRead <- readFromUart fp fd
         if bytesRead < 0
-            then hPutStrLn stderr "Error: readFromUart returned negative value. Ingestion thread terminating."
+            then hPutStrLn stderr "CRITICAL FAILURE: readFromUart returned negative value. Ingestion thread TERMINATING. System may be unresponsive."
             else do
                 when (bytesRead == 0) $ threadDelay 1000 -- 1ms pause if full or empty
                 loop
