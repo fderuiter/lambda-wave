@@ -4,7 +4,6 @@ import Test.Hspec
 import Test.QuickCheck hiding (scale)
 import Numeric.LinearAlgebra
 import SignalProcessing.Kalman
-import Control.Monad (foldM)
 
 spec :: Spec
 spec = do
@@ -16,8 +15,8 @@ spec = do
         
         -- Simulate 100 frames of static measurement 10.0
         let steps = replicate 100 (0.033, 10.0) -- 33ms dt
-        finalState <- foldM (\st (dt, meas) -> 
-            return $ update meas config (predict dt config st)) startState steps
+        let finalState = foldl (\st (dt, meas) -> 
+                update meas config (predict dt config st)) startState steps
             
         -- Position should remain close to 10
         let pos = (x finalState) ! 0
@@ -45,13 +44,13 @@ spec = do
         let startState = initKalman (noisySignal 0) config
 
         -- Run Filter
-        results <- foldM (\(st, acc) (t, meas) -> do
-            let predSt = predict dt config st
-            let updSt  = update meas config predSt
-            let estimPos = (x updSt) ! 0
-            let errSq = (estimPos - trueSignal t) ** 2
-            return (updSt, acc + errSq)
-            ) (startState, 0.0) measurements
+        let results = foldl (\(st, acc) (t, meas) ->
+                let predSt = predict dt config st
+                    updSt  = update meas config predSt
+                    estimPos = (x updSt) ! 0
+                    errSq = (estimPos - trueSignal t) ** 2
+                in (updSt, acc + errSq)
+                ) (startState, 0.0) measurements
 
         let mse = snd results / fromIntegral (length steps)
         let rmse = sqrt mse
