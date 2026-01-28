@@ -708,7 +708,8 @@ Lambda-Wave represents a modern approach to safety-critical medical software:
 - Project Status: `docs/PROJECT_STATUS.md`
 
 **Contact:**
-- Maintainer: maintainer@example.com
+- Maintainer: Frederick de Ruiter ([@fderuiter](https://github.com/fderuiter))
+- Email: fpderuiter@gmail.com
 - GitHub: https://github.com/fderuiter/lambda-wave
 - License: BSD-3-Clause (see LICENSE file)
 

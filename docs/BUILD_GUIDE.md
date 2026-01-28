@@ -864,4 +864,5 @@ sha256sum dist-newstyle/.../sgrt-radar-system-exe
 ---
 
 **Last Updated:** January 2026  
-**Maintainer:** maintainer@example.com
+**Maintainer:** Frederick de Ruiter ([@fderuiter](https://github.com/fderuiter))  
+**Email:** fpderuiter@gmail.com

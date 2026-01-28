@@ -239,9 +239,16 @@ git push origin feature/my-feature
 This project is licensed under the **BSD 3-Clause License** - see the [LICENSE](LICENSE) file for details.
 
 ```
-Copyright (c) 2024, DevOps Architect
+Copyright (c) 2024-2026, Frederick de Ruiter, Ayoola Okuribido
 All rights reserved.
 ```
+
+---
+
+## 👥 Authors
+
+- **Frederick de Ruiter** - Project Lead & Maintainer ([@fderuiter](https://github.com/fderuiter))
+- **Ayoola Okuribido** - Co-Creator
 
 ---
 
@@ -249,7 +256,8 @@ All rights reserved.
 
 - **Issues:** [GitHub Issues](https://github.com/fderuiter/lambda-wave/issues)
 - **Discussions:** [GitHub Discussions](https://github.com/fderuiter/lambda-wave/discussions)
-- **Email:** maintainer@example.com
+- **Maintainer:** Frederick de Ruiter ([@fderuiter](https://github.com/fderuiter))
+- **Email:** fpderuiter@gmail.com
 - **Documentation:** [docs/](docs/)
 
 ---
