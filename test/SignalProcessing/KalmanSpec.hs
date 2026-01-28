@@ -63,34 +63,56 @@ spec = do
 
     describe "Matrix Properties" $ do
       it "maintains state vector size of 3" $ property $ \m ->
-         let config = KalmanConfig 0.1 0.1
-             st = initKalman m config
-             st' = predict 0.033 config st
-         in size (x st') == 3
+         (not (isNaN m) && not (isInfinite m)) ==>
+           let config = KalmanConfig 0.1 0.1
+               st = initKalman m config
+               st' = predict 0.033 config st
+           in size (x st') == 3
+
+    describe "Safety and Robustness" $ do
+      it "rejects NaN measurements" $ do
+        let config = KalmanConfig 0.1 0.1
+            st = initKalman 10.0 config
+            st' = update (0/0) config st -- NaN measurement
+        st' `shouldBe` st -- State should remain unchanged
+
+      it "rejects Infinity measurements" $ do
+        let config = KalmanConfig 0.1 0.1
+            st = initKalman 10.0 config
+            st' = update (1/0) config st -- Infinity measurement
+        st' `shouldBe` st -- State should remain unchanged
+
+      it "safeUpdate handles exceptions gracefully" $ do
+        let config = KalmanConfig 0.1 0.1
+            st = initKalman 10.0 config
+            st' = safeUpdate (0/0) config st -- NaN should be caught
+        st' `shouldBe` st -- State should remain unchanged
 
     describe "Kalman Properties (QuickCheck)" $ do
       -- Stability: The Error Covariance (P) must remain Symmetric and Positive Semi-Definite
       it "preserves covariance symmetry" $ property $ \meas ->
-        let config = KalmanConfig 0.1 2.0
-            st = initKalman meas config
-            st' = update meas config (predict 0.033 config st)
-            pMat = p st'
-            diff = maxElement (abs (pMat - tr pMat))
-        in diff < 1e-10 -- Symmetry check
+        (not (isNaN meas) && not (isInfinite meas)) ==>
+          let config = KalmanConfig 0.1 2.0
+              st = initKalman meas config
+              st' = update meas config (predict 0.033 config st)
+              pMat = p st'
+              diff = maxElement (abs (pMat - tr pMat))
+          in diff < 1e-10 -- Symmetry check
 
       -- Linearity of Prediction: F(a*x) = a*F(x)
       -- Note: This strictly tests the State Transition logic
       it "prediction step is linear with respect to state" $ property $ \scaleFactor ->
-        let config = KalmanConfig 0.0 0.0 -- Zero noise for pure linearity check
-            dt = 0.1
-            st = initKalman 10.0 config
-            
-            -- Scaled State
-            stScaled = st { x = scaleFactor `scale` x st }
-            
-            -- Predict(Scaled) vs Scale * Predict(Normal)
-            pred1 = x (predict dt config stScaled)
-            pred2 = scaleFactor `scale` x (predict dt config st)
-            
-            diff = norm_2 (pred1 - pred2)
-        in abs scaleFactor < 1000 ==> diff < 1e-10
+        (not (isNaN scaleFactor) && not (isInfinite scaleFactor) && abs scaleFactor < 1000) ==>
+          let config = KalmanConfig 0.0 0.0 -- Zero noise for pure linearity check
+              dt = 0.1
+              st = initKalman 10.0 config
+              
+              -- Scaled State
+              stScaled = st { x = scaleFactor `scale` x st }
+              
+              -- Predict(Scaled) vs Scale * Predict(Normal)
+              pred1 = x (predict dt config stScaled)
+              pred2 = scaleFactor `scale` x (predict dt config st)
+              
+              diff = norm_2 (pred1 - pred2)
+          in diff < 1e-10
