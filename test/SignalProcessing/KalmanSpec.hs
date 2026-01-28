@@ -26,7 +26,7 @@ spec = do
         vel `shouldSatisfy` (\v -> abs v < 0.1)
 
     it "achieves RMSE < 1.0mm on noisy sine wave with deterministic interference" $ do
-        let config = KalmanConfig { procNoise = 0.5, measNoise = 1.0 } -- Tuned for deterministic noise
+        let config = KalmanConfig { procNoise = 1.0, measNoise = 0.5 } -- Tuned for deterministic noise
         let dt = 0.033 -- 30 FPS
         let totalTime = 5.0 -- seconds
         let steps = [0, dt .. totalTime]
