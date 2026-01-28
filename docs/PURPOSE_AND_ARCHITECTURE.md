@@ -43,7 +43,7 @@ Lambda-Wave is a **safety-critical Surface Guided Radiation Therapy (SGRT) syste
 ### Key Characteristics
 
 - **Safety-Critical:** IEC 62304 Class C compliance
-- **Real-Time:** Sub-millisecond latency requirements
+- **Real-Time:** End-to-end safety response latency < 50 ms, with select internal processing stages operating at sub-millisecond latency
 - **High Precision:** Sub-millimeter motion detection
 - **Non-Contact:** No markers or devices on patient
 - **Hardware:** TI IWR6843ISK 77-81 GHz mmWave radar
