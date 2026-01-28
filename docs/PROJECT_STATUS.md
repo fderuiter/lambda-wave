@@ -64,16 +64,16 @@ Lambda-Wave (formerly SGRT Radar System) is a safety-critical Surface Guided Rad
   - Unit tests in `test/FFI/RingBuffer/IOSpec.hs`
   - Memory safety verified (no leaks in C++ layer)
 
-#### 2.2 UDP Packet Parser ✅
+#### 2.2 Ring-Buffer TLV Stream Parser ✅
 - **Status:** COMPLETE
 - **Requirements:** FR-DAQ-003
 - **Implementation:**
-  - TLV (Type-Length-Value) parser in `src/Hardware/Consumer.hs`
+  - TLV (Type-Length-Value) parser in `src/Hardware/Consumer.hs` consuming data from the ring buffer stream
   - Magic word detection: `0x0102030405060708`
-  - Robust error handling for corrupt packets
+  - Robust error handling for corrupt TLV frames
 - **Validation:**
   - Fuzz testing in `test/Hardware/ConsumerSpec.hs`
-  - System logs "Corrupt Packet" without crashing
+  - System logs "Corrupt TLV Frame" without crashing
 
 #### 2.3 Sensor Configuration ✅
 - **Status:** COMPLETE
