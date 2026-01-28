@@ -635,7 +635,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     container:
-      image: haskell:9.8
+      image: haskell:9.8  # Note: Project supports GHC 9.4+, CI uses 9.8
     steps:
       - uses: actions/checkout@v3
       - name: Install system dependencies
@@ -651,7 +651,8 @@ jobs:
 ```
 
 **Triggers:** Pull requests to develop or main  
-**Purpose:** Full build and test verification
+**Purpose:** Full build and test verification  
+**Note:** CI uses GHC 9.8 for testing, but the project is compatible with GHC 9.4+
 
 #### Release Workflow (.github/workflows/release.yml)
 
