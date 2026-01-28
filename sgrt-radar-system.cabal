@@ -53,6 +53,7 @@ library
       Safety.Watchdog
       SignalProcessing.FMCW
       SignalProcessing.Regression
+      SignalProcessing.Kalman
   other-modules:
       Paths_sgrt_radar_system
   hs-source-dirs:
@@ -91,6 +92,7 @@ test-suite sgrt-radar-system-test
       Hardware.ControlSpec
       System.RTSSpec
       SignalProcessing.FMCWSpec
+      SignalProcessing.KalmanSpec
   hs-source-dirs:
       test
   ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
@@ -107,6 +109,19 @@ benchmark sgrt-radar-system-bench
   import: common-options
   type: exitcode-stdio-1.0
   main-is: LatencyBench.hs
+  other-modules:
+      Paths_sgrt_radar_system
+  hs-source-dirs:
+      bench
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      sgrt-radar-system
+    , criterion
+
+benchmark kalman-bench
+  import: common-options
+  type: exitcode-stdio-1.0
+  main-is: KalmanBench.hs
   other-modules:
       Paths_sgrt_radar_system
   hs-source-dirs:
