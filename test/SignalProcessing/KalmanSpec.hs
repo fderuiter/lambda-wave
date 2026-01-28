@@ -1,7 +1,7 @@
 module SignalProcessing.KalmanSpec (spec) where
 
 import Test.Hspec
-import Test.QuickCheck
+import Test.QuickCheck hiding (scale)
 import Numeric.LinearAlgebra
 import SignalProcessing.Kalman
 import Control.Monad (foldM)
