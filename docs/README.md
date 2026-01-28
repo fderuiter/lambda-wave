@@ -247,7 +247,8 @@ Have suggestions for improving documentation?
 
 - **Issues**: [GitHub Issues](https://github.com/fderuiter/lambda-wave/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/fderuiter/lambda-wave/discussions)
-- **Email**: maintainer@example.com
+- **Maintainer:** Frederick de Ruiter ([@fderuiter](https://github.com/fderuiter))
+- **Email**: fpderuiter@gmail.com
 
 ---
 
