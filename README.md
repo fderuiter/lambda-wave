@@ -25,15 +25,34 @@ Lambda-Wave is a **medical device software system** that uses millimeter-wave (m
 
 ## 📚 Documentation
 
+**Quick Links:**
+- 🚀 [Quick Start Guide](docs/QUICKSTART.md) - Get running in 15 minutes
+- 📋 [TODO](TODO.md) - Prioritized development tasks
+- 📖 [Documentation Index](docs/README.md) - Complete documentation map
+
+**By Role:**
+
+| Role | Start Here |
+|------|------------|
+| 👤 **New User** | [Quick Start](docs/QUICKSTART.md) → [Purpose & Architecture](docs/PURPOSE_AND_ARCHITECTURE.md) |
+| 👨‍💻 **Developer** | [Developer Guide](docs/DEVELOPER_GUIDE.md) → [Build Guide](docs/BUILD_GUIDE.md) → [TODO](TODO.md) |
+| 🏥 **Medical Physicist** | [Purpose & Architecture](docs/PURPOSE_AND_ARCHITECTURE.md) → [Mathematical Framework](docs/mathematical_framework.md) |
+| 🛡️ **QA/Compliance** | [Project Status](docs/PROJECT_STATUS.md) → [Purpose & Architecture](docs/PURPOSE_AND_ARCHITECTURE.md#safety--compliance) |
+| 📊 **Project Manager** | [Project Status](docs/PROJECT_STATUS.md) → [TODO](TODO.md) |
+
+**All Documentation:**
+
 | Document | Description |
 |----------|-------------|
 | [**Quick Start Guide**](docs/QUICKSTART.md) | Get running in 15 minutes |
+| [**TODO**](TODO.md) | Prioritized development tasks (replaces roadmap.md) |
 | [**Project Status**](docs/PROJECT_STATUS.md) | Current implementation status and roadmap |
 | [**Build Guide**](docs/BUILD_GUIDE.md) | Comprehensive build and dependency management |
 | [**Purpose & Architecture**](docs/PURPOSE_AND_ARCHITECTURE.md) | System design and medical context |
 | [**Developer Guide**](docs/DEVELOPER_GUIDE.md) | Development workflow and code structure |
 | [**Mathematical Framework**](docs/mathematical_framework.md) | Signal processing algorithms and theory |
 | [**Contributing**](CONTRIBUTING.md) | How to contribute to the project |
+| [**Documentation Index**](docs/README.md) | Complete documentation navigation |
 
 ---
 

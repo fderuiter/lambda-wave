@@ -1,4 +1,10 @@
-# **Lambda-Wave Development Roadmap & Validation Plan**
+# Lambda-Wave Development Roadmap & Validation Plan
+
+> **⚠️ NOTE:** This file has been superseded by [TODO.md](TODO.md)  
+> For current development tasks with priorities, effort estimates, and dependencies, please see [TODO.md](TODO.md)  
+> This file is kept for historical reference.
+
+---
 
 **Project:** Lambda-Wave (Haskell Radar SGRT)
 
