@@ -10,6 +10,7 @@ module SignalProcessing.Kalman
     ) where
 
 import Numeric.LinearAlgebra
+import Prelude hiding ((<>))
 import Control.Exception (catch, SomeException)
 import System.IO.Unsafe (unsafePerformIO)
 
