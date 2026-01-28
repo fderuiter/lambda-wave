@@ -206,7 +206,7 @@ docker run -it \
     --device=/dev/ttyUSB1 \
     -e SGRT_SENSOR_PORT=/dev/ttyUSB0 \
     -e SGRT_CLI_PORT=/dev/ttyUSB1 \
-    lambda-wave
+    lambda-wave:latest
 ```
 
 ### Verify Hardware Connection
