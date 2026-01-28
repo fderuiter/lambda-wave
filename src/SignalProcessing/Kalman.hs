@@ -1,5 +1,35 @@
 {-# LANGUAGE StrictData #-}
 
+{-|
+Module      : SignalProcessing.Kalman
+Description : 3-state Kalman Filter for respiratory motion tracking
+Copyright   : (c) 2024-2026 Frederick de Ruiter, Ayoola Okuribido
+License     : BSD-3-Clause
+Maintainer  : Frederick de Ruiter <fpderuiter@gmail.com>
+
+Implements a linear Kalman filter with constant acceleration motion model
+for denoising mmWave radar displacement measurements in radiation therapy.
+
+This module addresses requirement FR-DSP-003 and task P0-001 from the project roadmap.
+
+The filter processes unwrapped phase displacement from the FMCW radar to output
+smoothed respiratory amplitude (Position, Velocity, Acceleration) suitable for
+real-time gating decisions.
+
+= Safety Note
+
+This is a Class C medical device component (IEC 62304). The implementation includes:
+
+* Joseph form covariance updates for numerical stability
+* NaN/Infinity input validation
+* Exception handling for matrix singularities
+
+= Clinical Validation
+
+Noise parameters (procNoise, measNoise) require tuning on clinical phantom data
+per the integration guide. Target performance: RMSE < 1mm, latency < 5ms per frame.
+-}
+
 module SignalProcessing.Kalman
     ( KalmanState(..)
     , KalmanConfig(..)
@@ -39,8 +69,12 @@ initKalman initialMeas config = KalmanState
 -- Model: Constant Acceleration
 -- x_{k|k-1} = F * x_{k-1|k-1}
 -- P_{k|k-1} = F * P_{k-1|k-1} * F^T + Q
+--
+-- Returns the current state unchanged if dt is invalid (negative, zero, NaN, or Infinity)
 predict :: Double -> KalmanConfig -> KalmanState -> KalmanState
-predict dt config state = KalmanState { x = xPred, p = pPred }
+predict dt config state
+  | dt <= 0 || isNaN dt || isInfinite dt = state
+  | otherwise = KalmanState { x = xPred, p = pPred }
   where
     -- 1. Construct State Transition Matrix (F)
     -- | 1  dt  0.5*dt^2 |
@@ -111,8 +145,6 @@ safeUpdate measurement config state =
     unsafePerformIO $ catch (return $! update measurement config state) handler
   where
     handler :: SomeException -> IO KalmanState
-    handler e = do
+    handler _e = do
         -- TODO: In production, log to Audit module
-        -- For now, emit a warning (in real system, use proper logging)
-        let _ = show e  -- Force evaluation to prevent lazy exceptions
         return state -- Fallback: Ignore measurement, keep prediction
