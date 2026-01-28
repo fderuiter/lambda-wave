@@ -281,7 +281,10 @@ parseTLVs n = do
             return (points ++ rest)
         _ -> do
             -- Skip unknown TLV
-            G.skip (fromIntegral tlvLen)
+            -- tlvLen includes Header (8 bytes). We already read header.
+            when (tlvLen < 8) $ fail "Invalid TLV Length (Partial Header)"
+            let skipLen = fromIntegral (tlvLen - 8)
+            G.skip skipLen
             parseTLVs (n - 1)
 
 getPoints :: Int -> G.Get [Point3D]
