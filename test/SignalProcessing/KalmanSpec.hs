@@ -25,8 +25,8 @@ spec = do
         let vel = (x finalState) ! 1
         vel `shouldSatisfy` (\v -> abs v < 0.1)
 
-    it "achieves RMSE < 1.0mm on noisy sine wave (SNR 10dB)" $ do
-        let config = KalmanConfig { procNoise = 0.1, measNoise = 2.0 } -- Tuned for test
+    it "achieves RMSE < 1.0mm on noisy sine wave with deterministic interference" $ do
+        let config = KalmanConfig { procNoise = 0.5, measNoise = 1.0 } -- Tuned for deterministic noise
         let dt = 0.033 -- 30 FPS
         let totalTime = 5.0 -- seconds
         let steps = [0, dt .. totalTime]
@@ -34,7 +34,7 @@ spec = do
         -- Ground Truth: 10mm amplitude, 0.25Hz freq
         let trueSignal t = 10.0 * sin (2 * pi * 0.25 * t)
         
-        -- Noisy Signal: Truth + Random Noise (Approx +/- 2mm noise)
+        -- Noisy Signal: Truth + deterministic interference (not true 10dB SNR)
         -- Note: In a real test, use fixed seed or load data. 
         -- Here we simulate deterministic "noise" for reproducibility in Hspec
         let noise t = 2.0 * sin (2 * pi * 10 * t) * cos (2 * pi * 7 * t) 
