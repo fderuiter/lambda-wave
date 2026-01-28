@@ -186,7 +186,7 @@ sequenceDiagram
 #### 3. Hardware Interface (C++/FFI)
 **Purpose:** Low-latency data ingestion from sensor  
 **Components:**
-- **Ring Buffer** (`cbits/ring_buffer.cpp`): Lock-free circular buffer
+- **Ring Buffer** (`cbits/src/ring_buffer.cpp`): Lock-free circular buffer
 - **Serial I/O** (`FFI.RingBuffer.IO`): UART communication
 - **Memory Management** (`FFI.RingBuffer.Types`): FFI bindings
 
