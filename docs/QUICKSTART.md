@@ -503,7 +503,8 @@ cabal test --test-options="-m <test-name>"
 ### Community
 - **GitHub Issues:** https://github.com/fderuiter/lambda-wave/issues
 - **GitHub Discussions:** https://github.com/fderuiter/lambda-wave/discussions
-- **Email:** maintainer@example.com
+- **Maintainer:** Frederick de Ruiter ([@fderuiter](https://github.com/fderuiter))
+- **Email:** fpderuiter@gmail.com
 
 ### Before Asking for Help
 
