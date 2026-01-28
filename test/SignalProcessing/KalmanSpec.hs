@@ -80,17 +80,17 @@ spec = do
 
       -- Linearity of Prediction: F(a*x) = a*F(x)
       -- Note: This strictly tests the State Transition logic
-      it "prediction step is linear with respect to state" $ property $ \scale ->
+      it "prediction step is linear with respect to state" $ property $ \scaleFactor ->
         let config = KalmanConfig 0.0 0.0 -- Zero noise for pure linearity check
             dt = 0.1
             st = initKalman 10.0 config
             
             -- Scaled State
-            stScaled = st { x = scale `Numeric.LinearAlgebra.scale` x st }
+            stScaled = st { x = scaleFactor `scale` x st }
             
             -- Predict(Scaled) vs Scale * Predict(Normal)
             pred1 = x (predict dt config stScaled)
-            pred2 = scale `Numeric.LinearAlgebra.scale` x (predict dt config st)
+            pred2 = scaleFactor `scale` x (predict dt config st)
             
             diff = norm_2 (pred1 - pred2)
-        in abs scale < 1000 ==> diff < 1e-10
+        in abs scaleFactor < 1000 ==> diff < 1e-10
