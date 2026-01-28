@@ -1,4 +1,3 @@
-{-# LANGUAGE ForeignFunctionInterface #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE BangPatterns #-}
@@ -154,22 +153,19 @@ createLazyByteString fp bufSize readOff writeOff =
 -- Uses tail recursion with strict accumulator to avoid stack overflow.
 -- Returns (bytesSkipped, remainingInput)
 skipToMagicWord :: BL.ByteString -> (Int64, BL.ByteString)
-skipToMagicWord input = go 0 input
+skipToMagicWord = go 0
   where
     go !acc bs =
         case BL.elemIndex 1 bs of
             Nothing -> (acc + BL.length bs, BL.empty) -- No magic word start found, consume all
             Just idx ->
                 let candidate = BL.drop idx bs
-                in if BL.isPrefixOf magicPattern candidate
-                   then (acc + idx, candidate) -- Found exact match
+                in if BL.isPrefixOf magicPattern candidate || BL.length candidate < 8
+                   then (acc + idx, candidate) -- Found exact match or partial match
                    else
-                       if BL.length candidate < 8
-                       then (acc + idx, candidate) -- Keep partial match (might be valid end of buffer)
-                       else
-                           -- Found 0x01 but not followed by correct sequence (Garbage)
-                           -- Skip the 0x01 and recurse
-                           go (acc + idx + 1) (BL.drop 1 candidate)
+                       -- Found 0x01 but not followed by correct sequence (Garbage)
+                       -- Skip the 0x01 and recurse
+                       go (acc + idx + 1) (BL.drop 1 candidate)
 
 
 -- | Parses a stream of bytes into RadarFrames.
@@ -233,13 +229,11 @@ getRadarFrame = do
     _subFrameNum <- G.getWord32le
 
     -- Sanity Checks to enable Fail on corruption
-    if totalLen < 36 || totalLen > 1000000
-       then fail "Invalid Packet Length"
-       else return ()
+    when (totalLen < 36 || totalLen > 1000000) $
+        fail "Invalid Packet Length"
 
-    if numTLVs > 200
-       then fail "Too many TLVs"
-       else return ()
+    when (numTLVs > 200) $
+        fail "Too many TLVs"
 
     -- 3. Parse TLVs
     -- Total Header size = 8 + 4*7 = 36 bytes (excluding magic word? No, magic is part of header)
@@ -272,7 +266,7 @@ parseTLVs n = do
             points <- getPoints numPoints
 
             -- SAFETY CHECK: Calculate actual bytes read and skip any remaining (padding/header mismatch)
-            let bytesRead = fromIntegral (numPoints * 16)
+            let bytesRead = numPoints * 16
                 padding = fromIntegral payloadLen - bytesRead
 
             when (padding > 0) $ G.skip padding
@@ -298,8 +292,7 @@ getPoint = do
     x <- G.getFloatle
     y <- G.getFloatle
     z <- G.getFloatle
-    v <- G.getFloatle
-    return $ Point x y z v
+    Point x y z <$> G.getFloatle
 
 toPoint3D :: Point -> Point3D
 toPoint3D Point{..} = Point3D

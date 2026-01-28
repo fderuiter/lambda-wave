@@ -20,7 +20,7 @@ fitPolynomialSurface pts
 
     -- Build Matrix A (Design Matrix)
     -- Rows are points, Columns are terms [1, x, y, x^2, xy, y^2]
-    rows' = map (\p -> [1, px p, py p, (px p)^(2::Int), (px p)*(py p), (py p)^(2::Int)]) pts
+    rows' = map (\p -> [1, px p, py p, px p^(2::Int), px p * py p, py p^(2::Int)]) pts
     a = (n><6) (concat rows')
 
     -- Vector b (z coordinates)

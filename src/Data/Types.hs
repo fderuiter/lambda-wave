@@ -1,5 +1,6 @@
 {-# LANGUAGE StrictData #-}
-module Data.Types where
+{-# OPTIONS_GHC -Wno-orphans #-}
+module Data.Types (Point3D(..), Point(..), BeamState(..), SystemState(..), RadarFrame(..)) where
 
 import System.Clock (TimeSpec)
 import qualified Data.ByteString as B
@@ -16,7 +17,7 @@ data Point3D = Point3D
   } deriving (Show, Eq)
 
 instance NFData Point3D where
-  rnf (Point3D x y z v' s) = rnf x `seq` rnf y `seq` rnf z `seq` rnf v' `seq` rnf s
+  rnf (Point3D x y z vel s) = rnf x `seq` rnf y `seq` rnf z `seq` rnf vel `seq` rnf s
 
 -- | Raw Point structure from "Type 1" TLV (4 floats)
 data Point = Point

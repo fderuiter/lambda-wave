@@ -1,5 +1,3 @@
-{-# LANGUAGE ForeignFunctionInterface #-}
-
 {-|
 Module: FFI.RingBuffer.Types
 
@@ -54,7 +52,7 @@ layout can lead to data corruption and undefined behaviour.
 See also: @RingBuffer.h@ for the authoritative C++ definition and
 documentation of the ring buffer control structure and protocol.
 -}
-module FFI.RingBuffer.Types where
+module FFI.RingBuffer.Types (RingBufferControl(..)) where
 
 import Foreign.Storable
 import Foreign.Ptr

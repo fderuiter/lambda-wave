@@ -17,7 +17,7 @@ processFrame stateVar pts = do
 
     -- Calculate average height using a strict fold to prevent thunk leaks
     -- (sum (map pz pts) creates intermediate list of thunks)
-    let (!totalHeight, !count) = foldl' (\(!sumH, !cnt) p -> (sumH + pz p, cnt + 1)) (0.0, 0) pts
+    let (!totalHeight, !count) = foldl' (\(!sumH, !cnt) p -> (sumH + pz p, cnt + 1)) (0.0, 0 :: Int) pts
         avgHeight = if count == 0 then 0 else totalHeight / fromIntegral count
 
     -- 2. Schmidt Trigger Logic / Hysteresis

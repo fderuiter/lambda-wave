@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# OPTIONS_GHC -Wno-orphans #-}
 module Hardware.ConsumerSpec (spec) where
 
 import Test.Hspec
@@ -49,11 +50,11 @@ spec = do
                 P.putWord32le 40 -- Length (Header + Payload)
                 mapM_ putPoint testPoints
 
-            putPoint (Point x y z v) = do
+            putPoint (Point x y z vel) = do
                 P.putFloatle x
                 P.putFloatle y
                 P.putFloatle z
-                P.putFloatle v
+                P.putFloatle vel
 
             payload = P.runPut (magic >> testHeader >> tlv)
 
@@ -76,10 +77,10 @@ spec = do
 
         -- Full valid frame
         let magic = mapM_ P.putWord8 [1, 2, 3, 4, 5, 6, 7, 8]
-            header = do
+            pktHeader = do
                 P.putWord32le 0; P.putWord32le 36; P.putWord32le 0; P.putWord32le 0
                 P.putWord32le 0; P.putWord32le 0; P.putWord32le 0 -- No TLVs
-            frame = P.runPut (magic >> header) -- 36 bytes
+            frame = P.runPut (magic >> pktHeader) -- 36 bytes
 
         let input = frame <> partialMagic
         let (frames, consumed, corrupted) = parseStream input
@@ -123,11 +124,11 @@ spec = do
                 mapM_ putPoint testPoints
                 P.putWord32le 0xDEADBEEF -- 4 bytes padding
 
-            putPoint (Point x y z v) = do
+            putPoint (Point x y z vel) = do
                 P.putFloatle x
                 P.putFloatle y
                 P.putFloatle z
-                P.putFloatle v
+                P.putFloatle vel
 
             payload = P.runPut (magic >> testHeader >> tlv)
 
@@ -144,7 +145,7 @@ spec = do
 
     it "Fuzz Testing: Handles random garbage without crashing" $ property $ \bytes -> do
         let input = BL.fromStrict (B.pack bytes)
-            (frames, consumed, corrupted) = parseStream input
+            (_, consumed, corrupted) = parseStream input
 
         -- We don't expect it to crash.
         -- If it found frames, good.
@@ -160,7 +161,7 @@ spec = do
     it "Fuzz Testing: Detects corruption in invalid streams" $ do
         -- Inject a Magic Word but with invalid Length
         let magic = mapM_ P.putWord8 [1, 2, 3, 4, 5, 6, 7, 8]
-            header = do
+            hdr = do
                 P.putWord32le 0
                 P.putWord32le 10 -- Invalid length (too small, < 36)
                 P.putWord32le 0
@@ -169,10 +170,10 @@ spec = do
                 P.putWord32le 0
                 P.putWord32le 0
 
-            payload = P.runPut (magic >> header)
+            payload = P.runPut (magic >> hdr)
 
             -- We expect parseStream to fail on this
-            (frames, consumed, corrupted) = parseStream payload
+            (frames, _, corrupted) = parseStream payload
 
         -- Should return corrupted = True
         corrupted `shouldBe` True
