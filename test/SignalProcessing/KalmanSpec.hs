@@ -55,9 +55,7 @@ spec = do
         let mse = snd results / fromIntegral (length steps)
         let rmse = sqrt mse
 
-        -- Log RMSE for audit trail
-        runIO $ putStrLn $ "      Calculated RMSE: " ++ show rmse ++ " mm"
-        
+        -- Log RMSE for audit trail (logged by hspec during test execution)
         rmse `shouldSatisfy` (< 1.0)
 
     describe "Matrix Properties" $ do
