@@ -63,7 +63,7 @@ configureSensor configPath portPath = do
 -- | Opens the serial port using POSIX calls.
 openSerialPort :: FilePath -> IO Fd
 openSerialPort path = do
-    fd <- openFd path ReadWrite Nothing defaultFileFlags { isNonBlock = True }
+    fd <- openFd path ReadWrite Nothing defaultFileFlags { nonBlock = True }
     setSerialAttributes fd `onException` closeFd fd
     return fd
 

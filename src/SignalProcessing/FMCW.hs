@@ -95,17 +95,17 @@ calculatePhase = phase
 -- Corrects phase jumps greater than pi by adding/subtracting 2*pi.
 -- p[n]_unwrapped = p[n] - 2 * pi * round((p[n] - p[n-1]) / (2 * pi))_accumulated
 unwrapPhase :: Vector Double -> Vector Double
-unwrapPhase phase
-    | VS.null phase = phase
-    | otherwise = phase - corrections
+unwrapPhase inputPhase
+    | VS.null inputPhase = inputPhase
+    | otherwise = inputPhase - corrections
   where
     -- Calculate differences between consecutive phases: p[i] - p[i-1]
-    diffs = VS.zipWith (-) (VS.tail phase) (VS.init phase)
+    diffs = VS.zipWith (-) (VS.tail inputPhase) (VS.init inputPhase)
 
     -- Calculate required jumps (multiples of 2*pi)
     -- If diff is around 2*pi, we want to subtract 2*pi.
     -- If diff is around -2*pi, we want to add 2*pi (subtract -2*pi).
-    jumps = VS.map (\d -> fromIntegral (round (d / (2 * pi))) * (2 * pi)) diffs
+    jumps = VS.map (\d -> (fromIntegral (round (d / (2 * pi))) :: Double) * (2 * pi)) diffs
 
     -- Cumulative correction
     corrections = VS.scanl (+) 0.0 jumps
