@@ -1,10 +1,15 @@
 module Hardware.Control (configureSensor, parseConfig) where
 
-import System.Hardware.Serialport
-import Control.Monad (forM_)
+import System.Posix.IO
+import System.Posix.Terminal
+import System.Posix.Types (Fd(..), ByteCount)
+import System.Posix.Files (stdFileMode)
+import Foreign.C.String (withCStringLen)
+import Foreign.Ptr (castPtr)
+import Control.Monad (forM_, void)
 import Control.Concurrent (threadDelay)
 import qualified Data.ByteString.Char8 as BC
-import Control.Exception (try, IOException, bracket)
+import Control.Exception (try, IOException, bracket, onException)
 import Data.Char (isSpace)
 import Data.List (dropWhileEnd)
 
@@ -34,14 +39,14 @@ configureSensor configPath portPath = do
 
             -- Wrap the whole operation in try to catch IOExceptions (e.g. port not found)
             result <- try $ bracket
-                (openSerial portPath defaultSerialSettings { commSpeed = CS115200 })
-                closeSerial
-                (\s -> do
+                (openSerialPort portPath)
+                closeFd
+                (\fd -> do
                     forM_ commands $ \cmd -> do
                         let packet = BC.pack (cmd ++ "\n")
-                        bytesSent <- send s packet
+                        bytesSent <- sendData fd packet
                         -- Check if all bytes were written
-                        if bytesSent < BC.length packet
+                        if fromIntegral bytesSent < BC.length packet
                             then ioError (userError $ "Failed to send complete command: " ++ cmd)
                             else threadDelay 100000 -- 100ms delay between commands
                 )
@@ -54,3 +59,30 @@ configureSensor configPath portPath = do
                 Right _ -> do
                     putStrLn "[Control] Configuration Complete."
                     return (Right ())
+
+-- | Opens the serial port using POSIX calls.
+openSerialPort :: FilePath -> IO Fd
+openSerialPort path = do
+    fd <- openFd path ReadWrite Nothing defaultFileFlags { isNonBlock = True }
+    setSerialAttributes fd `onException` closeFd fd
+    return fd
+
+-- | Configures the terminal attributes (Raw Mode, 115200 Baud).
+setSerialAttributes :: Fd -> IO ()
+setSerialAttributes fd = do
+    attrs <- getTerminalAttributes fd
+    let attrs' = withInputSpeed attrs B115200
+        attrs'' = withOutputSpeed attrs' B115200
+        -- Raw Mode: Disable canonical mode, echo, signals, etc.
+        rawAttrs = foldl withoutMode attrs''
+            [ EnableEcho, EchoErase, EchoKill, ProcessInput, ProcessOutput
+            , MapCRtoLF, StartStopOutput, ICANON, ExtendedFunctions
+            ]
+        -- Set min characters and timeout (Non-blocking reads handled by open flag, but good to set)
+        finalAttrs = withMinInput (withTime rawAttrs 0) 0
+    setTerminalAttributes fd finalAttrs Immediately
+
+-- | Writes a ByteString to the file descriptor.
+sendData :: Fd -> BC.ByteString -> IO ByteCount
+sendData fd bs = BC.useAsCStringLen bs $ \(ptr, len) ->
+    fdWriteBuf fd (castPtr ptr) (fromIntegral len)

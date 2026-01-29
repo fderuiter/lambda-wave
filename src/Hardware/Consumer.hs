@@ -23,10 +23,10 @@ import Control.Concurrent (threadDelay)
 import Control.Concurrent.STM
 import Control.Monad (unless, when)
 import Control.DeepSeq (force)
-import Control.Exception (evaluate)
+import Control.Exception (evaluate, catch, SomeException)
 import Data.Word (Word8)
 import Data.Int (Int64)
-import Foreign.ForeignPtr (newForeignPtr_, ForeignPtr, castForeignPtr, withForeignPtr)
+import Foreign.ForeignPtr (newForeignPtr_, ForeignPtr, castForeignPtr, withForeignPtr, touchForeignPtr)
 import Foreign.Storable (peek)
 import Foreign.C.Types (CChar)
 import qualified Data.ByteString as B
@@ -64,67 +64,79 @@ consumerLoop controlFp stateVar = withForeignPtr controlFp $ \controlPtr -> do
 
     -- Internal Loop State
     let loop readOff = do
-            -- 1. Poll Write Offset (Atomic Acquire)
-            -- Pass the ForeignPtr to ensure safety, although we are already inside withForeignPtr,
-            -- this double check is fine or we rely on the fact that controlFp is alive.
-            writeOff <- getWriteOffset controlFp
+            let iteration = do
+                    -- 1. Poll Write Offset (Atomic Acquire)
+                    -- Pass the ForeignPtr to ensure safety, although we are already inside withForeignPtr,
+                    -- this double check is fine or we rely on the fact that controlFp is alive.
+                    writeOff <- getWriteOffset controlFp
 
-            if writeOff == readOff
-                then do
-                    -- No new data, sleep briefly to avoid busy wait
-                    threadDelay 1000 -- 1ms
-                    loop readOff
-                else do
-                    -- 2. Calculate available data
-                    -- (available calculation omitted as currently unused, but good for debug)
+                    if writeOff == readOff
+                        then do
+                            -- No new data, sleep briefly to avoid busy wait
+                            threadDelay 1000 -- 1ms
+                            return readOff -- Loop with same offset
+                        else do
+                            -- 2. Calculate available data
+                            -- (available calculation omitted as currently unused, but good for debug)
 
-                    -- 3. Create Zero-Copy Lazy ByteString
-                    let lbs = createLazyByteString fp bufSize readOff writeOff
+                            -- 3. Create Zero-Copy Lazy ByteString
+                            let lbs = createLazyByteString fp bufSize readOff writeOff
 
-                    -- 4. Parse Frames
-                    -- We use 'runGetIncremental' to handle the stream.
-                    -- Note: Since we poll chunks, we might get partial frames.
-                    -- However, 'runGetIncremental' expects to be fed.
-                    -- Here, we simplify by attempting to parse as much as possible
-                    -- from the current snapshot. A robust implementation would maintain
-                    -- the decoder state across loops.
+                            -- 4. Parse Frames
+                            -- We use 'runGetIncremental' to handle the stream.
+                            -- Note: Since we poll chunks, we might get partial frames.
+                            -- However, 'runGetIncremental' expects to be fed.
+                            -- Here, we simplify by attempting to parse as much as possible
+                            -- from the current snapshot. A robust implementation would maintain
+                            -- the decoder state across loops.
 
-                    let (frames, bytesConsumed, corrupted) = parseStream lbs
+                            let (frames, bytesConsumed, corrupted) = parseStream lbs
 
-                    -- 5. Force Evaluation (Critical for FFI Safety)
-                    -- We must ensure all data is copied out of the Ring Buffer (via Lazy ByteString)
-                    -- BEFORE we update the read_offset. If we don't, the producer might overwrite
-                    -- the memory while we are lazily parsing it.
-                    _ <- evaluate (force frames)
+                            -- 5. Force Evaluation (Critical for FFI Safety)
+                            -- We must ensure all data is copied out of the Ring Buffer (via Lazy ByteString)
+                            -- BEFORE we update the read_offset. If we don't, the producer might overwrite
+                            -- the memory while we are lazily parsing it.
+                            _ <- evaluate (force frames)
 
-                    -- Log corruption if detected
-                    when corrupted $ do
-                         hPutStrLn stderr "[Consumer] Corrupt Packet detected."
+                            -- Explicitly keep control pointer alive until we are done reading
+                            touchForeignPtr controlFp
 
-                    -- 6. Update State
-                    unless (null frames) $ do
-                        atomically $ modifyTVar' stateVar $ \s ->
-                            s { currentPoints = concatMap points frames } -- Simplified integration
-                        -- putStrLn $ "[Consumer] Parsed " ++ show (length frames) ++ " frames."
+                            -- Log corruption if detected
+                            when corrupted $ do
+                                 hPutStrLn stderr "[Consumer] Corrupt Packet detected."
 
-                    when (bytesConsumed > 0 && null frames) $
-                        putStrLn "[Consumer] Warning: Skipped garbage data (Magic Word search or Parse Error)."
+                            -- 6. Update State
+                            unless (null frames) $ do
+                                atomically $ modifyTVar' stateVar $ \s ->
+                                    s { currentPoints = concatMap points frames } -- Simplified integration
+                                -- putStrLn $ "[Consumer] Parsed " ++ show (length frames) ++ " frames."
 
-                    -- 7. Update Read Offset
-                    -- In a real ring buffer, we advance readOff by how much we processed.
-                    -- But here, the producer might overwrite us if we are slow.
-                    -- Also, we constructed 'lbs' from *all* available data.
-                    -- If we successfully parsed everything, we catch up to writeOff.
-                    -- If we have partial data at the end, we should only advance by bytesConsumed.
+                            when (bytesConsumed > 0 && null frames) $
+                                putStrLn "[Consumer] Warning: Skipped garbage data (Magic Word search or Parse Error)."
 
-                    let newReadOff = (readOff + fromIntegral bytesConsumed) `rem` bufSize
+                            -- 7. Update Read Offset
+                            -- In a real ring buffer, we advance readOff by how much we processed.
+                            -- But here, the producer might overwrite us if we are slow.
+                            -- Also, we constructed 'lbs' from *all* available data.
+                            -- If we successfully parsed everything, we catch up to writeOff.
+                            -- If we have partial data at the end, we should only advance by bytesConsumed.
 
-                    -- 8. Notify Producer (Release Semantics)
-                    -- We must update the shared read offset so the producer can reclaim space
-                    -- (if it implements flow control) or just for monitoring.
-                    setReadOffset controlFp newReadOff
+                            let newReadOff = (readOff + fromIntegral bytesConsumed) `rem` bufSize
 
-                    loop newReadOff
+                            -- 8. Notify Producer (Release Semantics)
+                            -- We must update the shared read offset so the producer can reclaim space
+                            -- (if it implements flow control) or just for monitoring.
+                            setReadOffset controlFp newReadOff
+
+                            return newReadOff
+
+            -- Run iteration with error handling
+            nextReadOff <- iteration `catch` \e -> do
+                hPutStrLn stderr $ "[Consumer] CRITICAL ERROR: " ++ show (e :: SomeException)
+                threadDelay 100000 -- 100ms backoff
+                return readOff -- Retry same state
+
+            loop nextReadOff
 
     loop 0
 
@@ -246,38 +258,52 @@ getRadarFrame = do
     -- We already consumed Magic (8). Then 7 words (28). Total 36.
 
     -- We need to parse 'numTLVs'
-    points <- parseTLVs (fromIntegral numTLVs)
+    -- Calculate max payload length: Total Packet Length - Header Size (36 bytes)
+    let maxPayloadLen = fromIntegral totalLen - 36
+    points <- parseTLVs (fromIntegral numTLVs) maxPayloadLen
 
     return $ RadarFrame B.empty points -- Storing empty raw header for now to save space
 
--- | Parse TLVs
-parseTLVs :: Int -> G.Get [Point3D]
-parseTLVs 0 = return []
-parseTLVs n = do
+-- | Parse TLVs with strict bound checking.
+parseTLVs :: Int -> Int -> G.Get [Point3D]
+parseTLVs 0 _ = return []
+parseTLVs n maxLen = do
+    -- Ensure we have at least 8 bytes for header
+    if maxLen < 8 then fail "Insufficient data for TLV Header" else return ()
+
     -- TLV Header: Type (4), Length (4)
     tlvType <- G.getWord32le
     tlvLen <- G.getWord32le
+
+    let tlvLenInt = fromIntegral tlvLen
+
+    -- Strict Validation: tlvLen must fit in remaining packet
+    if tlvLenInt > maxLen
+       then fail $ "TLV Length " ++ show tlvLenInt ++ " exceeds remaining payload " ++ show maxLen
+       else return ()
+
+    let remaining = maxLen - tlvLenInt
 
     case tlvType of
         1 -> do -- Detected Points
             -- Payload: Array of Point {x,y,z,v} (4 * 4 = 16 bytes)
             -- TI SDK Standard: tlvLen includes Header (8 bytes).
             -- So Payload Length = tlvLen - 8.
-            let payloadLen = if tlvLen >= 8 then tlvLen - 8 else 0
+            let payloadLen = tlvLenInt - 8
 
             -- Num points
-            let numPoints = fromIntegral payloadLen `div` 16
+            let numPoints = payloadLen `div` 16
 
             -- Read the points
             points <- getPoints numPoints
 
             -- SAFETY CHECK: Calculate actual bytes read and skip any remaining (padding/header mismatch)
-            let bytesRead = fromIntegral (numPoints * 16)
-                padding = fromIntegral payloadLen - bytesRead
+            let bytesRead = numPoints * 16
+                padding = payloadLen - bytesRead
 
             when (padding > 0) $ G.skip padding
 
-            rest <- parseTLVs (n - 1)
+            rest <- parseTLVs (n - 1) remaining
             return (points ++ rest)
         _ -> do
             -- Skip unknown TLV
@@ -285,7 +311,7 @@ parseTLVs n = do
             when (tlvLen < 8) $ fail "Invalid TLV Length (Partial Header)"
             let skipLen = fromIntegral (tlvLen - 8)
             G.skip skipLen
-            parseTLVs (n - 1)
+            parseTLVs (n - 1) remaining
 
 getPoints :: Int -> G.Get [Point3D]
 getPoints n = do
