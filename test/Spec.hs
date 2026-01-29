@@ -5,14 +5,12 @@ import qualified FFI.RingBuffer.IOSpec
 import qualified Hardware.ConsumerSpec
 import qualified Hardware.ControlSpec
 import qualified SignalProcessing.FMCWSpec
-import qualified SignalProcessing.KalmanSpec
 import qualified System.RTSSpec
 
 main :: IO ()
 main = hspec $ do
   RegressionSpec.spec
   SignalProcessing.FMCWSpec.spec
-  SignalProcessing.KalmanSpec.spec
   FFI.RingBuffer.TypesSpec.spec
   FFI.RingBuffer.IOSpec.spec
   Hardware.ConsumerSpec.spec

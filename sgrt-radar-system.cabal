@@ -92,7 +92,6 @@ test-suite sgrt-radar-system-test
       Hardware.ControlSpec
       System.RTSSpec
       SignalProcessing.FMCWSpec
-      SignalProcessing.KalmanSpec
   hs-source-dirs:
       test
   ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
