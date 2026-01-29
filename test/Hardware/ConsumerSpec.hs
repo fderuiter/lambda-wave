@@ -65,7 +65,9 @@ spec = do
             (frames, consumed, corrupted) = parseStream input
 
         length frames `shouldBe` 1
-        let frame = head frames
+        let frame = case frames of
+              (f:_) -> f
+              [] -> error "No frames found"
         length (Data.Types.points frame) `shouldBe` 2
         -- consumed should be length garbage + length payload
         consumed `shouldBe` (BL.length garbage + BL.length payload)
