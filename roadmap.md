@@ -77,12 +77,12 @@
   * [x] **Implementation:** SignalProcessing.FMCW.unwrapPhase.
   * [x] **Validation:**
     * [x] **Math Test:** Feed synthetic sine wave with phase wrap; verify output is a smooth continuous sine wave.
-* \[ \] **3.3. Kalman Filter Integration**  
-  * \[ \] **Task:** Implement the State Estimation vector ![][image3] in src/SignalProcessing/Regression.hs.  
-  * \[ \] **Requirement:** FR-DSP-003  
-  * \[ \] **Implementation:** Standard linear Kalman filter (Matrix operations).  
-  * \[ \] **Validation:**  
-    * \[ \] **Simulation:** Generate noisy sine wave (SNR 10dB). Compare Filter output vs. Ground Truth. RMSE must be ![][image4]mm.
+* [x] **3.3. Kalman Filter Integration**
+  * [x] **Task:** Implement the State Estimation vector ![][image3] in src/SignalProcessing/Regression.hs.
+  * [x] **Requirement:** FR-DSP-003
+  * [x] **Implementation:** Standard linear Kalman filter (Matrix operations).
+  * [x] **Validation:**
+    * [x] **Simulation:** Generate noisy sine wave (SNR 10dB). Compare Filter output vs. Ground Truth. RMSE must be ![][image4]mm.
 
 ## **Phase 4: Safety & Control (The "Class C" Core)**
 
