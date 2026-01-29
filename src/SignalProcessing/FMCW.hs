@@ -105,7 +105,7 @@ unwrapPhase inputPhase
     -- Calculate required jumps (multiples of 2*pi)
     -- If diff is around 2*pi, we want to subtract 2*pi.
     -- If diff is around -2*pi, we want to add 2*pi (subtract -2*pi).
-    jumps = VS.map (\d -> (fromIntegral (round (d / (2 * pi))) :: Double) * (2 * pi)) diffs
+    jumps = VS.map (\d -> (fromIntegral (round (d / (2 * pi)) :: Int) :: Double) * (2 * pi)) diffs
 
     -- Cumulative correction
     corrections = VS.scanl (+) 0.0 jumps

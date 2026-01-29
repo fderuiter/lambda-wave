@@ -63,7 +63,8 @@ configureSensor configPath portPath = do
 -- | Opens the serial port using POSIX calls.
 openSerialPort :: FilePath -> IO Fd
 openSerialPort path = do
-    fd <- openFd path ReadWrite Nothing defaultFileFlags { nonBlock = True }
+    -- openFd signature in this env: FilePath -> OpenMode -> OpenFileFlags -> IO Fd
+    fd <- openFd path ReadWrite defaultFileFlags { nonBlock = True }
     setSerialAttributes fd `onException` closeFd fd
     return fd
 
@@ -76,7 +77,7 @@ setSerialAttributes fd = do
         -- Raw Mode: Disable canonical mode, echo, signals, etc.
         rawAttrs = foldl withoutMode attrs''
             [ EnableEcho, EchoErase, EchoKill, ProcessInput, ProcessOutput
-            , MapCRtoLF, StartStopOutput, ICANON, ExtendedFunctions
+            , MapCRtoLF, StartStopOutput, ExtendedFunctions
             ]
         -- Set min characters and timeout (Non-blocking reads handled by open flag, but good to set)
         finalAttrs = withMinInput (withTime rawAttrs 0) 0
