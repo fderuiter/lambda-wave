@@ -1,4 +1,11 @@
-module Data.Config where
+module Data.Config (
+    radarMountOffset,
+    gantryAngle,
+    gatingTolerance,
+    targetHeight,
+    watchdogTimeoutNS,
+    uartBaudRate
+) where
 
 -- | System Configuration Constants
 

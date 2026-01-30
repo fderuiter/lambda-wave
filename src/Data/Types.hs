@@ -1,5 +1,11 @@
 {-# LANGUAGE StrictData #-}
-module Data.Types where
+module Data.Types (
+    Point3D(..),
+    Point(..),
+    BeamState(..),
+    SystemState(..),
+    RadarFrame(..)
+) where
 
 -- Replaced System.Clock with Data.Time due to missing 'clock' package
 import Data.Time.Clock (UTCTime(..))

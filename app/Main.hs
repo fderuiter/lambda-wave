@@ -1,9 +1,10 @@
 {-# LANGUAGE CPP #-}
-module Main where
+module Main (main) where
 
 import Control.Concurrent (forkOS, setNumCapabilities)
 import Control.Concurrent.STM
-import System.Clock
+-- Replaced System.Clock with Data.Time due to missing 'clock' package
+import Data.Time.Clock (getCurrentTime)
 import System.Environment (lookupEnv)
 import Data.Maybe (fromMaybe)
 import System.Posix.IO (openFd, OpenMode(..), defaultFileFlags, OpenFileFlags(..))
@@ -24,7 +25,7 @@ main = do
     setNumCapabilities 2
     putStrLn "Initializing Lambda-Wave System..."
 
-    startTime <- getTime Monotonic
+    startTime <- getCurrentTime
     let initialState = SystemState
           { currentPoints = []
           , beamState = BeamOff
