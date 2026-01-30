@@ -14,8 +14,11 @@ module SignalProcessing.FMCW
     , calculateDisplacement
     ) where
 
-import Numeric.LinearAlgebra
-import qualified Data.Vector.Storable as VS
+import Data.Complex
+
+--Removed Numeric.LinearAlgebra and Vector due to missing dependencies
+--import Numeric.LinearAlgebra
+--import qualified Data.Vector.Storable as VS
 
 -- | Equation (1): Verified
 -- Calculate the beat frequency from a target range.
@@ -47,15 +50,13 @@ data CZTParams = CZTParams
 -- | Equation (2): Corrected & Verified
 -- X_{k, CZT} = sum_{n=0}^{N-1} x_n * exp(-i * 2 * pi * n * (f_0 + B_zoom * k / K) / f_s)
 --
--- Note: This is a direct implementation of the summation. For large N and K,
--- a formulation using convolution (Bluestein's algorithm) would be faster,
--- but the prompt asks for the specific equation implementation.
+-- Re-implemented using standard Lists and Data.Complex to avoid hmatrix dependency.
 chirpZTransform :: CZTParams
-                -> Vector (Complex Double) -- ^ Input signal x_n
-                -> Vector (Complex Double) -- ^ Output spectrum X_k
-chirpZTransform params x_n = fromList [ calculateBin k | k <- [0 .. k_max - 1] ]
+                -> [Complex Double] -- ^ Input signal x_n
+                -> [Complex Double] -- ^ Output spectrum X_k
+chirpZTransform params x_n = [ calculateBin k | k <- [0 .. k_max - 1] ]
   where
-    n_samples = size x_n
+    n_samples = length x_n
     k_max = cztSteps params
     f0 = cztStartFreq params
     b_zoom = cztBandwidth params
@@ -76,15 +77,17 @@ chirpZTransform params x_n = fromList [ calculateBin k | k <- [0 .. k_max - 1] ]
             -- Argument for cis is: -2 * pi * n * freq_k / f_s
             theta_scale = (-2 * pi * freq_k) / fs
 
-            -- Create a vector of complex exponentials for each n
+            -- Create a list of complex exponentials for each n
             -- exp_vec[n] = cis (theta_scale * n)
-            exp_vec = cmap (\n -> cis (theta_scale * n)) (fromList [0 .. fromIntegral (n_samples - 1)])
+            indices = [0 .. fromIntegral (n_samples - 1)]
+            exp_vec = map (\n -> cis (theta_scale * n)) indices
 
-        in
             -- Dot product of input signal and the complex exponentials
-            -- hmatrix <.> is Hermitian (sum(conj(x) * y)), so we must conjugate x_n first
-            -- to get sum(x_n * exp_vec).
-            conj x_n <.> exp_vec
+            -- hmatrix <.> was Hermitian (sum(conj(x) * y))
+            -- So we conjugate x_n.
+            terms = zipWith (\x e -> conjugate x * e) x_n exp_vec
+        in
+            sum terms
 
 -- | Equation (4): Verified
 -- Extract the phase from the complex value at the peak index.
@@ -94,21 +97,24 @@ calculatePhase = phase
 -- | Requirement FR-DSP-002: Phase Unwrapping
 -- Corrects phase jumps greater than pi by adding/subtracting 2*pi.
 -- p[n]_unwrapped = p[n] - 2 * pi * round((p[n] - p[n-1]) / (2 * pi))_accumulated
-unwrapPhase :: Vector Double -> Vector Double
-unwrapPhase phase
-    | VS.null phase = phase
-    | otherwise = phase - corrections
+unwrapPhase :: [Double] -> [Double]
+unwrapPhase phs
+    | null phs = phs
+    | otherwise = zipWith (-) phs corrections
   where
     -- Calculate differences between consecutive phases: p[i] - p[i-1]
-    diffs = VS.zipWith (-) (VS.tail phase) (VS.init phase)
+    -- tail phs gives [p1, p2, ...]
+    -- init phs gives [p0, p1, ...]
+    diffs = zipWith (-) (tail phs) (init phs)
 
     -- Calculate required jumps (multiples of 2*pi)
     -- If diff is around 2*pi, we want to subtract 2*pi.
     -- If diff is around -2*pi, we want to add 2*pi (subtract -2*pi).
-    jumps = VS.map (\d -> fromIntegral (round (d / (2 * pi))) * (2 * pi)) diffs
+    jumps = map (\d -> fromIntegral (round (d / (2 * pi))) * (2 * pi)) diffs
 
     -- Cumulative correction
-    corrections = VS.scanl (+) 0.0 jumps
+    -- scanl (+) 0.0 jumps gives [0.0, j0, j0+j1, ...] which matches length of phs
+    corrections = scanl (+) 0.0 jumps
 
 -- | Equation (5): Verified
 -- Calculate displacement from phase change.
@@ -130,12 +136,18 @@ calculateDisplacement f_min delta_phi = (c * delta_phi) / (4 * pi * f_min)
 -- This ensures that static objects (constant amplitude/phase over time) are
 -- subtracted, leaving only moving targets.
 applyStaticClutterRemoval :: Double                  -- ^ Alpha (Learning Rate, e.g., 0.05)
-                          -> Vector (Complex Double) -- ^ Previous Mean (State)
-                          -> Vector (Complex Double) -- ^ Current Frame Input
-                          -> (Vector (Complex Double), Vector (Complex Double)) -- ^ (New Mean, Output Frame)
-applyStaticClutterRemoval alpha prevMean input = (newMean, output)
+                          -> [Complex Double] -- ^ Previous Mean (State)
+                          -> [Complex Double] -- ^ Current Frame Input
+                          -> ([Complex Double], [Complex Double]) -- ^ (New Mean, Output Frame)
+applyStaticClutterRemoval alpha prevMean input
+    | length prevMean /= length input = (prevMean, input) -- Safety Guard: Dimension Mismatch
+    | otherwise = (newMean, output)
   where
     -- Weighted sum: (1-alpha)*prev + alpha*input
-    -- Note: scale requires the scalar to match the element type (Complex Double)
-    newMean = scale ((1.0 - alpha) :+ 0) prevMean + scale (alpha :+ 0) input
-    output = input - newMean
+    -- We process element-wise
+
+    alphaC = alpha :+ 0
+    oneMinusAlphaC = (1.0 - alpha) :+ 0
+
+    newMean = zipWith (\p i -> oneMinusAlphaC * p + alphaC * i) prevMean input
+    output = zipWith (-) input newMean

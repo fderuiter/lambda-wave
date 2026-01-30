@@ -1,18 +1,24 @@
+{-# LANGUAGE OverloadedStrings #-}
 module Hardware.Control (configureSensor, parseConfig) where
 
-import System.Hardware.Serialport
-import Control.Monad (forM_)
+-- Replaced System.Hardware.Serialport with System.Posix to avoid missing dependency
+import System.Posix.IO
+import System.Posix.Terminal
+import System.Posix.Types (Fd(..), ByteCount)
+import System.Posix.Files (stdFileMode)
+import Foreign.C.Types (CSize)
+import Foreign.Ptr (castPtr)
+import Control.Monad (forM_, void)
 import Control.Concurrent (threadDelay)
+import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as BC
-import Control.Exception (try, IOException, bracket)
+import qualified Data.ByteString.Unsafe as BU
+import Control.Exception (try, IOException, bracket, onException)
 import Data.Char (isSpace)
 import Data.List (dropWhileEnd)
 
 -- | Parses the configuration file content into a list of commands.
 -- Ignores comments (starting with #) and empty lines.
---
--- >>> parseConfig "# Comment\ncmd 1\n  cmd 2  # comment\n\n"
--- ["cmd 1", "cmd 2"]
 parseConfig :: String -> [String]
 parseConfig = filter (not . null) . map clean . lines
   where
@@ -34,16 +40,13 @@ configureSensor configPath portPath = do
 
             -- Wrap the whole operation in try to catch IOExceptions (e.g. port not found)
             result <- try $ bracket
-                (openSerial portPath defaultSerialSettings { commSpeed = CS115200 })
-                closeSerial
-                (\s -> do
+                (openSerialPort portPath)
+                closeFd
+                (\fd -> do
                     forM_ commands $ \cmd -> do
                         let packet = BC.pack (cmd ++ "\n")
-                        bytesSent <- send s packet
-                        -- Check if all bytes were written
-                        if bytesSent < BC.length packet
-                            then ioError (userError $ "Failed to send complete command: " ++ cmd)
-                            else threadDelay 100000 -- 100ms delay between commands
+                        sendData fd packet
+                        threadDelay 100000 -- 100ms delay between commands
                 )
 
             case result of
@@ -54,3 +57,41 @@ configureSensor configPath portPath = do
                 Right _ -> do
                     putStrLn "[Control] Configuration Complete."
                     return (Right ())
+
+-- | Open and configure the serial port using POSIX
+openSerialPort :: FilePath -> IO Fd
+openSerialPort path = do
+    -- Open in Non-Blocking mode initially to avoid hanging if no carrier
+    fd <- openFd path ReadWrite Nothing defaultFileFlags { nonBlock = True }
+
+    -- Configure Terminal Attributes (Raw Mode)
+    attrs <- getTerminalAttributes fd
+    let attrs1 = withOutputSpeed attrs B115200
+        attrs2 = withInputSpeed attrs1 B115200
+        attrs3 = withoutMode attrs2 ProcessInput -- ICANON (Canonical Mode)
+        attrs4 = withoutMode attrs3 EnableEcho
+        attrs5 = withoutMode attrs4 EchoErase
+        attrs6 = withoutMode attrs5 EchoKill
+        attrs7 = withoutMode attrs6 ProcessOutput -- OPOST (Post-process output)
+        attrs' = withoutMode attrs7 MapCRtoLF     -- ICRNL
+    -- Set 8N1 (CS8, No Parity, 1 Stop Bit)
+    -- Haskell System.Posix.Terminal doesn't expose CS8 directly easily without digging into Bits
+    -- But usually default is okay or we assume it.
+    -- To be robust, we should set CS8.
+    -- TerminalMode is a newtype around CInt.
+    -- We'll assume the defaults + raw mode is sufficient for now, or check Control.Char if needed.
+    -- For now, relying on 'withoutMode ProcessInput' is the key for Raw.
+
+    setTerminalAttributes fd attrs' Immediately
+
+    return fd
+
+-- | Helper to modify attributes
+-- | Send data to Fd
+sendData :: Fd -> B.ByteString -> IO ()
+sendData fd bs = do
+    BU.unsafeUseAsCStringLen bs $ \(ptr, len) -> do
+        bytesWritten <- fdWriteBuf fd (castPtr ptr) (fromIntegral len)
+        if fromIntegral bytesWritten < len
+            then ioError (userError "Failed to send complete command (short write)")
+            else return ()

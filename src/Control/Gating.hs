@@ -5,7 +5,7 @@ import Data.Types
 import Data.Config
 import Control.Mesher (fitPolynomialSurface)
 import Control.Concurrent.STM
-import System.Clock
+import Data.Time.Clock (getCurrentTime)
 import Data.List (foldl')
 
 -- | The main logic function called every frame
@@ -26,7 +26,7 @@ processFrame stateVar pts = do
                    then BeamOn
                    else BeamOff
 
-    currTime <- getTime Monotonic
+    currTime <- getCurrentTime
     atomically $ modifyTVar' stateVar $ \s -> s
         { currentPoints = pts
         , beamState = newState

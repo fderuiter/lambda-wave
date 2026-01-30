@@ -21,7 +21,7 @@ module Hardware.Consumer (
 
 import Control.Concurrent (threadDelay)
 import Control.Concurrent.STM
-import Control.Monad (unless, when)
+import Control.Monad (unless, when, replicateM)
 import Control.DeepSeq (force)
 import Control.Exception (evaluate)
 import Data.Word (Word8)
@@ -33,7 +33,8 @@ import qualified Data.ByteString as B
 import qualified Data.ByteString.Internal as BI
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.Binary.Get as G
-import qualified Data.Vector.Storable as V
+-- Removed Data.Vector.Storable due to missing dependency
+-- import qualified Data.Vector.Storable as V
 import System.IO (hPutStrLn, stderr)
 
 import FFI.RingBuffer.Types (RingBufferControl(..))
@@ -58,6 +59,12 @@ consumerLoop controlFp stateVar = withForeignPtr controlFp $ \controlPtr -> do
         bufSize  = fromIntegral (bufferSize ctrl) :: Int
 
     -- ForeignPtr to the buffer (no finalizer, as we don't own the memory)
+    -- SAFETY NOTE: This ForeignPtr (fp) does not hold a reference to 'controlFp'.
+    -- However, its lifetime is strictly bounded within this loop (or transiently in parsed frames).
+    -- 'consumerLoop' holds 'controlFp' via 'withForeignPtr', ensuring the underlying C++ buffer
+    -- remains allocated as long as this thread is running.
+    -- The parsed 'RadarFrame's containing data derived from 'fp' are forced and converted
+    -- to pure 'Point3D's (in SystemState) which do not retain the ForeignPtr.
     fp <- newForeignPtr_ bufStart
 
     putStrLn $ "[Consumer] Started. Buffer Size: " ++ show bufSize
@@ -289,12 +296,10 @@ parseTLVs n = do
 
 getPoints :: Int -> G.Get [Point3D]
 getPoints n = do
-    -- Using Vector Storable would be more efficient here but 'Data.Types' uses [Point3D].
-    -- We will read into Vector Storable Point first (Zero Copy-ish if we could cast,
-    -- but ByteString is not guaranteed aligned, so we must copy to Storable Vector or read one by one).
-    -- Since we need to convert to Point3D (Double) anyway, we read floats and convert.
-    rawPoints <- V.replicateM n getPoint
-    return $ map toPoint3D (V.toList rawPoints)
+    -- Replaced Vector Storable with Control.Monad.replicateM to avoid dependency
+    -- This is less efficient but safe and zero-dependency.
+    rawPoints <- replicateM n getPoint
+    return $ map toPoint3D rawPoints
 
 getPoint :: G.Get Point
 getPoint = do
