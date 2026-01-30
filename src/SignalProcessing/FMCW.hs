@@ -103,14 +103,14 @@ unwrapPhase phs
     | otherwise = zipWith (-) phs corrections
   where
     -- Calculate differences between consecutive phases: p[i] - p[i-1]
-    -- tail phs gives [p1, p2, ...]
-    -- init phs gives [p0, p1, ...]
-    diffs = zipWith (-) (tail phs) (init phs)
+    diffs = case phs of
+              [] -> []
+              (_:xs) -> zipWith (-) xs phs
 
     -- Calculate required jumps (multiples of 2*pi)
     -- If diff is around 2*pi, we want to subtract 2*pi.
     -- If diff is around -2*pi, we want to add 2*pi (subtract -2*pi).
-    jumps = map (\d -> fromIntegral (round (d / (2 * pi))) * (2 * pi)) diffs
+    jumps = map (\d -> fromIntegral (round (d / (2 * pi)) :: Int) * (2 * pi)) diffs
 
     -- Cumulative correction
     -- scanl (+) 0.0 jumps gives [0.0, j0, j0+j1, ...] which matches length of phs

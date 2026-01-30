@@ -22,13 +22,10 @@ common common-options
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
   build-depends:
       base >=4.7 && <5
-    , hmatrix
     , stm
-    , clock
+    , time
     , binary
     , bytestring
-    , vector
-    , serialport
     , unix
     , OpenGL
     , GLUT
@@ -54,6 +51,7 @@ library
       SignalProcessing.FMCW
       SignalProcessing.Regression
       SignalProcessing.Kalman
+      SignalProcessing.SimpleLA
   other-modules:
       Paths_sgrt_radar_system
   hs-source-dirs:

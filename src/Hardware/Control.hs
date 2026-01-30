@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE CPP #-}
 module Hardware.Control (configureSensor, parseConfig) where
 
 -- Replaced System.Hardware.Serialport with System.Posix to avoid missing dependency
@@ -62,7 +63,11 @@ configureSensor configPath portPath = do
 openSerialPort :: FilePath -> IO Fd
 openSerialPort path = do
     -- Open in Non-Blocking mode initially to avoid hanging if no carrier
+#if MIN_VERSION_unix(2,8,0)
+    fd <- openFd path ReadWrite defaultFileFlags { nonBlock = True }
+#else
     fd <- openFd path ReadWrite Nothing defaultFileFlags { nonBlock = True }
+#endif
 
     -- Configure Terminal Attributes (Raw Mode)
     attrs <- getTerminalAttributes fd

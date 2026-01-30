@@ -9,8 +9,6 @@ module SignalProcessing.Regression
 import SignalProcessing.SimpleLA (leastSquares, Matrix, Vector)
 import Data.List (transpose)
 
-type R = Double
-
 -- | Construct the Design Matrix
 -- For Bi-Quadratic, we need powers: x^0, x^1, x^2, x^3, x^4
 createDesignMatrix :: Vector -> Matrix
