@@ -26,7 +26,7 @@ import Data.Types
 import Data.Config (watchdogTimeoutNS)
 import Control.Concurrent.STM
 import Control.Concurrent (threadDelay)
-import System.Clock
+import Data.Time (getCurrentTime, diffUTCTime)
 import Control.Monad (forever, when)
 import System.Exit (exitFailure)
 
@@ -34,12 +34,13 @@ import System.Exit (exitFailure)
 -- Kills the process if the main Gating Loop has not reported progress within the timeout.
 watchdogLoop :: TVar SystemState -> IO ()
 watchdogLoop stateVar = forever $ do
-    now <- getTime Monotonic
+    now <- getCurrentTime
     lastTime <- lastFrameTime <$> readTVarIO stateVar
 
-    let diff = toNanoSecs (diffTimeSpec now lastTime)
+    let diff = diffUTCTime now lastTime -- NominalDiffTime (seconds)
+        diffNs = floor (diff * 1e9) :: Integer
 
-    when (diff > watchdogTimeoutNS) $ do
+    when (diffNs > watchdogTimeoutNS) $ do
         putStrLn "!!! WATCHDOG TRIP: SYSTEM FROZEN !!!"
         putStrLn "!!! FORCING BEAM OFF !!!"
         -- In real HW, this would toggle a GPIO pin immediately

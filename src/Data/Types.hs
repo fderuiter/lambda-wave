@@ -1,7 +1,13 @@
 {-# LANGUAGE StrictData #-}
-module Data.Types where
+module Data.Types (
+    Point3D(..),
+    Point(..),
+    BeamState(..),
+    SystemState(..),
+    RadarFrame(..)
+) where
 
-import System.Clock (TimeSpec)
+import Data.Time (UTCTime)
 import qualified Data.ByteString as B
 import Foreign.Storable
 import Control.DeepSeq (NFData(..))
@@ -16,7 +22,7 @@ data Point3D = Point3D
   } deriving (Show, Eq)
 
 instance NFData Point3D where
-  rnf (Point3D x y z v' s) = rnf x `seq` rnf y `seq` rnf z `seq` rnf v' `seq` rnf s
+  rnf (Point3D x y z vel s) = rnf x `seq` rnf y `seq` rnf z `seq` rnf vel `seq` rnf s
 
 -- | Raw Point structure from "Type 1" TLV (4 floats)
 data Point = Point
@@ -52,15 +58,14 @@ instance NFData BeamState where
 data SystemState = SystemState
   { currentPoints :: [Point3D]
   , beamState :: BeamState
-  , lastFrameTime :: TimeSpec -- For Watchdog
+  , lastFrameTime :: UTCTime -- For Watchdog
   , isocenter :: Point3D      -- Calibration zero
   }
 
 instance NFData SystemState where
   rnf (SystemState pts bs t iso) = rnf pts `seq` rnf bs `seq` rnf t `seq` rnf iso
 
-instance NFData TimeSpec where
-  rnf t = t `seq` ()
+-- UTCTime NFData instance is provided by 'time' package.
 
 -- | Raw parsed structure from the sensor
 data RadarFrame = RadarFrame

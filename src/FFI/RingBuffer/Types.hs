@@ -1,5 +1,3 @@
-{-# LANGUAGE ForeignFunctionInterface #-}
-
 {-|
 Module: FFI.RingBuffer.Types
 

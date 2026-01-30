@@ -1,4 +1,3 @@
-{-# LANGUAGE ForeignFunctionInterface #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE BangPatterns #-}
@@ -21,7 +20,7 @@ module Hardware.Consumer (
 
 import Control.Concurrent (threadDelay)
 import Control.Concurrent.STM
-import Control.Monad (unless, when)
+import Control.Monad (replicateM, unless, when)
 import Control.DeepSeq (force)
 import Control.Exception (evaluate)
 import Data.Word (Word8)
@@ -33,7 +32,6 @@ import qualified Data.ByteString as B
 import qualified Data.ByteString.Internal as BI
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.Binary.Get as G
-import qualified Data.Vector.Storable as V
 import System.IO (hPutStrLn, stderr)
 
 import FFI.RingBuffer.Types (RingBufferControl(..))
@@ -154,7 +152,7 @@ createLazyByteString fp bufSize readOff writeOff =
 -- Uses tail recursion with strict accumulator to avoid stack overflow.
 -- Returns (bytesSkipped, remainingInput)
 skipToMagicWord :: BL.ByteString -> (Int64, BL.ByteString)
-skipToMagicWord input = go 0 input
+skipToMagicWord = go 0
   where
     go !acc bs =
         case BL.elemIndex 1 bs of
@@ -162,14 +160,12 @@ skipToMagicWord input = go 0 input
             Just idx ->
                 let candidate = BL.drop idx bs
                 in if BL.isPrefixOf magicPattern candidate
-                   then (acc + idx, candidate) -- Found exact match
+                      || BL.length candidate < 8
+                   then (acc + idx, candidate) -- Found exact match OR Keep partial match
                    else
-                       if BL.length candidate < 8
-                       then (acc + idx, candidate) -- Keep partial match (might be valid end of buffer)
-                       else
-                           -- Found 0x01 but not followed by correct sequence (Garbage)
-                           -- Skip the 0x01 and recurse
-                           go (acc + idx + 1) (BL.drop 1 candidate)
+                       -- Found 0x01 but not followed by correct sequence (Garbage)
+                       -- Skip the 0x01 and recurse
+                       go (acc + idx + 1) (BL.drop 1 candidate)
 
 
 -- | Parses a stream of bytes into RadarFrames.
@@ -233,13 +229,11 @@ getRadarFrame = do
     _subFrameNum <- G.getWord32le
 
     -- Sanity Checks to enable Fail on corruption
-    if totalLen < 36 || totalLen > 1000000
-       then fail "Invalid Packet Length"
-       else return ()
+    when (totalLen < 36 || totalLen > 1000000) $
+        fail "Invalid Packet Length"
 
-    if numTLVs > 200
-       then fail "Too many TLVs"
-       else return ()
+    when (numTLVs > 200) $
+        fail "Too many TLVs"
 
     -- 3. Parse TLVs
     -- Total Header size = 8 + 4*7 = 36 bytes (excluding magic word? No, magic is part of header)
@@ -272,7 +266,7 @@ parseTLVs n = do
             points <- getPoints numPoints
 
             -- SAFETY CHECK: Calculate actual bytes read and skip any remaining (padding/header mismatch)
-            let bytesRead = fromIntegral (numPoints * 16)
+            let bytesRead = numPoints * 16
                 padding = fromIntegral payloadLen - bytesRead
 
             when (padding > 0) $ G.skip padding
@@ -289,12 +283,9 @@ parseTLVs n = do
 
 getPoints :: Int -> G.Get [Point3D]
 getPoints n = do
-    -- Using Vector Storable would be more efficient here but 'Data.Types' uses [Point3D].
-    -- We will read into Vector Storable Point first (Zero Copy-ish if we could cast,
-    -- but ByteString is not guaranteed aligned, so we must copy to Storable Vector or read one by one).
-    -- Since we need to convert to Point3D (Double) anyway, we read floats and convert.
-    rawPoints <- V.replicateM n getPoint
-    return $ map toPoint3D (V.toList rawPoints)
+    -- Replaced Vector Storable with standard list replicateM for zero dependency.
+    rawPoints <- replicateM n getPoint
+    return $ map toPoint3D rawPoints
 
 getPoint :: G.Get Point
 getPoint = do
