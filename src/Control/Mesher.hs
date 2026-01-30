@@ -1,8 +1,7 @@
 module Control.Mesher (fitPolynomialSurface) where
 
 import Data.Types
-import SignalProcessing.SimpleLA (leastSquares, Matrix)
-import Data.List (transpose)
+import SignalProcessing.SimpleLA (leastSquares)
 
 -- | Fits a polynomial surface to the points
 -- z = c0 + c1*x + c2*y + c3*x^2 + c4*xy + c5*y^2
@@ -11,8 +10,6 @@ fitPolynomialSurface pts
     | length pts < 6 = replicate 6 0.0 -- Not enough points
     | otherwise = leastSquares designMatrix zs
   where
-    n = length pts
-
     -- Extract coordinates
     zs = map pz pts
 

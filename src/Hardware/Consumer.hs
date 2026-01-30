@@ -279,7 +279,7 @@ parseTLVs n = do
             points <- getPoints numPoints
 
             -- SAFETY CHECK: Calculate actual bytes read and skip any remaining (padding/header mismatch)
-            let bytesRead = fromIntegral (numPoints * 16)
+            let bytesRead = numPoints * 16
                 padding = fromIntegral payloadLen - bytesRead
 
             when (padding > 0) $ G.skip padding

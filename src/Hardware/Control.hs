@@ -5,16 +5,14 @@ module Hardware.Control (configureSensor, parseConfig) where
 -- Replaced System.Hardware.Serialport with System.Posix to avoid missing dependency
 import System.Posix.IO
 import System.Posix.Terminal
-import System.Posix.Types (Fd(..), ByteCount)
-import System.Posix.Files (stdFileMode)
-import Foreign.C.Types (CSize)
+import System.Posix.Types (Fd(..))
 import Foreign.Ptr (castPtr)
-import Control.Monad (forM_, void)
+import Control.Monad (forM_)
 import Control.Concurrent (threadDelay)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as BC
 import qualified Data.ByteString.Unsafe as BU
-import Control.Exception (try, IOException, bracket, onException)
+import Control.Exception (try, IOException, bracket)
 import Data.Char (isSpace)
 import Data.List (dropWhileEnd)
 

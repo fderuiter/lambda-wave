@@ -2,7 +2,7 @@
 module Data.Types where
 
 -- Replaced System.Clock with Data.Time due to missing 'clock' package
-import Data.Time.Clock (UTCTime(..), NominalDiffTime)
+import Data.Time.Clock (UTCTime(..))
 import qualified Data.ByteString as B
 import Foreign.Storable
 import Control.DeepSeq (NFData(..))
@@ -17,7 +17,7 @@ data Point3D = Point3D
   } deriving (Show, Eq)
 
 instance NFData Point3D where
-  rnf (Point3D x y z v' s) = rnf x `seq` rnf y `seq` rnf z `seq` rnf v' `seq` rnf s
+  rnf (Point3D x y z vel s) = rnf x `seq` rnf y `seq` rnf z `seq` rnf vel `seq` rnf s
 
 -- | Raw Point structure from "Type 1" TLV (4 floats)
 data Point = Point
