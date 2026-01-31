@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# OPTIONS_GHC -Wno-orphans #-}
 module Hardware.ConsumerSpec (spec) where
 
 import Test.Hspec
@@ -49,11 +50,11 @@ spec = do
                 P.putWord32le 40 -- Length (Header + Payload)
                 mapM_ putPoint testPoints
 
-            putPoint (Point x y z v) = do
-                P.putFloatle x
-                P.putFloatle y
-                P.putFloatle z
-                P.putFloatle v
+            putPoint (Point xPos yPos zPos vel) = do
+                P.putFloatle xPos
+                P.putFloatle yPos
+                P.putFloatle zPos
+                P.putFloatle vel
 
             payload = P.runPut (magic >> testHeader >> tlv)
 
@@ -61,10 +62,12 @@ spec = do
             garbage = BL.pack (replicate 10 0xFF)
             input = garbage <> payload
 
-            (frames, consumed, corrupted) = parseStream input
+            (parsedFrames, consumed, corrupted) = parseStream input
 
-        length frames `shouldBe` 1
-        let frame = head frames
+        length parsedFrames `shouldBe` 1
+        let frame = case parsedFrames of
+                      (f:_) -> f
+                      [] -> error "Expected at least one frame"
         length (Data.Types.points frame) `shouldBe` 2
         -- consumed should be length garbage + length payload
         consumed `shouldBe` (BL.length garbage + BL.length payload)
@@ -76,15 +79,15 @@ spec = do
 
         -- Full valid frame
         let magic = mapM_ P.putWord8 [1, 2, 3, 4, 5, 6, 7, 8]
-            header = do
+            testHeader = do
                 P.putWord32le 0; P.putWord32le 36; P.putWord32le 0; P.putWord32le 0
                 P.putWord32le 0; P.putWord32le 0; P.putWord32le 0 -- No TLVs
-            frame = P.runPut (magic >> header) -- 36 bytes
+            frame = P.runPut (magic >> testHeader) -- 36 bytes
 
         let input = frame <> partialMagic
-        let (frames, consumed, corrupted) = parseStream input
+        let (parsedFrames, consumed, corrupted) = parseStream input
 
-        length frames `shouldBe` 1
+        length parsedFrames `shouldBe` 1
         -- Should consume the frame (36) but NOT the partial magic (4)
         consumed `shouldBe` BL.length frame
         corrupted `shouldBe` False
@@ -123,28 +126,28 @@ spec = do
                 mapM_ putPoint testPoints
                 P.putWord32le 0xDEADBEEF -- 4 bytes padding
 
-            putPoint (Point x y z v) = do
-                P.putFloatle x
-                P.putFloatle y
-                P.putFloatle z
-                P.putFloatle v
+            putPoint (Point xPos yPos zPos vel) = do
+                P.putFloatle xPos
+                P.putFloatle yPos
+                P.putFloatle zPos
+                P.putFloatle vel
 
             payload = P.runPut (magic >> testHeader >> tlv)
 
             -- Append another frame to verify alignment is maintained
             payload2 = payload <> payload
 
-            (frames, consumed, corrupted) = parseStream payload2
+            (parsedFrames, consumed, corrupted) = parseStream payload2
 
         -- Should parse both frames
-        length frames `shouldBe` 2
+        length parsedFrames `shouldBe` 2
         corrupted `shouldBe` False
         consumed `shouldBe` BL.length payload2
 
 
     it "Fuzz Testing: Handles random garbage without crashing" $ property $ \bytes -> do
         let input = BL.fromStrict (B.pack bytes)
-            (frames, consumed, corrupted) = parseStream input
+            (_parsedFrames, consumed, corrupted) = parseStream input
 
         -- We don't expect it to crash.
         -- If it found frames, good.
@@ -160,7 +163,7 @@ spec = do
     it "Fuzz Testing: Detects corruption in invalid streams" $ do
         -- Inject a Magic Word but with invalid Length
         let magic = mapM_ P.putWord8 [1, 2, 3, 4, 5, 6, 7, 8]
-            header = do
+            testHeader = do
                 P.putWord32le 0
                 P.putWord32le 10 -- Invalid length (too small, < 36)
                 P.putWord32le 0
@@ -169,15 +172,15 @@ spec = do
                 P.putWord32le 0
                 P.putWord32le 0
 
-            payload = P.runPut (magic >> header)
+            payload = P.runPut (magic >> testHeader)
 
             -- We expect parseStream to fail on this
-            (frames, consumed, corrupted) = parseStream payload
+            (parsedFrames, _consumed, corrupted) = parseStream payload
 
         -- Should return corrupted = True
         corrupted `shouldBe` True
         -- And probably 0 frames
-        length frames `shouldBe` 0
+        length parsedFrames `shouldBe` 0
 
     it "Correctly skips Unknown TLVs and parses subsequent TLVs" $ do
         let point = Point 1.0 2.0 3.0 4.0
@@ -202,15 +205,15 @@ spec = do
                 P.putWord32le 24 -- Length
                 mapM_ putPoint testPoints
 
-            putPoint (Point x y z v) = do
-                P.putFloatle x
-                P.putFloatle y
-                P.putFloatle z
-                P.putFloatle v
+            putPoint (Point xPos yPos zPos vel) = do
+                P.putFloatle xPos
+                P.putFloatle yPos
+                P.putFloatle zPos
+                P.putFloatle vel
 
             -- Header
             -- Total Packet Len = 36 (Header) + 20 (Unknown) + 24 (Valid) = 80
-            header = do
+            testHeader = do
                 P.putWord32le 0 -- Version
                 P.putWord32le 80 -- Total Len
                 P.putWord32le 0 -- Platform
@@ -219,13 +222,15 @@ spec = do
                 P.putWord32le 2 -- Num TLVs
                 P.putWord32le 0 -- SubFrame
 
-            payload = P.runPut (magic >> header >> unknownTlv >> validTlv)
+            payload = P.runPut (magic >> testHeader >> unknownTlv >> validTlv)
 
-            (frames, consumed, corrupted) = parseStream payload
+            (parsedFrames, consumed, corrupted) = parseStream payload
 
         corrupted `shouldBe` False
-        length frames `shouldBe` 1
-        let frame = head frames
+        length parsedFrames `shouldBe` 1
+        let frame = case parsedFrames of
+                      (f:_) -> f
+                      [] -> error "Expected at least one frame"
         length (Data.Types.points frame) `shouldBe` 1
         consumed `shouldBe` 80
 

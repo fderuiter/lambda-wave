@@ -1,7 +1,7 @@
 module SignalProcessing.FMCWSpec (spec) where
 
 import Test.Hspec
-import Test.QuickCheck
+-- import Test.QuickCheck -- Redundant import
 import Data.Complex
 import Numeric.LinearAlgebra
 import SignalProcessing.FMCW
@@ -31,7 +31,7 @@ spec = describe "SignalProcessing.FMCW" $ do
             -- Scenario: Signal has a frequency component at 100 Hz.
             -- We scan from 50 Hz to 150 Hz.
             let fs = 1000.0 -- Sample rate
-                n_samples = 100
+                n_samples = 100 :: Int
                 target_freq = 100.0
 
                 -- Generate signal: x[n] = exp(i * 2 * pi * f * n / fs)
@@ -52,9 +52,9 @@ spec = describe "SignalProcessing.FMCW" $ do
                     , cztSampleRate = fs
                     }
 
-                output = chirpZTransform params signal
-                magnitudes = cmap magnitude output
-                max_mag = maxElement magnitudes
+                cztOutput = chirpZTransform params signal -- Renamed from output
+                magnitudes = cmap magnitude cztOutput
+                -- max_mag = maxElement magnitudes -- Unused
                 max_idx = maxIndex magnitudes
 
                 -- Calculate which frequency the max index corresponds to
@@ -69,7 +69,7 @@ spec = describe "SignalProcessing.FMCW" $ do
     describe "Phase Unwrapping (Requirement FR-DSP-002)" $ do
         it "correctly unwraps a synthetic wrapping signal" $ do
             -- Generate true phase: linear ramp from 0 to 6*pi (3 wraps)
-            let n_samples = 100
+            let n_samples = 100 :: Int
                 true_phase = fromList [ 6 * pi * (fromIntegral i / fromIntegral n_samples) | i <- [0..n_samples-1] ] :: Vector Double
 
                 -- Wrap function: (x + pi) % 2pi - pi
@@ -130,10 +130,10 @@ spec = describe "SignalProcessing.FMCW" $ do
                     in simulate (k - 1) newMean
 
                 finalMean = simulate 100 initialMean
-                (_, output) = applyStaticClutterRemoval alpha finalMean input
+                (_, outputSignal) = applyStaticClutterRemoval alpha finalMean input -- Renamed
 
                 -- Output should be input - mean. If mean converges to input, output should be close to 0.
-                mag = norm_2 output
+                mag = norm_2 outputSignal
 
             mag `shouldSatisfy` (< 1.0e-3)
 
@@ -149,10 +149,10 @@ spec = describe "SignalProcessing.FMCW" $ do
                 -- New frame has static + dynamic
                 inputTotal = inputStatic + inputDynamic
 
-                (_, output) = applyStaticClutterRemoval alpha mean inputTotal
+                (_, outputSignal) = applyStaticClutterRemoval alpha mean inputTotal -- Renamed
 
                 -- Output should be roughly inputDynamic
-                diff = norm_2 (output - inputDynamic)
+                diff = norm_2 (outputSignal - inputDynamic)
 
             -- Should differ slightly due to alpha update, but be close
             diff `shouldSatisfy` (< 0.5)
