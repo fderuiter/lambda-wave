@@ -21,7 +21,7 @@ module Hardware.Consumer (
 
 import Control.Concurrent (threadDelay)
 import Control.Concurrent.STM
-import Control.Monad (unless, when)
+import Control.Monad (unless, when, replicateM)
 import Control.DeepSeq (force)
 import Control.Exception (evaluate)
 import Data.Word (Word8)
@@ -33,7 +33,7 @@ import qualified Data.ByteString as B
 import qualified Data.ByteString.Internal as BI
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.Binary.Get as G
-import qualified Data.Vector.Storable as V
+-- import qualified Data.Vector.Storable as V -- Removed dependency
 import System.IO (hPutStrLn, stderr)
 
 import FFI.RingBuffer.Types (RingBufferControl(..))
@@ -288,13 +288,7 @@ parseTLVs n = do
             parseTLVs (n - 1)
 
 getPoints :: Int -> G.Get [Point3D]
-getPoints n = do
-    -- Using Vector Storable would be more efficient here but 'Data.Types' uses [Point3D].
-    -- We will read into Vector Storable Point first (Zero Copy-ish if we could cast,
-    -- but ByteString is not guaranteed aligned, so we must copy to Storable Vector or read one by one).
-    -- Since we need to convert to Point3D (Double) anyway, we read floats and convert.
-    rawPoints <- V.replicateM n getPoint
-    return $ map toPoint3D (V.toList rawPoints)
+getPoints n = replicateM n (toPoint3D <$> getPoint)
 
 getPoint :: G.Get Point
 getPoint = do

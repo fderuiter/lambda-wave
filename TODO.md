@@ -44,39 +44,6 @@ This TODO document consolidates all actionable development items from the roadma
 
 ## Critical Path Items (P0)
 
-### P0-001: Complete Kalman Filter Implementation
-**Status:** 🔄 In Progress  
-**Phase:** 3.3 - Signal Processing Core  
-**Priority:** P0 (Critical for gating accuracy)
-
-**Description:**  
-Implement linear Kalman filter for state estimation to reduce noise in respiratory signal and provide predictive gating.
-
-**Requirements:**
-- FR-DSP-003: Kalman filter for motion prediction
-- Acceptance: RMSE < 1mm on synthetic noisy sine wave (SNR 10dB)
-
-**Tasks:**
-- [ ] Implement state vector [position, velocity, acceleration]
-- [ ] Implement prediction step using process model
-- [ ] Implement update step with measurement correction
-- [ ] Add noise covariance matrices (Q, R)
-- [ ] Write unit tests with synthetic data
-- [ ] Validate with QuickCheck properties (linearity, stability)
-- [ ] Benchmark latency (must be < 5ms per frame)
-
-**Dependencies:**
-- Phase 3.2 (Phase unwrapping) ✅ Complete
-- hmatrix library for matrix operations ✅ Available
-
-**Effort Estimate:** 2-3 weeks  
-**Assignee:** TBD  
-**Related Files:**
-- `src/SignalProcessing/Regression.hs`
-- `test/RegressionSpec.hs`
-
----
-
 ### P0-002: Implement Full Watchdog Functionality
 **Status:** ⏳ Planned  
 **Phase:** 4.1 - Safety & Control  
@@ -662,6 +629,13 @@ Investigate web-based UI as alternative to OpenGL for cross-platform deployment.
 - QuickCheck properties validated
 - **Completed:** Phase 3 (Most recent)
 
+#### ✅ 3.3: Kalman Filter Implementation (P0-001)
+- Implemented state vector [position, velocity, acceleration] using internal zero-dependency types (V3, M33)
+- Prediction and Update steps implemented with Joseph form covariance update
+- Unit tests pass with RMSE < 1.0mm (Verified via `KalmanCheck.hs`)
+- Safety checks for NaN/Infinity inputs implemented
+- **Completed:** Phase 3
+
 ---
 
 ## Release Checklist (v1.0.0)
@@ -669,7 +643,7 @@ Investigate web-based UI as alternative to OpenGL for cross-platform deployment.
 **Target Date:** TBD
 
 Blockers:
-- [ ] P0-001: Kalman filter implementation
+- [x] P0-001: Kalman filter implementation
 - [ ] P0-002: Full watchdog functionality
 - [ ] P0-003: Hardware validation with motion phantom
 
