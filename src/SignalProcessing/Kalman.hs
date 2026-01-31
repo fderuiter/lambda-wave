@@ -38,8 +38,22 @@ module SignalProcessing.Kalman
     , predict
     , update
     , safeUpdate
-    , V3(..) -- Exported for testing/inspection
+    , V3(..)
     , M33(..)
+    -- * Exported internal helpers for inspection/testing
+    , zeroV3
+    , zeroM33
+    , identM33
+    , addV3
+    , subV3
+    , addM33
+    , subM33
+    , transposeM33
+    , scaleM33
+    , scaleV3
+    , multMV
+    , multMM
+    , outerProductV3
     ) where
 
 import Prelude hiding (zipWith)
@@ -104,10 +118,10 @@ scaleV3 s (V3 a b c) = V3 (s*a) (s*b) (s*c)
 
 -- | Matrix-Vector Multiplication (M * v)
 multMV :: M33 -> V3 -> V3
-multMV (M33 (V3 a1 b1 c1) (V3 a2 b2 c2) (V3 a3 b3 c3)) (V3 x y z) =
-    V3 (a1*x + b1*y + c1*z)
-       (a2*x + b2*y + c2*z)
-       (a3*x + b3*y + c3*z)
+multMV (M33 (V3 a1 b1 c1) (V3 a2 b2 c2) (V3 a3 b3 c3)) (V3 vecX vecY vecZ) =
+    V3 (a1*vecX + b1*vecY + c1*vecZ)
+       (a2*vecX + b2*vecY + c2*vecZ)
+       (a3*vecX + b3*vecY + c3*vecZ)
 
 -- | Matrix-Matrix Multiplication (A * B)
 multMM :: M33 -> M33 -> M33

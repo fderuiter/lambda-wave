@@ -1,4 +1,13 @@
-module Data.Config where
+module Data.Config
+    ( radarMountOffset
+    , gantryAngle
+    , gatingTolerance
+    , targetHeight
+    , watchdogTimeoutNS
+    , uartBaudRate
+    ) where
+
+import Data.Word (Word64)
 
 -- | System Configuration Constants
 
@@ -17,7 +26,7 @@ targetHeight :: Double
 targetHeight = 10.0 -- mm (Example target)
 
 -- | Safety
-watchdogTimeoutNS :: Integer
+watchdogTimeoutNS :: Word64
 watchdogTimeoutNS = 100 * 1000 * 1000 -- 100ms in nanoseconds
 
 -- | Serial Port

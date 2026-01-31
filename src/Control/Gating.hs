@@ -5,8 +5,9 @@ import Data.Types
 import Data.Config
 import Control.Mesher (fitPolynomialSurface)
 import Control.Concurrent.STM
-import System.Clock
+import GHC.Clock (getMonotonicTime)
 import Data.List (foldl')
+import Data.Word (Word64)
 
 -- | The main logic function called every frame
 processFrame :: TVar SystemState -> [Point3D] -> IO ()
@@ -26,9 +27,11 @@ processFrame stateVar pts = do
                    then BeamOn
                    else BeamOff
 
-    currTime <- getTime Monotonic
+    currTimeDouble <- getMonotonicTime
+    let currTimeNS = floor (currTimeDouble * 1.0e9) :: Word64
+
     atomically $ modifyTVar' stateVar $ \s -> s
         { currentPoints = pts
         , beamState = newState
-        , lastFrameTime = currTime
+        , lastFrameTime = currTimeNS
         }
