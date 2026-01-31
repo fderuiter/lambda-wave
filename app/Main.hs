@@ -1,9 +1,11 @@
 {-# LANGUAGE CPP #-}
-module Main where
+module Main (main) where
 
 import Control.Concurrent (forkOS, setNumCapabilities)
 import Control.Concurrent.STM
-import System.Clock
+-- import System.Clock -- Removed
+import GHC.Clock (getMonotonicTime)
+import Data.Word (Word64)
 import System.Environment (lookupEnv)
 import Data.Maybe (fromMaybe)
 import System.Posix.IO (openFd, OpenMode(..), defaultFileFlags, OpenFileFlags(..))
@@ -24,11 +26,13 @@ main = do
     setNumCapabilities 2
     putStrLn "Initializing Lambda-Wave System..."
 
-    startTime <- getTime Monotonic
+    startTimeDouble <- getMonotonicTime
+    let startTimeNS = floor (startTimeDouble * 1.0e9) :: Word64
+
     let initialState = SystemState
           { currentPoints = []
           , beamState = BeamOff
-          , lastFrameTime = startTime
+          , lastFrameTime = startTimeNS
           , isocenter = Point3D 0 0 0 0 0
           }
 
