@@ -98,13 +98,16 @@ ingestionLoop fp fd = forkOS loop
   where
     loop = safeLoop `catch` \e -> do
         hPutStrLn stderr $ "CRITICAL FAILURE in Ingestion Thread: " ++ show (e :: SomeException)
+        hPutStrLn stderr "Ingestion Thread Terminated - System Halted"
         -- We terminate the thread, but at least we logged it.
         return ()
 
     safeLoop = do
         bytesRead <- readFromUart fp fd
         if bytesRead < 0
-            then hPutStrLn stderr "CRITICAL FAILURE: readFromUart returned negative value. Ingestion thread TERMINATING. System may be unresponsive."
+            then do
+                hPutStrLn stderr "CRITICAL FAILURE: readFromUart returned negative value."
+                hPutStrLn stderr "Ingestion Thread Terminated - System Halted"
             else do
                 when (bytesRead == 0) $ threadDelay 1000 -- 1ms pause if full or empty
                 loop

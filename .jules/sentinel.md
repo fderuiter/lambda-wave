@@ -31,3 +31,7 @@ The `processFrame` function used `sum (map pz pts)` to calculate the average hei
 ## 2024-05-28 - [Risk Level: HIGH] **Vector:** src/Hardware/Consumer.hs **Hazard:** Data Corruption / Stream Desynchronization
 The `parseTLVs` function assumed `tlvLen` perfectly matched the size of the point payload (16 bytes per point). If the sensor sent padding bytes or the `tlvLen` included headers differently than expected, the parser would not consume the extra bytes. This would leave the stream pointer misaligned for the next TLV or frame, causing the parser to interpret garbage as headers.
 **Fix:** Updated `parseTLVs` to calculate the actual bytes read and explicitly `G.skip` any remaining bytes defined by `tlvLen`.
+
+## 2024-05-29 - [Risk Level: HIGH] **Vector:** src/Hardware/Consumer.hs **Hazard:** Denial of Service / Buffer Desynchronization
+The `parseTLVs` function trusted the `tlvLen` field provided in the packet header without verifying it against the remaining packet payload size. A malicious or malformed packet could declare a huge `tlvLen`, causing the parser to wait indefinitely for bytes that never arrive (`Partial` state) or consume subsequent packets as payload, leading to stream desynchronization and potential crash.
+**Fix:** Implemented strict bounds checking in `parseTLVs` by passing the calculated `maxPayload` size. The parser now fails immediately if `tlvLen` < 8 or `tlvLen` > `remainingPayload`.

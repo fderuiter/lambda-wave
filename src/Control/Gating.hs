@@ -3,7 +3,7 @@ module Control.Gating (processFrame) where
 
 import Data.Types
 import Data.Config
-import Control.Mesher (fitPolynomialSurface)
+-- import Control.Mesher (fitPolynomialSurface)
 import Control.Concurrent.STM
 import System.Clock
 import Data.List (foldl')
@@ -12,7 +12,7 @@ import Data.List (foldl')
 processFrame :: TVar SystemState -> [Point3D] -> IO ()
 processFrame stateVar pts = do
     -- 1. Mesh the surface
-    let _coeffs = fitPolynomialSurface pts
+    -- let _coeffs = fitPolynomialSurface pts
     -- (In a real system, we'd use coeffs to calculate amplitude at isocenter)
 
     -- Calculate average height using a strict fold to prevent thunk leaks

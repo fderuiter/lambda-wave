@@ -246,24 +246,32 @@ getRadarFrame = do
     -- We already consumed Magic (8). Then 7 words (28). Total 36.
 
     -- We need to parse 'numTLVs'
-    points <- parseTLVs (fromIntegral numTLVs)
+    -- Enforce strict bounds check to prevent DoS via huge tlvLen
+    let maxPayload = fromIntegral totalLen - 36
+    points <- parseTLVs (fromIntegral numTLVs) maxPayload
 
     return $ RadarFrame B.empty points -- Storing empty raw header for now to save space
 
 -- | Parse TLVs
-parseTLVs :: Int -> G.Get [Point3D]
-parseTLVs 0 = return []
-parseTLVs n = do
+parseTLVs :: Int -> Int -> G.Get [Point3D]
+parseTLVs 0 _ = return []
+parseTLVs n maxLen = do
     -- TLV Header: Type (4), Length (4)
     tlvType <- G.getWord32le
     tlvLen <- G.getWord32le
+
+    -- Sentinel: Verify TLV Length integrity
+    when (tlvLen < 8) $ fail "Invalid TLV Length (Partial Header)"
+    when (fromIntegral tlvLen > maxLen) $ fail "TLV Length exceeds packet payload"
+
+    let remainingMax = maxLen - fromIntegral tlvLen
 
     case tlvType of
         1 -> do -- Detected Points
             -- Payload: Array of Point {x,y,z,v} (4 * 4 = 16 bytes)
             -- TI SDK Standard: tlvLen includes Header (8 bytes).
             -- So Payload Length = tlvLen - 8.
-            let payloadLen = if tlvLen >= 8 then tlvLen - 8 else 0
+            let payloadLen = tlvLen - 8 -- Safe due to check above
 
             -- Num points
             let numPoints = fromIntegral payloadLen `div` 16
@@ -277,15 +285,14 @@ parseTLVs n = do
 
             when (padding > 0) $ G.skip padding
 
-            rest <- parseTLVs (n - 1)
+            rest <- parseTLVs (n - 1) remainingMax
             return (points ++ rest)
         _ -> do
             -- Skip unknown TLV
             -- tlvLen includes Header (8 bytes). We already read header.
-            when (tlvLen < 8) $ fail "Invalid TLV Length (Partial Header)"
             let skipLen = fromIntegral (tlvLen - 8)
             G.skip skipLen
-            parseTLVs (n - 1)
+            parseTLVs (n - 1) remainingMax
 
 getPoints :: Int -> G.Get [Point3D]
 getPoints n = do
