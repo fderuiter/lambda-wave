@@ -1,4 +1,4 @@
-module Hardware.Control (configureSensor, parseConfig) where
+module Hardware.Control (configureSensor, parseConfig, configureRawSerial) where
 
 import System.Hardware.Serialport
 import Control.Monad (forM_)
@@ -7,6 +7,8 @@ import qualified Data.ByteString.Char8 as BC
 import Control.Exception (try, IOException, bracket)
 import Data.Char (isSpace)
 import Data.List (dropWhileEnd)
+import System.Posix.Terminal
+import System.Posix.Types (Fd(..))
 
 -- | Parses the configuration file content into a list of commands.
 -- Ignores comments (starting with #) and empty lines.
@@ -54,3 +56,28 @@ configureSensor configPath portPath = do
                 Right _ -> do
                     putStrLn "[Control] Configuration Complete."
                     return (Right ())
+
+-- | Configures a file descriptor for Raw Serial communication (Data Port).
+-- Disables Canonical Mode (ICANON), Echo, Signals, and sets Baud Rate.
+-- This is critical for receiving binary data from the radar.
+--
+-- Note: Requires 'B921600' support. If compilation fails, check unix package version.
+configureRawSerial :: Fd -> IO ()
+configureRawSerial fd = do
+    attrs <- getTerminalAttributes fd
+    let rawAttrs = attrs
+            `withoutMode` ProcessInput      -- ICANON (Canonical Mode)
+            `withoutMode` EchoLocal         -- ECHO
+            `withoutMode` EchoLF            -- ECHONL
+            `withoutMode` KeyboardInterrupts -- ISIG (Signals like SIGINT on Ctrl-C)
+            `withoutMode` ExtendedFunctions -- IEXTEN
+            `withoutMode` MapCRtoLF         -- ICRNL
+            `withoutMode` MapLFtoCR         -- INLCR
+            `withoutMode` StartStopOutput   -- IXON/IXOFF (Flow Control)
+            `withCC` (VMIN, '\1')           -- Block until 1 byte
+            `withCC` (VTIME, '\0')          -- No timeout
+            `withInputSpeed` B921600
+            `withOutputSpeed` B921600
+
+    setTerminalAttributes fd rawAttrs Immediately
+    putStrLn "[Control] Data Port Configured (Raw Mode, 921600 baud)"

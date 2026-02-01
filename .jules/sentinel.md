@@ -31,3 +31,7 @@ The `processFrame` function used `sum (map pz pts)` to calculate the average hei
 ## 2024-05-28 - [Risk Level: HIGH] **Vector:** src/Hardware/Consumer.hs **Hazard:** Data Corruption / Stream Desynchronization
 The `parseTLVs` function assumed `tlvLen` perfectly matched the size of the point payload (16 bytes per point). If the sensor sent padding bytes or the `tlvLen` included headers differently than expected, the parser would not consume the extra bytes. This would leave the stream pointer misaligned for the next TLV or frame, causing the parser to interpret garbage as headers.
 **Fix:** Updated `parseTLVs` to calculate the actual bytes read and explicitly `G.skip` any remaining bytes defined by `tlvLen`.
+
+## 2026-05-29 - [Risk Level: HIGH] **Vector:** app/Main.hs **Hazard:** Data Corruption (Canonical Mode)
+The Data Port (`sensorPort`) is opened via `openFd` but never configured to Raw Mode. `openFd` does not modify terminal attributes. If the system defaults to Canonical Mode (`ICANON`), the `read` syscall in `ring_buffer.cpp` will wait for newlines (`0x0A`) and potentially interpret control characters, corrupting the binary radar stream.
+**Fix:** Implement `configureRawSerial` in `Hardware/Control` using `System.Posix.Terminal` to disable `ICANON`, `ECHO`, `ISIG` and set correct Baud Rate (921600). Invoke this on the `Fd` in `Main.hs`.

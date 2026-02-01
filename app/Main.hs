@@ -11,6 +11,7 @@ import System.Posix.Files (ownerReadMode, ownerWriteMode, unionFileModes)
 
 import Data.Types
 import qualified FFI.RingBuffer.IO as RingBuffer
+import Hardware.Control (configureRawSerial)
 import Hardware.Consumer (consumerLoop)
 import Safety.Watchdog
 import Safety.Audit
@@ -65,6 +66,9 @@ main = do
 #else
     fd <- openFd sensorPort ReadWrite (Just (ownerReadMode `unionFileModes` ownerWriteMode)) defaultFileFlags { nonBlock = False }
 #endif
+
+    -- Configure Port (Raw Mode) to prevent data corruption
+    configureRawSerial fd
 
     -- 2. Hardware Ingestion (Dedicated Thread)
     -- ingestionLoop accepts ForeignPtr
