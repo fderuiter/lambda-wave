@@ -1,33 +1,25 @@
 {-# LANGUAGE StrictData #-}
+{-# LANGUAGE BangPatterns #-}
 
 {-|
 Module      : SignalProcessing.Kalman
-Description : 3-state Kalman Filter for respiratory motion tracking
+Description : 3-state Kalman Filter for respiratory motion tracking (Zero-Dependency)
 Copyright   : (c) 2024-2026 Frederick de Ruiter, Ayoola Okuribido
 License     : BSD-3-Clause
 Maintainer  : Frederick de Ruiter <fpderuiter@gmail.com>
 
 Implements a linear Kalman filter with constant acceleration motion model
-for denoising mmWave radar displacement measurements in radiation therapy.
+for denoising mmWave radar displacement measurements.
 
-This module addresses requirement FR-DSP-003 and task P0-001 from the project roadmap.
-
-The filter processes unwrapped phase displacement from the FMCW radar to output
-smoothed respiratory amplitude (Position, Velocity, Acceleration) suitable for
-real-time gating decisions.
+This implementation uses internal strict types to avoid dependencies on
+external linear algebra libraries (e.g., hmatrix) which are not available
+in the certified build environment.
 
 = Safety Note
-
-This is a Class C medical device component (IEC 62304). The implementation includes:
-
-* Joseph form covariance updates for numerical stability
-* NaN/Infinity input validation
-* Exception handling for matrix singularities
-
-= Clinical Validation
-
-Noise parameters (procNoise, measNoise) require tuning on clinical phantom data
-per the integration guide. Target performance: RMSE < 1mm, latency < 5ms per frame.
+This is a Class C medical device component.
+* Total functions only (no runtime exceptions).
+* strict data types to prevent space leaks.
+* NaN/Infinity inputs are explicitly rejected (State remains unchanged).
 -}
 
 module SignalProcessing.Kalman
@@ -36,115 +28,232 @@ module SignalProcessing.Kalman
     , initKalman
     , predict
     , update
-    , safeUpdate
+    , V3(..)
+    , M33(..)
     ) where
 
-import Numeric.LinearAlgebra
-import Prelude hiding ((<>))
-import Control.Exception (catch, SomeException)
-import System.IO.Unsafe (unsafePerformIO)
+import Prelude hiding (sum)
+
+-- | Strict 3-Vector
+data V3 = V3 !Double !Double !Double
+    deriving (Show, Eq)
+
+-- | Strict 3x3 Matrix (Row-Major: Row1, Row2, Row3)
+data M33 = M33 !V3 !V3 !V3
+    deriving (Show, Eq)
 
 -- | The State of the Filter
 data KalmanState = KalmanState
-    { x :: Vector R  -- ^ State Vector [Position, Velocity, Acceleration] (3x1)
-    , p :: Matrix R  -- ^ Error Covariance Matrix (3x3)
+    { x :: !V3  -- ^ State Vector [Position, Velocity, Acceleration]
+    , p :: !M33 -- ^ Error Covariance Matrix
     } deriving (Show, Eq)
 
--- | Static Configuration (Noise characteristics)
+-- | Static Configuration
 data KalmanConfig = KalmanConfig
-    { procNoise :: Double -- ^ Q scalar (Process noise variance)
-    , measNoise :: Double -- ^ R scalar (Measurement noise variance)
+    { procNoise :: !Double -- ^ Q scalar (Process noise variance)
+    , measNoise :: !Double -- ^ R scalar (Measurement noise variance)
     } deriving (Show, Eq)
+
+--------------------------------------------------------------------------------
+-- Internal Linear Algebra (Total Functions)
+--------------------------------------------------------------------------------
+
+zeroV3 :: V3
+zeroV3 = V3 0 0 0
+
+ident3 :: M33
+ident3 = M33 (V3 1 0 0) (V3 0 1 0) (V3 0 0 1)
+
+addV :: V3 -> V3 -> V3
+addV (V3 a1 b1 c1) (V3 a2 b2 c2) = V3 (a1+a2) (b1+b2) (c1+c2)
+
+subV :: V3 -> V3 -> V3
+subV (V3 a1 b1 c1) (V3 a2 b2 c2) = V3 (a1-a2) (b1-b2) (c1-c2)
+
+scaleV :: Double -> V3 -> V3
+scaleV s (V3 a b c) = V3 (s*a) (s*b) (s*c)
+
+dotV :: V3 -> V3 -> Double
+dotV (V3 a1 b1 c1) (V3 a2 b2 c2) = a1*a2 + b1*b2 + c1*c2
+
+addM :: M33 -> M33 -> M33
+addM (M33 r1 r2 r3) (M33 s1 s2 s3) = M33 (addV r1 s1) (addV r2 s2) (addV r3 s3)
+
+subM :: M33 -> M33 -> M33
+subM (M33 r1 r2 r3) (M33 s1 s2 s3) = M33 (subV r1 s1) (subV r2 s2) (subV r3 s3)
+
+scaleM :: Double -> M33 -> M33
+scaleM s (M33 r1 r2 r3) = M33 (scaleV s r1) (scaleV s r2) (scaleV s r3)
+
+-- | Matrix Transpose
+transM :: M33 -> M33
+transM (M33 (V3 a1 a2 a3)
+            (V3 b1 b2 b3)
+            (V3 c1 c2 c3)) =
+       M33 (V3 a1 b1 c1)
+           (V3 a2 b2 c2)
+           (V3 a3 b3 c3)
+
+-- | Matrix-Vector Multiplication (M * v)
+mvMul :: M33 -> V3 -> V3
+mvMul (M33 r1 r2 r3) v = V3 (dotV r1 v) (dotV r2 v) (dotV r3 v)
+
+-- | Matrix-Matrix Multiplication (A * B)
+mmMul :: M33 -> M33 -> M33
+mmMul a b =
+    let bt = transM b -- Transpose B for row-dot-row operations
+        M33 c1 c2 c3 = bt
+    in M33 (V3 (dotV (row1 a) c1) (dotV (row1 a) c2) (dotV (row1 a) c3))
+           (V3 (dotV (row2 a) c1) (dotV (row2 a) c2) (dotV (row2 a) c3))
+           (V3 (dotV (row3 a) c1) (dotV (row3 a) c2) (dotV (row3 a) c3))
+  where
+    row1 (M33 r _ _) = r
+    row2 (M33 _ r _) = r
+    row3 (M33 _ _ r) = r
+
+-- | Outer Product of two vectors (v * v^T) -> M33
+outerV :: V3 -> V3 -> M33
+outerV (V3 a1 b1 c1) (V3 a2 b2 c2) =
+    M33 (V3 (a1*a2) (a1*b2) (a1*c2))
+        (V3 (b1*a2) (b1*b2) (b1*c2))
+        (V3 (c1*a2) (c1*b2) (c1*c2))
+
+-- | Determinant of 3x3
+detM :: M33 -> Double
+detM (M33 (V3 a b c)
+          (V3 d e f)
+          (V3 g h i)) =
+    a * (e*i - f*h) - b * (d*i - f*g) + c * (d*h - e*g)
+
+-- | Inverse of 3x3
+-- Returns Identity if singular (Total Function Requirement)
+invM :: M33 -> M33
+invM m@(M33 (V3 a b c)
+            (V3 d e f)
+            (V3 g h i)) =
+    let det = detM m
+    in if abs det < 1e-12
+       then ident3 -- Fallback for singular matrix
+       else
+         let invDet = 1.0 / det
+             -- Cofactors
+             c11 =   e*i - f*h
+             c12 = -(d*i - f*g)
+             c13 =   d*h - e*g
+             c21 = -(b*i - c*h)
+             c22 =   a*i - c*g
+             c23 = -(a*h - b*g)
+             c31 =   b*f - c*e
+             c32 = -(a*f - c*d)
+             c33 =   a*e - b*d
+
+             -- Adjugate (Transpose of Cofactor Matrix)
+             adj = M33 (V3 c11 c21 c31)
+                       (V3 c12 c22 c32)
+                       (V3 c13 c23 c33)
+         in scaleM invDet adj
+
+--------------------------------------------------------------------------------
+-- Kalman Logic
+--------------------------------------------------------------------------------
 
 -- | Initialize the filter
 -- Initial state: Position = measurement, Velocity = 0, Accel = 0
--- Initial P: Identity * initial uncertainty
 initKalman :: Double -> KalmanConfig -> KalmanState
 initKalman initialMeas config = KalmanState
-    { x = vector [initialMeas, 0, 0]
-    , p = scale (measNoise config) (ident 3)  -- Scale uncertainty by measurement noise
+    { x = V3 initialMeas 0 0
+    , p = scaleM (measNoise config) ident3
     }
 
 -- | Prediction Step
 -- Model: Constant Acceleration
--- x_{k|k-1} = F * x_{k-1|k-1}
--- P_{k|k-1} = F * P_{k-1|k-1} * F^T + Q
---
--- Returns the current state unchanged if dt is invalid (negative, zero, NaN, or Infinity)
+-- x = F * x
+-- P = F * P * F^T + Q
 predict :: Double -> KalmanConfig -> KalmanState -> KalmanState
 predict dt config state
   | dt <= 0 || isNaN dt || isInfinite dt = state
   | otherwise = KalmanState { x = xPred, p = pPred }
   where
-    -- 1. Construct State Transition Matrix (F)
+    -- F Matrix
     -- | 1  dt  0.5*dt^2 |
     -- | 0  1   dt       |
     -- | 0  0   1        |
-    fMat = (3><3) [ 1, dt, 0.5 * dt**2
-                  , 0, 1,  dt
-                  , 0, 0,  1
-                  ]
+    fMat = M33 (V3 1 dt (0.5 * dt**2))
+               (V3 0 1  dt)
+               (V3 0 0  1)
 
-    -- 2. Construct Process Noise Matrix (Q)
-    -- Simplified discrete noise model for Constant Acceleration
-    -- Assumes process noise enters as random acceleration disturbances
+    -- Q Matrix (Process Noise)
+    -- G = [0.5*dt^2, dt, 1]^T
+    -- Q = q * G * G^T
     qScalar = procNoise config
-    g = vector [0.5 * dt**2, dt, 1] -- Noise gain vector: acceleration noise propagates to position and velocity
-    qMat = scale qScalar (asColumn g <> asRow g)
+    gVec = V3 (0.5 * dt**2) dt 1
+    qMat = scaleM qScalar (outerV gVec gVec)
 
-    -- 3. Perform Prediction
-    xPred = fMat #> x state
-    pPred = (fMat <> p state <> tr fMat) + qMat
+    -- Predict
+    xPred = mvMul fMat (x state)
+    -- P' = F * P * F^T + Q
+    pPred = addM (mmMul fMat (mmMul (p state) (transM fMat))) qMat
 
--- | Update Step (Measurement Correction)
+-- | Update Step
 -- K = P * H^T * (H * P * H^T + R)^-1
 -- x = x + K * (z - H * x)
--- P = (I - K * H) * P
+-- P = (I - K * H) * P * (I - K * H)^T + K * R * K^T (Joseph Form)
 update :: Double -> KalmanConfig -> KalmanState -> KalmanState
 update measurement config state
-    -- Reject invalid inputs immediately
     | isNaN measurement || isInfinite measurement = state
     | otherwise = KalmanState { x = xNew, p = pNew }
   where
-    -- Measurement Matrix (H): We observe only the first component (Position)
-    hMat = (1><3) [ 1, 0, 0 ]
+    -- H = [1, 0, 0]
+    hVec = V3 1 0 0
     
-    -- Measurement (z)
-    z = vector [measurement]
+    -- z = measurement
+    z = measurement
 
-    -- Measurement Noise (R)
-    rMat = (1><1) [ measNoise config ]
+    -- R = measurement noise
+    rVal = measNoise config
 
-    -- 1. Calculate Residual (Innovation)
+    -- 1. Innovation (Residual)
     -- y = z - H * x
-    y = z - (hMat #> x state)
+    -- H*x is just the first component of state x (dot product with [1,0,0])
+    (V3 px _ _) = x state
+    y = z - px
 
-    -- 2. Calculate Innovation Covariance (S)
+    -- 2. Innovation Covariance (S)
     -- S = H * P * H^T + R
-    sMat = (hMat <> p state <> tr hMat) + rMat
+    -- H * P * H^T simplifies to P[0,0]
+    (M33 (V3 p00 _ _) _ _) = p state
+    sVal = p00 + rVal
 
-    -- 3. Calculate Optimal Kalman Gain (K)
-    -- K = P * H^T * inv(S)
-    kMat = p state <> tr hMat <> inv sMat
+    -- 3. Kalman Gain (K)
+    -- K = P * H^T * (1/S)
+    -- H^T = [1, 0, 0]^T
+    -- P * H^T is the first column of P
+    (M33 (V3 p11 p12 p13) (V3 p21 p22 p23) (V3 p31 p32 p33)) = p state
+    -- Column 1 of P (since P is symmetric, Row 1 = Col 1, but let's be generic)
+    -- Wait, M33 is row-major. Col 1 is (p11, p21, p31)
+    col1P = V3 p11 p21 p31
 
-    -- 4. Update State Estimate
+    invS = if abs sVal < 1e-12 then 0 else 1.0 / sVal
+    kVec = scaleV invS col1P
+
+    -- 4. Update State
     -- x_new = x + K * y
-    xNew = x state + (kMat #> y)
+    xNew = addV (x state) (scaleV y kVec)
 
-    -- 5. Update Error Covariance (Joseph form for numerical stability)
-    -- P_new = (I - K * H) * P * (I - K * H)^T + K * R * K^T
-    iMat = ident 3
-    iMinusKH = iMat - (kMat <> hMat)
-    pNew = (iMinusKH <> p state <> tr iMinusKH) + (kMat <> rMat <> tr kMat)
+    -- 5. Update Covariance (Joseph Form)
+    -- I - K * H
+    -- K * H is outer product K * [1, 0, 0] -> Matrix where Col 1 is K, others 0
+    -- Let's do it properly: outerV K H
+    khMatFull = outerV kVec hVec
 
--- | Safe Update Function
--- Catches matrix singularities or runtime errors and returns the previous state
--- In production, errors should be sent to the Audit module
-safeUpdate :: Double -> KalmanConfig -> KalmanState -> KalmanState
-safeUpdate measurement config state = 
-    unsafePerformIO $ catch (return $! update measurement config state) handler
-  where
-    handler :: SomeException -> IO KalmanState
-    handler _e = do
-        -- TODO: In production, log to Audit module
-        return state -- Fallback: Ignore measurement, keep prediction
+    iMinusKH = subM ident3 khMatFull
+
+    -- Term 1: (I - KH) * P * (I - KH)^T
+    term1 = mmMul iMinusKH (mmMul (p state) (transM iMinusKH))
+
+    -- Term 2: K * R * K^T
+    -- K * K^T * R
+    term2 = scaleM rVal (outerV kVec kVec)
+
+    pNew = addM term1 term2
+
