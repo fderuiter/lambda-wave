@@ -67,15 +67,16 @@ configureRawSerial fd = do
     attrs <- getTerminalAttributes fd
     let rawAttrs = attrs
             `withoutMode` ProcessInput      -- ICANON (Canonical Mode)
-            `withoutMode` EchoLocal         -- ECHO
+            `withoutMode` EnableEcho        -- ECHO
             `withoutMode` EchoLF            -- ECHONL
             `withoutMode` KeyboardInterrupts -- ISIG (Signals like SIGINT on Ctrl-C)
             `withoutMode` ExtendedFunctions -- IEXTEN
             `withoutMode` MapCRtoLF         -- ICRNL
             `withoutMode` MapLFtoCR         -- INLCR
             `withoutMode` StartStopOutput   -- IXON/IXOFF (Flow Control)
-            `withCC` (VMIN, '\1')           -- Block until 1 byte
-            `withCC` (VTIME, '\0')          -- No timeout
+            -- VMIN and VTIME share the same slots as EndOfFile (VEOF) and EndOfLine (VEOL) in non-canonical mode.
+            `withCC` (EndOfFile, '\1')      -- VMIN = 1 (Block until 1 byte)
+            `withCC` (EndOfLine, '\0')      -- VTIME = 0 (No timeout)
             `withInputSpeed` B921600
             `withOutputSpeed` B921600
 
