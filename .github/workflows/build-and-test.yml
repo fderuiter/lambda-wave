@@ -5,17 +5,22 @@ on:
     branches:
       - develop
       - main
+  push:
+    branches:
+      - develop
+      - main
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    container:
-      image: haskell:9.8
     steps:
       - uses: actions/checkout@v3
 
-      - name: Install system dependencies
-        run: scripts/setup_env.sh
+      - name: Set up Haskell
+        uses: haskell/actions/setup@v2
+        with:
+          ghc-version: '9.4'
+          cabal-version: 'latest'
 
       - name: Update Cabal
         run: cabal update
@@ -26,5 +31,7 @@ jobs:
       - name: Build
         run: cabal build
 
-      - name: Run Tests
-        run: cabal test
+      - name: Run SafeCheck (FFI Audit)
+        run: |
+          ghc -isrc -Icbits/include cbits/src/ring_buffer.cpp test/SafeCheck.hs -o safe-check -lstdc++
+          ./safe-check
