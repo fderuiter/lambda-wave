@@ -1,5 +1,4 @@
 {-# LANGUAGE StrictData #-}
-{-# LANGUAGE BangPatterns #-}
 
 {-|
 Module      : SignalProcessing.Kalman

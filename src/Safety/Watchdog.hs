@@ -26,20 +26,24 @@ import Data.Types
 import Data.Config (watchdogTimeoutNS)
 import Control.Concurrent.STM
 import Control.Concurrent (threadDelay)
-import System.Clock
 import Control.Monad (forever, when)
 import System.Exit (exitFailure)
+import Hardware.Control (getMonotonicTimeNS)
 
 -- | The Watchdog Loop
 -- Kills the process if the main Gating Loop has not reported progress within the timeout.
 watchdogLoop :: TVar SystemState -> IO ()
 watchdogLoop stateVar = forever $ do
-    now <- getTime Monotonic
+    now <- getMonotonicTimeNS
     lastTime <- lastFrameTime <$> readTVarIO stateVar
 
-    let diff = toNanoSecs (diffTimeSpec now lastTime)
+    -- lastFrameTime is now Word64 (ns), now is Word64 (ns)
+    -- We need to handle potential wrap around or just standard substraction (unsigned)
+    -- But since it's monotonic starting from boot/start, and Word64 is huge (584 years), we are fine.
 
-    when (diff > watchdogTimeoutNS) $ do
+    let diff = if now >= lastTime then now - lastTime else 0 -- Should not happen with monotonic clock unless restart
+
+    when (diff > fromIntegral watchdogTimeoutNS) $ do
         putStrLn "!!! WATCHDOG TRIP: SYSTEM FROZEN !!!"
         putStrLn "!!! FORCING BEAM OFF !!!"
         -- In real HW, this would toggle a GPIO pin immediately

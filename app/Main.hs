@@ -1,9 +1,8 @@
 {-# LANGUAGE CPP #-}
-module Main where
+module Main (main) where
 
 import Control.Concurrent (forkOS, setNumCapabilities)
 import Control.Concurrent.STM
-import System.Clock
 import System.Environment (lookupEnv)
 import Data.Maybe (fromMaybe)
 import System.Posix.IO (openFd, OpenMode(..), defaultFileFlags, OpenFileFlags(..))
@@ -11,7 +10,7 @@ import System.Posix.Files (ownerReadMode, ownerWriteMode, unionFileModes)
 
 import Data.Types
 import qualified FFI.RingBuffer.IO as RingBuffer
-import Hardware.Control (configureRawSerial)
+import Hardware.Control (configureRawSerial, getMonotonicTimeNS)
 import Hardware.Consumer (consumerLoop)
 import Safety.Watchdog
 import Safety.Audit
@@ -25,7 +24,7 @@ main = do
     setNumCapabilities 2
     putStrLn "Initializing Lambda-Wave System..."
 
-    startTime <- getTime Monotonic
+    startTime <- getMonotonicTimeNS
     let initialState = SystemState
           { currentPoints = []
           , beamState = BeamOff

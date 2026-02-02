@@ -5,7 +5,7 @@ import Control.Concurrent.STM
 import qualified Control.Concurrent
 import System.IO
 import Control.Monad (forever)
-import System.Clock
+import Hardware.Control (getRealTimeNS)
 
 -- | Logs decisions to a file
 auditLoop :: TVar SystemState -> FilePath -> IO ()
@@ -14,13 +14,9 @@ auditLoop stateVar logPath = do
         hSetBuffering h LineBuffering
         forever $ do
             state <- readTVarIO stateVar
-            -- In a real app, we'd wait for a change or tick
-            -- For now, just log periodically?
-            -- Better: use a TChan for audit events.
-            -- But since we only have stateVar, let's just log every 100ms
 
-            now <- getTime Realtime
-            let entry = show (toNanoSecs now) ++ "," ++ show (beamState state)
+            now <- getRealTimeNS
+            let entry = show now ++ "," ++ show (beamState state)
             hPutStrLn h entry
 
             Control.Concurrent.threadDelay 100000

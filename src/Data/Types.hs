@@ -5,13 +5,17 @@ module Data.Types (
     Point(..),
     BeamState(..),
     SystemState(..),
-    RadarFrame(..)
+    RadarFrame(..),
+    Time -- Export simple time type alias
 ) where
 
-import System.Clock (TimeSpec)
 import qualified Data.ByteString as B
 import Foreign.Storable
 import Control.DeepSeq (NFData(..))
+import Data.Word (Word64)
+
+-- | Time in nanoseconds
+type Time = Word64
 
 -- | 3D Point in Room Coordinates (mm)
 data Point3D = Point3D
@@ -59,15 +63,12 @@ instance NFData BeamState where
 data SystemState = SystemState
   { currentPoints :: [Point3D]
   , beamState :: BeamState
-  , lastFrameTime :: TimeSpec -- For Watchdog
+  , lastFrameTime :: Time -- For Watchdog
   , isocenter :: Point3D      -- Calibration zero
   }
 
 instance NFData SystemState where
   rnf (SystemState pts bs t iso) = rnf pts `seq` rnf bs `seq` rnf t `seq` rnf iso
-
-instance NFData TimeSpec where
-  rnf t = t `seq` ()
 
 -- | Raw parsed structure from the sensor
 data RadarFrame = RadarFrame
