@@ -21,6 +21,8 @@ import Foreign.Ptr
 import Foreign.Storable
 import Data.Word (Word64)
 import Foreign.Marshal.Alloc (alloca)
+import Control.Monad (when)
+import Foreign.C.Error (throwErrno)
 
 -- | Corresponds to C 'struct timespec'
 data TimeSpec = TimeSpec
@@ -55,7 +57,8 @@ clockRealtime = 0
 -- | Get Monotonic Time in Nanoseconds (Word64)
 getMonotonicTimeNS :: IO Word64
 getMonotonicTimeNS = alloca $ \ptr -> do
-    _ <- c_clock_gettime clockMonotonic ptr
+    res <- c_clock_gettime clockMonotonic ptr
+    when (res /= 0) $ throwErrno "clock_gettime(CLOCK_MONOTONIC)"
     TimeSpec (CTime s) (CLong n) <- peek ptr
     let s' = fromIntegral s :: Word64
     let n' = fromIntegral n :: Word64
@@ -64,7 +67,8 @@ getMonotonicTimeNS = alloca $ \ptr -> do
 -- | Get Real Time in Nanoseconds (Word64)
 getRealTimeNS :: IO Word64
 getRealTimeNS = alloca $ \ptr -> do
-    _ <- c_clock_gettime clockRealtime ptr
+    res <- c_clock_gettime clockRealtime ptr
+    when (res /= 0) $ throwErrno "clock_gettime(CLOCK_REALTIME)"
     TimeSpec (CTime s) (CLong n) <- peek ptr
     let s' = fromIntegral s :: Word64
     let n' = fromIntegral n :: Word64
