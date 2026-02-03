@@ -24,9 +24,10 @@ import Foreign.Marshal.Alloc (alloca)
 
 -- | Corresponds to C 'struct timespec'
 data TimeSpec = TimeSpec
-    { sec  :: {-# UNPACK #-} !CTime
-    , nsec :: {-# UNPACK #-} !CLong
+    { _sec  :: {-# UNPACK #-} !CTime
+    , _nsec :: {-# UNPACK #-} !CLong
     }
+
 
 instance Storable TimeSpec where
     sizeOf _ = 16 -- Assuming 64-bit system (8 bytes sec + 8 bytes nsec)

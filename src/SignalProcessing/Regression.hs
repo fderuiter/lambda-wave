@@ -12,7 +12,7 @@ solveBiQuadratic x y
     | length x /= length y = replicate 5 0.0
     | otherwise = leastSquares designM y
   where
-    designM = map (\val -> [1, val, val^2, val^3, val^4]) x
+    designM = map (\val -> [1, val, val^(2::Int), val^(3::Int), val^(4::Int)]) x
 
 -- | Perform the Regression for "Strict" Bi-Quadratic
 -- y = a*x^4 + b*x^2 + c
@@ -22,7 +22,7 @@ solveStrictBiQuadratic x y
     | length x /= length y = replicate 3 0.0
     | otherwise = leastSquares designM y
   where
-    designM = map (\val -> [1, val^2, val^4]) x
+    designM = map (\val -> [1, val^(2::Int), val^(4::Int)]) x
 
 -- | Prediction Function
 predict :: [Double] -> Double -> Double
