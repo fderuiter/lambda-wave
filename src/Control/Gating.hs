@@ -5,8 +5,9 @@ import Data.Types
 import Data.Config
 import Control.Mesher (fitPolynomialSurface)
 import Control.Concurrent.STM
-import System.Clock
+import Data.Time.HighRes (getMonotonicTimeNS)
 import Data.List (foldl')
+import qualified Data.Map.Strict as Map
 
 -- | The main logic function called every frame
 processFrame :: TVar SystemState -> [Point3D] -> IO ()
@@ -26,9 +27,10 @@ processFrame stateVar pts = do
                    then BeamOn
                    else BeamOff
 
-    currTime <- getTime Monotonic
+    currTime <- getMonotonicTimeNS
     atomically $ modifyTVar' stateVar $ \s -> s
         { currentPoints = pts
         , beamState = newState
         , lastFrameTime = currTime
+        , threadHeartbeats = Map.insert "Gating" currTime (threadHeartbeats s)
         }

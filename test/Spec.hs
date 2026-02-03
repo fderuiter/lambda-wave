@@ -6,6 +6,7 @@ import qualified Hardware.ConsumerSpec
 import qualified Hardware.ControlSpec
 import qualified SignalProcessing.FMCWSpec
 import qualified System.RTSSpec
+import qualified Safety.WatchdogSpec
 
 main :: IO ()
 main = hspec $ do
@@ -16,6 +17,7 @@ main = hspec $ do
   Hardware.ConsumerSpec.spec
   Hardware.ControlSpec.spec
   System.RTSSpec.spec
+  Safety.WatchdogSpec.spec
 
   describe "Parser" $ do
     it "parses a known binary correctly" $ do
