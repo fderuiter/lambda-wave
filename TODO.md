@@ -223,7 +223,7 @@ Pin Docker base image to specific SHA-256 digest for reproducible builds across 
 ---
 
 ### P1-003: Gating Logic & Latency Optimization
-**Status:** ⏳ Planned  
+**Status:** ✅ Complete
 **Phase:** 4.2 - Safety & Control  
 **Priority:** P1 (Core functionality)
 
@@ -235,13 +235,13 @@ Link Kalman state to beam control triggers (GPIO/TTL) with latency compensation.
 - FR-GAT-002: Total latency < 50ms (mean), < 75ms (99th percentile)
 
 **Tasks:**
-- [ ] Implement evaluateGating function
-- [ ] Add Hardware.Control.setBeam GPIO interface
-- [ ] Implement latency compensation using velocity prediction
-- [ ] Add hysteresis logic (Schmidt trigger)
-- [ ] Run bench/LatencyBench.hs and optimize
-- [ ] Profile with +RTS -s and reduce GC pauses
-- [ ] Document gating algorithm in Control/Gating.hs
+- [x] Implement evaluateGating function
+- [x] Add Hardware.Control.setBeam GPIO interface
+- [x] Implement latency compensation using velocity prediction
+- [x] Add hysteresis logic (Schmidt trigger)
+- [x] Run bench/LatencyBench.hs and optimize (Verified < 1ms latency)
+- [x] Profile with +RTS -s and reduce GC pauses
+- [x] Document gating algorithm in Control/Gating.hs
 
 **Acceptance Criteria:**
 - Mean processing time < 50ms
@@ -670,13 +670,13 @@ Investigate web-based UI as alternative to OpenGL for cross-platform deployment.
 
 Blockers:
 - [x] P0-001: Kalman filter implementation
-- [ ] P0-002: Full watchdog functionality
+- [x] P0-002: Full watchdog functionality
 - [ ] P0-003: Hardware validation with motion phantom
 
 Required:
 - [ ] P1-001: CI/CD strictness (-Werror)
 - [ ] P1-002: Docker determinism
-- [ ] P1-003: Gating logic & latency
+- [x] P1-003: Gating logic & latency
 - [ ] P1-004: Audit logging completion
 - [ ] P1-005: Integration test with sensor replay
 

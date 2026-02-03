@@ -23,3 +23,8 @@
 **Context:** System requires a fail-safe mechanism to detect deadlocks or hangs in the Gating Thread.
 **Decision:** Implemented a high-priority Watchdog thread that monitors `threadHeartbeats` in `SystemState`. If `Gating` heartbeat exceeds 100ms age, the process terminates (`exitFailure`).
 **Compliance Impact:** Satisfies SR-WD-001 and SR-WD-002 (Fail-Safe).
+
+## 2026-01-29 - [Gating Logic Integration]
+**Context:** The hardware ingestion loop and the Gating/Kalman logic were implemented but disconnected. The system was ingesting data but not processing it to control the beam.
+**Decision:** Modified `Hardware.Consumer` to invoke `Control.Gating.processFrame` for every parsed frame. This ensures the Kalman Filter state is updated synchronously with data arrival, maintaining the physics model integrity.
+**Compliance Impact:** Satisfies P1-003 and ensures the Safety Core is driven by real-time data.
