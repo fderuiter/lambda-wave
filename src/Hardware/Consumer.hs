@@ -1,4 +1,3 @@
-{-# LANGUAGE ForeignFunctionInterface #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE BangPatterns #-}
@@ -21,7 +20,7 @@ module Hardware.Consumer (
 
 import Control.Concurrent (threadDelay)
 import Control.Concurrent.STM
-import Control.Monad (unless, when)
+import Control.Monad (unless, when, forM_, replicateM)
 import Control.DeepSeq (force)
 import Control.Exception (evaluate)
 import Data.Word (Word8)
@@ -34,11 +33,11 @@ import qualified Data.ByteString.Internal as BI
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.Binary.Get as G
 import System.IO (hPutStrLn, stderr)
-import Control.Monad (replicateM)
 
 import FFI.RingBuffer.Types (RingBufferControl(..))
 import FFI.RingBuffer.IO (getWriteOffset, setReadOffset)
 import Data.Types
+import Control.Gating (processFrame)
 
 -- | The Magic Word sequence for TI Millimeter Wave Radar
 magicPattern :: BL.ByteString
@@ -102,10 +101,11 @@ consumerLoop controlFp stateVar = withForeignPtr controlFp $ \controlPtr -> do
                          hPutStrLn stderr "[Consumer] Corrupt Packet detected."
 
                     -- 6. Update State
+                    -- Link Kalman State & Gating Logic (P1-003)
+                    -- We process each frame individually to maintain correct time-steps for the filter.
                     unless (null frames) $ do
-                        atomically $ modifyTVar' stateVar $ \s ->
-                            s { currentPoints = concatMap points frames } -- Simplified integration
-                        -- putStrLn $ "[Consumer] Parsed " ++ show (length frames) ++ " frames."
+                        forM_ frames $ \frame ->
+                            processFrame stateVar (points frame)
 
                     when (bytesConsumed > 0 && null frames) $
                         putStrLn "[Consumer] Warning: Skipped garbage data (Magic Word search or Parse Error)."
@@ -154,22 +154,19 @@ createLazyByteString fp bufSize readOff writeOff =
 -- Uses tail recursion with strict accumulator to avoid stack overflow.
 -- Returns (bytesSkipped, remainingInput)
 skipToMagicWord :: BL.ByteString -> (Int64, BL.ByteString)
-skipToMagicWord input = go 0 input
+skipToMagicWord = go 0
   where
     go !acc bs =
         case BL.elemIndex 1 bs of
             Nothing -> (acc + BL.length bs, BL.empty) -- No magic word start found, consume all
             Just idx ->
                 let candidate = BL.drop idx bs
-                in if BL.isPrefixOf magicPattern candidate
-                   then (acc + idx, candidate) -- Found exact match
+                in if BL.isPrefixOf magicPattern candidate || BL.length candidate < 8
+                   then (acc + idx, candidate) -- Found match or keep partial match
                    else
-                       if BL.length candidate < 8
-                       then (acc + idx, candidate) -- Keep partial match (might be valid end of buffer)
-                       else
-                           -- Found 0x01 but not followed by correct sequence (Garbage)
-                           -- Skip the 0x01 and recurse
-                           go (acc + idx + 1) (BL.drop 1 candidate)
+                       -- Found 0x01 but not followed by correct sequence (Garbage)
+                       -- Skip the 0x01 and recurse
+                       go (acc + idx + 1) (BL.drop 1 candidate)
 
 
 -- | Parses a stream of bytes into RadarFrames.
@@ -233,13 +230,11 @@ getRadarFrame = do
     _subFrameNum <- G.getWord32le
 
     -- Sanity Checks to enable Fail on corruption
-    if totalLen < 36 || totalLen > 1000000
-       then fail "Invalid Packet Length"
-       else return ()
+    when (totalLen < 36 || totalLen > 1000000) $
+        fail "Invalid Packet Length"
 
-    if numTLVs > 200
-       then fail "Too many TLVs"
-       else return ()
+    when (numTLVs > 200) $
+        fail "Too many TLVs"
 
     -- 3. Parse TLVs
     -- Total Header size = 8 + 4*7 = 36 bytes (excluding magic word? No, magic is part of header)
@@ -301,8 +296,7 @@ getPoint = do
     x <- G.getFloatle
     y <- G.getFloatle
     z <- G.getFloatle
-    v <- G.getFloatle
-    return $ Point x y z v
+    Point x y z <$> G.getFloatle
 
 toPoint3D :: Point -> Point3D
 toPoint3D Point{..} = Point3D
