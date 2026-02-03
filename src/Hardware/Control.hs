@@ -38,7 +38,11 @@ configureSensor configPath portPath = do
 
             -- Wrap the whole operation in try to catch IOExceptions (e.g. port not found)
             result <- try $ bracket
+#if MIN_VERSION_unix(2,8,0)
+                (openFd portPath ReadWrite defaultFileFlags)
+#else
                 (openFd portPath ReadWrite Nothing defaultFileFlags)
+#endif
                 closeFd
                 (\fd -> do
                     configureConfigSerial fd -- Set 115200
