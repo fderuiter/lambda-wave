@@ -2,7 +2,6 @@ module Main where
 
 import Criterion.Main
 import SignalProcessing.Kalman
-import Numeric.LinearAlgebra
 
 main :: IO ()
 main = do

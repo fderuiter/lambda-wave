@@ -50,9 +50,13 @@ multiply a b
     | otherwise = Just [ [ dot row col | col <- bt ] | row <- a ]
   where
     rowsA = length a
-    colsA = if rowsA > 0 then length (head a) else 0
+    colsA = case a of
+        (r:_) -> length r
+        []    -> 0
     rowsB = length b
-    colsB = if rowsB > 0 then length (head b) else 0
+    colsB = case b of
+        (r:_) -> length r
+        []    -> 0
     bt = transpose b
 
 -- | Matrix-Vector Multiplication (A * v)
@@ -79,14 +83,18 @@ inverse m
         return $ map (drop cols) rref
   where
     rows = length m
-    cols = if rows > 0 then length (head m) else 0
+    cols = case m of
+        (r:_) -> length r
+        []    -> 0
 
 -- | Least Squares Solver: x = (A^T A)^-1 A^T b
 -- Returns Nothing if singular or dimensions mismatch.
 leastSquares :: Matrix -> Vector -> Maybe Vector
 leastSquares a b = do
     let rowsA = length a
-    let colsA = if rowsA > 0 then length (head a) else 0
+    let colsA = case a of
+            (r:_) -> length r
+            []    -> 0
 
     if not (isRectangular a rowsA colsA) || length b /= rowsA
        then Nothing
