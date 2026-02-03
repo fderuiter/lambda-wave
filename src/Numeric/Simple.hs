@@ -60,11 +60,14 @@ identity n = [ [ if i == j then 1.0 else 0.0 | j <- [0..n-1] ] | i <- [0..n-1] ]
 -- (Singular check depends on pivot 0, which gaussJordan handles).
 inverse :: Matrix -> Maybe Matrix
 inverse m
+    | null m = Nothing
     | rows /= cols = Nothing
     | otherwise = Just (extractInverse (gaussJordan augmented))
   where
     rows = length m
-    cols = length (head m)
+    cols = case m of
+             (row:_) -> length row
+             []      -> 0
     augmented = zipWith (++) m (identity rows)
 
     extractInverse :: Matrix -> Matrix

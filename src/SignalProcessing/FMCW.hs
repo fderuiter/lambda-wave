@@ -50,7 +50,6 @@ chirpZTransform :: CZTParams
                 -> [Complex Double] -- ^ Output spectrum X_k
 chirpZTransform params x_n = map calculateBin [0 .. cztSteps params - 1]
   where
-    n_samples = length x_n
     f0 = cztStartFreq params
     b_zoom = cztBandwidth params
     fs = cztSampleRate params
@@ -59,7 +58,7 @@ chirpZTransform params x_n = map calculateBin [0 .. cztSteps params - 1]
     calculateBin :: Int -> Complex Double
     calculateBin k =
         let
-            k_idx = fromIntegral k
+            k_idx = fromIntegral k :: Double
             -- f_k = f_0 + B_zoom * (k / K)
             freq_k = f0 + b_zoom * (k_idx / k_max)
 
@@ -69,11 +68,11 @@ chirpZTransform params x_n = map calculateBin [0 .. cztSteps params - 1]
             -- Summation: sum(x[n] * exp(i * theta_step * n))
             summation acc _ [] = acc
             summation acc n (val:rest) =
-                let phase = theta_step * fromIntegral n
-                    term = cis phase
+                let phaseTerm = theta_step * fromIntegral n
+                    term = cis phaseTerm
                 in summation (acc + val * term) (n + 1) rest
         in
-            summation (0 :+ 0) 0 x_n
+            summation (0 :+ 0) (0 :: Int) x_n
 
 -- | Equation (4): Verified
 -- Extract the phase from the complex value at the peak index.
@@ -88,15 +87,15 @@ unwrapPhase [] = []
 unwrapPhase inputPhase = zipWith (-) inputPhase corrections
   where
     -- Calculate differences between consecutive phases: p[i] - p[i-1]
-    diffs = zipWith (-) (tail inputPhase) (init inputPhase)
+    -- Safe alternative to tail/init
+    diffs = case inputPhase of
+                [] -> []
+                (_:xs) -> zipWith (-) xs (take (length inputPhase - 1) inputPhase)
 
     -- Calculate required jumps (multiples of 2*pi)
     jumps = map (\d -> fromIntegral (round (d / (2 * pi)) :: Int) * (2 * pi)) diffs
 
-    -- Cumulative correction (scanl starts with initial value, so length matches inputPhase)
-    -- scanl (+) 0 [j1, j2] -> [0, j1, j1+j2]
-    -- inputPhase has length N. diffs has N-1. jumps has N-1.
-    -- scanl result has N. Perfect.
+    -- Cumulative correction
     corrections = scanl (+) 0.0 jumps
 
 -- | Equation (5): Verified
