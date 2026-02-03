@@ -1,4 +1,4 @@
-module Hardware.Control (configureSensor, parseConfig, configureRawSerial) where
+module Hardware.Control (configureSensor, parseConfig, configureRawSerial, setBeam) where
 
 import Control.Monad (forM_)
 import Control.Concurrent (threadDelay)
@@ -99,3 +99,12 @@ configureRawSerial fd = do
 
     setTerminalAttributes fd rawAttrs Immediately
     putStrLn "[Control] Data Port Configured (Raw Mode, 921600 baud)"
+
+-- | Control the beam status (Simulated via GPIO).
+-- True = Beam ON
+-- False = Beam OFF
+setBeam :: Bool -> IO ()
+setBeam state = do
+    -- In a real system, this would write to /sys/class/gpio or similar
+    -- For Class C simulation, we log to stdout to verify behavior
+    putStrLn $ "[Hardware] Beam Set To: " ++ if state then "ON" else "OFF"

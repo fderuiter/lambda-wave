@@ -1,5 +1,4 @@
 {-# LANGUAGE StrictData #-}
-{-# LANGUAGE BangPatterns #-}
 
 {-|
 Module      : SignalProcessing.Kalman
@@ -33,14 +32,21 @@ module SignalProcessing.Kalman
     ) where
 
 import Prelude hiding (sum)
+import Control.DeepSeq (NFData(..))
 
 -- | Strict 3-Vector
 data V3 = V3 !Double !Double !Double
     deriving (Show, Eq)
 
+instance NFData V3 where
+    rnf (V3 a b c) = rnf a `seq` rnf b `seq` rnf c
+
 -- | Strict 3x3 Matrix (Row-Major: Row1, Row2, Row3)
 data M33 = M33 !V3 !V3 !V3
     deriving (Show, Eq)
+
+instance NFData M33 where
+    rnf (M33 r1 r2 r3) = rnf r1 `seq` rnf r2 `seq` rnf r3
 
 -- | The State of the Filter
 data KalmanState = KalmanState
@@ -48,11 +54,17 @@ data KalmanState = KalmanState
     , p :: !M33 -- ^ Error Covariance Matrix
     } deriving (Show, Eq)
 
+instance NFData KalmanState where
+    rnf (KalmanState xVal pVal) = rnf xVal `seq` rnf pVal
+
 -- | Static Configuration
 data KalmanConfig = KalmanConfig
     { procNoise :: !Double -- ^ Q scalar (Process noise variance)
     , measNoise :: !Double -- ^ R scalar (Measurement noise variance)
     } deriving (Show, Eq)
+
+instance NFData KalmanConfig where
+    rnf (KalmanConfig pVal mVal) = rnf pVal `seq` rnf mVal
 
 --------------------------------------------------------------------------------
 -- Internal Linear Algebra (Total Functions)
