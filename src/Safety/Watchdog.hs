@@ -26,23 +26,30 @@ import Data.Types
 import Data.Config (watchdogTimeoutNS)
 import Control.Concurrent.STM
 import Control.Concurrent (threadDelay)
-import System.Clock
-import Control.Monad (forever, when)
+import Data.Time.HighRes (getMonotonicTimeNS)
+import Control.Monad (forever, when, forM_)
 import System.Exit (exitFailure)
+import qualified Data.Map.Strict as Map
 
 -- | The Watchdog Loop
--- Kills the process if the main Gating Loop has not reported progress within the timeout.
+-- Kills the process if any critical thread has not reported progress within the timeout.
 watchdogLoop :: TVar SystemState -> IO ()
 watchdogLoop stateVar = forever $ do
-    now <- getTime Monotonic
-    lastTime <- lastFrameTime <$> readTVarIO stateVar
+    now <- getMonotonicTimeNS
+    state <- readTVarIO stateVar
+    let heartbeats = threadHeartbeats state
 
-    let diff = toNanoSecs (diffTimeSpec now lastTime)
+    -- Iterate over all monitored threads
+    forM_ (Map.toList heartbeats) $ \(threadName, lastTime) -> do
+        let diff = now - lastTime
 
-    when (diff > watchdogTimeoutNS) $ do
-        putStrLn "!!! WATCHDOG TRIP: SYSTEM FROZEN !!!"
-        putStrLn "!!! FORCING BEAM OFF !!!"
-        -- In real HW, this would toggle a GPIO pin immediately
-        exitFailure
+        -- Check if difference exceeds timeout (cast Integer to Word64 safely for comparison)
+        -- watchdogTimeoutNS is Integer (100ms = 100_000_000). Word64 max is huge.
+        when (diff > fromIntegral watchdogTimeoutNS) $ do
+            putStrLn $ "!!! WATCHDOG TRIP: Thread '" ++ threadName ++ "' FROZEN !!!"
+            putStrLn $ "!!! Time since last heartbeat: " ++ show diff ++ " ns"
+            putStrLn "!!! FORCING BEAM OFF !!!"
+            -- In real HW, this would toggle a GPIO pin immediately
+            exitFailure
 
     threadDelay 10000 -- Check every 10ms

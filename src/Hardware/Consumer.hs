@@ -33,8 +33,8 @@ import qualified Data.ByteString as B
 import qualified Data.ByteString.Internal as BI
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.Binary.Get as G
-import qualified Data.Vector.Storable as V
 import System.IO (hPutStrLn, stderr)
+import Control.Monad (replicateM)
 
 import FFI.RingBuffer.Types (RingBufferControl(..))
 import FFI.RingBuffer.IO (getWriteOffset, setReadOffset)
@@ -293,8 +293,8 @@ getPoints n = do
     -- We will read into Vector Storable Point first (Zero Copy-ish if we could cast,
     -- but ByteString is not guaranteed aligned, so we must copy to Storable Vector or read one by one).
     -- Since we need to convert to Point3D (Double) anyway, we read floats and convert.
-    rawPoints <- V.replicateM n getPoint
-    return $ map toPoint3D (V.toList rawPoints)
+    rawPoints <- replicateM n getPoint
+    return $ map toPoint3D rawPoints
 
 getPoint :: G.Get Point
 getPoint = do

@@ -22,17 +22,12 @@ common common-options
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
   build-depends:
       base >=4.7 && <5
-    , hmatrix
     , stm
-    , clock
     , binary
     , bytestring
-    , vector
-    , serialport
     , unix
-    , OpenGL
-    , GLUT
     , deepseq
+    , containers
   default-language: Haskell2010
 
 library
@@ -40,11 +35,9 @@ library
   exposed-modules:
       Control.Gating
       Control.Mesher
-      Control.UI.Window
-      Control.UI.Input
-      Control.UI.Renderer
       Data.Config
       Data.Types
+      Data.Time.HighRes
       FFI.RingBuffer.IO
       FFI.RingBuffer.Types
       Hardware.Control
@@ -99,9 +92,7 @@ test-suite sgrt-radar-system-test
       sgrt-radar-system
     , hspec
     , QuickCheck
-    , hmatrix
     , bytestring
-    , vector
     , binary
 
 test-suite kalman-verification

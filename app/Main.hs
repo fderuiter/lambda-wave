@@ -1,13 +1,14 @@
 {-# LANGUAGE CPP #-}
 module Main where
 
-import Control.Concurrent (forkOS, setNumCapabilities)
+import Control.Concurrent (forkOS, setNumCapabilities, threadDelay)
 import Control.Concurrent.STM
-import System.Clock
 import System.Environment (lookupEnv)
 import Data.Maybe (fromMaybe)
 import System.Posix.IO (openFd, OpenMode(..), defaultFileFlags, OpenFileFlags(..))
 import System.Posix.Files (ownerReadMode, ownerWriteMode, unionFileModes)
+import Control.Monad (forever)
+import qualified Data.Map.Strict as Map
 
 import Data.Types
 import qualified FFI.RingBuffer.IO as RingBuffer
@@ -15,9 +16,7 @@ import Hardware.Control (configureRawSerial)
 import Hardware.Consumer (consumerLoop)
 import Safety.Watchdog
 import Safety.Audit
-import Control.UI.Window
-import Control.UI.Renderer
-import Control.UI.Input
+import Data.Time.HighRes (getMonotonicTimeNS)
 
 main :: IO ()
 main = do
@@ -25,12 +24,13 @@ main = do
     setNumCapabilities 2
     putStrLn "Initializing Lambda-Wave System..."
 
-    startTime <- getTime Monotonic
+    startTime <- getMonotonicTimeNS
     let initialState = SystemState
           { currentPoints = []
           , beamState = BeamOff
           , lastFrameTime = startTime
           , isocenter = Point3D 0 0 0 0 0
+          , threadHeartbeats = Map.empty
           }
 
     systemState <- newTVarIO initialState
@@ -84,8 +84,11 @@ main = do
     -- 4. Audit Logging
     _ <- forkOS $ auditLoop systemState "session.log"
 
-    -- 5. UI (Main Thread)
-    putStrLn "System Armed. Starting UI..."
-    initWindow
-    handleInput systemState
-    renderLoop systemState
+    -- 5. UI (Disabled for Class C Build)
+    putStrLn "System Armed. UI Disabled."
+    -- initWindow
+    -- handleInput systemState
+    -- renderLoop systemState
+
+    -- Keep Main Alive
+    forever $ threadDelay 1000000

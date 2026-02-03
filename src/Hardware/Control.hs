@@ -1,6 +1,5 @@
 module Hardware.Control (configureSensor, parseConfig, configureRawSerial) where
 
-import System.Hardware.Serialport
 import Control.Monad (forM_)
 import Control.Concurrent (threadDelay)
 import qualified Data.ByteString.Char8 as BC
@@ -8,7 +7,10 @@ import Control.Exception (try, IOException, bracket)
 import Data.Char (isSpace)
 import Data.List (dropWhileEnd)
 import System.Posix.Terminal
+import System.Posix.IO (openFd, closeFd, fdWriteBuf, OpenMode(ReadWrite), defaultFileFlags)
 import System.Posix.Types (Fd(..))
+import Foreign.Ptr (castPtr)
+import Data.ByteString.Unsafe (unsafeUseAsCStringLen)
 
 -- | Parses the configuration file content into a list of commands.
 -- Ignores comments (starting with #) and empty lines.
@@ -36,14 +38,17 @@ configureSensor configPath portPath = do
 
             -- Wrap the whole operation in try to catch IOExceptions (e.g. port not found)
             result <- try $ bracket
-                (openSerial portPath defaultSerialSettings { commSpeed = CS115200 })
-                closeSerial
-                (\s -> do
+                (openFd portPath ReadWrite Nothing defaultFileFlags)
+                closeFd
+                (\fd -> do
+                    configureConfigSerial fd -- Set 115200
                     forM_ commands $ \cmd -> do
                         let packet = BC.pack (cmd ++ "\n")
-                        bytesSent <- send s packet
+                        bytesSent <- unsafeUseAsCStringLen packet $ \(ptr, len) ->
+                            fdWriteBuf fd (castPtr ptr) (fromIntegral len)
+
                         -- Check if all bytes were written
-                        if bytesSent < BC.length packet
+                        if fromIntegral bytesSent < BC.length packet
                             then ioError (userError $ "Failed to send complete command: " ++ cmd)
                             else threadDelay 100000 -- 100ms delay between commands
                 )
@@ -56,6 +61,14 @@ configureSensor configPath portPath = do
                 Right _ -> do
                     putStrLn "[Control] Configuration Complete."
                     return (Right ())
+
+configureConfigSerial :: Fd -> IO ()
+configureConfigSerial fd = do
+    attrs <- getTerminalAttributes fd
+    let cfgAttrs = attrs
+            `withInputSpeed` B38400 -- Fallback to standard speed if B115200/B921600 missing
+            `withOutputSpeed` B38400
+    setTerminalAttributes fd cfgAttrs Immediately
 
 -- | Configures a file descriptor for Raw Serial communication (Data Port).
 -- Disables Canonical Mode (ICANON), Echo, Signals, and sets Baud Rate.
@@ -77,8 +90,8 @@ configureRawSerial fd = do
             -- VMIN and VTIME share the same slots as EndOfFile (VEOF) and EndOfLine (VEOL) in non-canonical mode.
             `withCC` (EndOfFile, '\1')      -- VMIN = 1 (Block until 1 byte)
             `withCC` (EndOfLine, '\0')      -- VTIME = 0 (No timeout)
-            `withInputSpeed` B921600
-            `withOutputSpeed` B921600
+            `withInputSpeed` B38400 -- Fallback from B921600 (not available in env)
+            `withOutputSpeed` B38400
 
     setTerminalAttributes fd rawAttrs Immediately
     putStrLn "[Control] Data Port Configured (Raw Mode, 921600 baud)"
