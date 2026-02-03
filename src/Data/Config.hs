@@ -2,7 +2,9 @@ module Data.Config (
     radarMountOffset,
     gantryAngle,
     gatingTolerance,
+    hysteresisMargin,
     targetHeight,
+    systemLatencyNS,
     watchdogTimeoutNS,
     uartBaudRate
 ) where
@@ -20,8 +22,14 @@ gantryAngle = 0.0 -- degrees
 gatingTolerance :: Double
 gatingTolerance = 3.0 -- mm
 
+hysteresisMargin :: Double
+hysteresisMargin = 0.5 -- mm
+
 targetHeight :: Double
 targetHeight = 10.0 -- mm (Example target)
+
+systemLatencyNS :: Double
+systemLatencyNS = 50_000_000 -- 50ms in nanoseconds
 
 -- | Safety
 watchdogTimeoutNS :: Integer
