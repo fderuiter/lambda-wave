@@ -8,7 +8,8 @@ module Data.Types (
     RadarFrame(..)
 ) where
 
-import System.Clock (TimeSpec)
+import Data.Word (Word64)
+import Data.Map.Strict (Map)
 import qualified Data.ByteString as B
 import Foreign.Storable
 import Control.DeepSeq (NFData(..))
@@ -59,15 +60,13 @@ instance NFData BeamState where
 data SystemState = SystemState
   { currentPoints :: [Point3D]
   , beamState :: BeamState
-  , lastFrameTime :: TimeSpec -- For Watchdog
+  , lastFrameTime :: Word64   -- For Watchdog (Nanoseconds)
   , isocenter :: Point3D      -- Calibration zero
+  , threadHeartbeats :: Map String Word64 -- Heartbeats for Watchdog
   }
 
 instance NFData SystemState where
-  rnf (SystemState pts bs t iso) = rnf pts `seq` rnf bs `seq` rnf t `seq` rnf iso
-
-instance NFData TimeSpec where
-  rnf t = t `seq` ()
+  rnf (SystemState pts bs t iso hb) = rnf pts `seq` rnf bs `seq` rnf t `seq` rnf iso `seq` rnf hb
 
 -- | Raw parsed structure from the sensor
 data RadarFrame = RadarFrame

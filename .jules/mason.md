@@ -9,3 +9,17 @@
 **Context:** Default GHC RTS scheduling can be non-deterministic and use all available cores, potentially causing jitter.
 **Decision:** Locked capabilities to 2 (`-N2`) and enabled thread affinity (`-qa`) in RTS options. Explicitly called `setNumCapabilities` in Main.
 **Compliance Impact:** Satisfies SR-SOUP-001 (Deterministic Runtime).
+
+## 2026-01-28 - [Dependency Removal for Class C Compliance]
+**Context:** Development environment lacks network access, and external dependencies (`hmatrix`, `vector`, `clock`, `serialport`) introduce supply chain risks and audit complexity for IEC 62304 Class C.
+**Decision:** Removed all external dependencies.
+1. Replaced `clock` with `Data.Time.HighRes` (FFI to `clock_gettime`).
+2. Replaced `hmatrix` with `Numeric.Simple` (Pure Haskell Matrix implementation).
+3. Replaced `vector` with `List`/`Storable` parsing patterns.
+4. Replaced `serialport` with `unix`.
+**Compliance Impact:** significantly reduces SOUP (Software of Unknown Pedigree), facilitating 62304 validation.
+
+## 2026-01-28 - [Watchdog Implementation]
+**Context:** System requires a fail-safe mechanism to detect deadlocks or hangs in the Gating Thread.
+**Decision:** Implemented a high-priority Watchdog thread that monitors `threadHeartbeats` in `SystemState`. If `Gating` heartbeat exceeds 100ms age, the process terminates (`exitFailure`).
+**Compliance Impact:** Satisfies SR-WD-001 and SR-WD-002 (Fail-Safe).
