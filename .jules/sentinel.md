@@ -35,3 +35,7 @@ The `parseTLVs` function assumed `tlvLen` perfectly matched the size of the poin
 ## 2026-05-29 - [Risk Level: HIGH] **Vector:** app/Main.hs **Hazard:** Data Corruption (Canonical Mode)
 The Data Port (`sensorPort`) is opened via `openFd` but never configured to Raw Mode. `openFd` does not modify terminal attributes. If the system defaults to Canonical Mode (`ICANON`), the `read` syscall in `ring_buffer.cpp` will wait for newlines (`0x0A`) and potentially interpret control characters, corrupting the binary radar stream.
 **Fix:** Implement `configureRawSerial` in `Hardware/Control` using `System.Posix.Terminal` to disable `ICANON`, `ECHO`, `ISIG` and set correct Baud Rate (921600). Invoke this on the `Fd` in `Main.hs`.
+
+## 2026-05-30 - [Risk Level: HIGH] **Vector:** src/Numeric/Simple.hs **Hazard:** Runtime Crash / Correctness Failure
+The linear algebra module used partial list indexing (`!!`) in `gaussJordan` and `multiply`, which causes a runtime crash if matrices are jagged or dimensions mismatch. Furthermore, it failed to correctly identify singular matrices, returning garbage results instead of failing, leading to incorrect calculations in `Control.Mesher` (the Gating Loop).
+**Fix:** Refactored `Numeric.Simple` to use a total `Maybe` monad stack. Implemented safe indexing helper `at` and `isRectangular` checks. Updated consumers (`Control.Mesher`, `SignalProcessing.Regression`) to handle `Nothing` by returning safe default values (zeros), preventing system crashes.

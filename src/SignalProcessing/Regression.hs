@@ -5,12 +5,13 @@ module SignalProcessing.Regression
     ) where
 
 import Numeric.Simple
+import Data.Maybe (fromMaybe)
 
 -- | Perform the Regression
 solveBiQuadratic :: [Double] -> [Double] -> [Double]
 solveBiQuadratic x y
     | length x /= length y = replicate 5 0.0
-    | otherwise = leastSquares designM y
+    | otherwise = fromMaybe (replicate 5 0.0) (leastSquares designM y)
   where
     designM = map (\val -> [1, val, val^(2::Int), val^(3::Int), val^(4::Int)]) x
 
@@ -20,7 +21,7 @@ solveBiQuadratic x y
 solveStrictBiQuadratic :: [Double] -> [Double] -> [Double]
 solveStrictBiQuadratic x y
     | length x /= length y = replicate 3 0.0
-    | otherwise = leastSquares designM y
+    | otherwise = fromMaybe (replicate 3 0.0) (leastSquares designM y)
   where
     designM = map (\val -> [1, val^(2::Int), val^(4::Int)]) x
 

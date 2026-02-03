@@ -8,6 +8,7 @@ module Control.Mesher (fitPolynomialSurface) where
 
 import Data.Types
 import Numeric.Simple
+import Data.Maybe (fromMaybe)
 
 -- | Fits a polynomial surface to the points
 -- Model: z = c0 + c1*x + c2*y + c3*x^2 + c4*xy + c5*y^2
@@ -17,7 +18,7 @@ import Numeric.Simple
 fitPolynomialSurface :: [Point3D] -> [Double]
 fitPolynomialSurface pts
     | length pts < 6 = replicate 6 0.0 -- Not enough points
-    | otherwise = leastSquares a b
+    | otherwise = fromMaybe (replicate 6 0.0) (leastSquares a b)
   where
     -- Design Matrix A
     -- Rows are points, Columns are terms [1, x, y, x^2, xy, y^2]
