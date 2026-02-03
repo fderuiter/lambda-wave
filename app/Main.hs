@@ -11,6 +11,8 @@ import Control.Monad (forever)
 import qualified Data.Map.Strict as Map
 
 import Data.Types
+import Data.Config (targetHeight)
+import SignalProcessing.Kalman (initKalman, KalmanConfig(..))
 import qualified FFI.RingBuffer.IO as RingBuffer
 import Hardware.Control (configureRawSerial)
 import Hardware.Consumer (consumerLoop)
@@ -25,12 +27,17 @@ main = do
     putStrLn "Initializing Lambda-Wave System..."
 
     startTime <- getMonotonicTimeNS
+
+    let kConfig = KalmanConfig { procNoise = 10.0, measNoise = 2.0 }
+    let initialKState = initKalman targetHeight kConfig
+
     let initialState = SystemState
           { currentPoints = []
           , beamState = BeamOff
           , lastFrameTime = startTime
           , isocenter = Point3D 0 0 0 0 0
           , threadHeartbeats = Map.empty
+          , kalmanState = initialKState
           }
 
     systemState <- newTVarIO initialState

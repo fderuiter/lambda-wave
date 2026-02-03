@@ -14,6 +14,8 @@ import qualified Data.ByteString as B
 import Foreign.Storable
 import Control.DeepSeq (NFData(..))
 
+import SignalProcessing.Kalman (KalmanState(..))
+
 -- | 3D Point in Room Coordinates (mm)
 data Point3D = Point3D
   { px :: Double
@@ -24,7 +26,7 @@ data Point3D = Point3D
   } deriving (Show, Eq)
 
 instance NFData Point3D where
-  rnf (Point3D x y z vel s) = rnf x `seq` rnf y `seq` rnf z `seq` rnf vel `seq` rnf s
+  rnf (Point3D xVal yVal zVal vel sVal) = rnf xVal `seq` rnf yVal `seq` rnf zVal `seq` rnf vel `seq` rnf sVal
 
 -- | Raw Point structure from "Type 1" TLV (4 floats)
 data Point = Point
@@ -38,15 +40,15 @@ instance Storable Point where
   sizeOf _ = 16
   alignment _ = 4
   peek ptr = do
-      x <- peekByteOff ptr 0
-      y <- peekByteOff ptr 4
-      z <- peekByteOff ptr 8
+      xVal <- peekByteOff ptr 0
+      yVal <- peekByteOff ptr 4
+      zVal <- peekByteOff ptr 8
       vel <- peekByteOff ptr 12
-      return $ Point x y z vel
-  poke ptr (Point x y z vel) = do
-      pokeByteOff ptr 0 x
-      pokeByteOff ptr 4 y
-      pokeByteOff ptr 8 z
+      return $ Point xVal yVal zVal vel
+  poke ptr (Point xVal yVal zVal vel) = do
+      pokeByteOff ptr 0 xVal
+      pokeByteOff ptr 4 yVal
+      pokeByteOff ptr 8 zVal
       pokeByteOff ptr 12 vel
 
 -- | The critical decision state
@@ -54,7 +56,7 @@ data BeamState = BeamOn | BeamOff | BeamHold -- Hold is manual override
   deriving (Show, Eq)
 
 instance NFData BeamState where
-  rnf x = x `seq` ()
+  rnf bs = bs `seq` ()
 
 -- | The Global State shared across threads via STM
 data SystemState = SystemState
@@ -63,10 +65,11 @@ data SystemState = SystemState
   , lastFrameTime :: Word64   -- For Watchdog (Nanoseconds)
   , isocenter :: Point3D      -- Calibration zero
   , threadHeartbeats :: Map String Word64 -- Heartbeats for Watchdog
+  , kalmanState :: KalmanState -- ^ Filtered state (Position, Velocity, Accel)
   }
 
 instance NFData SystemState where
-  rnf (SystemState pts bs t iso hb) = rnf pts `seq` rnf bs `seq` rnf t `seq` rnf iso `seq` rnf hb
+  rnf (SystemState pts bs t iso hb ks) = rnf pts `seq` rnf bs `seq` rnf t `seq` rnf iso `seq` rnf hb `seq` rnf ks
 
 -- | Raw parsed structure from the sensor
 data RadarFrame = RadarFrame
