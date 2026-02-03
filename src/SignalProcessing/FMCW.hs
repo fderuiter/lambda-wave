@@ -87,10 +87,8 @@ unwrapPhase [] = []
 unwrapPhase inputPhase = zipWith (-) inputPhase corrections
   where
     -- Calculate differences between consecutive phases: p[i] - p[i-1]
-    -- Safe alternative to tail/init
-    diffs = case inputPhase of
-                [] -> []
-                (_:xs) -> zipWith (-) xs (take (length inputPhase - 1) inputPhase)
+    -- Safe alternative to tail/init using zipWith and drop
+    diffs = zipWith (-) (drop 1 inputPhase) inputPhase
 
     -- Calculate required jumps (multiples of 2*pi)
     jumps = map (\d -> fromIntegral (round (d / (2 * pi)) :: Int) * (2 * pi)) diffs
