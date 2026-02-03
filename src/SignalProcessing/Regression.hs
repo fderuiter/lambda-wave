@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts #-}
 module SignalProcessing.Regression
     ( solveBiQuadratic
     , solveStrictBiQuadratic
@@ -6,7 +7,9 @@ module SignalProcessing.Regression
     , predict
     ) where
 
-import Numeric.LinearAlgebra
+import Numeric.Simple
+
+type R = Double
 
 -- | Construct the Design Matrix
 -- For Bi-Quadratic, we need powers: x^0, x^1, x^2, x^3, x^4
@@ -19,7 +22,7 @@ createDesignMatrix xVec = fromColumns [ ones
                                       ]
   where
     n    = size xVec
-    ones = n |> repeat 1.0 -- Creates a vector of 1s of length n
+    ones = n |> 1.0
 
 -- | Construct the Design Matrix for "Strict" Bi-Quadratic
 -- This forces odd coefficients to be 0 (y = ax^4 + bx^2 + c)
@@ -27,24 +30,23 @@ createStrictBiQuadraticMatrix :: Vector R -> Matrix R
 createStrictBiQuadraticMatrix xVec = fromColumns [ ones, xVec ^ (2::Int), xVec ^ (4::Int) ]
   where
     n    = size xVec
-    ones = n |> repeat 1.0
+    ones = n |> 1.0
 
 -- | Perform the Regression
 -- Checks for dimension mismatch to prevent runtime exceptions.
 solveBiQuadratic :: Vector R -> Vector R -> Vector R
 solveBiQuadratic x y
-    | size x /= size y = 5 |> repeat 0.0 -- Return zero coefficients on mismatch
+    | size x /= size y = 5 |> 0.0 -- Return zero coefficients on mismatch
     | otherwise = flatten result
   where
     designM = createDesignMatrix x
     -- linearSolveLS solves the overdetermined system A * x = B in a least-squares sense
-    -- It returns the coefficients that minimize the squared error.
     result  = designM <\> asColumn y
 
 -- | Perform the Regression for "Strict" Bi-Quadratic
 solveStrictBiQuadratic :: Vector R -> Vector R -> Vector R
 solveStrictBiQuadratic x y
-    | size x /= size y = 3 |> repeat 0.0 -- Return zero coefficients on mismatch
+    | size x /= size y = 3 |> 0.0 -- Return zero coefficients on mismatch
     | otherwise = flatten result
   where
     designM = createStrictBiQuadraticMatrix x

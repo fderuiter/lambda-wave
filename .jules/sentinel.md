@@ -35,3 +35,15 @@ The `parseTLVs` function assumed `tlvLen` perfectly matched the size of the poin
 ## 2026-05-29 - [Risk Level: HIGH] **Vector:** app/Main.hs **Hazard:** Data Corruption (Canonical Mode)
 The Data Port (`sensorPort`) is opened via `openFd` but never configured to Raw Mode. `openFd` does not modify terminal attributes. If the system defaults to Canonical Mode (`ICANON`), the `read` syscall in `ring_buffer.cpp` will wait for newlines (`0x0A`) and potentially interpret control characters, corrupting the binary radar stream.
 **Fix:** Implement `configureRawSerial` in `Hardware/Control` using `System.Posix.Terminal` to disable `ICANON`, `ECHO`, `ISIG` and set correct Baud Rate (921600). Invoke this on the `Fd` in `Main.hs`.
+
+## 2026-05-29 - [Risk Level: HIGH] **Vector:** src/Hardware/Consumer.hs **Hazard:** Logic Bypass / Watchdog Starvation
+The `consumerLoop` directly updates `SystemState` via `atomically` without invoking `Control.Gating.processFrame`. This means the Kalman filter, beam gating logic, and most importantly the Watchdog Heartbeat (`lastFrameTime` update) are completely bypassed. This would cause the `Safety.Watchdog` to detect a "hang" and terminate the application shortly after startup.
+**Fix:** Import `Control.Gating (processFrame)` and invoke it with the accumulated points from the parsed frames instead of modifying the TVar directly.
+
+## 2026-05-29 - [Risk Level: HIGH] **Vector:** sgrt-radar-system.cabal **Hazard:** Dependency Failure / Build Breakage
+The project depends on `hmatrix`, `vector`, `serialport`, and `OpenGL`/`GLUT`, which are external C-bound libraries not available in the high-security build environment. This prevents compilation (`cabal build` fails), making it impossible to verify safety or run tests.
+**Fix:** Implement `src/Numeric/Simple.hs` (Zero-Dependency Linear Algebra) and refactor `Control/Mesher`, `SignalProcessing/FMCW`, `SignalProcessing/Regression` to use it. Replace `serialport` with `unix`. Stub out `Control/UI`. Remove faulty dependencies from `.cabal`.
+
+## 2026-05-29 - [Risk Level: MEDIUM] **Vector:** src/Hardware/Control.hs **Hazard:** Unapproved Dependency
+The `configureSensor` function relies on `System.Hardware.Serialport` which is not whitelisted.
+**Fix:** Refactor to use `System.Posix.IO` (`openFd`, `fdWriteBuf`) and `System.Posix.Terminal` to configure the CLI port, matching the approved pattern used in `configureRawSerial`.

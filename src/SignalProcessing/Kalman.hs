@@ -58,9 +58,6 @@ data KalmanConfig = KalmanConfig
 -- Internal Linear Algebra (Total Functions)
 --------------------------------------------------------------------------------
 
-zeroV3 :: V3
-zeroV3 = V3 0 0 0
-
 ident3 :: M33
 ident3 = M33 (V3 1 0 0) (V3 0 1 0) (V3 0 0 1)
 
@@ -117,41 +114,6 @@ outerV (V3 a1 b1 c1) (V3 a2 b2 c2) =
     M33 (V3 (a1*a2) (a1*b2) (a1*c2))
         (V3 (b1*a2) (b1*b2) (b1*c2))
         (V3 (c1*a2) (c1*b2) (c1*c2))
-
--- | Determinant of 3x3
-detM :: M33 -> Double
-detM (M33 (V3 a b c)
-          (V3 d e f)
-          (V3 g h i)) =
-    a * (e*i - f*h) - b * (d*i - f*g) + c * (d*h - e*g)
-
--- | Inverse of 3x3
--- Returns Identity if singular (Total Function Requirement)
-invM :: M33 -> M33
-invM m@(M33 (V3 a b c)
-            (V3 d e f)
-            (V3 g h i)) =
-    let det = detM m
-    in if abs det < 1e-12
-       then ident3 -- Fallback for singular matrix
-       else
-         let invDet = 1.0 / det
-             -- Cofactors
-             c11 =   e*i - f*h
-             c12 = -(d*i - f*g)
-             c13 =   d*h - e*g
-             c21 = -(b*i - c*h)
-             c22 =   a*i - c*g
-             c23 = -(a*h - b*g)
-             c31 =   b*f - c*e
-             c32 = -(a*f - c*d)
-             c33 =   a*e - b*d
-
-             -- Adjugate (Transpose of Cofactor Matrix)
-             adj = M33 (V3 c11 c21 c31)
-                       (V3 c12 c22 c32)
-                       (V3 c13 c23 c33)
-         in scaleM invDet adj
 
 --------------------------------------------------------------------------------
 -- Kalman Logic
@@ -228,7 +190,7 @@ update measurement config state
     -- K = P * H^T * (1/S)
     -- H^T = [1, 0, 0]^T
     -- P * H^T is the first column of P
-    (M33 (V3 p11 p12 p13) (V3 p21 p22 p23) (V3 p31 p32 p33)) = p state
+    (M33 (V3 p11 p21 p31) _ _) = p state
     -- Column 1 of P (since P is symmetric, Row 1 = Col 1, but let's be generic)
     -- Wait, M33 is row-major. Col 1 is (p11, p21, p31)
     col1P = V3 p11 p21 p31
@@ -256,4 +218,3 @@ update measurement config state
     term2 = scaleM rVal (outerV kVec kVec)
 
     pNew = addM term1 term2
-

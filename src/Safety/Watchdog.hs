@@ -26,7 +26,7 @@ import Data.Types
 import Data.Config (watchdogTimeoutNS)
 import Control.Concurrent.STM
 import Control.Concurrent (threadDelay)
-import System.Clock
+import Hardware.Control (getMonotonicTimeNS)
 import Control.Monad (forever, when)
 import System.Exit (exitFailure)
 
@@ -34,10 +34,10 @@ import System.Exit (exitFailure)
 -- Kills the process if the main Gating Loop has not reported progress within the timeout.
 watchdogLoop :: TVar SystemState -> IO ()
 watchdogLoop stateVar = forever $ do
-    now <- getTime Monotonic
+    now <- getMonotonicTimeNS
     lastTime <- lastFrameTime <$> readTVarIO stateVar
 
-    let diff = toNanoSecs (diffTimeSpec now lastTime)
+    let diff = if now > lastTime then toInteger (now - lastTime) else 0
 
     when (diff > watchdogTimeoutNS) $ do
         putStrLn "!!! WATCHDOG TRIP: SYSTEM FROZEN !!!"

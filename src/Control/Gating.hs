@@ -5,13 +5,14 @@ import Data.Types
 import Data.Config
 import Control.Mesher (fitPolynomialSurface)
 import Control.Concurrent.STM
-import System.Clock
+import Hardware.Control (getMonotonicTimeNS)
 import Data.List (foldl')
 
 -- | The main logic function called every frame
 processFrame :: TVar SystemState -> [Point3D] -> IO ()
 processFrame stateVar pts = do
     -- 1. Mesh the surface
+    -- fitPolynomialSurface returns [Double] (coefficients)
     let _coeffs = fitPolynomialSurface pts
     -- (In a real system, we'd use coeffs to calculate amplitude at isocenter)
 
@@ -26,7 +27,7 @@ processFrame stateVar pts = do
                    then BeamOn
                    else BeamOff
 
-    currTime <- getTime Monotonic
+    currTime <- getMonotonicTimeNS
     atomically $ modifyTVar' stateVar $ \s -> s
         { currentPoints = pts
         , beamState = newState

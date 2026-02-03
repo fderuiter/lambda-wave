@@ -1,4 +1,5 @@
 {-# LANGUAGE StrictData #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 module Data.Types (
     Point3D(..),
@@ -8,10 +9,11 @@ module Data.Types (
     RadarFrame(..)
 ) where
 
-import System.Clock (TimeSpec)
 import qualified Data.ByteString as B
 import Foreign.Storable
 import Control.DeepSeq (NFData(..))
+import Data.Word (Word64)
+import GHC.Generics (Generic)
 
 -- | 3D Point in Room Coordinates (mm)
 data Point3D = Point3D
@@ -20,10 +22,9 @@ data Point3D = Point3D
   , pz :: Double
   , v  :: Double -- Velocity from Doppler
   , snr :: Double
-  } deriving (Show, Eq)
+  } deriving (Show, Eq, Generic)
 
-instance NFData Point3D where
-  rnf (Point3D x y z vel s) = rnf x `seq` rnf y `seq` rnf z `seq` rnf vel `seq` rnf s
+instance NFData Point3D
 
 -- | Raw Point structure from "Type 1" TLV (4 floats)
 data Point = Point
@@ -50,30 +51,24 @@ instance Storable Point where
 
 -- | The critical decision state
 data BeamState = BeamOn | BeamOff | BeamHold -- Hold is manual override
-  deriving (Show, Eq)
+  deriving (Show, Eq, Generic)
 
-instance NFData BeamState where
-  rnf x = x `seq` ()
+instance NFData BeamState
 
 -- | The Global State shared across threads via STM
 data SystemState = SystemState
   { currentPoints :: [Point3D]
   , beamState :: BeamState
-  , lastFrameTime :: TimeSpec -- For Watchdog
-  , isocenter :: Point3D      -- Calibration zero
-  }
+  , lastFrameTime :: Word64 -- Nanoseconds since boot (Monotonic)
+  , isocenter :: Point3D    -- Calibration zero
+  } deriving (Generic)
 
-instance NFData SystemState where
-  rnf (SystemState pts bs t iso) = rnf pts `seq` rnf bs `seq` rnf t `seq` rnf iso
-
-instance NFData TimeSpec where
-  rnf t = t `seq` ()
+instance NFData SystemState
 
 -- | Raw parsed structure from the sensor
 data RadarFrame = RadarFrame
   { header :: B.ByteString
   , points :: [Point3D]
-  } deriving (Show, Eq)
+  } deriving (Show, Eq, Generic)
 
-instance NFData RadarFrame where
-  rnf (RadarFrame h pts) = rnf h `seq` rnf pts
+instance NFData RadarFrame
