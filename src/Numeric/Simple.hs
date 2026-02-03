@@ -22,7 +22,8 @@ module Numeric.Simple
     , identity
     ) where
 
-import Data.List (transpose, foldl')
+import Data.List (transpose)
+import Control.Monad (foldM)
 
 -- | Type Alias for Vector (List of Doubles)
 type Vector = [Double]
@@ -39,10 +40,20 @@ toLists :: Matrix -> [[Double]]
 toLists = id
 
 -- | Matrix Multiplication (A * B)
-multiply :: Matrix -> Matrix -> Matrix
-multiply a b =
-    let bt = transpose b
-    in [ [ dot row col | col <- bt ] | row <- a ]
+-- Returns Nothing if dimensions mismatch (colsA /= rowsB) or jagged.
+multiply :: Matrix -> Matrix -> Maybe Matrix
+multiply a b
+    | null a = Just []
+    | not (isRectangular a rowsA colsA) = Nothing
+    | not (isRectangular b rowsB colsB) = Nothing
+    | colsA /= rowsB = Nothing
+    | otherwise = Just [ [ dot row col | col <- bt ] | row <- a ]
+  where
+    rowsA = length a
+    colsA = if rowsA > 0 then length (head a) else 0
+    rowsB = length b
+    colsB = if rowsB > 0 then length (head b) else 0
+    bt = transpose b
 
 -- | Matrix-Vector Multiplication (A * v)
 matVecMult :: Matrix -> Vector -> Vector
@@ -56,70 +67,93 @@ identity :: Int -> Matrix
 identity n = [ [ if i == j then 1.0 else 0.0 | j <- [0..n-1] ] | i <- [0..n-1] ]
 
 -- | Gaussian Elimination to invert matrix
--- Returns Nothing if matrix is non-square.
--- (Singular check depends on pivot 0, which gaussJordan handles).
+-- Returns Nothing if matrix is non-square, singular, or jagged.
 inverse :: Matrix -> Maybe Matrix
 inverse m
     | null m = Nothing
     | rows /= cols = Nothing
-    | otherwise = Just (extractInverse (gaussJordan augmented))
+    | not (isRectangular m rows cols) = Nothing
+    | otherwise = do
+        let augmented = zipWith (++) m (identity rows)
+        rref <- gaussJordan augmented rows
+        return $ map (drop cols) rref
   where
     rows = length m
-    cols = case m of
-             (row:_) -> length row
-             []      -> 0
-    augmented = zipWith (++) m (identity rows)
-
-    extractInverse :: Matrix -> Matrix
-    extractInverse aug = map (drop cols) aug
+    cols = if rows > 0 then length (head m) else 0
 
 -- | Least Squares Solver: x = (A^T A)^-1 A^T b
--- Returns empty list if singular
-leastSquares :: Matrix -> Vector -> Vector
-leastSquares a b =
-    let at = transpose a
-        ata = multiply at a
-        atb = matVecMult at b
-    in case inverse ata of
-        Nothing -> [] -- Singular
-        Just invATA -> matVecMult invATA atb
+-- Returns Nothing if singular or dimensions mismatch.
+leastSquares :: Matrix -> Vector -> Maybe Vector
+leastSquares a b = do
+    let rowsA = length a
+    let colsA = if rowsA > 0 then length (head a) else 0
 
--- | Gauss-Jordan Elimination
-gaussJordan :: Matrix -> Matrix
-gaussJordan m = foldl' pivot m [0 .. length m - 1]
+    if not (isRectangular a rowsA colsA) || length b /= rowsA
+       then Nothing
+       else do
+           let matT = transpose a
+           ata <- multiply matT a
+           let atb = matVecMult matT b
+           invATA <- inverse ata
+           return $ matVecMult invATA atb
+
+-- | Helper: Safe Indexing
+at :: [a] -> Int -> Maybe a
+at xs i
+    | i < 0 = Nothing
+    | otherwise = go xs i
   where
-    pivot mat k =
-        let -- Find pivot row (max absolute value)
-            n = length mat
-            (pivotRowIdx, _) = foldl' (\(bestIdx, maxVal) i ->
-                                    let val = abs ((mat !! i) !! k)
-                                    in if val > maxVal then (i, val) else (bestIdx, maxVal)
-                                ) (k, abs ((mat !! k) !! k)) [k+1 .. n-1]
+    go [] _ = Nothing
+    go (x:_) 0 = Just x
+    go (_:ys) n = go ys (n - 1)
 
-            -- Swap rows
-            matSwapped = swapRows k pivotRowIdx mat
-            pivotRow = matSwapped !! k
-            pivotVal = pivotRow !! k
+-- | Helper: Check Rectangularity
+isRectangular :: Matrix -> Int -> Int -> Bool
+isRectangular m rows cols = length m == rows && all (\r -> length r == cols) m
 
-            -- Normalize pivot row
-            normPivotRow = map (/ pivotVal) pivotRow
+-- | Helper: Update list at index
+updateAt :: Int -> (a -> a) -> [a] -> [a]
+updateAt idx f xs = zipWith (\i x -> if i == idx then f x else x) [0..] xs
 
-            -- Eliminate other rows
-            eliminate i row
-                | i == k = normPivotRow
-                | otherwise =
-                    let factor = row !! k
-                    in zipWith (\x p -> x - factor * p) row normPivotRow
+-- | Gauss-Jordan Elimination with Safe Indexing
+gaussJordan :: Matrix -> Int -> Maybe Matrix
+gaussJordan mInitial rows = foldM pivot mInitial [0 .. rows - 1]
+  where
+    pivot mat k = do
+        -- Find pivot row (max absolute value)
+        -- Start search from k to rows-1
+        let candidateIndices = [k .. rows - 1]
 
-        in if pivotVal == 0 then mat else zipWith eliminate [0..] matSwapped
+        -- We need to find (index, absVal) of the best pivot
+        (bestIdx, maxVal) <- foldM (\(currBestIdx, currMaxVal) i -> do
+                row <- mat `at` i
+                val <- row `at` k
+                let absVal = abs val
+                return $ if absVal > currMaxVal then (i, absVal) else (currBestIdx, currMaxVal)
+            ) (-1, -1.0) candidateIndices
 
-    swapRows i j xs
-        | i == j = xs
-        | otherwise =
-            let elemI = xs !! i
-                elemJ = xs !! j
-                update k x
-                    | k == i = elemJ
-                    | k == j = elemI
-                    | otherwise = x
-            in zipWith update [0..] xs
+        -- Check singularity (using a small epsilon)
+        if maxVal < 1e-10
+           then Nothing
+           else do
+               -- Swap rows
+               rowK <- mat `at` k
+               rowBest <- mat `at` bestIdx
+               let matSwapped = updateAt k (const rowBest) $ updateAt bestIdx (const rowK) mat
+
+               pivotRow <- matSwapped `at` k
+               pivotVal <- pivotRow `at` k
+
+               let normPivotRow = map (/ pivotVal) pivotRow
+
+               -- Eliminate other rows
+               let eliminate i row
+                       | i == k = Just normPivotRow
+                       | otherwise = do
+                           factor <- row `at` k
+                           return $ zipWith (\x p -> x - factor * p) row normPivotRow
+
+               -- Reconstruct matrix with eliminated rows
+               -- We use mapM with index
+               let rowsWithIndices = zip [0..] matSwapped
+               mapM (uncurry eliminate) rowsWithIndices
