@@ -1,5 +1,6 @@
 {-# LANGUAGE ForeignFunctionInterface #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE CPP #-}
 
 module Hardware.Control
     ( configureSensor
@@ -46,7 +47,11 @@ configureSensor configPath portPath = do
 
             -- Open Fd
             result <- try $ bracket
+#if MIN_VERSION_unix(2,8,0)
+                (openFd portPath ReadWrite defaultFileFlags { nonBlock = False, creat = Just (ownerReadMode `unionFileModes` ownerWriteMode) })
+#else
                 (openFd portPath ReadWrite (Just (ownerReadMode `unionFileModes` ownerWriteMode)) defaultFileFlags { nonBlock = False })
+#endif
                 closeFd
                 (\fd -> do
                     -- Configure 115200 for CLI

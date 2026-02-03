@@ -72,7 +72,7 @@ unwrapPhase (Vector inputPhase)
   where
     -- Calculate differences: p[i] - p[i-1]
     -- zipWith (-) (tail) (init)
-    diffs = zipWith (-) (tail inputPhase) (init inputPhase)
+    diffs = zipWith (-) (drop 1 inputPhase) inputPhase
 
     -- Calculate required jumps
     jumps = map (\d -> fromIntegral (round (d / (2 * pi)) :: Int) * (2 * pi)) diffs

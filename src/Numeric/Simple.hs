@@ -135,7 +135,9 @@ inv (Matrix mat)
             Nothing  -> ident r -- Safe fallback
   where
     r = length mat
-    c = if null mat then 0 else length (head mat)
+    c = case mat of
+          [] -> 0
+          (row:_) -> length row
 
 -- | Gaussian Elimination to RREF
 gaussianElimination :: [[Double]] -> Maybe [[Double]]
