@@ -1,12 +1,12 @@
 {-# LANGUAGE ForeignFunctionInterface #-}
-module Main where
+module Main (main) where
 
-import Control.Exception (try, catch, SomeException)
+import Control.Exception (try, SomeException)
+-- Removed Control.Monad (when)
 import Data.Time.HighRes (getMonotonicTimeNS, getRealTimeNS)
 import FFI.RingBuffer.IO (createRingBuffer, getWriteOffset)
-import Foreign.ForeignPtr (withForeignPtr)
+-- Removed Foreign.ForeignPtr
 import System.Exit (exitFailure, exitSuccess)
-import Control.Monad (when)
 
 main :: IO ()
 main = do

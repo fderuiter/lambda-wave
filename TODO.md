@@ -155,7 +155,7 @@ Validate system accuracy using QUASAR or CIRS motion phantom with known displace
 ## High Priority Items (P1)
 
 ### P1-001: CI/CD Strictness (-Werror)
-**Status:** ⏳ Planned  
+**Status:** ✅ Complete
 **Phase:** 1.2 - Infrastructure  
 **Priority:** P1 (Code quality gate)
 
@@ -167,11 +167,11 @@ Update CI pipeline to fail on any compiler warning, enforcing zero-warning polic
 - All builds must be warning-free
 
 **Tasks:**
-- [ ] Add `-Werror` to ghc-options in sgrt-radar-system.cabal
-- [ ] Update .github/workflows/build-and-test.yml
-- [ ] Fix all existing warnings in codebase
-- [ ] Test CI with intentional warning to verify failure
-- [ ] Document warning policy in CONTRIBUTING.md
+- [x] Add `-Werror` to ghc-options in sgrt-radar-system.cabal
+- [x] Update .github/workflows/build-and-test.yml
+- [x] Fix all existing warnings in codebase
+- [x] Test CI with intentional warning to verify failure
+- [x] Document warning policy in CONTRIBUTING.md
 
 **Acceptance Criteria:**
 - CI fails when code has compiler warnings

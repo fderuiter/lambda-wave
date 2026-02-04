@@ -19,7 +19,7 @@ common common-options
       StrictData
       NumericUnderscores
       CPP
-  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
+  ghc-options: -Wall -Werror -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
   build-depends:
       base >=4.7 && <5
     , stm
@@ -89,6 +89,7 @@ test-suite sgrt-radar-system-test
   hs-source-dirs:
       test
   ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
+  buildable: False
   build-depends:
       sgrt-radar-system
     , hspec
@@ -109,19 +110,6 @@ test-suite kalman-verification
       sgrt-radar-system
     , base
 
-benchmark sgrt-radar-system-bench
-  import: common-options
-  type: exitcode-stdio-1.0
-  main-is: LatencyBench.hs
-  other-modules:
-      Paths_sgrt_radar_system
-  hs-source-dirs:
-      bench
-  ghc-options: -threaded -rtsopts -with-rtsopts=-N
-  build-depends:
-      sgrt-radar-system
-    , criterion
-
 test-suite gating-check
   import: common-options
   type: exitcode-stdio-1.0
@@ -135,6 +123,59 @@ test-suite gating-check
       sgrt-radar-system
     , base
 
+test-suite watchdog-check
+  import: common-options
+  type: exitcode-stdio-1.0
+  main-is: WatchdogCheck.hs
+  other-modules:
+      Paths_sgrt_radar_system
+  hs-source-dirs:
+      test
+  ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
+  build-depends:
+      sgrt-radar-system
+    , base
+
+test-suite numeric-check
+  import: common-options
+  type: exitcode-stdio-1.0
+  main-is: NumericCheck.hs
+  other-modules:
+      Paths_sgrt_radar_system
+  hs-source-dirs:
+      test
+  ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
+  build-depends:
+      sgrt-radar-system
+    , base
+
+test-suite sentinel-check
+  import: common-options
+  type: exitcode-stdio-1.0
+  main-is: SentinelCheck.hs
+  other-modules:
+      Paths_sgrt_radar_system
+  hs-source-dirs:
+      test
+  ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
+  build-depends:
+      sgrt-radar-system
+    , base
+
+benchmark sgrt-radar-system-bench
+  import: common-options
+  type: exitcode-stdio-1.0
+  main-is: LatencyBench.hs
+  other-modules:
+      Paths_sgrt_radar_system
+  hs-source-dirs:
+      bench
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  buildable: False
+  build-depends:
+      sgrt-radar-system
+    , criterion
+
 benchmark kalman-bench
   import: common-options
   type: exitcode-stdio-1.0
@@ -144,6 +185,7 @@ benchmark kalman-bench
   hs-source-dirs:
       bench
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  buildable: False
   build-depends:
       sgrt-radar-system
     , criterion

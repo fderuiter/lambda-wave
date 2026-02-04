@@ -1,13 +1,12 @@
-module Main where
+module Main (main) where
 
 import Control.Exception (try, SomeException)
 import Numeric.Simple
-import System.Exit (exitFailure, exitSuccess)
+import System.Exit (exitSuccess)
 
 main :: IO ()
 main = do
     putStrLn "Running Numeric.Simple checks..."
-    let mutFail = False
 
     -- 1. Test Matrix Inversion (Normal)
     let m1 = [[4, 7], [2, 6]]
