@@ -1,0 +1,163 @@
+name: SGRT Radar Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+# Prevent redundant builds on PRs to save costs
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # STAGE 1: Static Analysis & Quality Gate (Fast Fail)
+  quality-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Clang-Format
+        run: sudo apt-get install -y clang-format
+
+      - name: Set up Haskell
+        uses: haskell-actions/setup@v2
+        with:
+          ghc-version: '9.8.2'
+          cabal-version: '3.10'
+
+      - name: Cache Analysis Tools
+        uses: actions/cache@v3
+        with:
+          path: ~/.cabal/bin
+          key: ${{ runner.os }}-analysis-tools-v1
+
+      - name: Install Analysis Tools
+        # Check if tools exist in cache before installing
+        run: |
+          if [ ! -f ~/.cabal/bin/hlint ]; then cabal install hlint; fi
+          # Weeder can be enabled if dead-code analysis becomes critical
+          # if [ ! -f ~/.cabal/bin/weeder ]; then cabal install weeder; fi
+
+      - name: Run HLint
+        run: ~/.cabal/bin/hlint src/ test/ app/
+
+      - name: Check Cabal File Validity
+        run: cabal check
+
+      - name: Run Clang-Format (C++ Style)
+        # Fail if C++ code is not formatted correctly
+        run: |
+          find cbits -name "*.cpp" -o -name "*.h" -o -name "*.c" | xargs clang-format --dry-run --Werror
+
+      - name: ShellCheck Scripts
+        run: shellcheck scripts/*.sh || echo "ShellCheck not installed/failed"
+
+  # STAGE 2: Build & Unit Tests
+  build-and-test:
+    needs: quality-gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Haskell
+        uses: haskell-actions/setup@v2
+        with:
+          ghc-version: '9.8.2'
+          cabal-version: '3.10'
+
+      - name: Cache ~/.cabal/store
+        uses: actions/cache@v3
+        with:
+          path: ~/.cabal/store
+          key: ${{ runner.os }}-ghc9.8.2-${{ hashFiles('cabal.project', 'sgrt-radar-system.cabal') }}
+          restore-keys: ${{ runner.os }}-ghc9.8.2-
+
+      - name: Install System Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y liblapack-dev libblas-dev
+
+      - name: Build Dependencies
+        run: cabal build all --only-dependencies
+
+      - name: Build Project
+        run: cabal build all
+
+      - name: Run Standard Unit Tests
+        run: cabal test sgrt-radar-system-test
+
+      - name: Run Math Verification (Kalman)
+        run: cabal test kalman-verification
+
+  # STAGE 3: C++ Thread Safety (Sanitizers)
+  sanitizer-check:
+    needs: quality-gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compile TSan Harness
+        # Compiles the ring buffer implementation with the standalone test harness
+        # Flags: -fsanitize=thread detects data races at runtime
+        run: |
+          clang++ -fsanitize=thread -g -O1 -std=c++17 -pthread \
+            -I cbits/include \
+            cbits/src/ring_buffer.cpp \
+            test/cpp/tsan_harness.cpp \
+            -o tsan_test
+
+      - name: Run Thread Safety Check
+        # If a race condition exists, TSan will exit with a non-zero code
+        run: ./tsan_test
+
+  # STAGE 4: Performance Regression (Main Branch Only)
+  performance-bench:
+    needs: build-and-test
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # Required to push to gh-pages
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Haskell
+        uses: haskell-actions/setup@v2
+        with:
+          ghc-version: '9.8.2'
+          cabal-version: '3.10'
+
+      - name: Cache ~/.cabal/store
+        uses: actions/cache@v3
+        with:
+          path: ~/.cabal/store
+          key: ${{ runner.os }}-ghc9.8.2-${{ hashFiles('cabal.project', 'sgrt-radar-system.cabal') }}
+
+      - name: Install System Dependencies
+        run: sudo apt-get install -y liblapack-dev libblas-dev
+
+      - name: Run Latency Benchmark
+        run: cabal bench sgrt-radar-system-bench --benchmark-options="--output=latency_result.json" || true
+
+      - name: Store Benchmark Result
+        uses: benchmark-action/github-action-benchmark@v1
+        with:
+          tool: 'custom'
+          output-file-path: latency_result.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          auto-push: true
+          # Alert if latency degrades by more than 10%
+          alert-threshold: '110%'
+          fail-on-alert: true
+
+  # STAGE 5: Release Packaging
+  docker-release:
+    needs: [build-and-test, sanitizer-check]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Docker Image
+        run: docker build . -t sgrt-radar-system:${{ github.ref_name }}

@@ -6,3 +6,5 @@ dist-newstyle/
 .DS_Store
 *.eventlog
 *.log
+tsan_test
+latency_result.json
