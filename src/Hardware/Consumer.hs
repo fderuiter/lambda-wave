@@ -26,7 +26,6 @@ import Control.Exception (evaluate)
 import Data.Word (Word8)
 import Data.Int (Int64)
 import Foreign.ForeignPtr (newForeignPtr_, ForeignPtr, castForeignPtr, withForeignPtr)
-import Foreign.Storable (peek)
 import Foreign.C.Types (CChar)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Internal as BI
@@ -34,7 +33,7 @@ import qualified Data.ByteString.Lazy as BL
 import qualified Data.Binary.Get as G
 import System.IO (hPutStrLn, stderr)
 
-import FFI.RingBuffer.Types (RingBufferControl(..))
+import FFI.RingBuffer.Types (RingBufferControl(..), peekStaticFields)
 import FFI.RingBuffer.IO (getWriteOffset, setReadOffset)
 import Data.Types
 import Control.Gating (processFrame)
@@ -52,9 +51,10 @@ magicPattern = BL.pack [1, 2, 3, 4, 5, 6, 7, 8]
 consumerLoop :: ForeignPtr RingBufferControl -> TVar SystemState -> IO ()
 consumerLoop controlFp stateVar = withForeignPtr controlFp $ \controlPtr -> do
     -- Read initial control block (non-atomic for immutable fields)
-    ctrl <- peek controlPtr
-    let bufStart = bufferStart ctrl
-        bufSize  = fromIntegral (bufferSize ctrl) :: Int
+    -- We use a dedicated peek to avoid reading atomic offsets (0, 8) which could race.
+    (ptrStart, rawSize) <- peekStaticFields controlPtr
+    let bufStart = ptrStart
+        bufSize  = fromIntegral rawSize :: Int
 
     -- ForeignPtr to the buffer (no finalizer, as we don't own the memory)
     fp <- newForeignPtr_ bufStart
