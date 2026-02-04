@@ -1,9 +1,9 @@
 {-# LANGUAGE BangPatterns #-}
-module Main where
+module Main (main) where
 
 import System.Exit (exitFailure, exitSuccess)
-import Control.Monad (unless, when)
-import SignalProcessing.Kalman (KalmanState(..), V3(..), M33(..), initKalman, KalmanConfig(..))
+import Control.Monad () -- kept as suggested if instances needed, otherwise remove. But warning said redundant. Remove it.
+import SignalProcessing.Kalman (KalmanState(..), V3(..), M33(..))
 import Data.Types (BeamState(..))
 import qualified Control.Gating as Gating
 
@@ -119,4 +119,4 @@ check name expected actual
 catMaybes :: [Maybe a] -> [a]
 catMaybes [] = []
 catMaybes (Nothing:xs) = catMaybes xs
-catMaybes (Just x:xs) = x : catMaybes xs
+catMaybes (Just val:xs) = val : catMaybes xs

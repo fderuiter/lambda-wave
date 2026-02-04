@@ -1,10 +1,11 @@
-module Main where
+module Main (main) where
 
 import Control.Concurrent.STM
 import qualified Data.Map.Strict as Map
 import Data.Types
 import Control.Gating (processFrame)
 import Data.Time.HighRes (getMonotonicTimeNS)
+import SignalProcessing.Kalman (initKalman, KalmanConfig(..))
 
 main :: IO ()
 main = do
@@ -12,7 +13,10 @@ main = do
 
     -- 1. Setup State
     now <- getMonotonicTimeNS
-    let initialState = SystemState [] BeamOff now (Point3D 0 0 0 0 0) Map.empty
+    -- Initialize with default kalman state
+    let kConfig = KalmanConfig 0.1 0.1
+    let kState = initKalman 0.0 kConfig
+    let initialState = SystemState [] BeamOff now (Point3D 0 0 0 0 0) Map.empty kState
     stateVar <- newTVarIO initialState
 
     -- 2. Run Gating Process (which should update heartbeat)
