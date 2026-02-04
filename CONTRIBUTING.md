@@ -9,6 +9,7 @@ We follow Git-flow:
 
 ## Coding Standards
 *   **Haskell:** Use `hlint` and `ormolu`.
+*   **Warnings:** All code must compile with `-Werror` (Zero warnings).
 *   **C/C++:** Use `clang-format`.
 
 ## PR Process

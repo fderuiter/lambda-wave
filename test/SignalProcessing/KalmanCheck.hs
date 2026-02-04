@@ -1,11 +1,11 @@
 {-# LANGUAGE BangPatterns #-}
 
-module Main where
+module Main (main) where
 
 import SignalProcessing.Kalman
 import Data.List (foldl')
 import Text.Printf (printf)
-import Control.Monad (unless, when)
+-- Removed Control.Monad import
 
 -- | Test Convergence on Static Signal
 testConvergence :: IO Bool
@@ -95,7 +95,7 @@ lcgStream :: Int -> [Double]
 lcgStream seed = map toDouble (iterate next seed)
   where
     next s = (1664525 * s + 1013904223) `rem` (2^(32::Int))
-    toDouble s = (fromIntegral s / fromIntegral (2^(32::Int))) * 200.0 - 100.0
+    toDouble s = (fromIntegral s / fromIntegral (2^(32::Int) :: Integer)) * 200.0 - 100.0
 
 -- | Property Test: Symmetry of Covariance Matrix
 -- P must be symmetric (approx)
@@ -106,7 +106,7 @@ propSymmetry val =
         -- Run one step
         stPred = predict 0.033 config st
         stUpd  = update val config stPred
-        (M33 (V3 p11 p12 p13) (V3 p21 p22 p23) (V3 p31 p32 p33)) = p stUpd
+        (M33 (V3 _ p12 p13) (V3 p21 _ p23) (V3 p31 p32 _)) = p stUpd
 
         tol = 1e-10
         sym12 = abs (p12 - p21) < tol
@@ -145,7 +145,7 @@ propLinearity val scaleFactor =
 testProperties :: IO Bool
 testProperties = do
     putStr "Test 4: QuickCheck Properties (Symmetry, Linearity)... "
-    let seeds = [1..100]
+    -- Removed unused seeds
     let measurements = take 100 (lcgStream 42)
     let scales = take 100 (lcgStream 99)
 
