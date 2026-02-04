@@ -50,6 +50,8 @@ library
       Numeric.Simple
   other-modules:
       Paths_sgrt_radar_system
+  autogen-modules:
+      Paths_sgrt_radar_system
   hs-source-dirs:
       src
   include-dirs:
@@ -65,6 +67,8 @@ executable sgrt-radar-system-exe
   import: common-options
   main-is: Main.hs
   other-modules:
+      Paths_sgrt_radar_system
+  autogen-modules:
       Paths_sgrt_radar_system
   hs-source-dirs:
       app
@@ -86,6 +90,8 @@ test-suite sgrt-radar-system-test
       Hardware.ControlSpec
       System.RTSSpec
       SignalProcessing.FMCWSpec
+  autogen-modules:
+      Paths_sgrt_radar_system
   hs-source-dirs:
       test
   ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
@@ -102,6 +108,8 @@ test-suite kalman-verification
   main-is: KalmanCheck.hs
   other-modules:
       Paths_sgrt_radar_system
+  autogen-modules:
+      Paths_sgrt_radar_system
   hs-source-dirs:
       test/SignalProcessing
   ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
@@ -114,6 +122,8 @@ benchmark sgrt-radar-system-bench
   type: exitcode-stdio-1.0
   main-is: LatencyBench.hs
   other-modules:
+      Paths_sgrt_radar_system
+  autogen-modules:
       Paths_sgrt_radar_system
   hs-source-dirs:
       bench
@@ -128,6 +138,8 @@ test-suite gating-check
   main-is: GatingCheck.hs
   other-modules:
       Paths_sgrt_radar_system
+  autogen-modules:
+      Paths_sgrt_radar_system
   hs-source-dirs:
       test/Control
   ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
@@ -140,6 +152,8 @@ benchmark kalman-bench
   type: exitcode-stdio-1.0
   main-is: KalmanBench.hs
   other-modules:
+      Paths_sgrt_radar_system
+  autogen-modules:
       Paths_sgrt_radar_system
   hs-source-dirs:
       bench
