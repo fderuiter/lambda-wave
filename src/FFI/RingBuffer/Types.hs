@@ -54,7 +54,7 @@ layout can lead to data corruption and undefined behaviour.
 See also: @RingBuffer.h@ for the authoritative C++ definition and
 documentation of the ring buffer control structure and protocol.
 -}
-module FFI.RingBuffer.Types (RingBufferControl(..)) where
+module FFI.RingBuffer.Types (RingBufferControl(..), peekStaticFields) where
 
 import Foreign.Storable
 import Foreign.Ptr
@@ -94,3 +94,13 @@ instance Storable RingBufferControl where
         pokeByteOff ptr 8 roff
         pokeByteOff ptr 16 start
         pokeByteOff ptr 24 sz
+
+-- | Peeks only the static fields (bufferStart and bufferSize) from the control block.
+-- This avoids reading the atomic offsets (0 and 8) which are modified concurrently by C++,
+-- preventing potential data races (Undefined Behavior) when accessing the control block
+-- from the consumer thread.
+peekStaticFields :: Ptr RingBufferControl -> IO (Ptr CChar, Word64)
+peekStaticFields ptr = do
+    start <- peekByteOff ptr 16
+    sz    <- peekByteOff ptr 24
+    return (start, sz)
