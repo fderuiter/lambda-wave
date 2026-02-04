@@ -2,7 +2,10 @@ cabal-version: 2.2
 
 name:           sgrt-radar-system
 version:        0.1.0.0
-description:    Safety-critical Surface Guided Radiation Therapy (SGRT) system
+synopsis:       Safety-critical Surface Guided Radiation Therapy (SGRT) system
+description:    Safety-critical Surface Guided Radiation Therapy (SGRT) system.
+                Implements radar-based positioning and gating control.
+category:       Medical, Embedded, System
 author:         Frederick de Ruiter, Ayoola Okuribido
 maintainer:     Frederick de Ruiter <fpderuiter@gmail.com>
 copyright:      2024-2026 Frederick de Ruiter, Ayoola Okuribido
@@ -12,6 +15,10 @@ build-type:     Simple
 extra-source-files:
     README.md
     cbits/include/*.h
+
+source-repository head
+  type: git
+  location: https://github.com/fderuiter/lambda-wave
 
 common common-options
   default-extensions:
@@ -59,8 +66,8 @@ library
   cxx-sources:
       cbits/src/RingBufferCheck.cpp
       cbits/src/ring_buffer.cpp
-  cc-options: -Wall -O2
-  cxx-options: -std=c++11 -Wall -O2
+  cc-options: -Wall
+  cxx-options: -std=c++11 -Wall
   extra-libraries: stdc++
 
 executable sgrt-radar-system-exe
