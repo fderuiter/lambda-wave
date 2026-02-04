@@ -1,5 +1,5 @@
 # Build Stage
-FROM haskell:9.8.2 AS builder
+FROM haskell:9.6.4 AS builder
 
 WORKDIR /app
 
