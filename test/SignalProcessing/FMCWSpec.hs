@@ -37,7 +37,7 @@ spec = describe "SignalProcessing.FMCW" $ do
                 true_phase = [ 6 * pi * (fromIntegral i / fromIntegral n_samples) | i <- [0..n_samples-1] ] :: [Double]
 
                 -- Wrap function: (x + pi) % 2pi - pi
-                wrap x = (x + pi) - (2 * pi) * fromIntegral ((floor ((x + pi) / (2 * pi))) :: Int) - pi
+                wrap x = (x + pi) - (2 * pi) * fromIntegral (floor ((x + pi) / (2 * pi)) :: Int) - pi
 
                 wrapped_phase = map wrap true_phase
                 unwrapped = unwrapPhase wrapped_phase

@@ -22,7 +22,7 @@ spec :: Spec
 spec = do
   describe "FFI.RingBuffer.IO" $ do
     it "createRingBuffer returns a valid pointer" $ do
-      ptr <- createRingBuffer 1024
+      ptr <- createRingBuffer 1_024
       getWriteOffset ptr `shouldReturn` 0
 
     it "createRingBuffer throws error for invalid size" $ do
@@ -32,7 +32,7 @@ spec = do
     it "ingestionLoop reads data from pipe into ring buffer" $ do
       (readFd, writeFd) <- createPipe
 
-      withRingBuffer 4096 $ \ptr -> do
+      withRingBuffer 4_096 $ \ptr -> do
         wOff <- getWriteOffset ptr
         wOff `shouldBe` 0
 
@@ -55,7 +55,7 @@ spec = do
 
     it "handles high-throughput ingestion without data loss (1M items)" $ do
       (readFd, writeFd) <- createPipe
-      let bufSz = 4096
+      let bufSz = 4_096
       let totalBytes = 1_000_000 :: Int
 
       withRingBuffer bufSz $ \ptr -> do
@@ -63,7 +63,7 @@ spec = do
 
         producerDone <- newEmptyMVar
         _ <- forkIO $ do
-            let chunkSize = 1024
+            let chunkSize = 1_024
 
             let go n | n >= totalBytes = return ()
                 go n = do
