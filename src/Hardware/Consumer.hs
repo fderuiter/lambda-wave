@@ -37,6 +37,7 @@ import FFI.RingBuffer.Types (RingBufferControl(..), peekStaticFields)
 import FFI.RingBuffer.IO (getWriteOffset, setReadOffset)
 import Data.Types
 import Control.Gating (processFrame)
+import Safety.Audit (AuditQueue)
 
 -- | The Magic Word sequence for TI Millimeter Wave Radar
 magicPattern :: BL.ByteString
@@ -48,8 +49,8 @@ magicPattern = BL.pack [1, 2, 3, 4, 5, 6, 7, 8]
 -- * If new data exists, creates a Lazy ByteString referencing the buffer (Zero-Copy).
 -- * Parses frames using 'Data.Binary.Get'.
 -- * Updates 'SystemState'.
-consumerLoop :: ForeignPtr RingBufferControl -> TVar SystemState -> IO ()
-consumerLoop controlFp stateVar = withForeignPtr controlFp $ \controlPtr -> do
+consumerLoop :: ForeignPtr RingBufferControl -> TVar SystemState -> AuditQueue -> IO ()
+consumerLoop controlFp stateVar auditQ = withForeignPtr controlFp $ \controlPtr -> do
     -- Read initial control block (non-atomic for immutable fields)
     -- We use a dedicated peek to avoid reading atomic offsets (0, 8) which could race.
     (ptrStart, rawSize) <- peekStaticFields controlPtr
@@ -105,7 +106,7 @@ consumerLoop controlFp stateVar = withForeignPtr controlFp $ \controlPtr -> do
                     -- We process each frame individually to maintain correct time-steps for the filter.
                     unless (null frames) $ do
                         forM_ frames $ \frame ->
-                            processFrame stateVar (points frame)
+                            processFrame auditQ stateVar (points frame)
 
                     when (bytesConsumed > 0 && null frames) $
                         putStrLn "[Consumer] Warning: Skipped garbage data (Magic Word search or Parse Error)."

@@ -7,8 +7,10 @@ import Control.Concurrent.STM
 import Data.Time.HighRes (getMonotonicTimeNS)
 import Data.List (foldl')
 import qualified Data.Map.Strict as Map
+import Control.Monad (when)
 import SignalProcessing.Kalman (KalmanState(..), KalmanConfig(..), V3(..), predict, update)
 import Hardware.Control (setBeam)
+import Safety.Audit (AuditQueue, writeAudit, AuditSeverity(..))
 
 -- | Kalman Configuration
 -- Process Noise (Q): System agility (how fast we expect breathing to change)
@@ -20,8 +22,8 @@ kConfig = KalmanConfig
     }
 
 -- | The main logic function called every frame
-processFrame :: TVar SystemState -> [Point3D] -> IO ()
-processFrame stateVar pts = do
+processFrame :: AuditQueue -> TVar SystemState -> [Point3D] -> IO ()
+processFrame auditQ stateVar pts = do
     currTime <- getMonotonicTimeNS
 
     -- 1. Read Previous State
@@ -59,6 +61,12 @@ processFrame stateVar pts = do
             BeamOn -> True
             _      -> False
     setBeam beamBool
+
+    -- 6b. Audit Logging (P1-004)
+    when (newBeamState /= oldBeamState) $ atomically $ do
+        let msg = "Beam State Changed: " ++ show oldBeamState ++ " -> " ++ show newBeamState
+        let sev = if newBeamState == BeamOff then Warning else Info
+        writeAudit auditQ sev "Gating" msg
 
     -- 7. Update System State
     atomically $ modifyTVar' stateVar $ \s -> s

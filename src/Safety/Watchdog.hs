@@ -30,11 +30,12 @@ import Data.Time.HighRes (getMonotonicTimeNS)
 import Control.Monad (forever, when, forM_)
 import System.Exit (exitFailure)
 import qualified Data.Map.Strict as Map
+import Safety.Audit (AuditQueue, writeAudit, AuditSeverity(..))
 
 -- | The Watchdog Loop
 -- Kills the process if any critical thread has not reported progress within the timeout.
-watchdogLoop :: TVar SystemState -> IO ()
-watchdogLoop stateVar = forever $ do
+watchdogLoop :: TVar SystemState -> AuditQueue -> IO ()
+watchdogLoop stateVar auditQ = forever $ do
     now <- getMonotonicTimeNS
     state <- readTVarIO stateVar
     let heartbeats = threadHeartbeats state
@@ -46,9 +47,16 @@ watchdogLoop stateVar = forever $ do
         -- Check if difference exceeds timeout (cast Integer to Word64 safely for comparison)
         -- watchdogTimeoutNS is Integer (100ms = 100_000_000). Word64 max is huge.
         when (diff > fromIntegral watchdogTimeoutNS) $ do
-            putStrLn $ "!!! WATCHDOG TRIP: Thread '" ++ threadName ++ "' FROZEN !!!"
-            putStrLn $ "!!! Time since last heartbeat: " ++ show diff ++ " ns"
+            let msg = "Thread '" ++ threadName ++ "' FROZEN. Last HB: " ++ show diff ++ " ns"
+            putStrLn $ "!!! WATCHDOG TRIP: " ++ msg
             putStrLn "!!! FORCING BEAM OFF !!!"
+
+            -- Log Critical Event
+            atomically $ writeAudit auditQ Critical "Watchdog" msg
+
+            -- Give Audit thread a chance to flush (100ms)
+            threadDelay 100000
+
             -- In real HW, this would toggle a GPIO pin immediately
             exitFailure
 

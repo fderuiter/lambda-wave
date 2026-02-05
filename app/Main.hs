@@ -42,6 +42,9 @@ main = do
 
     systemState <- newTVarIO initialState
 
+    -- Create Audit Queue (P1-004)
+    auditQueue <- newTBQueueIO 1000
+
     -- Get Configuration from Environment
     sensorPort <- fromMaybe "/dev/ttyUSB0" <$> lookupEnv "SGRT_SENSOR_PORT"
     cliPort    <- fromMaybe "/dev/ttyUSB1" <$> lookupEnv "SGRT_CLI_PORT"
@@ -83,13 +86,13 @@ main = do
 
     -- 3. Consumer/Parser (Dedicated Thread)
     -- consumerLoop accepts ForeignPtr
-    _ <- forkOS $ consumerLoop ringBuffer systemState
+    _ <- forkOS $ consumerLoop ringBuffer systemState auditQueue
 
     -- 3. Safety Watchdog (High Priority Thread)
-    _ <- forkOS $ watchdogLoop systemState
+    _ <- forkOS $ watchdogLoop systemState auditQueue
 
     -- 4. Audit Logging
-    _ <- forkOS $ auditLoop systemState "session.log"
+    _ <- forkOS $ auditLoop auditQueue "session.log"
 
     -- 5. UI (Disabled for Class C Build)
     putStrLn "System Armed. UI Disabled."

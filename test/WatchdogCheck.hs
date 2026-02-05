@@ -21,7 +21,8 @@ main = do
 
     -- 2. Run Gating Process (which should update heartbeat)
     -- We pass empty points list
-    processFrame stateVar []
+    q <- newTBQueueIO 100
+    processFrame q stateVar []
 
     -- 3. Verify Heartbeat
     finalState <- readTVarIO stateVar
