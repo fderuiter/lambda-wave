@@ -20,7 +20,7 @@ module Hardware.Consumer (
 
 import Control.Concurrent (threadDelay)
 import Control.Concurrent.STM
-import Control.Monad (unless, when, forM_, replicateM)
+import Control.Monad (unless, when, forM_)
 import Control.DeepSeq (force)
 import Control.Exception (evaluate)
 import Data.Word (Word8)
@@ -245,51 +245,50 @@ getRadarFrame = do
 
     return $ RadarFrame B.empty points -- Storing empty raw header for now to save space
 
--- | Parse TLVs
+-- | Parse TLVs (Tail Recursive)
 parseTLVs :: Int -> G.Get [Point3D]
-parseTLVs 0 = return []
-parseTLVs n = do
-    -- TLV Header: Type (4), Length (4)
-    tlvType <- G.getWord32le
-    tlvLen <- G.getWord32le
+parseTLVs count = go count []
+  where
+    go 0 acc = return (concat $ reverse acc)
+    go n acc = do
+        tlvType <- G.getWord32le
+        tlvLen <- G.getWord32le
 
-    case tlvType of
-        1 -> do -- Detected Points
-            -- Payload: Array of Point {x,y,z,v} (4 * 4 = 16 bytes)
-            -- TI SDK Standard: tlvLen includes Header (8 bytes).
-            -- So Payload Length = tlvLen - 8.
-            let payloadLen = if tlvLen >= 8 then tlvLen - 8 else 0
+        case tlvType of
+            1 -> do -- Detected Points
+                -- Payload: Array of Point {x,y,z,v} (4 * 4 = 16 bytes)
+                -- TI SDK Standard: tlvLen includes Header (8 bytes).
+                -- So Payload Length = tlvLen - 8.
+                let payloadLen = if tlvLen >= 8 then tlvLen - 8 else 0
 
-            -- Num points
-            let numPoints = fromIntegral payloadLen `div` 16
+                -- Num points
+                let numPoints = fromIntegral payloadLen `div` 16
 
-            -- Read the points
-            points <- getPoints numPoints
+                -- Read the points
+                points <- getPoints numPoints
 
-            -- SAFETY CHECK: Calculate actual bytes read and skip any remaining (padding/header mismatch)
-            let bytesRead = numPoints * 16
-                padding = fromIntegral payloadLen - bytesRead
+                -- SAFETY CHECK: Calculate actual bytes read and skip any remaining (padding/header mismatch)
+                let bytesRead = numPoints * 16
+                    padding = fromIntegral payloadLen - bytesRead
 
-            when (padding > 0) $ G.skip padding
+                when (padding > 0) $ G.skip padding
 
-            rest <- parseTLVs (n - 1)
-            return (points ++ rest)
-        _ -> do
-            -- Skip unknown TLV
-            -- tlvLen includes Header (8 bytes). We already read header.
-            when (tlvLen < 8) $ fail "Invalid TLV Length (Partial Header)"
-            let skipLen = fromIntegral (tlvLen - 8)
-            G.skip skipLen
-            parseTLVs (n - 1)
+                go (n - 1) (points : acc)
+            _ -> do
+                -- Skip unknown TLV
+                -- tlvLen includes Header (8 bytes). We already read header.
+                when (tlvLen < 8) $ fail "Invalid TLV Length (Partial Header)"
+                let skipLen = fromIntegral (tlvLen - 8)
+                G.skip skipLen
+                go (n - 1) acc
 
 getPoints :: Int -> G.Get [Point3D]
-getPoints n = do
-    -- Using Vector Storable would be more efficient here but 'Data.Types' uses [Point3D].
-    -- We will read into Vector Storable Point first (Zero Copy-ish if we could cast,
-    -- but ByteString is not guaranteed aligned, so we must copy to Storable Vector or read one by one).
-    -- Since we need to convert to Point3D (Double) anyway, we read floats and convert.
-    rawPoints <- replicateM n getPoint
-    return $ map toPoint3D rawPoints
+getPoints count = go count []
+  where
+    go 0 acc = return (reverse acc)
+    go n acc = do
+        p <- getPoint
+        go (n - 1) (toPoint3D p : acc)
 
 getPoint :: G.Get Point
 getPoint = do
