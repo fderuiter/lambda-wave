@@ -123,6 +123,7 @@ test-suite audit-check
       sgrt-radar-system
     , base
     , unix
+    , bytestring
 
 test-suite gating-check
   import: common-options
