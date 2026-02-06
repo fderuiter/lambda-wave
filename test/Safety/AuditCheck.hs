@@ -6,8 +6,11 @@ import Control.Concurrent (forkIO, threadDelay, killThread)
 import System.IO
 import System.Posix.Files (fileExist, removeLink)
 import System.Posix.IO (openFd, closeFd, OpenMode(..), defaultFileFlags)
+import qualified System.Posix.IO as PS
+#if MIN_VERSION_unix(2,8,0)
 import qualified System.Posix.IO.ByteString as PBS
 import qualified Data.ByteString.Char8 as B
+#endif
 import Control.Monad (when)
 import System.Exit (exitFailure, exitSuccess)
 import Data.List (isInfixOf)
@@ -90,12 +93,15 @@ readLogSafe :: FilePath -> IO String
 readLogSafe path = do
 #if MIN_VERSION_unix(2,8,0)
     fd <- openFd path ReadOnly defaultFileFlags
-#else
-    fd <- openFd path ReadOnly Nothing defaultFileFlags
-#endif
-    (bs, _) <- PBS.fdRead fd 10240 -- Read 10KB
+    bs <- PBS.fdRead fd 10240 -- Read 10KB
     closeFd fd
     return (B.unpack bs)
+#else
+    fd <- openFd path ReadOnly Nothing defaultFileFlags
+    (str, _) <- PS.fdRead fd 10240 -- Read 10KB
+    closeFd fd
+    return str
+#endif
 
 cleanup :: FilePath -> IO ()
 cleanup f = do
