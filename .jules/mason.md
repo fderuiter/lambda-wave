@@ -28,3 +28,8 @@
 **Context:** The hardware ingestion loop and the Gating/Kalman logic were implemented but disconnected. The system was ingesting data but not processing it to control the beam.
 **Decision:** Modified `Hardware.Consumer` to invoke `Control.Gating.processFrame` for every parsed frame. This ensures the Kalman Filter state is updated synchronously with data arrival, maintaining the physics model integrity.
 **Compliance Impact:** Satisfies P1-003 and ensures the Safety Core is driven by real-time data.
+
+## 2026-01-30 - [Audit Logging Implementation]
+**Context:** Class C compliance requires immutable audit logging (SR-AUDIT-001) that does not block critical paths.
+**Decision:** Implemented `Safety.Audit` using a `TBQueue` and a dedicated consumer thread. Implemented log rotation (10MB limit) using `unix` file operations. Ensured thread safety via STM and robustness via exception handling.
+**Compliance Impact:** Satisfies SR-AUDIT-001 and prevents disk exhaustion.

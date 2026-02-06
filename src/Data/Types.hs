@@ -5,7 +5,9 @@ module Data.Types (
     Point(..),
     BeamState(..),
     SystemState(..),
-    RadarFrame(..)
+    RadarFrame(..),
+    Severity(..),
+    AuditEvent(..)
 ) where
 
 import Data.Word (Word64)
@@ -13,6 +15,7 @@ import Data.Map.Strict (Map)
 import qualified Data.ByteString as B
 import Foreign.Storable
 import Control.DeepSeq (NFData(..))
+import Control.Concurrent.STM (TBQueue)
 
 import SignalProcessing.Kalman (KalmanState(..))
 
@@ -58,6 +61,22 @@ data BeamState = BeamOn | BeamOff | BeamHold -- Hold is manual override
 instance NFData BeamState where
   rnf bs = bs `seq` ()
 
+data Severity = Info | Warning | Critical
+  deriving (Show, Eq)
+
+instance NFData Severity where
+  rnf s = s `seq` ()
+
+data AuditEvent = AuditEvent
+  { evtTime :: Word64
+  , evtSeverity :: Severity
+  , evtMessage :: String
+  , evtSource :: String
+  } deriving (Show, Eq)
+
+instance NFData AuditEvent where
+  rnf (AuditEvent t s m src) = rnf t `seq` rnf s `seq` rnf m `seq` rnf src
+
 -- | The Global State shared across threads via STM
 data SystemState = SystemState
   { currentPoints :: [Point3D]
@@ -66,10 +85,11 @@ data SystemState = SystemState
   , isocenter :: Point3D      -- Calibration zero
   , threadHeartbeats :: Map String Word64 -- Heartbeats for Watchdog
   , kalmanState :: KalmanState -- ^ Filtered state (Position, Velocity, Accel)
+  , auditQueue :: TBQueue AuditEvent
   }
 
 instance NFData SystemState where
-  rnf (SystemState pts bs t iso hb ks) = rnf pts `seq` rnf bs `seq` rnf t `seq` rnf iso `seq` rnf hb `seq` rnf ks
+  rnf (SystemState pts bs t iso hb ks aq) = rnf pts `seq` rnf bs `seq` rnf t `seq` rnf iso `seq` rnf hb `seq` rnf ks `seq` aq `seq` ()
 
 -- | Raw parsed structure from the sensor
 data RadarFrame = RadarFrame
