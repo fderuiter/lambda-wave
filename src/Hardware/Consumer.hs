@@ -23,7 +23,7 @@ import Control.Concurrent.STM
 import Control.Monad (unless, when, forM_)
 import Control.DeepSeq (force)
 import Control.Exception (evaluate)
-import Data.Word (Word8)
+import Data.Word (Word8, Word32)
 import Data.Int (Int64)
 import Foreign.ForeignPtr (newForeignPtr_, ForeignPtr, castForeignPtr, withForeignPtr)
 import Foreign.C.Types (CChar)
@@ -41,6 +41,11 @@ import Control.Gating (processFrame)
 -- | The Magic Word sequence for TI Millimeter Wave Radar
 magicPattern :: BL.ByteString
 magicPattern = BL.pack [1, 2, 3, 4, 5, 6, 7, 8]
+
+-- | Maximum allowed TLV size to prevent Denial of Service (DoS) or Allocation attacks.
+-- 65536 bytes (64KB) allows for ~4000 points, which is sufficient for typical radar frames.
+maxTLVSize :: Word32
+maxTLVSize = 65536
 
 -- | The Consumer Thread Loop
 --
@@ -253,6 +258,10 @@ parseTLVs count = go count []
     go n acc = do
         tlvType <- G.getWord32le
         tlvLen <- G.getWord32le
+
+        -- SENTINEL: Safety check for huge TLV length (DoS/Corruption)
+        when (tlvLen > maxTLVSize) $
+            fail "TLV Length too large (Corruption/DoS)"
 
         case tlvType of
             1 -> do -- Detected Points

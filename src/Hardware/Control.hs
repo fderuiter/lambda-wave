@@ -98,7 +98,8 @@ configureRawSerial fd = do
             `withOutputSpeed` B38400
 
     setTerminalAttributes fd rawAttrs Immediately
-    putStrLn "[Control] Data Port Configured (Raw Mode, 921600 baud)"
+    putStrLn "[Control] WARNING: B921600 unavailable, falling back to B38400."
+    putStrLn "[Control] Data Port Configured (Raw Mode)"
 
 -- | Control the beam status (Simulated via GPIO).
 -- True = Beam ON

@@ -73,6 +73,9 @@ import Data.Word
 -- must be performed through dedicated FFI functions that implement the
 -- required atomic semantics. The 'Storable' instance is intended only for
 -- layout-compatible, non-concurrent inspection/initialisation of the struct.
+--
+-- WARNING: Using 'peek' on this structure is NOT ATOMIC for offsets 0 and 8.
+-- Use 'FFI.RingBuffer.IO.getWriteOffset' or 'FFI.RingBuffer.IO.setReadOffset' instead.
 data RingBufferControl = RingBufferControl
     { writeOffset :: !Word64      -- ^ Corresponds to std::atomic<size_t>
     , readOffset  :: !Word64      -- ^ Corresponds to std::atomic<size_t>

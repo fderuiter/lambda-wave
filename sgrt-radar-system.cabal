@@ -162,6 +162,21 @@ test-suite sentinel-check
       sgrt-radar-system
     , base
 
+test-suite consumer-check
+  import: common-options
+  type: exitcode-stdio-1.0
+  main-is: ConsumerCheck.hs
+  other-modules:
+      Paths_sgrt_radar_system
+  hs-source-dirs:
+      test
+  ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
+  build-depends:
+      sgrt-radar-system
+    , base
+    , bytestring
+    , binary
+
 benchmark sgrt-radar-system-bench
   import: common-options
   type: exitcode-stdio-1.0
