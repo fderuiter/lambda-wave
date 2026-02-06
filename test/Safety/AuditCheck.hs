@@ -5,7 +5,8 @@ import Control.Concurrent.STM
 import Control.Concurrent (forkIO, threadDelay, killThread)
 import System.IO
 import System.Posix.Files (fileExist, removeLink)
-import System.Posix.IO (openFd, closeFd, fdRead, OpenMode(..), defaultFileFlags)
+import System.Posix.IO (openFd, closeFd, OpenMode(..), defaultFileFlags)
+import qualified System.Posix.IO.ByteString as PBS
 import Control.Monad (when)
 import System.Exit (exitFailure, exitSuccess)
 import Data.List (isInfixOf)
@@ -91,7 +92,7 @@ readLogSafe path = do
 #else
     fd <- openFd path ReadOnly Nothing defaultFileFlags
 #endif
-    (str, _) <- fdRead fd 10240 -- Read 10KB
+    (str, _) <- PBS.fdRead fd 10240 -- Read 10KB
     closeFd fd
     return str
 

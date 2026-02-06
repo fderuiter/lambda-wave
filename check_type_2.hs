@@ -1,6 +1,7 @@
-import System.Posix.IO
-import System.Posix.Types
+{-# OPTIONS_GHC -Werror #-}
+import qualified System.Posix.IO.ByteString as PBS
+import System.Posix.Types (Fd(..))
 
 main = do
-    let _ = openFd :: FilePath -> OpenMode -> OpenFileFlags -> Maybe FileMode -> IO Fd
-    putStrLn "Type checks 2"
+    (s, _) <- PBS.fdRead (Fd 0) 10
+    putStrLn s
