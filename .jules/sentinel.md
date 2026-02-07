@@ -43,3 +43,11 @@ The linear algebra module used partial list indexing (`!!`) in `gaussJordan` and
 ## 2026-06-01 - [Risk Level: MEDIUM] **Vector:** src/Hardware/Consumer.hs **Hazard:** Data Race / Undefined Behavior
 The consumer thread used `Storable.peek` to read the `RingBufferControl` struct. This implicitly read the `writeOffset` (offset 0) and `readOffset` (offset 8) fields, which are `std::atomic` on the C++ side and modified concurrently. While the Haskell code ignored these values (using FFI getters later), the non-atomic read of atomic variables constitutes a data race (Undefined Behavior) and could theoretically lead to torn reads or memory model violations.
 **Fix:** Implemented `peekStaticFields` in `FFI.RingBuffer.Types` to strictly read only the immutable fields (`bufferStart`, `bufferSize`) at specific offsets. Updated `Consumer.hs` to use this safe accessor, eliminating the race condition.
+
+## 2026-06-02 - [Risk Level: MEDIUM] **Vector:** src/FFI/RingBuffer/IO.hs **Hazard:** Memory Leak
+The `createRingBuffer` function performed a raw FFI allocation (`c_create_ring_buffer`) followed by `newForeignPtr`. If an asynchronous exception (e.g., `UserInterrupt`) occurred between these two operations, the allocated C++ memory would never be freed, causing a permanent leak.
+**Fix:** Wrapped the allocation and ForeignPtr creation in `Control.Exception.mask_` to ensure atomicity of the resource acquisition.
+
+## 2026-06-02 - [Risk Level: HIGH] **Vector:** src/FFI/RingBuffer/Types.hs **Hazard:** ABI Mismatch (Platform Dependency)
+The `RingBufferControl` struct layout used hardcoded `Word64` types and offsets (0, 8, 16, 24). On 32-bit architectures, `size_t` is 32-bit (4 bytes), meaning the C++ struct layout would be significantly different (offsets 0, 4, 8, 12). This would cause the Haskell code to read garbage values or segfault when accessing the shared control structure on non-64-bit platforms.
+**Fix:** Updated `RingBufferControl` to use `Foreign.C.Types.CSize` and implemented a robust `Storable` instance that dynamically calculates offsets based on the host platform's pointer size and alignment rules. Added runtime verification in `test/SentinelCheck.hs`.

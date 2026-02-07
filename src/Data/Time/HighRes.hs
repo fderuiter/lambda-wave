@@ -32,15 +32,30 @@ data TimeSpec = TimeSpec
 
 
 instance Storable TimeSpec where
-    sizeOf _ = 16 -- Assuming 64-bit system (8 bytes sec + 8 bytes nsec)
-    alignment _ = 8
+    alignment _ = max (alignment (undefined :: CTime)) (alignment (undefined :: CLong))
+    sizeOf _ =
+        let sSec = sizeOf (undefined :: CTime)
+            aLong = alignment (undefined :: CLong)
+            sLong = sizeOf (undefined :: CLong)
+            offsetNSec = (sSec + aLong - 1) `div` aLong * aLong
+            structSize = offsetNSec + sLong
+            structAlign = alignment (undefined :: TimeSpec)
+        in (structSize + structAlign - 1) `div` structAlign * structAlign
+
     peek ptr = do
+        let sSec = sizeOf (undefined :: CTime)
+            aLong = alignment (undefined :: CLong)
+            offsetNSec = (sSec + aLong - 1) `div` aLong * aLong
         s <- peekByteOff ptr 0
-        n <- peekByteOff ptr 8
+        n <- peekByteOff ptr offsetNSec
         return (TimeSpec s n)
+
     poke ptr (TimeSpec s n) = do
+        let sSec = sizeOf (undefined :: CTime)
+            aLong = alignment (undefined :: CLong)
+            offsetNSec = (sSec + aLong - 1) `div` aLong * aLong
         pokeByteOff ptr 0 s
-        pokeByteOff ptr 8 n
+        pokeByteOff ptr offsetNSec n
 
 -- | Clock ID for CLOCK_REALTIME (0) and CLOCK_MONOTONIC (1)
 -- These vary by OS, but 1 is standard for Monotonic on Linux.

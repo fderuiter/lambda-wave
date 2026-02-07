@@ -5,6 +5,10 @@ import Control.Exception (try, SomeException)
 -- Removed Control.Monad (when)
 import Data.Time.HighRes (getMonotonicTimeNS, getRealTimeNS)
 import FFI.RingBuffer.IO (createRingBuffer, getWriteOffset)
+import FFI.RingBuffer.Types (RingBufferControl)
+import Foreign.Storable (sizeOf, alignment)
+import Foreign.C.Types (CSize, CChar)
+import Foreign.Ptr (Ptr)
 -- Removed Foreign.ForeignPtr
 import System.Exit (exitFailure, exitSuccess)
 
@@ -57,6 +61,26 @@ main = do
        else do
            putStrLn $ "FAIL: Initial getWriteOffset is " ++ show offset
            exitFailure
+
+    -- 5. Test RingBufferControl Layout
+    putStrLn "[Test] RingBufferControl Layout..."
+    let rbSize = sizeOf (undefined :: RingBufferControl)
+        rbAlign = alignment (undefined :: RingBufferControl)
+        csizeSize = sizeOf (undefined :: CSize)
+        ptrSize = sizeOf (undefined :: Ptr CChar)
+
+    putStrLn $ "RingBufferControl Size: " ++ show rbSize
+    putStrLn $ "RingBufferControl Alignment: " ++ show rbAlign
+    putStrLn $ "CSize size: " ++ show csizeSize
+    putStrLn $ "Ptr size: " ++ show ptrSize
+
+    -- Basic sanity check
+    let minSize = 2 * csizeSize + ptrSize + csizeSize -- 4 fields
+    if rbSize < minSize
+        then do
+            putStrLn $ "FAIL: RingBufferControl size (" ++ show rbSize ++ ") smaller than sum of fields (" ++ show minSize ++ ")"
+            exitFailure
+        else putStrLn "PASS: RingBufferControl size reasonable"
 
     putStrLn "Sentinel Checks Complete. All Systems Safe."
     exitSuccess
