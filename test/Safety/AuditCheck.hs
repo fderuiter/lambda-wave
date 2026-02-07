@@ -4,7 +4,13 @@ module Main (main) where
 import Control.Concurrent (forkIO, threadDelay, killThread)
 import Control.Concurrent.STM
 import System.Directory (removeFile, doesFileExist)
-import System.Posix.IO (openFd, OpenMode(..), defaultFileFlags, fdRead, closeFd)
+import System.Posix.IO (openFd, OpenMode(..), defaultFileFlags, closeFd)
+#if MIN_VERSION_unix(2,8,0)
+import System.Posix.IO.ByteString (fdRead)
+import qualified Data.ByteString.Char8 as BS
+#else
+import System.Posix.IO (fdRead)
+#endif
 import Control.Monad (when)
 import Data.Time.HighRes (getRealTimeNS)
 
@@ -19,12 +25,15 @@ readContent :: FilePath -> IO String
 readContent path = do
 #if MIN_VERSION_unix(2,8,0)
     fd <- openFd path ReadOnly defaultFileFlags
+    (bs, _) <- fdRead fd 100000 -- Read 100KB
+    closeFd fd
+    return (BS.unpack bs)
 #else
     fd <- openFd path ReadOnly Nothing defaultFileFlags
-#endif
     (str, _) <- fdRead fd 100000 -- Read 100KB
     closeFd fd
     return str
+#endif
 
 main :: IO ()
 main = do

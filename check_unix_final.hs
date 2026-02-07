@@ -1,6 +1,2 @@
-import System.Posix.Terminal
-
-main = do
-    print (EnableEcho :: TerminalMode)
-    print (EndOfFile :: ControlCharacter)
-    print (EndOfLine :: ControlCharacter)
+import System.Posix.IO.ByteString
+main = print "ok"

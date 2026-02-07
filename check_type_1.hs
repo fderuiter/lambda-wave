@@ -1,6 +1,4 @@
-import System.Posix.IO
+import System.Posix.IO.ByteString
 import System.Posix.Types
-
-main = do
-    let _ = openFd :: FilePath -> OpenMode -> Maybe FileMode -> OpenFileFlags -> IO Fd
-    putStrLn "Type checks 1"
+import Data.ByteString
+main = do { (bs, _) <- fdRead (Fd 0) 10; print (bs :: ByteString) }
