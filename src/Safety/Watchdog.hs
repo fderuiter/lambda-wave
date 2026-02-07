@@ -26,7 +26,7 @@ import Data.Types
 import Data.Config (watchdogTimeoutNS)
 import Control.Concurrent.STM
 import Control.Concurrent (threadDelay)
-import Data.Time.HighRes (getMonotonicTimeNS)
+import Data.Time.HighRes (getMonotonicTimeNS, getRealTimeNS)
 import Control.Monad (forever, when, forM_)
 import System.Exit (exitFailure)
 import qualified Data.Map.Strict as Map
@@ -46,9 +46,15 @@ watchdogLoop stateVar = forever $ do
         -- Check if difference exceeds timeout (cast Integer to Word64 safely for comparison)
         -- watchdogTimeoutNS is Integer (100ms = 100_000_000). Word64 max is huge.
         when (diff > fromIntegral watchdogTimeoutNS) $ do
-            putStrLn $ "!!! WATCHDOG TRIP: Thread '" ++ threadName ++ "' FROZEN !!!"
-            putStrLn $ "!!! Time since last heartbeat: " ++ show diff ++ " ns"
-            putStrLn "!!! FORCING BEAM OFF !!!"
+            realTime <- getRealTimeNS
+            let msg = "WATCHDOG TRIP: Thread '" ++ threadName ++ "' FROZEN. Time since last heartbeat: " ++ show diff ++ " ns. FORCING BEAM OFF."
+            let event = AuditEvent realTime Critical "Watchdog" msg
+            atomically $ writeTBQueue (auditQueue state) event
+
+            -- Wait briefly for audit flush (best effort before death)
+            threadDelay 50000
+
+            putStrLn $ "!!! " ++ msg ++ " !!!"
             -- In real HW, this would toggle a GPIO pin immediately
             exitFailure
 

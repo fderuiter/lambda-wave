@@ -4,8 +4,9 @@ module Control.Gating (processFrame, evaluateGating) where
 import Data.Types
 import Data.Config
 import Control.Concurrent.STM
-import Data.Time.HighRes (getMonotonicTimeNS)
+import Data.Time.HighRes (getMonotonicTimeNS, getRealTimeNS)
 import Data.List (foldl')
+import Control.Monad (when)
 import qualified Data.Map.Strict as Map
 import SignalProcessing.Kalman (KalmanState(..), KalmanConfig(..), V3(..), predict, update)
 import Hardware.Control (setBeam)
@@ -50,6 +51,15 @@ processFrame stateVar pts = do
 
     -- 5. Gating Logic
     let newBeamState = evaluateGating targetHeight gatingTolerance hysteresisMargin systemLatencyNS newKState oldBeamState
+
+    -- 5b. Audit Logging
+    when (newBeamState /= oldBeamState) $ do
+        realTime <- getRealTimeNS
+        let queue = auditQueue oldSystemState
+        let severity = if newBeamState == BeamHold then Error else Info
+        let msg = "Beam State Change: " ++ show oldBeamState ++ " -> " ++ show newBeamState
+        let event = AuditEvent realTime severity "Gating" msg
+        atomically $ writeTBQueue queue event
 
     -- 6. Hardware Actuation
     -- Only set beam if state changed to avoid UART spam (optimization)

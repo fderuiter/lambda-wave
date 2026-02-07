@@ -31,6 +31,9 @@ main = do
     let kConfig = KalmanConfig { procNoise = 10.0, measNoise = 2.0 }
     let initialKState = initKalman targetHeight kConfig
 
+    -- Create Audit Queue (1000 events buffer)
+    auditQ <- newTBQueueIO 1000
+
     let initialState = SystemState
           { currentPoints = []
           , beamState = BeamOff
@@ -38,6 +41,7 @@ main = do
           , isocenter = Point3D 0 0 0 0 0
           , threadHeartbeats = Map.empty
           , kalmanState = initialKState
+          , auditQueue = auditQ
           }
 
     systemState <- newTVarIO initialState
@@ -89,7 +93,7 @@ main = do
     _ <- forkOS $ watchdogLoop systemState
 
     -- 4. Audit Logging
-    _ <- forkOS $ auditLoop systemState "session.log"
+    _ <- forkOS $ auditLoop auditQ "session.log"
 
     -- 5. UI (Disabled for Class C Build)
     putStrLn "System Armed. UI Disabled."

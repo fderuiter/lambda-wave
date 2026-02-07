@@ -28,3 +28,11 @@
 **Context:** The hardware ingestion loop and the Gating/Kalman logic were implemented but disconnected. The system was ingesting data but not processing it to control the beam.
 **Decision:** Modified `Hardware.Consumer` to invoke `Control.Gating.processFrame` for every parsed frame. This ensures the Kalman Filter state is updated synchronously with data arrival, maintaining the physics model integrity.
 **Compliance Impact:** Satisfies P1-003 and ensures the Safety Core is driven by real-time data.
+
+## 2026-01-29 - Audit Logging Architecture
+**Context:** P1-004 requires immutable event logging with immediate disk flush for safety-critical events (Beam Hold, Watchdog Trip), while minimizing I/O latency for high-frequency events.
+**Decision:** Implemented a `TBQueue` based producer-consumer model (`auditLoop`).
+* `AuditEvent`s are buffered in `TBQueue` (limit 1000) to decouple critical threads (Gating, Watchdog) from disk I/O.
+* `auditLoop` flushes immediately if `Severity >= Error` or specifically for Beam Hold events.
+* Logs are rotated at 10MB to prevent disk exhaustion.
+**Compliance Impact:** Satisfies SR-AUDIT-001 (Immutable Audit Trail) and IEC 62304 Class C Logging requirements.

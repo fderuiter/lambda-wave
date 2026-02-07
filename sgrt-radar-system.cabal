@@ -189,3 +189,17 @@ benchmark kalman-bench
   build-depends:
       sgrt-radar-system
     , criterion
+
+test-suite audit-check
+  import: common-options
+  type: exitcode-stdio-1.0
+  main-is: AuditCheck.hs
+  other-modules:
+      Paths_sgrt_radar_system
+  hs-source-dirs:
+      test/Safety
+  ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
+  build-depends:
+      sgrt-radar-system
+    , base
+    , directory

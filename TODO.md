@@ -260,7 +260,7 @@ Link Kalman state to beam control triggers (GPIO/TTL) with latency compensation.
 ---
 
 ### P1-004: Audit Logging Completion
-**Status:** ⏳ Planned  
+**Status:** ✅ Complete
 **Phase:** 4.3 - Safety & Control  
 **Priority:** P1 (Compliance requirement)
 
@@ -272,12 +272,12 @@ Finalize immutable audit logging with immediate disk flush on critical events.
 - IEC 62304: Audit trail for safety events
 
 **Tasks:**
-- [ ] Implement immediate flush on "Beam Hold" events
-- [ ] Add buffered logging for non-critical events
-- [ ] Implement log rotation and archival
-- [ ] Add crash recovery test (power plug simulation)
-- [ ] Verify last event recorded after crash
-- [ ] Document log format and retention policy
+- [x] Implement immediate flush on "Beam Hold" events
+- [x] Add buffered logging for non-critical events
+- [x] Implement log rotation and archival
+- [x] Add crash recovery test (power plug simulation) (Verified via `test/Safety/AuditCheck.hs`)
+- [x] Verify last event recorded after crash
+- [x] Document log format and retention policy
 
 **Acceptance Criteria:**
 - Beam events flushed to disk immediately
@@ -288,9 +288,10 @@ Finalize immutable audit logging with immediate disk flush on critical events.
 - None
 
 **Effort Estimate:** 1 week  
-**Assignee:** TBD  
+**Assignee:** Mason
 **Related Files:**
 - `src/Safety/Audit.hs`
+- `test/Safety/AuditCheck.hs`
 
 ---
 
