@@ -25,7 +25,7 @@ readContent :: FilePath -> IO String
 readContent path = do
 #if MIN_VERSION_unix(2,8,0)
     fd <- openFd path ReadOnly defaultFileFlags
-    (bs, _) <- fdRead fd 100000 -- Read 100KB
+    bs <- fdRead fd 100000 -- Read 100KB
     closeFd fd
     return (BS.unpack bs)
 #else
