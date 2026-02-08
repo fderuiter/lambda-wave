@@ -4,6 +4,7 @@
 #include <cstdlib>
 #include <new>
 #include <cstring>
+#include <cerrno>
 
 extern "C" {
 
@@ -86,7 +87,17 @@ ssize_t read_from_uart(RingBufferControl* handle, int uart_fd) {
     }
 
     // Attempt to read as much as possible up to the safe limit
-    ssize_t bytes_read = read(uart_fd, buf_start + current_offset, available_contiguous);
+    ssize_t bytes_read;
+    do {
+        bytes_read = read(uart_fd, buf_start + current_offset, available_contiguous);
+    } while (bytes_read == -1 && errno == EINTR);
+
+    if (bytes_read == -1) {
+        if (errno == EAGAIN || errno == EWOULDBLOCK) {
+            return 0;
+        }
+        return -1;
+    }
 
     if (bytes_read > 0) {
         size_t new_offset = current_offset + bytes_read;
