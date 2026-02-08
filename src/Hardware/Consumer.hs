@@ -25,8 +25,9 @@ import Control.DeepSeq (force)
 import Control.Exception (evaluate)
 import Data.Word (Word8)
 import Data.Int (Int64)
-import Foreign.ForeignPtr (newForeignPtr_, ForeignPtr, castForeignPtr, withForeignPtr)
+import Foreign.ForeignPtr (ForeignPtr, castForeignPtr, withForeignPtr, touchForeignPtr)
 import Foreign.C.Types (CChar)
+import qualified Foreign.Concurrent as FC
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Internal as BI
 import qualified Data.ByteString.Lazy as BL
@@ -56,8 +57,11 @@ consumerLoop controlFp stateVar = withForeignPtr controlFp $ \controlPtr -> do
     let bufStart = ptrStart
         bufSize  = fromIntegral rawSize :: Int
 
-    -- ForeignPtr to the buffer (no finalizer, as we don't own the memory)
-    fp <- newForeignPtr_ bufStart
+    -- ForeignPtr to the buffer.
+    -- We attach a Haskell finalizer that touches 'controlFp'.
+    -- This ensures that as long as 'fp' (and any ByteString derived from it) is alive,
+    -- 'controlFp' (and thus the Ring Buffer) remains alive.
+    fp <- FC.newForeignPtr bufStart (touchForeignPtr controlFp)
 
     putStrLn $ "[Consumer] Started. Buffer Size: " ++ show bufSize
 

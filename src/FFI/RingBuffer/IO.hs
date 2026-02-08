@@ -22,7 +22,7 @@ import Foreign.Ptr (Ptr, nullPtr, FunPtr)
 import Foreign.ForeignPtr (ForeignPtr, newForeignPtr, withForeignPtr)
 import Foreign.C.Types (CSize(..), CInt(..))
 import System.Posix.Types (CSsize(..), Fd(..))
-import Control.Exception (throwIO, catch, SomeException)
+import Control.Exception (throwIO, catch, SomeException, mask_)
 import Control.Concurrent (forkOS, ThreadId, threadDelay)
 import Control.Monad (when)
 import System.IO (hPutStrLn, stderr)
@@ -58,7 +58,7 @@ foreign import ccall unsafe "set_read_offset"
 -- Returns a ForeignPtr with a finalizer ensuring memory is freed.
 -- Throws userError if size <= 0 or allocation fails.
 createRingBuffer :: Int -> IO (ForeignPtr RingBufferControl)
-createRingBuffer size = do
+createRingBuffer size = mask_ $ do
     when (size <= 0) $ throwIO (userError "Ring Buffer size must be positive")
     ptr <- c_create_ring_buffer (fromIntegral size)
     if ptr == nullPtr
