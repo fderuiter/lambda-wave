@@ -5,7 +5,9 @@ module Data.Types (
     Point(..),
     BeamState(..),
     SystemState(..),
-    RadarFrame(..)
+    RadarFrame(..),
+    Severity(..),
+    AuditEvent(..)
 ) where
 
 import Data.Word (Word64)
@@ -13,8 +15,27 @@ import Data.Map.Strict (Map)
 import qualified Data.ByteString as B
 import Foreign.Storable
 import Control.DeepSeq (NFData(..))
+import Control.Concurrent.STM (TBQueue)
 
 import SignalProcessing.Kalman (KalmanState(..))
+
+-- | Severity Levels for Audit Logs
+data Severity = Info | Warning | Critical
+    deriving (Show, Eq)
+
+instance NFData Severity where
+    rnf s = s `seq` ()
+
+-- | Immutable Audit Event
+data AuditEvent = AuditEvent
+    { eventTime :: Word64  -- ^ Timestamp (ns)
+    , severity  :: Severity
+    , component :: String  -- ^ Source Component (e.g. "Gating", "Watchdog")
+    , message   :: String
+    } deriving (Show, Eq)
+
+instance NFData AuditEvent where
+    rnf (AuditEvent t s c m) = rnf t `seq` rnf s `seq` rnf c `seq` rnf m
 
 -- | 3D Point in Room Coordinates (mm)
 data Point3D = Point3D
@@ -66,10 +87,11 @@ data SystemState = SystemState
   , isocenter :: Point3D      -- Calibration zero
   , threadHeartbeats :: Map String Word64 -- Heartbeats for Watchdog
   , kalmanState :: KalmanState -- ^ Filtered state (Position, Velocity, Accel)
+  , auditQueue :: TBQueue AuditEvent -- ^ High-performance event queue
   }
 
 instance NFData SystemState where
-  rnf (SystemState pts bs t iso hb ks) = rnf pts `seq` rnf bs `seq` rnf t `seq` rnf iso `seq` rnf hb `seq` rnf ks
+  rnf (SystemState pts bs t iso hb ks aq) = rnf pts `seq` rnf bs `seq` rnf t `seq` rnf iso `seq` rnf hb `seq` rnf ks `seq` aq `seq` ()
 
 -- | Raw parsed structure from the sensor
 data RadarFrame = RadarFrame

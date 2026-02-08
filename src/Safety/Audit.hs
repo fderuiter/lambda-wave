@@ -1,29 +1,79 @@
-module Safety.Audit (logDecision, auditLoop) where
+{-# LANGUAGE ScopedTypeVariables #-}
+module Safety.Audit (auditLoop) where
 
 import Data.Types
 import Control.Concurrent.STM
-import qualified Control.Concurrent
+import Control.Concurrent (threadDelay)
 import System.IO
-import Control.Monad (forever)
-import Data.Time.HighRes (getRealTimeNS)
+import Control.Monad (when)
+import Data.Time.HighRes (getMonotonicTimeNS)
+import qualified Data.Map.Strict as Map
+import Control.Exception (try, IOException)
+import System.Posix.Files (rename)
+import Text.Printf (printf)
 
--- | Logs decisions to a file
+-- | Signals why the inner loop exited
+data LoopResult = RotationNeeded
+
+-- | The Audit Loop
+-- Consumes events from the queue and writes them to disk.
+-- Handles log rotation and errors robustly.
 auditLoop :: TVar SystemState -> FilePath -> IO ()
 auditLoop stateVar logPath = do
-    withFile logPath AppendMode $ \h -> do
+    -- Get queue reference once (it's constant in SystemState)
+    state <- readTVarIO stateVar
+    let queue = auditQueue state
+
+    runAuditLoop stateVar queue logPath
+
+runAuditLoop :: TVar SystemState -> TBQueue AuditEvent -> FilePath -> IO ()
+runAuditLoop stateVar queue logPath = do
+    -- Open file in Append Mode
+    result <- try $ withFile logPath AppendMode $ \h -> do
         hSetBuffering h LineBuffering
-        forever $ do
-            state <- readTVarIO stateVar
-            -- In a real app, we'd wait for a change or tick
-            -- For now, just log periodically?
-            -- Better: use a TChan for audit events.
-            -- But since we only have stateVar, let's just log every 100ms
+        processEvents stateVar queue h
 
-            now <- getRealTimeNS
-            let entry = show now ++ "," ++ show (beamState state)
-            hPutStrLn h entry
+    case result of
+        Left (e :: IOException) -> do
+            -- Fallback: Log to stderr if disk fails
+            hPutStrLn stderr $ "AUDIT SUBSYSTEM FAILURE: " ++ show e
+            -- Wait a bit before retrying to avoid busy loop on permanent failure
+            threadDelay 1_000_000
+            runAuditLoop stateVar queue logPath
 
-            Control.Concurrent.threadDelay 100000
+        Right RotationNeeded -> do
+            -- Rotate Log: log -> log.bak
+            -- We ignore errors here (e.g. if rename fails, we just overwrite/append next time)
+            _ <- try $ rename logPath (logPath ++ ".bak") :: IO (Either IOException ())
+            runAuditLoop stateVar queue logPath
 
-logDecision :: String -> IO ()
-logDecision msg = appendFile "audit.log" (msg ++ "\n")
+processEvents :: TVar SystemState -> TBQueue AuditEvent -> Handle -> IO LoopResult
+processEvents stateVar queue h = go
+  where
+    go = do
+        -- 1. Update Heartbeat (Safety)
+        now <- getMonotonicTimeNS
+        atomically $ modifyTVar' stateVar $ \s ->
+            s { threadHeartbeats = Map.insert "Audit" now (threadHeartbeats s) }
+
+        -- 2. Read Event (Blocking)
+        evt <- atomically $ readTBQueue queue
+
+        -- 3. Write Event
+        -- Format: [TIMESTAMP] [SEVERITY] [COMPONENT] MESSAGE
+        -- using show for severity
+        let entry = printf "[%d] [%s] [%s] %s"
+                        (eventTime evt)
+                        (show (severity evt))
+                        (component evt)
+                        (message evt)
+        hPutStrLn h entry
+
+        -- 4. Critical Flush (Safety)
+        when (severity evt == Critical) $ hFlush h
+
+        -- 5. Rotation Check
+        size <- hFileSize h
+        if size > 10 * 1024 * 1024 -- 10MB limit
+            then return RotationNeeded
+            else go

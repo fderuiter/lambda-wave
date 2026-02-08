@@ -46,9 +46,18 @@ watchdogLoop stateVar = forever $ do
         -- Check if difference exceeds timeout (cast Integer to Word64 safely for comparison)
         -- watchdogTimeoutNS is Integer (100ms = 100_000_000). Word64 max is huge.
         when (diff > fromIntegral watchdogTimeoutNS) $ do
-            putStrLn $ "!!! WATCHDOG TRIP: Thread '" ++ threadName ++ "' FROZEN !!!"
-            putStrLn $ "!!! Time since last heartbeat: " ++ show diff ++ " ns"
-            putStrLn "!!! FORCING BEAM OFF !!!"
+            let msg = "Thread '" ++ threadName ++ "' FROZEN (Age: " ++ show diff ++ "ns). FORCING BEAM OFF."
+
+            -- Attempt to log Critical Event (Non-blocking)
+            -- We don't want the watchdog to hang on a full queue.
+            atomically $ do
+                let q = auditQueue state
+                full <- isFullTBQueue q
+                if not full
+                    then writeTBQueue q (AuditEvent now Critical "Watchdog" msg)
+                    else return ()
+
+            putStrLn $ "!!! WATCHDOG TRIP: " ++ msg
             -- In real HW, this would toggle a GPIO pin immediately
             exitFailure
 

@@ -16,7 +16,8 @@ main = do
     -- Initialize with default kalman state
     let kConfig = KalmanConfig 0.1 0.1
     let kState = initKalman 0.0 kConfig
-    let initialState = SystemState [] BeamOff now (Point3D 0 0 0 0 0) Map.empty kState
+    q <- newTBQueueIO 100
+    let initialState = SystemState [] BeamOff now (Point3D 0 0 0 0 0) Map.empty kState q
     stateVar <- newTVarIO initialState
 
     -- 2. Run Gating Process (which should update heartbeat)
