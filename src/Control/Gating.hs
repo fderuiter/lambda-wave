@@ -7,6 +7,7 @@ import Control.Concurrent.STM
 import Data.Time.HighRes (getMonotonicTimeNS)
 import Data.List (foldl')
 import qualified Data.Map.Strict as Map
+import Control.Monad (when)
 import SignalProcessing.Kalman (KalmanState(..), KalmanConfig(..), V3(..), predict, update)
 import Hardware.Control (setBeam)
 
@@ -60,14 +61,23 @@ processFrame stateVar pts = do
             _      -> False
     setBeam beamBool
 
-    -- 7. Update System State
-    atomically $ modifyTVar' stateVar $ \s -> s
-        { currentPoints = pts
-        , beamState = newBeamState
-        , lastFrameTime = currTime
-        , threadHeartbeats = Map.insert "Gating" currTime (threadHeartbeats s)
-        , kalmanState = newKState
-        }
+    -- 7. Update System State & Log
+    atomically $ do
+        s <- readTVar stateVar
+
+        -- Log Beam Change
+        when (newBeamState /= oldBeamState) $ do
+             let msg = "Beam State Changed: " ++ show oldBeamState ++ " -> " ++ show newBeamState
+             writeTBQueue (auditQueue s) (AuditEvent currTime Info "Gating" msg)
+
+        -- Update State
+        writeTVar stateVar $! s
+            { currentPoints = pts
+            , beamState = newBeamState
+            , lastFrameTime = currTime
+            , threadHeartbeats = Map.insert "Gating" currTime (threadHeartbeats s)
+            , kalmanState = newKState
+            }
 
 -- | Evaluate Gating Decision with Hysteresis and Latency Compensation
 -- Pure function for testability.

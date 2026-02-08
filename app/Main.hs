@@ -31,6 +31,9 @@ main = do
     let kConfig = KalmanConfig { procNoise = 10.0, measNoise = 2.0 }
     let initialKState = initKalman targetHeight kConfig
 
+    -- Initialize High-Performance Audit Queue
+    auditQ <- newTBQueueIO 1000
+
     let initialState = SystemState
           { currentPoints = []
           , beamState = BeamOff
@@ -38,6 +41,7 @@ main = do
           , isocenter = Point3D 0 0 0 0 0
           , threadHeartbeats = Map.empty
           , kalmanState = initialKState
+          , auditQueue = auditQ
           }
 
     systemState <- newTVarIO initialState
