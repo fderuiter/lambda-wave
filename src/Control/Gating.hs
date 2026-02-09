@@ -52,32 +52,54 @@ processFrame stateVar pts = do
     -- 5. Gating Logic
     let newBeamState = evaluateGating targetHeight gatingTolerance hysteresisMargin systemLatencyNS newKState oldBeamState
 
-    -- 6. Hardware Actuation
-    -- Only set beam if state changed to avoid UART spam (optimization)
-    -- But safety says "Refresh always"?
-    -- Let's set it always for now to ensure fail-safe (if hardware resets).
-    let beamBool = case newBeamState of
-            BeamOn -> True
-            _      -> False
-    setBeam beamBool
-
-    -- 7. Update System State & Log
-    atomically $ do
+    -- 6. Update System State & Log (Moved before Hardware Actuation)
+    -- We must check for Manual Override (BeamHold) inside the transaction
+    -- to prevent a Time-of-Check to Time-of-Use race condition.
+    shouldActuate <- atomically $ do
         s <- readTVar stateVar
+        let currentBeam = beamState s
 
-        -- Log Beam Change
-        when (newBeamState /= oldBeamState) $ do
-             let msg = "Beam State Changed: " ++ show oldBeamState ++ " -> " ++ show newBeamState
-             writeTBQueue (auditQueue s) (AuditEvent currTime Info "Gating" msg)
+        -- Check if we are in Manual Override (BeamHold)
+        -- If so, we must NOT change the beam state automatically.
+        if currentBeam == BeamHold
+            then do
+                -- Update Kalman State & Heartbeat even in Hold Mode
+                writeTVar stateVar $! s
+                    { currentPoints = pts
+                    -- beamState remains BeamHold
+                    , lastFrameTime = currTime
+                    , threadHeartbeats = Map.insert "Gating" currTime (threadHeartbeats s)
+                    , kalmanState = newKState
+                    }
+                return False -- Do not actuate hardware
 
-        -- Update State
-        writeTVar stateVar $! s
-            { currentPoints = pts
-            , beamState = newBeamState
-            , lastFrameTime = currTime
-            , threadHeartbeats = Map.insert "Gating" currTime (threadHeartbeats s)
-            , kalmanState = newKState
-            }
+            else do
+                -- Automatic Mode: Apply calculated state
+                let finalBeamState = newBeamState
+
+                -- Log Beam Change
+                when (finalBeamState /= currentBeam) $ do
+                     let msg = "Beam State Changed: " ++ show currentBeam ++ " -> " ++ show finalBeamState
+                     writeTBQueue (auditQueue s) (AuditEvent currTime Info "Gating" msg)
+
+                -- Update State
+                writeTVar stateVar $! s
+                    { currentPoints = pts
+                    , beamState = finalBeamState
+                    , lastFrameTime = currTime
+                    , threadHeartbeats = Map.insert "Gating" currTime (threadHeartbeats s)
+                    , kalmanState = newKState
+                    }
+                return True -- Proceed to actuate hardware
+
+    -- 7. Hardware Actuation
+    -- Only actuate if we are not in Manual Override (BeamHold)
+    -- We set it always (fail-safe refresh) IF allowed.
+    when shouldActuate $ do
+        let beamBool = case newBeamState of
+                BeamOn -> True
+                _      -> False
+        setBeam beamBool
 
 -- | Evaluate Gating Decision with Hysteresis and Latency Compensation
 -- Pure function for testability.

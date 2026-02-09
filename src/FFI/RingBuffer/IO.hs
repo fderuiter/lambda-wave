@@ -66,10 +66,10 @@ createRingBuffer size = mask_ $ do
         else newForeignPtr c_free_ring_buffer_ptr ptr
 
 -- | Wrapper for read_from_uart
-readFromUart :: ForeignPtr RingBufferControl -> Fd -> IO Int
-readFromUart fp (Fd fd) = withForeignPtr fp $ \ptr -> do
-    bytesRead <- c_read_from_uart ptr fd
-    return (fromIntegral bytesRead)
+-- Returns CSsize to preserve the exact platform-specific return width and signedness.
+readFromUart :: ForeignPtr RingBufferControl -> Fd -> IO CSsize
+readFromUart fp (Fd fd) = withForeignPtr fp $ \ptr ->
+    c_read_from_uart ptr fd
 
 -- | Wrapper for get_write_offset
 getWriteOffset :: ForeignPtr RingBufferControl -> IO Int
