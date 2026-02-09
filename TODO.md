@@ -1091,36 +1091,321 @@ After completion, consider:
 ### P2-001: Real-Time Plotting Enhancement
 **Status:** ⏳ Planned  
 **Phase:** 5.1 - User Interface  
-**Priority:** P2 (Usability)
+**Priority:** P2 (Usability - Important for clinical workflow)
 
 **Description:**  
-Connect OpenGL renderer to live data stream with smooth animation (>30Hz).
+Implement smooth, high-performance 3D visualization of patient surface using OpenGL, connecting live radar data stream to renderer with 30+ FPS update rate. This provides real-time visual feedback to radiation therapists, enabling them to monitor patient position and motion during treatment setup and delivery.
 
 **Requirements:**
-- FR-UI-001: Real-time visualization
-- Update rate > 30Hz for smooth display
+- FR-UI-001: Real-time visualization of patient surface
+- Update rate > 30Hz (30 FPS) for smooth, non-jarring display
+- Low CPU usage (< 20%) to not interfere with safety-critical processing
+- Responsive to system state changes (< 50ms visual feedback delay)
+- Clinical usability: Clear, intuitive visualization
 
-**Tasks:**
-- [ ] Implement VBO update for mesh vertices
-- [ ] Connect renderer to SystemState TVar
-- [ ] Optimize rendering pipeline
-- [ ] Add FPS counter for monitoring
-- [ ] Test on different hardware configurations
-- [ ] Document performance requirements
+**Detailed Tasks:**
 
-**Acceptance Criteria:**
-- Mesh updates smoothly at 30+ FPS
-- No visual jitter or lag
-- CPU usage < 20% for rendering
+#### Phase 1: OpenGL Infrastructure Setup (1-2 days)
+- [ ] **1.1 Review existing renderer code**
+  - [ ] Examine `src/Control/UI/Renderer.hs` current implementation
+  - [ ] Understand existing OpenGL context and window management
+  - [ ] Identify what mesh rendering capabilities already exist
+  - [ ] Document current rendering pipeline
+
+- [ ] **1.2 Assess performance baseline**
+  - [ ] Test current rendering FPS with static mesh
+  - [ ] Profile CPU and GPU usage
+  - [ ] Identify performance bottlenecks
+  - [ ] Document baseline metrics
+
+- [ ] **1.3 Design VBO update strategy**
+  - [ ] Research OpenGL Vertex Buffer Object (VBO) best practices
+  - [ ] Choose update method: glBufferSubData vs. glMapBuffer vs. orphaning
+  - [ ] Design mesh vertex structure:
+    ```haskell
+    data MeshVertex = MeshVertex
+      { position :: !(Vector3 Float)  -- X, Y, Z coordinates
+      , normal   :: !(Vector3 Float)  -- Surface normal for lighting
+      , color    :: !(Color4 Float)   -- Vertex color (optional)
+      } deriving (Show, Eq)
+    ```
+  - [ ] Plan efficient memory layout for GPU transfer
+
+#### Phase 2: Data Pipeline Connection (2-3 days)
+- [ ] **2.1 Create data flow from SystemState to Renderer**
+  - [ ] Implement STM-based data reading in render thread:
+    ```haskell
+    renderLoop :: TVar SystemState -> IO ()
+    renderLoop stateVar = do
+      state <- atomically $ readTVar stateVar
+      let points = currentPoints state
+      updateMesh points
+      renderScene
+      swapBuffers
+      renderLoop stateVar
+    ```
+  - [ ] Add frame timing measurement
+  - [ ] Implement FPS counter
+
+- [ ] **2.2 Convert point cloud to mesh vertices**
+  - [ ] Implement conversion function:
+    ```haskell
+    pointCloudToMesh :: [Point3D] -> [MeshVertex]
+    ```
+  - [ ] Apply mesh smoothing if needed (moving average, Gaussian filter)
+  - [ ] Compute vertex normals for proper lighting
+  - [ ] Handle sparse or noisy point clouds gracefully
+
+- [ ] **2.3 Implement VBO update mechanism**
+  - [ ] Create VBO on GPU:
+    ```haskell
+    initVBO :: IO BufferObject
+    initVBO = do
+      [vbo] <- genObjectNames 1
+      bindBuffer ArrayBuffer $= Just vbo
+      bufferData ArrayBuffer $= (vboSize, nullPtr, StreamDraw)
+      return vbo
+    ```
+  - [ ] Implement efficient update:
+    ```haskell
+    updateVBO :: BufferObject -> [MeshVertex] -> IO ()
+    updateVBO vbo vertices = do
+      bindBuffer ArrayBuffer $= Just vbo
+      withArray vertices $ \ptr ->
+        bufferSubData ArrayBuffer WriteToBuffer 0 (length vertices * sizeOf (undefined :: MeshVertex)) ptr
+    ```
+  - [ ] Handle variable vertex count (dynamic mesh size)
+
+- [ ] **2.4 Manage double buffering**
+  - [ ] Implement back-buffer for mesh data
+  - [ ] Swap buffers atomically to avoid tearing
+  - [ ] Ensure render thread never blocks on data updates
+
+#### Phase 3: Rendering Optimization (2-3 days)
+- [ ] **3.1 Optimize rendering pipeline**
+  - [ ] Use vertex array objects (VAO) for state management
+  - [ ] Batch rendering calls to minimize state changes
+  - [ ] Implement frustum culling (don't render off-screen geometry)
+  - [ ] Use indexed rendering if applicable (reduce duplicate vertices)
+  - [ ] Enable depth testing for proper 3D rendering
+
+- [ ] **3.2 Implement level-of-detail (LOD) system**
+  - [ ] Define LOD levels based on distance from camera
+  - [ ] Reduce mesh density for distant surfaces
+  - [ ] Implement dynamic LOD switching
+  - [ ] Measure performance improvement
+
+- [ ] **3.3 Add visual enhancements**
+  - [ ] Implement simple lighting model (Phong or Blinn-Phong)
+  - [ ] Add ambient, diffuse, and specular lighting
+  - [ ] Configure light position (above and in front of patient)
+  - [ ] Optional: Add subtle grid or reference markers
+  - [ ] Color-code surface by depth or motion for clarity
+
+- [ ] **3.4 Optimize GPU resource usage**
+  - [ ] Minimize texture uploads (use solid colors or simple gradients)
+  - [ ] Reuse shader programs (compile once, use many times)
+  - [ ] Profile GPU usage with tools (e.g., gDEBugger, Nsight Graphics)
+  - [ ] Ensure VBO updates don't stall GPU pipeline
+
+#### Phase 4: Frame Rate Management (1-2 days)
+- [ ] **4.1 Implement FPS counter**
+  - [ ] Add FPS measurement:
+    ```haskell
+    data FPSCounter = FPSCounter
+      { frameCount :: Int
+      , lastTime   :: TimeSpec
+      , currentFPS :: Double
+      }
+    
+    updateFPS :: FPSCounter -> TimeSpec -> FPSCounter
+    calculateFPS :: FPSCounter -> Double
+    ```
+  - [ ] Display FPS in corner of window (for debugging)
+  - [ ] Log FPS to console every 10 seconds
+  - [ ] Expose FPS via system state for monitoring
+
+- [ ] **4.2 Implement frame pacing**
+  - [ ] Calculate target frame time (16.67ms for 60 FPS, 33.33ms for 30 FPS)
+  - [ ] Implement sleep/yield to maintain consistent frame rate:
+    ```haskell
+    renderLoopWithPacing :: Double -> IO ()
+    renderLoopWithPacing targetFPS = do
+      startTime <- getTime Monotonic
+      renderFrame
+      endTime <- getTime Monotonic
+      let frameTime = diffTimeSpec endTime startTime
+      let targetTime = TimeSpec 0 (round $ 1e9 / targetFPS)
+      when (frameTime < targetTime) $
+        threadDelay (fromIntegral $ toNanoSecs (targetTime - frameTime) `div` 1000)
+    ```
+  - [ ] Handle cases where rendering takes longer than target frame time
+
+- [ ] **4.3 Adaptive quality**
+  - [ ] Monitor actual FPS
+  - [ ] If FPS drops below 30, reduce mesh quality automatically
+  - [ ] If FPS consistently high, increase quality if applicable
+  - [ ] Log quality adjustments
+
+#### Phase 5: Integration with System State (1-2 days)
+- [ ] **5.1 Wire up SystemState TVar**
+  - [ ] Pass SystemState TVar to rendering thread
+  - [ ] Ensure thread-safe access (STM handles this)
+  - [ ] Handle case where state updates faster than render (drop frames gracefully)
+
+- [ ] **5.2 Synchronize with processing pipeline**
+  - [ ] Ensure render thread doesn't block processing thread
+  - [ ] Use tryReadTVar to avoid blocking if needed
+  - [ ] Add timestamp to rendered data for latency measurement
+
+- [ ] **5.3 Handle system state changes**
+  - [ ] Respond to configuration changes (e.g., mesh resolution)
+  - [ ] Handle pause/resume of data stream
+  - [ ] Clear mesh when sensor disconnects
+
+#### Phase 6: Testing & Validation (2-3 days)
+- [ ] **6.1 Performance testing**
+  - [ ] Test on target hardware configurations:
+    - [ ] Low-end: Intel HD Graphics, 4GB RAM
+    - [ ] Mid-range: NVIDIA GeForce GTX 1650, 8GB RAM
+    - [ ] High-end: NVIDIA RTX series, 16GB+ RAM
+  - [ ] Measure FPS, CPU usage, GPU usage on each
+  - [ ] Document minimum hardware requirements
+
+- [ ] **6.2 Stress testing**
+  - [ ] Test with maximum point cloud density (thousands of points)
+  - [ ] Test with sparse point clouds (handling edge case)
+  - [ ] Test with rapidly changing data (simulating patient motion)
+  - [ ] Run for extended periods (30+ minutes) to check stability
+
+- [ ] **6.3 Visual quality assessment**
+  - [ ] Have clinical staff review visualization
+  - [ ] Check for jitter, tearing, or flickering
+  - [ ] Verify surface representation is intuitive
+  - [ ] Test visibility in typical clinical lighting conditions
+  - [ ] Get feedback on color scheme and contrast
+
+- [ ] **6.4 Latency measurement**
+  - [ ] Measure end-to-end latency (sensor data to screen update)
+  - [ ] Use high-speed camera to measure visual latency if needed
+  - [ ] Verify visual feedback delay < 50ms
+  - [ ] Document latency breakdown by pipeline stage
+
+- [ ] **6.5 Automated rendering tests**
+  - [ ] Create test that generates synthetic point clouds
+  - [ ] Verify rendering doesn't crash with various inputs
+  - [ ] Test error handling (e.g., empty point cloud, malformed data)
+  - [ ] Add regression test to prevent performance degradation
+
+#### Phase 7: Documentation & Clinical Training (1-2 days)
+- [ ] **7.1 Update user documentation**
+  - [ ] Document UI controls (camera rotation, zoom, pan)
+  - [ ] Explain visual indicators (colors, overlays)
+  - [ ] Add screenshots of typical views
+  - [ ] Document keyboard shortcuts
+
+- [ ] **7.2 Create clinical workflow guide**
+  - [ ] Write: `docs/clinical/ui_visualization_guide.md`
+  - [ ] Explain how to interpret the display
+  - [ ] Describe what different surface characteristics indicate
+  - [ ] Include troubleshooting section (e.g., blank screen, slow rendering)
+
+- [ ] **7.3 Update developer documentation**
+  - [ ] Document rendering architecture in DEVELOPER_GUIDE.md
+  - [ ] Explain VBO update strategy
+  - [ ] Provide guidance for future visualization improvements
+  - [ ] Document performance optimization techniques used
+
+- [ ] **7.4 Code documentation**
+  - [ ] Add Haddock comments to all rendering functions
+  - [ ] Document shader programs (if custom shaders used)
+  - [ ] Explain mesh generation algorithm
+  - [ ] Add usage examples
+
+#### Phase 8: Optional Enhancements (if time permits)
+- [ ] **8.1 Camera controls**
+  - [ ] Implement smooth camera rotation (mouse drag)
+  - [ ] Implement zoom (mouse wheel)
+  - [ ] Implement pan (shift + mouse drag)
+  - [ ] Add camera presets (front view, side view, top view)
+  - [ ] Implement camera auto-fit to keep patient in view
+
+- [ ] **8.2 Visual overlays**
+  - [ ] Display isocenter marker
+  - [ ] Show treatment field boundaries
+  - [ ] Add coordinate axes for orientation
+  - [ ] Display patient name/ID (from configuration)
+
+- [ ] **8.3 Recording and playback**
+  - [ ] Add ability to record visualization to video file
+  - [ ] Implement screenshot capture
+  - [ ] Create time-lapse mode for motion analysis
+
+**Detailed Acceptance Criteria:**
+- ✅ Mesh updates smoothly at 30+ FPS sustained (no frame drops for 5+ minutes)
+- ✅ Visual latency < 50ms from sensor data to screen update
+- ✅ No visual jitter, tearing, or flickering
+- ✅ CPU usage < 20% for rendering thread on target hardware
+- ✅ GPU usage efficient (< 50% on mid-range hardware)
+- ✅ System remains responsive (no lag in user interaction)
+- ✅ Rendering doesn't interfere with safety-critical processing (latency unchanged)
+- ✅ Handles edge cases gracefully (empty point cloud, sparse data)
+- ✅ Clinical staff approve visual quality and usability
+- ✅ Documentation complete and accessible
+
+**Performance Targets:**
+| Metric | Target | Measurement Method |
+|--------|--------|-------------------|
+| FPS | ≥ 30 | FPS counter in render loop |
+| Visual Latency | < 50ms | Timestamp comparison |
+| CPU Usage | < 20% | System monitor / htop |
+| GPU Usage | < 50% | GPU profiler |
+| Memory Usage | < 500MB additional | Process memory monitor |
+
+**Risk Mitigation:**
+- **Risk:** OpenGL not available on deployment system → Mitigation: Document OpenGL requirements, fallback to headless mode
+- **Risk:** Performance insufficient on low-end hardware → Mitigation: Implement adaptive quality, document minimum requirements
+- **Risk:** Visual quality deemed insufficient by clinicians → Mitigation: Iterate on visualization based on feedback
+- **Risk:** Rendering interferes with processing latency → Mitigation: Profile and optimize, use separate thread/process if needed
+
+**Rollback Plan:**
+If rendering causes system instability:
+1. Disable rendering (run in headless mode)
+2. Isolate issue through profiling
+3. Fix and test incrementally
+4. Re-enable with confidence
 
 **Dependencies:**
-- P0-001 (Kalman filter) for smooth data
+- ✅ P0-001 (Kalman filter) for smooth data (completed)
+- SystemState TVar properly populated with point clouds
+- OpenGL 3.0+ support on target system
+- GLUT or equivalent window management library
 
-**Effort Estimate:** 2 weeks  
-**Assignee:** TBD  
+**Effort Estimate:** 2-3 weeks total
+- Week 1: Infrastructure, data pipeline, basic rendering
+- Week 2: Optimization, frame rate management, testing
+- Week 3: Documentation, clinical validation, polish
+
+**Assignee:** TBD (Requires OpenGL and Haskell experience)  
+**Review Requirements:** Two-eyes code review, clinical staff UI review  
+**Safety Impact:** Low (visualization is non-critical, informational only)
+
 **Related Files:**
-- `src/Control/UI/Renderer.hs`
-- `src/Control/UI/Window.hs`
+- `src/Control/UI/Renderer.hs` - Main rendering code (update)
+- `src/Control/UI/Window.hs` - Window management (may need updates)
+- `app/Main.hs` - Render thread integration (update)
+- New: `docs/clinical/ui_visualization_guide.md` - Clinical user guide
+- Update: `docs/DEVELOPER_GUIDE.md` - Add rendering section
+
+**Testing Files:**
+- New: `test/Control/UI/RendererSpec.hs` - Unit tests for rendering functions
+- New: `bench/RenderingBench.hs` - Performance benchmarks
+
+**Follow-up Enhancements:**
+- Multi-view display (multiple camera angles simultaneously)
+- Augmented reality overlay (project onto patient using projector)
+- Historical trajectory display (show patient motion over time)
+- Integration with treatment planning system (display planned vs. actual position)
 
 ---
 
@@ -1162,32 +1447,490 @@ Implement color-coded background (Green/Red) based on gating decision.
 ### P2-003: Improve Error Handling in Hardware Layer
 **Status:** ⏳ Planned  
 **Phase:** 2 - Hardware Abstraction Layer  
-**Priority:** P2 (Robustness)
+**Priority:** P2 (Robustness - Important for reliability)
 
 **Description:**  
-Enhance error propagation and recovery in hardware communication layer.
+Enhance error propagation, recovery, and reporting throughout the hardware communication layer to improve system resilience. Implement comprehensive error types, retry logic for transient failures, structured logging, and clear recovery procedures. This improves system reliability in clinical environments where brief hardware issues shouldn't cause system failure.
 
-**Tasks:**
-- [ ] Add detailed error types (ConnectionLost, ParseError, etc.)
-- [ ] Implement retry logic for transient failures
-- [ ] Add error event logging
-- [ ] Improve error messages for debugging
-- [ ] Add recovery procedures for common failures
-- [ ] Document error handling in DEVELOPER_GUIDE.md
+**Requirements:**
+- Robust error handling per IEC 62304 requirements
+- Clear, actionable error messages for operators
+- Automatic recovery from transient failures
+- Comprehensive error logging for troubleshooting
+- Graceful degradation when possible
 
-**Acceptance Criteria:**
-- Transient errors don't crash application
-- Error messages are actionable
-- System recovers gracefully from hardware disconnects
+**Detailed Tasks:**
+
+#### Phase 1: Error Type Definition & Classification (1-2 days)
+- [ ] **1.1 Define comprehensive error types**
+  - [ ] Create new module: `src/Hardware/Errors.hs`
+  - [ ] Define error hierarchy:
+    ```haskell
+    data HardwareError
+      = ConnectionError ConnectionErrorType
+      | ParseError ParseErrorType
+      | ConfigurationError ConfigErrorType
+      | TimeoutError TimeoutErrorType
+      | DataError DataErrorType
+      deriving (Show, Eq)
+    
+    data ConnectionErrorType
+      = DeviceNotFound String        -- Device path
+      | PermissionDenied String      -- Permission issue details
+      | ConnectionLost String        -- Disconnect details
+      | PortInUse String            -- Port already open
+      | InvalidBaudRate Int         -- Unsupported baud rate
+      deriving (Show, Eq)
+    
+    data ParseErrorType
+      = InvalidMagicWord ByteString  -- Expected vs. actual
+      | CorruptedFrame Int           -- Frame number
+      | UnknownTLVType Word32        -- Unknown TLV type encountered
+      | TLVLengthMismatch Int Int    -- Expected vs. actual length
+      | ChecksumFailure ByteString   -- Frame with bad checksum
+      deriving (Show, Eq)
+    
+    data ConfigErrorType
+      = InvalidConfigFile String     -- Config file path and error
+      | MissingParameter String      -- Required parameter name
+      | InvalidParameterValue String String  -- Param name and bad value
+      | SensorConfigFailed String    -- Sensor error response
+      deriving (Show, Eq)
+    
+    data TimeoutErrorType
+      = FrameTimeout Int             -- Expected frame interval ms
+      | CommandTimeout String Int    -- Command and timeout duration
+      | SensorUnresponsive Int       -- Duration of unresponsiveness
+      deriving (Show, Eq)
+    
+    data DataErrorType
+      = EmptyPointCloud              -- No points in frame
+      | ExcessiveNoise Double        -- Noise level exceeded threshold
+      | UnexpectedDataRate Double    -- Actual vs. expected rate
+      deriving (Show, Eq)
+    ```
+
+- [ ] **1.2 Implement error classification**
+  - [ ] Define error severity levels:
+    ```haskell
+    data ErrorSeverity = Critical | Warning | Info deriving (Show, Eq, Ord)
+    
+    errorSeverity :: HardwareError -> ErrorSeverity
+    errorSeverity (ConnectionError ConnectionLost{}) = Critical
+    errorSeverity (ParseError ChecksumFailure{}) = Warning
+    errorSeverity (DataError EmptyPointCloud) = Info
+    -- ... etc
+    ```
+  - [ ] Define which errors are recoverable:
+    ```haskell
+    isRecoverable :: HardwareError -> Bool
+    isRecoverable (ConnectionError (ConnectionLost _)) = True  -- Can reconnect
+    isRecoverable (ParseError (CorruptedFrame _)) = True       -- Skip frame
+    isRecoverable (ConfigurationError _) = False               -- Need user fix
+    ```
+
+- [ ] **1.3 Create error context wrapper**
+  - [ ] Add context information to errors:
+    ```haskell
+    data ErrorContext = ErrorContext
+      { errorTimestamp :: TimeSpec
+      , errorLocation  :: String        -- Module/function name
+      , errorContext   :: String        -- Additional context
+      , errorMetadata  :: Map String String  -- Key-value metadata
+      }
+    
+    data ContextualError = ContextualError
+      { error_   :: HardwareError
+      , context :: ErrorContext
+      } deriving (Show)
+    ```
+
+#### Phase 2: Error Propagation Mechanism (2 days)
+- [ ] **2.1 Define Result type for hardware operations**
+  - [ ] Use Either or custom Result type:
+    ```haskell
+    type HardwareResult a = Either ContextualError a
+    
+    -- Helper functions
+    ok :: a -> HardwareResult a
+    ok = Right
+    
+    err :: HardwareError -> String -> HardwareResult a
+    err e context = Left $ ContextualError e (ErrorContext now "..." context Map.empty)
+    ```
+
+- [ ] **2.2 Update function signatures**
+  - [ ] Convert hardware functions to return HardwareResult:
+    ```haskell
+    -- Before:
+    openDevice :: FilePath -> IO SerialPort
+    
+    -- After:
+    openDevice :: FilePath -> IO (HardwareResult SerialPort)
+    
+    -- Before:
+    parseFrame :: ByteString -> RadarFrame
+    
+    -- After:
+    parseFrame :: ByteString -> HardwareResult RadarFrame
+    ```
+
+- [ ] **2.3 Implement error combinators**
+  - [ ] Add helper functions for error handling:
+    ```haskell
+    -- Chain operations that may fail
+    (>>=>) :: HardwareResult a -> (a -> HardwareResult b) -> HardwareResult b
+    
+    -- Provide default on error
+    orElse :: HardwareResult a -> a -> a
+    
+    -- Map errors
+    mapError :: (HardwareError -> HardwareError) -> HardwareResult a -> HardwareResult a
+    
+    -- Add context to errors
+    withContext :: String -> HardwareResult a -> HardwareResult a
+    ```
+
+#### Phase 3: Retry Logic Implementation (2-3 days)
+- [ ] **3.1 Define retry policy**
+  - [ ] Create retry configuration:
+    ```haskell
+    data RetryPolicy = RetryPolicy
+      { maxAttempts     :: Int
+      , initialDelay    :: Int        -- Microseconds
+      , maxDelay        :: Int
+      , backoffMultiplier :: Double   -- Exponential backoff factor
+      , retryableErrors :: [HardwareError -> Bool]
+      }
+    
+    defaultRetryPolicy :: RetryPolicy
+    defaultRetryPolicy = RetryPolicy
+      { maxAttempts = 3
+      , initialDelay = 100_000  -- 100ms
+      , maxDelay = 5_000_000    -- 5s
+      , backoffMultiplier = 2.0
+      , retryableErrors = [isTransientError]
+      }
+    
+    isTransientError :: HardwareError -> Bool
+    isTransientError (ConnectionError (ConnectionLost _)) = True
+    isTransientError (TimeoutError _) = True
+    isTransientError _ = False
+    ```
+
+- [ ] **3.2 Implement retry mechanism**
+  - [ ] Create retry wrapper:
+    ```haskell
+    retryOnError :: RetryPolicy -> IO (HardwareResult a) -> IO (HardwareResult a)
+    retryOnError policy action = go 1 (initialDelay policy)
+      where
+        go attempt delay
+          | attempt > maxAttempts policy = do
+              logError $ "Max retry attempts (" ++ show (maxAttempts policy) ++ ") exceeded"
+              action  -- Return last error
+          | otherwise = do
+              result <- action
+              case result of
+                Right val -> return $ Right val
+                Left (ContextualError err ctx) ->
+                  if any (\check -> check err) (retryableErrors policy)
+                  then do
+                    logWarning $ "Attempt " ++ show attempt ++ " failed, retrying in " ++ show delay ++ "us"
+                    threadDelay delay
+                    go (attempt + 1) (min (maxDelay policy) (round $ fromIntegral delay * backoffMultiplier policy))
+                  else return $ Left (ContextualError err ctx)
+    ```
+
+- [ ] **3.3 Apply retry to connection operations**
+  - [ ] Wrap critical operations with retry:
+    ```haskell
+    -- In Hardware.Control
+    openSensorConnection :: FilePath -> IO (HardwareResult SerialPort)
+    openSensorConnection devicePath =
+      retryOnError defaultRetryPolicy $ openDevice devicePath
+    
+    -- In Hardware.Consumer
+    readNextFrame :: SerialPort -> IO (HardwareResult RadarFrame)
+    readNextFrame port =
+      retryOnError frameRetryPolicy $ readAndParseFrame port
+      where
+        frameRetryPolicy = defaultRetryPolicy { maxAttempts = 2 }  -- Quick retry for frames
+    ```
+
+- [ ] **3.4 Add circuit breaker pattern**
+  - [ ] Implement circuit breaker to avoid infinite retry loops:
+    ```haskell
+    data CircuitState = Closed | Open | HalfOpen deriving (Show, Eq)
+    
+    data CircuitBreaker = CircuitBreaker
+      { state             :: TVar CircuitState
+      , failureCount      :: TVar Int
+      , failureThreshold  :: Int
+      , resetTimeout      :: Int  -- Microseconds
+      , lastFailureTime   :: TVar TimeSpec
+      }
+    
+    withCircuitBreaker :: CircuitBreaker -> IO (HardwareResult a) -> IO (HardwareResult a)
+    ```
+
+#### Phase 4: Error Logging Enhancement (1-2 days)
+- [ ] **4.1 Integrate with audit logging**
+  - [ ] Log all hardware errors to audit log:
+    ```haskell
+    logHardwareError :: ContextualError -> IO ()
+    logHardwareError (ContextualError err ctx) = do
+      let severity = errorSeverity err
+      let message = formatErrorMessage err ctx
+      Audit.logEvent $ AuditEvent
+        { eventType = HardwareError
+        , severity = severity
+        , timestamp = errorTimestamp ctx
+        , message = message
+        , metadata = errorMetadata ctx
+        }
+    ```
+
+- [ ] **4.2 Create structured error messages**
+  - [ ] Implement human-readable error formatting:
+    ```haskell
+    formatErrorMessage :: HardwareError -> ErrorContext -> String
+    formatErrorMessage (ConnectionError (DeviceNotFound path)) ctx =
+      "Hardware connection failed: Device not found at " ++ path ++
+      "\nPossible causes:" ++
+      "\n  - Device is not connected" ++
+      "\n  - Incorrect device path" ++
+      "\n  - USB driver not installed" ++
+      "\nSuggested actions:" ++
+      "\n  - Verify device is connected via USB" ++
+      "\n  - Check device path with 'ls /dev/ttyUSB*'" ++
+      "\n  - Ensure user has permission: 'sudo usermod -a -G dialout $USER'"
+    
+    formatErrorMessage (ParseError (InvalidMagicWord actual)) ctx =
+      "Frame parsing failed: Invalid magic word" ++
+      "\nExpected: 0x0102030405060708" ++
+      "\nActual: " ++ show actual ++
+      "\nPossible causes:" ++
+      "\n  - Sensor firmware mismatch" ++
+      "\n  - Data corruption" ++
+      "\n  - Baud rate misconfiguration"
+    ```
+
+- [ ] **4.3 Add error statistics tracking**
+  - [ ] Track error frequency and patterns:
+    ```haskell
+    data ErrorStatistics = ErrorStatistics
+      { errorCounts :: Map HardwareError Int
+      , lastOccurrence :: Map HardwareError TimeSpec
+      , errorRate :: Map HardwareError Double  -- Errors per minute
+      }
+    
+    updateErrorStats :: TVar ErrorStatistics -> ContextualError -> IO ()
+    ```
+
+#### Phase 5: Recovery Procedures (2-3 days)
+- [ ] **5.1 Implement connection recovery**
+  - [ ] Auto-reconnect on connection loss:
+    ```haskell
+    recoverConnection :: SerialPort -> FilePath -> IO (HardwareResult SerialPort)
+    recoverConnection oldPort devicePath = do
+      logWarning "Connection lost, attempting recovery..."
+      closePort oldPort  -- Clean up old connection
+      threadDelay 500_000  -- Wait 500ms
+      openSensorConnection devicePath
+    ```
+
+- [ ] **5.2 Implement sensor reset**
+  - [ ] Add sensor reset capability:
+    ```haskell
+    resetSensor :: SerialPort -> FilePath -> IO (HardwareResult ())
+    resetSensor port configFile = do
+      logInfo "Resetting sensor..."
+      -- Send stop command
+      sendCommand port "sensorStop"
+      threadDelay 100_000
+      -- Reload configuration
+      config <- loadConfig configFile
+      configureSensor port config
+    ```
+
+- [ ] **5.3 Implement graceful degradation**
+  - [ ] Handle partial failures:
+    ```haskell
+    -- If some frames fail to parse, continue with available data
+    parseFramesResilient :: [ByteString] -> ([RadarFrame], [ParseError])
+    parseFramesResilient frames = partitionEithers (map parseFrame frames)
+    
+    -- If point cloud is sparse, interpolate or use previous frame
+    handleSparsePointCloud :: [Point3D] -> [Point3D] -> [Point3D]
+    handleSparsePointCloud current previous
+      | length current < minPoints = previous  -- Use last good frame
+      | otherwise = current
+    ```
+
+- [ ] **5.4 Implement error escalation**
+  - [ ] Define escalation path for persistent errors:
+    ```haskell
+    data ErrorEscalation
+      = Retry          -- Transient error, retry
+      | Alert          -- Persistent error, alert operator
+      | Shutdown       -- Critical error, shutdown system
+    
+    escalateError :: ContextualError -> Int -> ErrorEscalation
+    escalateError err consecutiveFailures
+      | consecutiveFailures > 100 = Shutdown  -- Too many errors
+      | consecutiveFailures > 10 = Alert      -- Persistent issue
+      | isRecoverable (error_ err) = Retry
+      | otherwise = Shutdown
+    ```
+
+#### Phase 6: User-Facing Error Messages (1-2 days)
+- [ ] **6.1 Create operator alerts**
+  - [ ] Design alert UI (console messages + visual indicators)
+  - [ ] Implement alert prioritization (critical alerts shown first)
+  - [ ] Add alert acknowledgment mechanism
+
+- [ ] **6.2 Write error message catalog**
+  - [ ] Create comprehensive error catalog:
+    - Error code
+    - User-friendly description
+    - Possible causes
+    - Troubleshooting steps
+    - When to contact support
+  - [ ] Document in: `docs/troubleshooting/error_catalog.md`
+
+- [ ] **6.3 Implement error reporting mechanism**
+  - [ ] Add "Report Error" functionality
+  - [ ] Collect relevant system information automatically
+  - [ ] Generate error report file for support
+
+#### Phase 7: Testing & Validation (3-4 days)
+- [ ] **7.1 Unit tests for error handling**
+  - [ ] Test error type creation and classification
+  - [ ] Test retry logic with various error types
+  - [ ] Test circuit breaker behavior
+  - [ ] Create: `test/Hardware/ErrorsSpec.hs`
+
+- [ ] **7.2 Integration tests for recovery**
+  - [ ] Simulate connection loss and verify recovery
+  - [ ] Simulate parse errors and verify resilience
+  - [ ] Test timeout handling
+  - [ ] Test with injected faults
+
+- [ ] **7.3 Fault injection testing**
+  - [ ] Create fault injection framework:
+    ```haskell
+    data FaultInjection
+      = InjectConnectionError Int    -- Fail every N operations
+      | InjectParseError Double      -- Fail with probability
+      | InjectTimeout Int            -- Delay for N milliseconds
+    
+    withFaultInjection :: FaultInjection -> IO a -> IO a
+    ```
+  - [ ] Test system behavior under various fault scenarios
+  - [ ] Verify error messages are correct and actionable
+  - [ ] Measure recovery time for different error types
+
+- [ ] **7.4 Stress testing**
+  - [ ] Run system for extended period with simulated intermittent errors
+  - [ ] Verify no memory leaks from error handling
+  - [ ] Verify system stability after recovery
+  - [ ] Check audit log for complete error records
+
+- [ ] **7.5 User acceptance testing**
+  - [ ] Have operators review error messages for clarity
+  - [ ] Test error reporting workflow
+  - [ ] Verify troubleshooting steps are effective
+  - [ ] Get feedback on alert priority and timing
+
+#### Phase 8: Documentation (1-2 days)
+- [ ] **8.1 Update DEVELOPER_GUIDE.md**
+  - [ ] Document error handling architecture
+  - [ ] Explain retry and recovery mechanisms
+  - [ ] Provide examples of adding new error types
+  - [ ] Document testing strategies for error conditions
+
+- [ ] **8.2 Create troubleshooting guide**
+  - [ ] Write: `docs/troubleshooting/hardware_errors.md`
+  - [ ] Document common error scenarios and solutions
+  - [ ] Include diagnostic commands and tools
+  - [ ] Provide decision tree for error resolution
+
+- [ ] **8.3 Update operator manual**
+  - [ ] Document error messages and their meanings
+  - [ ] Explain alert indicators and required actions
+  - [ ] Provide contact information for support
+
+- [ ] **8.4 Code documentation**
+  - [ ] Add Haddock comments to all error-related functions
+  - [ ] Document error handling patterns
+  - [ ] Provide usage examples in module documentation
+
+**Detailed Acceptance Criteria:**
+- ✅ All hardware operations return structured error types (no generic exceptions)
+- ✅ Retry logic successfully recovers from transient failures (tested with fault injection)
+- ✅ Error messages are clear, actionable, and include troubleshooting steps
+- ✅ System recovers automatically from connection loss within 5 seconds
+- ✅ Consecutive parse errors don't crash application (graceful degradation)
+- ✅ All hardware errors logged to audit log with full context
+- ✅ Circuit breaker prevents infinite retry loops
+- ✅ Error statistics tracked and available for monitoring
+- ✅ Operator alerts are timely and prioritized correctly
+- ✅ Troubleshooting documentation is comprehensive and validated
+- ✅ Unit test coverage > 90% for error handling code
+- ✅ Fault injection tests pass consistently
+- ✅ System remains stable after 1000+ injected errors
+- ✅ Operators can successfully resolve common errors using documentation
+
+**Success Metrics:**
+| Metric | Target | Measurement |
+|--------|--------|-------------|
+| Auto-recovery success rate | > 95% | Fault injection tests |
+| Recovery time | < 5 seconds | Simulated disconnects |
+| Error message clarity | 4.5/5 average rating | Operator survey |
+| System uptime improvement | +20% | Before/after comparison |
+| Mean time to resolution (MTTR) | -50% | Support ticket data |
+
+**Risk Mitigation:**
+- **Risk:** Over-aggressive retry causes delays → Mitigation: Tune retry policy, implement circuit breaker
+- **Risk:** Error handling adds latency → Mitigation: Profile performance, optimize hot paths
+- **Risk:** Error messages too technical for operators → Mitigation: User testing, iterate on clarity
+- **Risk:** Recovery mechanism causes data loss → Mitigation: Ensure state is properly restored after recovery
+
+**Rollback Plan:**
+If error handling changes cause instability:
+1. Revert changes to previous error handling approach
+2. Isolate problematic error handling code
+3. Fix issues in isolated branch
+4. Re-test thoroughly before merging
 
 **Dependencies:**
-- None
+- None (can start immediately)
 
-**Effort Estimate:** 1 week  
-**Assignee:** TBD  
+**Effort Estimate:** 2-3 weeks total
+- Week 1: Error types, propagation, retry logic
+- Week 2: Recovery procedures, user messages, testing
+- Week 3: Extended testing, documentation, refinement
+
+**Assignee:** TBD (Requires experience with error handling patterns, Haskell)  
+**Review Requirements:** Two-eyes code review, operator validation of error messages  
+**Safety Impact:** Medium (improved error handling enhances safety through reliability)
+
 **Related Files:**
-- `src/Hardware/Consumer.hs`
-- `src/Hardware/Control.hs`
+- New: `src/Hardware/Errors.hs` - Error type definitions
+- Update: `src/Hardware/Consumer.hs` - Parser error handling
+- Update: `src/Hardware/Control.hs` - Connection error handling
+- Update: `src/Safety/Audit.hs` - Error logging integration
+- New: `test/Hardware/ErrorsSpec.hs` - Error handling tests
+- New: `docs/troubleshooting/error_catalog.md` - Error reference
+- New: `docs/troubleshooting/hardware_errors.md` - Troubleshooting guide
+- Update: `docs/DEVELOPER_GUIDE.md` - Error handling section
+
+**Follow-up Enhancements:**
+- Predictive error detection (analyze patterns to predict failures)
+- Remote error reporting to cloud service
+- Automated error recovery orchestration
+- Machine learning-based error classification
+- Integration with system monitoring tools (Prometheus, Grafana)
 
 ---
 
