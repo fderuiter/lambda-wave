@@ -23,12 +23,12 @@
   * [x] **Validation:**
     * [x] Run threadscope on the binary.
     * [x] Verify GC pause times are \< 5ms under load using \+RTS \-s.
-* \[ \] **1.2. CI/CD Strictness**  
-  * \[ \] **Task:** Update .github/workflows/build-and-test.yml to fail on *any* compiler warning (-Werror).  
-  * \[ \] **Requirement:** IEC 62304 (Code Standards)  
-  * \[ \] **Implementation:** Add ghc-options: \-Wall \-Werror to all stanza in .cabal.  
-  * \[ \] **Validation:**  
-    * \[ \] Submit a PR with an unused variable; verify CI fails.  
+* [x] **1.2. CI/CD Strictness**
+  * [x] **Task:** Update .github/workflows/build-and-test.yml to fail on *any* compiler warning (-Werror).
+  * [x] **Requirement:** IEC 62304 (Code Standards)
+  * [x] **Implementation:** Add ghc-options: \-Wall \-Werror to all stanza in .cabal.
+  * [x] **Validation:**
+    * [x] Submit a PR with an unused variable; verify CI fails.
 * \[ \] **1.3. Docker Determinism**  
   * \[ \] **Task:** Finalize Dockerfile to use a specific SHA-256 digest for the GHC base image (reproducible builds).  
   * \[ \] **Implementation:** Lock haskell:9.4.7 (or similar) digest.  

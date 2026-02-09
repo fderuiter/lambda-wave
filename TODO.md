@@ -674,7 +674,7 @@ Blockers:
 - [ ] P0-003: Hardware validation with motion phantom
 
 Required:
-- [ ] P1-001: CI/CD strictness (-Werror)
+- [x] P1-001: CI/CD strictness (-Werror)
 - [ ] P1-002: Docker determinism
 - [x] P1-003: Gating logic & latency
 - [x] P1-004: Audit logging completion

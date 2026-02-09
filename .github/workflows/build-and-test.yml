@@ -24,7 +24,7 @@ jobs:
         run: cabal build --only-dependencies
 
       - name: Build
-        run: cabal build
+        run: cabal build --ghc-options="-Wall -Werror"
 
       - name: Run Tests
         run: cabal test
