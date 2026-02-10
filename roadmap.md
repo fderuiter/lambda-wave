@@ -88,7 +88,7 @@
 
 **Goal:** Guarantee fail-safe operation and deterministic beam control.
 
-* [x] **4.1. Watchdog Thread**
+* [ ] **4.1. Watchdog Thread**
   * \[ \] **Task:** Implement the "Heartbeat" monitor in src/Safety/Watchdog.hs.  
   * \[ \] **Requirement:** SR-WD-001, SR-WD-002  
   * \[ \] **Implementation:** TVarying map of thread timestamps. If now \- last\_seen \> 100ms, kill.  
@@ -100,7 +100,7 @@
   * \[ \] **Implementation:** Control.Gating.evaluateGating \-\> Hardware.Control.setBeam.  
   * \[ \] **Validation:**  
     * \[ \] **Latency Bench:** Run bench/LatencyBench.hs. Mean processing time must be ![][image5]ms. 99th percentile ![][image6]ms.  
-* [x] **4.3. Audit Logging**
+* [ ] **4.3. Audit Logging**
   * \[ \] **Task:** Finalize immutable logging to disk.  
   * \[ \] **Requirement:** SR-AUDIT-001  
   * \[ \] **Implementation:** Ensure logs flush to disk immediately on "Beam Hold" events.  
