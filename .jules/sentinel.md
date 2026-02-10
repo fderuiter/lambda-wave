@@ -43,3 +43,11 @@ The linear algebra module used partial list indexing (`!!`) in `gaussJordan` and
 ## 2026-06-01 - [Risk Level: MEDIUM] **Vector:** src/Hardware/Consumer.hs **Hazard:** Data Race / Undefined Behavior
 The consumer thread used `Storable.peek` to read the `RingBufferControl` struct. This implicitly read the `writeOffset` (offset 0) and `readOffset` (offset 8) fields, which are `std::atomic` on the C++ side and modified concurrently. While the Haskell code ignored these values (using FFI getters later), the non-atomic read of atomic variables constitutes a data race (Undefined Behavior) and could theoretically lead to torn reads or memory model violations.
 **Fix:** Implemented `peekStaticFields` in `FFI.RingBuffer.Types` to strictly read only the immutable fields (`bufferStart`, `bufferSize`) at specific offsets. Updated `Consumer.hs` to use this safe accessor, eliminating the race condition.
+
+## 2026-06-02 - [Risk Level: CRITICAL] **Vector:** src/Hardware/Consumer.hs **Hazard:** Denial of Service (DoS) / Livelock
+The `parseTLVs` function failed to validate `tlvLen` against a maximum reasonable size. A malicious or corrupted packet claiming a huge size (e.g., 4GB) would cause the parser to enter a `Partial` state indefinitely without consuming input (Livelock) or potentially attempt massive allocations (OOM). This effectively halts radar processing.
+**Fix:** Introduced `maxTLVSize = 65536`. Implemented a check `when (tlvLen > maxTLVSize) $ fail ...` to immediately reject such packets, allowing the parser to resynchronize on the next frame. Verified with `test/ConsumerCheck.hs`.
+
+## 2026-06-02 - [Risk Level: MEDIUM] **Vector:** src/Data/Time/HighRes.hs **Hazard:** FFI ABI Mismatch
+The `Storable` instance for `TimeSpec` hardcoded offsets (`0` and `8`) and size (`16`), assuming a 64-bit architecture with 8-byte `time_t` and `long`. On 32-bit systems (or systems with different alignment), this would lead to reading garbage data or segfaults when accessing `clock_gettime`.
+**Fix:** Implemented dynamic offset and size calculation using `alignment` and `sizeOf` of `CTime` and `CLong`. This ensures robust cross-platform compatibility.

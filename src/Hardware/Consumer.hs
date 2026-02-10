@@ -23,7 +23,7 @@ import Control.Concurrent.STM
 import Control.Monad (unless, when, forM_)
 import Control.DeepSeq (force)
 import Control.Exception (evaluate)
-import Data.Word (Word8)
+import Data.Word (Word8, Word32)
 import Data.Int (Int64)
 import Foreign.ForeignPtr (ForeignPtr, castForeignPtr, withForeignPtr, touchForeignPtr)
 import Foreign.C.Types (CChar)
@@ -42,6 +42,12 @@ import Control.Gating (processFrame)
 -- | The Magic Word sequence for TI Millimeter Wave Radar
 magicPattern :: BL.ByteString
 magicPattern = BL.pack [1, 2, 3, 4, 5, 6, 7, 8]
+
+-- | Maximum allowed TLV size to prevent Denial of Service (DoS) attacks
+-- where a malicious packet claims a huge size, causing the parser to hang
+-- or attempt massive allocations.
+maxTLVSize :: Word32
+maxTLVSize = 65536
 
 -- | The Consumer Thread Loop
 --
@@ -260,6 +266,8 @@ parseTLVs count = go count []
 
         case tlvType of
             1 -> do -- Detected Points
+                when (tlvLen > maxTLVSize) $ fail "TLV Too Large"
+
                 -- Payload: Array of Point {x,y,z,v} (4 * 4 = 16 bytes)
                 -- TI SDK Standard: tlvLen includes Header (8 bytes).
                 -- So Payload Length = tlvLen - 8.
