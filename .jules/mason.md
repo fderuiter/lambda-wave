@@ -28,3 +28,8 @@
 **Context:** The hardware ingestion loop and the Gating/Kalman logic were implemented but disconnected. The system was ingesting data but not processing it to control the beam.
 **Decision:** Modified `Hardware.Consumer` to invoke `Control.Gating.processFrame` for every parsed frame. This ensures the Kalman Filter state is updated synchronously with data arrival, maintaining the physics model integrity.
 **Compliance Impact:** Satisfies P1-003 and ensures the Safety Core is driven by real-time data.
+
+## 2026-01-30 - [Specialized Linear Algebra for Kalman Filter]
+**Context:** The `Numeric.Simple` module provides a generic `Maybe`-based linear algebra implementation using lists, which is suitable for offline analysis but introduces overhead and potential runtime failures (via `Nothing`) in the real-time control loop.
+**Decision:** Validated the specialized, strict, zero-allocation Kalman Filter in `SignalProcessing.Kalman` using `V3` and `M33` types. This implementation uses total functions (returning valid state on NaN/Inf) to ensure continuous operation.
+**Compliance Impact:** Satisfies "Class C" requirements for total functions and deterministic memory usage in the safety-critical path. Verified by `kalman-verification` and `kalman-bench`.

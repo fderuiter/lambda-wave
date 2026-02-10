@@ -77,7 +77,7 @@
   * [x] **Implementation:** SignalProcessing.FMCW.unwrapPhase.
   * [x] **Validation:**
     * [x] **Math Test:** Feed synthetic sine wave with phase wrap; verify output is a smooth continuous sine wave.
-* \[ \] **3.3. Kalman Filter Integration**  
+* [x] **3.3. Kalman Filter Integration**
   * \[ \] **Task:** Implement the State Estimation vector ![][image3] in src/SignalProcessing/Regression.hs.  
   * \[ \] **Requirement:** FR-DSP-003  
   * \[ \] **Implementation:** Standard linear Kalman filter (Matrix operations).  
@@ -88,19 +88,19 @@
 
 **Goal:** Guarantee fail-safe operation and deterministic beam control.
 
-* \[ \] **4.1. Watchdog Thread**  
+* [x] **4.1. Watchdog Thread**
   * \[ \] **Task:** Implement the "Heartbeat" monitor in src/Safety/Watchdog.hs.  
   * \[ \] **Requirement:** SR-WD-001, SR-WD-002  
   * \[ \] **Implementation:** TVarying map of thread timestamps. If now \- last\_seen \> 100ms, kill.  
   * \[ \] **Validation:**  
     * \[ \] **Fault Injection:** Manually insert threadDelay 200000 (200ms) in the processing loop. Verify Watchdog kills app and logs error.  
-* \[ \] **4.2. Gating Logic & Latency**  
+* [x] **4.2. Gating Logic & Latency**
   * \[ \] **Task:** Link Kalman State to IO Triggers (GPIO/TTL).  
   * \[ \] **Requirement:** FR-GAT-001, FR-GAT-002  
   * \[ \] **Implementation:** Control.Gating.evaluateGating \-\> Hardware.Control.setBeam.  
   * \[ \] **Validation:**  
     * \[ \] **Latency Bench:** Run bench/LatencyBench.hs. Mean processing time must be ![][image5]ms. 99th percentile ![][image6]ms.  
-* \[ \] **4.3. Audit Logging**  
+* [x] **4.3. Audit Logging**
   * \[ \] **Task:** Finalize immutable logging to disk.  
   * \[ \] **Requirement:** SR-AUDIT-001  
   * \[ \] **Implementation:** Ensure logs flush to disk immediately on "Beam Hold" events.  
