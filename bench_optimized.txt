@@ -1,0 +1,6 @@
+Running Latency Benchmark (Custom implementation)...
+[Hardware] Beam Set To: ON
+Iterations: 10000
+Total Time: 1770114551 ns
+Average Latency: 0.1770 ms
+PASS: Latency < 15ms

@@ -54,12 +54,15 @@ processFrame stateVar pts = do
 
     -- 6. Hardware Actuation
     -- Only set beam if state changed to avoid UART spam (optimization)
-    -- But safety says "Refresh always"?
-    -- Let's set it always for now to ensure fail-safe (if hardware resets).
     let beamBool = case newBeamState of
             BeamOn -> True
             _      -> False
-    setBeam beamBool
+
+    let oldBeamBool = case oldBeamState of
+            BeamOn -> True
+            _      -> False
+
+    when (beamBool /= oldBeamBool) $ setBeam beamBool
 
     -- 7. Update System State & Log
     atomically $ do
