@@ -121,7 +121,7 @@ isRectangular m rows cols = length m == rows && all (\r -> length r == cols) m
 
 -- | Helper: Update list at index
 updateAt :: Int -> (a -> a) -> [a] -> [a]
-updateAt idx f xs = zipWith (\i x -> if i == idx then f x else x) [0..] xs
+updateAt idx f = zipWith (\i x -> if i == idx then f x else x) [0..]
 
 -- | Gauss-Jordan Elimination with Safe Indexing
 gaussJordan :: Matrix -> Int -> Maybe Matrix

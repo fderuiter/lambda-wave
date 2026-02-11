@@ -23,17 +23,17 @@
   * [x] **Validation:**
     * [x] Run threadscope on the binary.
     * [x] Verify GC pause times are \< 5ms under load using \+RTS \-s.
-* \[ \] **1.2. CI/CD Strictness**  
-  * \[ \] **Task:** Update .github/workflows/build-and-test.yml to fail on *any* compiler warning (-Werror).  
-  * \[ \] **Requirement:** IEC 62304 (Code Standards)  
-  * \[ \] **Implementation:** Add ghc-options: \-Wall \-Werror to all stanza in .cabal.  
-  * \[ \] **Validation:**  
-    * \[ \] Submit a PR with an unused variable; verify CI fails.  
-* \[ \] **1.3. Docker Determinism**  
-  * \[ \] **Task:** Finalize Dockerfile to use a specific SHA-256 digest for the GHC base image (reproducible builds).  
-  * \[ \] **Implementation:** Lock haskell:9.4.7 (or similar) digest.  
-  * \[ \] **Validation:**  
-    * \[ \] Build image on two different machines; verify binary checksums match (if possible) or environment variables are identical.
+* [x] **1.2. CI/CD Strictness**
+  * [x] **Task:** Update .github/workflows/build-and-test.yml to fail on *any* compiler warning (-Werror).
+  * [x] **Requirement:** IEC 62304 (Code Standards)
+  * [x] **Implementation:** Add ghc-options: -Wall -Werror to all stanza in .cabal.
+  * [x] **Validation:**
+    * [x] Submit a PR with an unused variable; verify CI fails.
+* [x] **1.3. Docker Determinism**
+  * [x] **Task:** Finalize Dockerfile to use a specific SHA-256 digest for the GHC base image (reproducible builds).
+  * [x] **Implementation:** Lock haskell:9.4.7 (or similar) digest.
+  * [x] **Validation:**
+    * [x] Build image on two different machines; verify binary checksums match (if possible) or environment variables are identical.
 
 ## **Phase 2: Hardware Abstraction Layer (Ingestion)**
 
@@ -77,29 +77,29 @@
   * [x] **Implementation:** SignalProcessing.FMCW.unwrapPhase.
   * [x] **Validation:**
     * [x] **Math Test:** Feed synthetic sine wave with phase wrap; verify output is a smooth continuous sine wave.
-* \[ \] **3.3. Kalman Filter Integration**  
-  * \[ \] **Task:** Implement the State Estimation vector ![][image3] in src/SignalProcessing/Regression.hs.  
-  * \[ \] **Requirement:** FR-DSP-003  
-  * \[ \] **Implementation:** Standard linear Kalman filter (Matrix operations).  
-  * \[ \] **Validation:**  
-    * \[ \] **Simulation:** Generate noisy sine wave (SNR 10dB). Compare Filter output vs. Ground Truth. RMSE must be ![][image4]mm.
+* [x] **3.3. Kalman Filter Integration**
+  * [x] **Task:** Implement the State Estimation vector ![][image3] in src/SignalProcessing/Regression.hs.
+  * [x] **Requirement:** FR-DSP-003
+  * [x] **Implementation:** Standard linear Kalman filter (Matrix operations).
+  * [x] **Validation:**
+    * [x] **Simulation:** Generate noisy sine wave (SNR 10dB). Compare Filter output vs. Ground Truth. RMSE must be ![][image4]mm.
 
 ## **Phase 4: Safety & Control (The "Class C" Core)**
 
 **Goal:** Guarantee fail-safe operation and deterministic beam control.
 
-* \[ \] **4.1. Watchdog Thread**  
-  * \[ \] **Task:** Implement the "Heartbeat" monitor in src/Safety/Watchdog.hs.  
-  * \[ \] **Requirement:** SR-WD-001, SR-WD-002  
-  * \[ \] **Implementation:** TVarying map of thread timestamps. If now \- last\_seen \> 100ms, kill.  
-  * \[ \] **Validation:**  
-    * \[ \] **Fault Injection:** Manually insert threadDelay 200000 (200ms) in the processing loop. Verify Watchdog kills app and logs error.  
-* \[ \] **4.2. Gating Logic & Latency**  
-  * \[ \] **Task:** Link Kalman State to IO Triggers (GPIO/TTL).  
-  * \[ \] **Requirement:** FR-GAT-001, FR-GAT-002  
-  * \[ \] **Implementation:** Control.Gating.evaluateGating \-\> Hardware.Control.setBeam.  
-  * \[ \] **Validation:**  
-    * \[ \] **Latency Bench:** Run bench/LatencyBench.hs. Mean processing time must be ![][image5]ms. 99th percentile ![][image6]ms.  
+* [x] **4.1. Watchdog Thread**
+  * [x] **Task:** Implement the "Heartbeat" monitor in src/Safety/Watchdog.hs.
+  * [x] **Requirement:** SR-WD-001, SR-WD-002
+  * [x] **Implementation:** TVarying map of thread timestamps. If now - last_seen > 100ms, kill.
+  * [x] **Validation:**
+    * [x] **Fault Injection:** Manually insert threadDelay 200000 (200ms) in the processing loop. Verify Watchdog kills app and logs error.
+* [x] **4.2. Gating Logic & Latency**
+  * [x] **Task:** Link Kalman State to IO Triggers (GPIO/TTL).
+  * [x] **Requirement:** FR-GAT-001, FR-GAT-002
+  * [x] **Implementation:** Control.Gating.evaluateGating -> Hardware.Control.setBeam.
+  * [x] **Validation:**
+    * [x] **Latency Bench:** Run bench/LatencyBench.hs. Mean processing time must be ![][image5]ms. 99th percentile ![][image6]ms.
 * \[ \] **4.3. Audit Logging**  
   * \[ \] **Task:** Finalize immutable logging to disk.  
   * \[ \] **Requirement:** SR-AUDIT-001  
