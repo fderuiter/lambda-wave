@@ -2,7 +2,7 @@
 Module      : Control.Mesher
 Description : Surface Meshing using Pure Linear Algebra
 Copyright   : (c) 2024
-License     : BSD-3-Clause
+License     : AGPL-3.0-or-later
 -}
 module Control.Mesher (fitPolynomialSurface) where
 

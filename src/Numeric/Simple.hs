@@ -2,7 +2,7 @@
 Module      : Numeric.Simple
 Description : Pure Haskell Linear Algebra (No Dependencies)
 Copyright   : (c) 2026
-License     : BSD-3-Clause
+License     : AGPL-3.0-or-later
 
 Provides basic Matrix operations using standard Lists to satisfy Class C
 compliance (removing external dependencies like hmatrix/vector).

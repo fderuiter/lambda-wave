@@ -6,7 +6,7 @@ description:    Safety-critical Surface Guided Radiation Therapy (SGRT) system
 author:         Frederick de Ruiter, Ayoola Okuribido
 maintainer:     Frederick de Ruiter <fpderuiter@gmail.com>
 copyright:      2024-2026 Frederick de Ruiter, Ayoola Okuribido
-license:        BSD-3-Clause
+license:        AGPL-3.0-or-later
 license-file:   LICENSE
 build-type:     Simple
 extra-source-files:

@@ -4,7 +4,7 @@
 Module      : SignalProcessing.Kalman
 Description : 3-state Kalman Filter for respiratory motion tracking (Zero-Dependency)
 Copyright   : (c) 2024-2026 Frederick de Ruiter, Ayoola Okuribido
-License     : BSD-3-Clause
+License     : AGPL-3.0-or-later
 Maintainer  : Frederick de Ruiter <fpderuiter@gmail.com>
 
 Implements a linear Kalman filter with constant acceleration motion model

@@ -2,7 +2,7 @@
 Module      : Safety.Watchdog
 Description : The "Dead Man's Switch" for Beam Safety
 Copyright   : (c) 2024
-License     : MIT
+License     : AGPL-3.0-or-later
 Maintainer  : atlas@code-cartographer.com
 
 = The Watchdog 🐉
