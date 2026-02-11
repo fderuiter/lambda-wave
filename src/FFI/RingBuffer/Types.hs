@@ -22,10 +22,10 @@ must match the C++ @struct RingBufferControl@:
 * Alignment: 64 bytes
 * Field offsets (in bytes from the start of the struct):
 
-    * @writeOffset :: Word64@ at offset 0
-    * @readOffset  :: Word64@ at offset 8
+    * @writeOffset :: CSize@ at offset 0
+    * @readOffset  :: CSize@ at offset 8
     * @bufferStart :: Ptr CChar@ at offset 16
-    * @bufferSize  :: Word64@ at offset 24
+    * @bufferSize  :: CSize@ at offset 24
 
 Any padding between fields and up to the full 64-byte size is owned by
 the C++ side. Do not change 'sizeOf', 'alignment', or the offsets in
@@ -59,12 +59,11 @@ module FFI.RingBuffer.Types (RingBufferControl(..), peekStaticFields) where
 import Foreign.Storable
 import Foreign.Ptr
 import Foreign.C.Types
-import Data.Word
 
 -- | Haskell view of the C++ ring buffer control block.
 --
 -- Note: On the C++ side, @writeOffset@ is a @std::atomic<size_t>@.
--- This Haskell representation uses a plain 'Word64' and the 'Storable'
+-- This Haskell representation uses a plain 'CSize' and the 'Storable'
 -- instance below performs ordinary loads and stores (via 'peekByteOff' and
 -- 'pokeByteOff') with no atomic or memory-ordering guarantees.
 --
@@ -74,10 +73,10 @@ import Data.Word
 -- required atomic semantics. The 'Storable' instance is intended only for
 -- layout-compatible, non-concurrent inspection/initialisation of the struct.
 data RingBufferControl = RingBufferControl
-    { writeOffset :: !Word64      -- ^ Corresponds to std::atomic<size_t>
-    , readOffset  :: !Word64      -- ^ Corresponds to std::atomic<size_t>
+    { writeOffset :: !CSize      -- ^ Corresponds to std::atomic<size_t>
+    , readOffset  :: !CSize      -- ^ Corresponds to std::atomic<size_t>
     , bufferStart :: !(Ptr CChar)   -- ^ Start of the data buffer.
-    , bufferSize  :: !Word64      -- ^ size_t; buffer capacity in bytes (non-atomic).
+    , bufferSize  :: !CSize      -- ^ size_t; buffer capacity in bytes (non-atomic).
     } deriving (Show, Eq)
 
 instance Storable RingBufferControl where
@@ -99,7 +98,7 @@ instance Storable RingBufferControl where
 -- This avoids reading the atomic offsets (0 and 8) which are modified concurrently by C++,
 -- preventing potential data races (Undefined Behavior) when accessing the control block
 -- from the consumer thread.
-peekStaticFields :: Ptr RingBufferControl -> IO (Ptr CChar, Word64)
+peekStaticFields :: Ptr RingBufferControl -> IO (Ptr CChar, CSize)
 peekStaticFields ptr = do
     start <- peekByteOff ptr 16
     sz    <- peekByteOff ptr 24

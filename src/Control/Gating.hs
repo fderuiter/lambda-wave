@@ -25,32 +25,52 @@ processFrame :: TVar SystemState -> [Point3D] -> IO ()
 processFrame stateVar pts = do
     currTime <- getMonotonicTimeNS
 
-    -- 1. Read Previous State
-    oldSystemState <- readTVarIO stateVar
-    let lastTime = lastFrameTime oldSystemState
-        oldKState = kalmanState oldSystemState
-        oldBeamState = beamState oldSystemState
-
-    -- 2. Calculate DT (Seconds)
-    let dtNS = if currTime > lastTime then currTime - lastTime else 0
-        dtSec = fromIntegral dtNS / 1_000_000_000.0
-
-    -- 3. Measurement (Average Height)
+    -- 3. Measurement (Average Height) - This is pure data processing
     -- Optimize: Strict fold
     let (!totalHeight, !count) = foldl' (\(!sumH, !cnt) pt -> (sumH + pz pt, cnt + 1)) (0.0, 0 :: Int) pts
 
-    -- 4. Kalman Filter Step
-    -- Predict
-    let predState = predict dtSec kConfig oldKState
+    -- Calculate State Update atomically to prevent Race Conditions (e.g. lost Manual Override)
+    newBeamState <- atomically $ do
+        s <- readTVar stateVar
+        let oldSystemState = s
+            lastTime = lastFrameTime oldSystemState
+            oldKState = kalmanState oldSystemState
+            oldBeamState = beamState oldSystemState
 
-    -- Update (only if we have measurements)
-    let newKState = if count > 0
-            then let meas = totalHeight / fromIntegral count
-                 in update meas kConfig predState
-            else predState -- Coasting (Dead Reckoning) if signal lost
+        -- 2. Calculate DT (Seconds)
+        let dtNS = if currTime > lastTime then currTime - lastTime else 0
+            dtSec = fromIntegral dtNS / 1_000_000_000.0
 
-    -- 5. Gating Logic
-    let newBeamState = evaluateGating targetHeight gatingTolerance hysteresisMargin systemLatencyNS newKState oldBeamState
+        -- 4. Kalman Filter Step
+        -- Predict
+        let predState = predict dtSec kConfig oldKState
+
+        -- Update (only if we have measurements)
+        let newKState = if count > 0
+                then let meas = totalHeight / fromIntegral count
+                     in update meas kConfig predState
+                else predState -- Coasting (Dead Reckoning) if signal lost
+
+        -- 5. Gating Logic
+        -- We evaluate gating based on the *current* beam state read from the TVar.
+        -- This ensures that if another thread set BeamHold, we see it and preserve it.
+        let calculatedBeamState = evaluateGating targetHeight gatingTolerance hysteresisMargin systemLatencyNS newKState oldBeamState
+
+        -- Log Beam Change
+        when (calculatedBeamState /= oldBeamState) $ do
+             let msg = "Beam State Changed: " ++ show oldBeamState ++ " -> " ++ show calculatedBeamState
+             writeTBQueue (auditQueue s) (AuditEvent currTime Info "Gating" msg)
+
+        -- Update State
+        writeTVar stateVar $! s
+            { currentPoints = pts
+            , beamState = calculatedBeamState
+            , lastFrameTime = currTime
+            , threadHeartbeats = Map.insert "Gating" currTime (threadHeartbeats s)
+            , kalmanState = newKState
+            }
+
+        return calculatedBeamState
 
     -- 6. Hardware Actuation
     -- Only set beam if state changed to avoid UART spam (optimization)
@@ -60,24 +80,6 @@ processFrame stateVar pts = do
             BeamOn -> True
             _      -> False
     setBeam beamBool
-
-    -- 7. Update System State & Log
-    atomically $ do
-        s <- readTVar stateVar
-
-        -- Log Beam Change
-        when (newBeamState /= oldBeamState) $ do
-             let msg = "Beam State Changed: " ++ show oldBeamState ++ " -> " ++ show newBeamState
-             writeTBQueue (auditQueue s) (AuditEvent currTime Info "Gating" msg)
-
-        -- Update State
-        writeTVar stateVar $! s
-            { currentPoints = pts
-            , beamState = newBeamState
-            , lastFrameTime = currTime
-            , threadHeartbeats = Map.insert "Gating" currTime (threadHeartbeats s)
-            , kalmanState = newKState
-            }
 
 -- | Evaluate Gating Decision with Hysteresis and Latency Compensation
 -- Pure function for testability.

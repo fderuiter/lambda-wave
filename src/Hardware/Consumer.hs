@@ -22,7 +22,7 @@ import Control.Concurrent (threadDelay)
 import Control.Concurrent.STM
 import Control.Monad (unless, when, forM_)
 import Control.DeepSeq (force)
-import Control.Exception (evaluate)
+import Control.Exception (evaluate, throwIO)
 import Data.Word (Word8, Word32)
 import Data.Int (Int64)
 import Foreign.ForeignPtr (ForeignPtr, castForeignPtr, withForeignPtr, touchForeignPtr)
@@ -77,6 +77,13 @@ consumerLoop controlFp stateVar = withForeignPtr controlFp $ \controlPtr -> do
             -- Pass the ForeignPtr to ensure safety, although we are already inside withForeignPtr,
             -- this double check is fine or we rely on the fact that controlFp is alive.
             writeOff <- getWriteOffset controlFp
+
+            -- Sentinel Checks: Protect against C++ side corruption
+            when (writeOff > bufSize) $
+                 throwIO (userError $ "Ring Buffer Overflow: writeOffset (" ++ show writeOff ++ ") > bufSize (" ++ show bufSize ++ ")")
+
+            when (readOff >= bufSize) $
+                 throwIO (userError $ "Ring Buffer Logic Error: readOffset (" ++ show readOff ++ ") >= bufSize (" ++ show bufSize ++ ")")
 
             if writeOff == readOff
                 then do

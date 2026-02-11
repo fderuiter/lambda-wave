@@ -104,7 +104,7 @@ ingestionLoop fp fd = forkOS loop
     safeLoop = do
         bytesRead <- readFromUart fp fd
         if bytesRead < 0
-            then hPutStrLn stderr "CRITICAL FAILURE: readFromUart returned negative value. Ingestion thread TERMINATING. System may be unresponsive."
+            then throwIO (userError $ "readFromUart returned error code: " ++ show bytesRead)
             else do
                 when (bytesRead == 0) $ threadDelay 1000 -- 1ms pause if full or empty
                 loop
