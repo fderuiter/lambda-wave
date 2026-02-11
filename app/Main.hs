@@ -63,13 +63,9 @@ main = do
 
     -- Open Serial Port using POSIX for the C++ driver
     -- We need to open it here to pass the Fd to the ingestion loop.
-    -- We configure it using 'serialport' library if needed, but since the C++ driver
-    -- just reads raw bytes, we assume the port is configured (or we use stty externally).
     -- Ideally, we should use 'SP.openSerial' then get the Fd, but 'serialport' doesn't expose Fd easily.
     -- So we use 'openFd' from 'unix'.
-    -- WARNING: This assumes the port is already configured (baud rate, etc.)!
-    -- In a real system, we would configure it here using termios.
-    -- For this task, we assume the environment or a startup script handled 'stty'.
+    -- The port is explicitly configured (baud rate 115200, raw mode) using 'configureRawSerial' below.
 
 #if MIN_VERSION_unix(2,8,0)
     let flags = defaultFileFlags { nonBlock = False, creat = Just (ownerReadMode `unionFileModes` ownerWriteMode) }
