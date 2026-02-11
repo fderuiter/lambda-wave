@@ -26,9 +26,11 @@ import Data.Types
 import Data.Config (watchdogTimeoutNS)
 import Control.Concurrent.STM
 import Control.Concurrent (threadDelay)
+import System.IO (hFlush, stdout)
 import Data.Time.HighRes (getMonotonicTimeNS)
-import Control.Monad (forever, when, forM_)
-import System.Exit (exitFailure)
+import Control.Monad (forever, when, unless, forM_)
+import System.Exit (ExitCode(..))
+import System.Posix.Process (exitImmediately)
 import qualified Data.Map.Strict as Map
 
 -- | The Watchdog Loop
@@ -53,12 +55,12 @@ watchdogLoop stateVar = forever $ do
             atomically $ do
                 let q = auditQueue state
                 full <- isFullTBQueue q
-                if not full
-                    then writeTBQueue q (AuditEvent now Critical "Watchdog" msg)
-                    else return ()
+                unless full $
+                    writeTBQueue q (AuditEvent now Critical "Watchdog" msg)
 
             putStrLn $ "!!! WATCHDOG TRIP: " ++ msg
+            hFlush stdout
             -- In real HW, this would toggle a GPIO pin immediately
-            exitFailure
+            exitImmediately (ExitFailure 1)
 
     threadDelay 10000 -- Check every 10ms

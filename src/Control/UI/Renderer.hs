@@ -25,7 +25,7 @@ display stateVar = do
 
         vertex $ Vertex3 (-0.5::GLfloat) (-0.5) 0
         vertex $ Vertex3 ( 0.5::GLfloat) (-0.5) 0
-        vertex $ Vertex3 ( 0.5::GLfloat) ( 0.5) 0
-        vertex $ Vertex3 (-0.5::GLfloat) ( 0.5) 0
+        vertex $ Vertex3 ( 0.5::GLfloat) 0.5 0
+        vertex $ Vertex3 (-0.5::GLfloat) 0.5 0
 
     flush
