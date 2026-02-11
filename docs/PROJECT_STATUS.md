@@ -291,7 +291,7 @@ Lambda-Wave (formerly SGRT Radar System) is a safety-critical Surface Guided Rad
 - **Email:** fpderuiter@gmail.com
 - **Co-Creator:** Ayoola Okuribido (aokuribido@icloud.com)
 - **Project Lead:** Frederick de Ruiter
-- **License:** BSD-3-Clause (see LICENSE file)
+- **License:** AGPL-3.0-only (see LICENSE file)
 
 ---
 
