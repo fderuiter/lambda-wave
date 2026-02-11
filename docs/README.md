@@ -57,7 +57,7 @@ High-level status and planning:
 | [README.md](../README.md) | Project overview, quick start, badges | All | ✅ Current |
 | [TODO.md](../TODO.md) | Prioritized development tasks | Developers, PM | ✅ Current |
 | [CONTRIBUTING.md](../CONTRIBUTING.md) | Contribution guidelines | Developers | ✅ Current |
-| [LICENSE](../LICENSE) | BSD-3-Clause license | All | ✅ Current |
+| [LICENSE](../LICENSE) | AGPL-3.0-only license | All | ✅ Current |
 
 ### Technical Documentation
 
@@ -145,7 +145,7 @@ lambda-wave/
 ├── README.md                    # Project overview
 ├── TODO.md                      # Development tasks (NEW)
 ├── CONTRIBUTING.md              # How to contribute
-├── LICENSE                      # BSD-3-Clause
+├── LICENSE                      # AGPL-3.0-only
 ├── roadmap.md                   # (SUPERSEDED by TODO.md)
 │
 ├── docs/                        # All documentation

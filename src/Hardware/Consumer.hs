@@ -6,7 +6,7 @@
 Module      : Hardware.Consumer
 Description : Zero-Copy Consumer for Ring Buffer
 Copyright   : (c) 2024
-License     : BSD-3-Clause
+License     : AGPL-3.0-only
 
 This module implements the consumer thread that reads from the shared ring buffer
 using a zero-copy strategy. It polls the C++ ring buffer's write offset using

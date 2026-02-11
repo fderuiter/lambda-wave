@@ -5,7 +5,7 @@
 Module      : Data.Time.HighRes
 Description : High-Resolution Monotonic Time via FFI
 Copyright   : (c) 2024
-License     : BSD-3-Clause
+License     : AGPL-3.0-only
 
 Provides access to CLOCK_MONOTONIC for nanosecond-precision timing.
 Replaces the 'clock' dependency.
