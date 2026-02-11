@@ -1,4 +1,4 @@
-module Hardware.Control (configureSensor, parseConfig, configureRawSerial, setBeam) where
+module Hardware.Control (configureSensor, parseConfig, configureRawSerial, setBeam, configureConfigSerial) where
 
 import Control.Monad (forM_)
 import Control.Concurrent (threadDelay)
@@ -70,8 +70,8 @@ configureConfigSerial :: Fd -> IO ()
 configureConfigSerial fd = do
     attrs <- getTerminalAttributes fd
     let cfgAttrs = attrs
-            `withInputSpeed` B38400 -- Fallback to standard speed if B115200/B921600 missing
-            `withOutputSpeed` B38400
+            `withInputSpeed` B115200 -- Standard speed
+            `withOutputSpeed` B115200
     setTerminalAttributes fd cfgAttrs Immediately
 
 -- | Configures a file descriptor for Raw Serial communication (Data Port).
@@ -94,11 +94,11 @@ configureRawSerial fd = do
             -- VMIN and VTIME share the same slots as EndOfFile (VEOF) and EndOfLine (VEOL) in non-canonical mode.
             `withCC` (EndOfFile, '\1')      -- VMIN = 1 (Block until 1 byte)
             `withCC` (EndOfLine, '\0')      -- VTIME = 0 (No timeout)
-            `withInputSpeed` B38400 -- Fallback from B921600 (not available in env)
-            `withOutputSpeed` B38400
+            `withInputSpeed` B115200 -- Fallback from B921600 (not available in env)
+            `withOutputSpeed` B115200
 
     setTerminalAttributes fd rawAttrs Immediately
-    putStrLn "[Control] Data Port Configured (Raw Mode, 921600 baud)"
+    putStrLn "[Control] Data Port Configured (Raw Mode, 115200 baud)"
 
 -- | Control the beam status (Simulated via GPIO).
 -- True = Beam ON
