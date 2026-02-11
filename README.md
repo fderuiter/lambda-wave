@@ -1,7 +1,7 @@
 # Lambda-Wave: Surface Guided Radiation Therapy System
 
 [![Build Status](https://github.com/fderuiter/lambda-wave/workflows/Build%20and%20Test/badge.svg)](https://github.com/fderuiter/lambda-wave/actions)
-[![License](https://img.shields.io/badge/license-BSD--3--Clause-blue.svg)](LICENSE)
+[![License](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
 [![IEC 62304](https://img.shields.io/badge/IEC%2062304-Class%20C-critical.svg)](docs/PURPOSE_AND_ARCHITECTURE.md)
 
 > **Safety-critical mmWave radar system for real-time patient motion tracking during cancer radiotherapy**
@@ -236,7 +236,7 @@ git push origin feature/my-feature
 
 ## 📄 License
 
-This project is licensed under the **BSD 3-Clause License** - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the **GNU Affero General Public License v3.0** - see the [LICENSE](LICENSE) file for details.
 
 ```
 Copyright (c) 2024-2026, Frederick de Ruiter, Ayoola Okuribido
