@@ -6,10 +6,14 @@ import Safety.Audit (auditLoop)
 import Control.Concurrent (forkIO, threadDelay, killThread)
 import Control.Concurrent.STM
 import System.Posix.Files (fileExist, removeLink, getFileStatus, fileSize)
+import System.Posix.Process (forkProcess, executeFile, getProcessStatus, exitImmediately)
+import System.Exit (ExitCode(ExitFailure))
 import qualified Data.Map.Strict as Map
 import Data.Time.HighRes (getMonotonicTimeNS)
 import Data.List (isInfixOf)
 import Control.Monad (when)
+import Control.Exception (try, IOException)
+import System.Environment (getArgs, getExecutablePath)
 
 -- | Test Setup
 withTestEnv :: (TVar SystemState -> TBQueue AuditEvent -> FilePath -> IO Bool) -> IO Bool
@@ -101,12 +105,72 @@ testLogRotation = do
            then putStrLn "PASS" >> return True
            else putStrLn "FAIL (.bak file not found)" >> return False
 
+runChildCrash :: IO ()
+runChildCrash = do
+    -- Minimal setup for child process
+    let logPath = "test_audit_crash.log"
+    -- Note: No cleanup here, we assume parent cleans up or file is reused
+
+    now <- getMonotonicTimeNS
+    q <- newTBQueueIO 100
+    let kConfig = KalmanConfig 1.0 1.0
+    let st = SystemState [] BeamOff now (Point3D 0 0 0 0 0) Map.empty (initKalman 0 kConfig) q
+    stateVar <- newTVarIO st
+
+    _ <- forkIO $ auditLoop stateVar logPath
+
+    atomically $ writeTBQueue q (AuditEvent now Critical "Test" "CRASH_EVENT")
+    threadDelay 100_000
+    exitImmediately (ExitFailure 99)
+
+testCrashRecovery :: IO Bool
+testCrashRecovery = do
+    putStr "Test 3: Crash Recovery (Immediate Flush)... "
+    let logPath = "test_audit_crash.log"
+    cleanup logPath
+
+    exePath <- getExecutablePath
+
+    -- Safe Fork/Exec: Replace process image to avoid threaded RTS issues in child
+    pid <- forkProcess $ do
+        executeFile exePath False ["--child-crash"] Nothing
+
+    -- Wait for child
+    _ <- getProcessStatus True False pid
+
+    -- Verify Log
+    res <- try $ readFile logPath :: IO (Either IOException String)
+    case res of
+        Left _ -> do
+            putStrLn "FAIL (Log file not found or unreadable)"
+            return False
+        Right content -> do
+            let ok = "CRASH_EVENT" `isInfixOf` content
+            if ok
+                then do
+                    putStrLn "PASS"
+                    cleanup logPath
+                    return True
+                else do
+                    putStrLn ("FAIL: Content was " ++ show content)
+                    cleanup logPath
+                    return False
+  where
+    cleanup f = do
+        e <- fileExist f
+        when e (removeLink f)
+
 main :: IO ()
 main = do
-    putStrLn "=== Audit Logging Verification (P1-004) ==="
-    p1 <- testBasicLogging
-    p2 <- testLogRotation
+    args <- getArgs
+    case args of
+        ["--child-crash"] -> runChildCrash
+        _ -> do
+            putStrLn "=== Audit Logging Verification (P1-004) ==="
+            p1 <- testBasicLogging
+            p2 <- testLogRotation
+            p3 <- testCrashRecovery
 
-    if p1 && p2
-       then putStrLn "VERIFICATION PASSED"
-       else fail "VERIFICATION FAILED"
+            if p1 && p2 && p3
+               then putStrLn "VERIFICATION PASSED"
+               else fail "VERIFICATION FAILED"

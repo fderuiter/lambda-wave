@@ -16,8 +16,17 @@ import Text.Printf (printf)
 data LoopResult = RotationNeeded
 
 -- | The Audit Loop
--- Consumes events from the queue and writes them to disk.
--- Handles log rotation and errors robustly.
+--
+-- Consumes 'AuditEvent's from the shared 'TBQueue' and writes them to an immutable
+-- disk log. This function guarantees that 'Critical' events are flushed to disk
+-- immediately, ensuring they are preserved even in the event of a power loss or crash.
+--
+-- Complexity: O(1) amortized per event (writes are buffered, rotation is infrequent).
+-- Safety:
+--   * Immediate flush for 'Critical' severity.
+--   * Handles IO exceptions by logging to stderr and retrying.
+--   * Rotates log at 10MB to prevent disk exhaustion.
+--   * Updates 'threadHeartbeats' for Watchdog monitoring.
 auditLoop :: TVar SystemState -> FilePath -> IO ()
 auditLoop stateVar logPath = do
     -- Get queue reference once (it's constant in SystemState)
