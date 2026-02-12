@@ -13,8 +13,7 @@ struct RingBufferControl {
 };
 
 // Static assertions to verify layout assumptions
-static_assert(sizeof(size_t) == 8, "size_t expected to be 8 bytes");
-static_assert(sizeof(void*) == 8, "pointers expected to be 8 bytes");
+// We allow 32-bit or 64-bit platforms, but alignment and padding must ensure consistent 64-byte blocks.
 static_assert(alignof(RingBufferControl) == 64, "RingBufferControl alignment expected to be 64");
 static_assert(sizeof(RingBufferControl) == 64, "RingBufferControl size expected to be 64");
 
