@@ -2,10 +2,13 @@
 module Main (main) where
 
 import Control.Exception (try, SomeException)
--- Removed Control.Monad (when)
+import Control.Monad (when)
 import Data.Time.HighRes (getMonotonicTimeNS, getRealTimeNS)
 import FFI.RingBuffer.IO (createRingBuffer, getWriteOffset)
--- Removed Foreign.ForeignPtr
+import FFI.RingBuffer.Types (RingBufferControl(..))
+import Foreign.Storable
+import Foreign.Ptr
+import Foreign.Marshal.Alloc (alloca)
 import System.Exit (exitFailure, exitSuccess)
 
 main :: IO ()
@@ -57,6 +60,28 @@ main = do
        else do
            putStrLn $ "FAIL: Initial getWriteOffset is " ++ show offset
            exitFailure
+
+    -- 5. Test RingBufferControl Layout
+    putStrLn "[Test] RingBufferControl Storable Layout..."
+    let actualSize = sizeOf (undefined :: RingBufferControl)
+    putStrLn $ "RingBufferControl Size: " ++ show actualSize ++ " (Expected: 64)"
+    when (actualSize /= 64) $ do
+        putStrLn "FAIL: Incorrect RingBufferControl size"
+        exitFailure
+
+    -- Verify poke/peek roundtrip
+    putStrLn "[Test] RingBufferControl Poke/Peek..."
+    alloca $ \ptr -> do
+        let rb = RingBufferControl 1 2 nullPtr 100
+        poke ptr rb
+        rb' <- peek ptr
+        if rb == rb'
+           then putStrLn "PASS: Roundtrip successful"
+           else do
+               putStrLn "FAIL: Roundtrip failed"
+               putStrLn $ "Original: " ++ show rb
+               putStrLn $ "Peeked: " ++ show rb'
+               exitFailure
 
     putStrLn "Sentinel Checks Complete. All Systems Safe."
     exitSuccess
