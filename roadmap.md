@@ -100,12 +100,12 @@
   * [x] **Implementation:** Control.Gating.evaluateGating -> Hardware.Control.setBeam.
   * [x] **Validation:**
     * [x] **Latency Bench:** Run bench/LatencyBench.hs. Mean processing time must be ![][image5]ms. 99th percentile ![][image6]ms.
-* \[ \] **4.3. Audit Logging**  
-  * \[ \] **Task:** Finalize immutable logging to disk.  
-  * \[ \] **Requirement:** SR-AUDIT-001  
-  * \[ \] **Implementation:** Ensure logs flush to disk immediately on "Beam Hold" events.  
-  * \[ \] **Validation:**  
-    * \[ \] Pull power plug (simulated crash). Check log file on reboot. Last event must be recorded.
+* [x] **4.3. Audit Logging**
+  * [x] **Task:** Finalize immutable logging to disk.
+  * [x] **Requirement:** SR-AUDIT-001
+  * [x] **Implementation:** Ensure logs flush to disk immediately on "Beam Hold" events.
+  * [x] **Validation:**
+    * [x] Pull power plug (simulated crash). Check log file on reboot. Last event must be recorded.
 
 ## **Phase 5: User Interface & Visualization**
 
