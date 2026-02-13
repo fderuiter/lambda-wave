@@ -22,7 +22,7 @@ import Foreign.Ptr (Ptr, nullPtr, FunPtr)
 import Foreign.ForeignPtr (ForeignPtr, newForeignPtr, withForeignPtr)
 import Foreign.C.Types (CSize(..), CInt(..))
 import System.Posix.Types (CSsize(..), Fd(..))
-import Control.Exception (throwIO, catch, SomeException, mask_)
+import Control.Exception (throwIO, catch, SomeException, mask_, onException)
 import Control.Concurrent (forkOS, ThreadId, threadDelay)
 import Control.Monad (when)
 import System.IO (hPutStrLn, stderr)
@@ -33,10 +33,14 @@ import FFI.RingBuffer.Types (RingBufferControl)
 foreign import ccall unsafe "create_ring_buffer"
     c_create_ring_buffer :: CSize -> IO (Ptr RingBufferControl)
 
--- | Frees the ring buffer.
+-- | Frees the ring buffer (Function Pointer for Finalizer).
 -- Corresponds to C++ `void free_ring_buffer(RingBufferControl* handle)`
 foreign import ccall unsafe "&free_ring_buffer"
     c_free_ring_buffer_ptr :: FunPtr (Ptr RingBufferControl -> IO ())
+
+-- | Frees the ring buffer (Direct Call for Exception Handling).
+foreign import ccall unsafe "free_ring_buffer"
+    c_free_ring_buffer_direct :: Ptr RingBufferControl -> IO ()
 
 -- | Reads from UART into the ring buffer.
 -- Corresponds to C++ `ssize_t read_from_uart(RingBufferControl* handle, int uart_fd)`
@@ -57,13 +61,21 @@ foreign import ccall unsafe "set_read_offset"
 -- | Wrapper for create_ring_buffer.
 -- Returns a ForeignPtr with a finalizer ensuring memory is freed.
 -- Throws userError if size <= 0 or allocation fails.
+--
+-- SAFETY: Uses 'mask_' and 'onException' to guarantee that if 'newForeignPtr'
+-- fails (e.g. allocation error for the ForeignPtr object itself), the C++
+-- memory is explicitly freed, preventing a leak.
 createRingBuffer :: Int -> IO (ForeignPtr RingBufferControl)
 createRingBuffer size = mask_ $ do
     when (size <= 0) $ throwIO (userError "Ring Buffer size must be positive")
     ptr <- c_create_ring_buffer (fromIntegral size)
     if ptr == nullPtr
         then throwIO (userError "Failed to allocate Ring Buffer (C++ create_ring_buffer returned NULL)")
-        else newForeignPtr c_free_ring_buffer_ptr ptr
+        else do
+            -- Critical Section: Attach finalizer
+            -- If newForeignPtr throws (e.g. OOM), we must manually free 'ptr'
+            -- because the finalizer is not yet attached.
+            newForeignPtr c_free_ring_buffer_ptr ptr `onException` c_free_ring_buffer_direct ptr
 
 -- | Wrapper for read_from_uart
 readFromUart :: ForeignPtr RingBufferControl -> Fd -> IO Int

@@ -25,7 +25,7 @@ processFrame :: TVar SystemState -> [Point3D] -> IO ()
 processFrame stateVar pts = do
     currTime <- getMonotonicTimeNS
 
-    -- 1. Read Previous State
+    -- 1. Read Previous State (Snapshot for Calculation)
     oldSystemState <- readTVarIO stateVar
     let lastTime = lastFrameTime oldSystemState
         oldKState = kalmanState oldSystemState
@@ -49,35 +49,45 @@ processFrame stateVar pts = do
                  in update meas kConfig predState
             else predState -- Coasting (Dead Reckoning) if signal lost
 
-    -- 5. Gating Logic
-    let newBeamState = evaluateGating targetHeight gatingTolerance hysteresisMargin systemLatencyNS newKState oldBeamState
+    -- 5. Gating Logic (Pure Calculation)
+    -- This calculates what the beam *should* be based on physics.
+    let calculatedBeamState = evaluateGating targetHeight gatingTolerance hysteresisMargin systemLatencyNS newKState oldBeamState
 
-    -- 6. Hardware Actuation
-    -- Only set beam if state changed to avoid UART spam (optimization)
-    -- But safety says "Refresh always"?
-    -- Let's set it always for now to ensure fail-safe (if hardware resets).
-    let beamBool = case newBeamState of
-            BeamOn -> True
-            _      -> False
-    setBeam beamBool
-
-    -- 7. Update System State & Log
-    atomically $ do
+    -- 6. Update System State & Resolve Concurrency
+    -- We must handle the race condition where the UI might have set 'BeamHold'
+    -- while we were calculating.
+    finalBeamState <- atomically $ do
         s <- readTVar stateVar
+        let currentBeam = beamState s
+
+        -- Safety Override: If the system is in BeamHold (Manual/Emergency),
+        -- we must NOT override it with our calculation.
+        let actualNewState = if currentBeam == BeamHold
+                             then BeamHold
+                             else calculatedBeamState
 
         -- Log Beam Change
-        when (newBeamState /= oldBeamState) $ do
-             let msg = "Beam State Changed: " ++ show oldBeamState ++ " -> " ++ show newBeamState
+        when (actualNewState /= currentBeam) $ do
+             let msg = "Beam State Changed: " ++ show currentBeam ++ " -> " ++ show actualNewState
              writeTBQueue (auditQueue s) (AuditEvent currTime Info "Gating" msg)
 
         -- Update State
         writeTVar stateVar $! s
             { currentPoints = pts
-            , beamState = newBeamState
+            , beamState = actualNewState
             , lastFrameTime = currTime
             , threadHeartbeats = Map.insert "Gating" currTime (threadHeartbeats s)
             , kalmanState = newKState
             }
+
+        return actualNewState
+
+    -- 7. Hardware Actuation
+    -- Set the hardware to match the FINAL decided state.
+    let beamBool = case finalBeamState of
+            BeamOn -> True
+            _      -> False
+    setBeam beamBool
 
 -- | Evaluate Gating Decision with Hysteresis and Latency Compensation
 -- Pure function for testability.

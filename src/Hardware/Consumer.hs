@@ -101,9 +101,12 @@ consumerLoop controlFp stateVar = withForeignPtr controlFp $ \controlPtr -> do
                     let (frames, bytesConsumed, corrupted) = parseStream lbs
 
                     -- 5. Force Evaluation (Critical for FFI Safety)
-                    -- We must ensure all data is copied out of the Ring Buffer (via Lazy ByteString)
-                    -- BEFORE we update the read_offset. If we don't, the producer might overwrite
-                    -- the memory while we are lazily parsing it.
+                    -- SAFETY: We MUST fully evaluate the parsed structure into strict Haskell types
+                    -- (Point3D) before this line returns. This ensures all data is copied OUT of
+                    -- the ring buffer and into Haskell heap. If we didn't do this, lazy evaluation
+                    -- might try to read from the ring buffer later, after we have advanced
+                    -- 'read_offset', leading to data corruption as the producer overwrites it.
+                    -- 'Data.Types' ensures RadarFrame and Point3D have correct NFData instances.
                     _ <- evaluate (force frames)
 
                     -- Log corruption if detected
@@ -140,6 +143,12 @@ consumerLoop controlFp stateVar = withForeignPtr controlFp $ \controlPtr -> do
 
 -- | Creates a Lazy ByteString from the ring buffer pointers.
 -- Handles the wrap-around case by creating 1 or 2 chunks.
+--
+-- SAFETY: This function creates a ByteString that directly references the C++ Ring Buffer
+-- memory without copying. This is safe ONLY because we guarantee (via 'consumerLoop') that
+-- the C++ producer will not overwrite this memory region until we explicitly advance the
+-- 'read_offset'. The 'ForeignPtr' passed here ensures the entire buffer remains allocated
+-- as long as this ByteString exists.
 createLazyByteString :: ForeignPtr CChar -> Int -> Int -> Int -> BL.ByteString
 createLazyByteString fp bufSize readOff writeOff =
     if writeOff >= readOff
