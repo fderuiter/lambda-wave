@@ -78,7 +78,13 @@ consumerLoop controlFp stateVar = withForeignPtr controlFp $ \controlPtr -> do
             -- this double check is fine or we rely on the fact that controlFp is alive.
             writeOff <- getWriteOffset controlFp
 
-            if writeOff == readOff
+            -- Sentinel Check: Validate write offset to prevent segfaults from corrupted shared memory
+            if writeOff >= bufSize
+                then do
+                    hPutStrLn stderr $ "[Sentinel] CRITICAL: Ring Buffer Write Offset Out of Bounds (writeOff=" ++ show writeOff ++ ", bufSize=" ++ show bufSize ++ "). Consumer Loop Retrying..."
+                    threadDelay 100000 -- 100ms pause to allow producer to recover or Sentinel to intervene
+                    loop readOff
+                else if writeOff == readOff
                 then do
                     -- No new data, sleep briefly to avoid busy wait
                     threadDelay 1000 -- 1ms

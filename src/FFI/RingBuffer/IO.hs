@@ -22,7 +22,7 @@ import Foreign.Ptr (Ptr, nullPtr, FunPtr)
 import Foreign.ForeignPtr (ForeignPtr, newForeignPtr, withForeignPtr)
 import Foreign.C.Types (CSize(..), CInt(..))
 import System.Posix.Types (CSsize(..), Fd(..))
-import Control.Exception (throwIO, catch, SomeException, mask_)
+import Control.Exception (throwIO, catch, SomeException, mask_, onException)
 import Control.Concurrent (forkOS, ThreadId, threadDelay)
 import Control.Monad (when)
 import System.IO (hPutStrLn, stderr)
@@ -37,6 +37,10 @@ foreign import ccall unsafe "create_ring_buffer"
 -- Corresponds to C++ `void free_ring_buffer(RingBufferControl* handle)`
 foreign import ccall unsafe "&free_ring_buffer"
     c_free_ring_buffer_ptr :: FunPtr (Ptr RingBufferControl -> IO ())
+
+-- | Direct C call to free ring buffer (for exception handling).
+foreign import ccall unsafe "free_ring_buffer"
+    c_free_ring_buffer :: Ptr RingBufferControl -> IO ()
 
 -- | Reads from UART into the ring buffer.
 -- Corresponds to C++ `ssize_t read_from_uart(RingBufferControl* handle, int uart_fd)`
@@ -63,7 +67,7 @@ createRingBuffer size = mask_ $ do
     ptr <- c_create_ring_buffer (fromIntegral size)
     if ptr == nullPtr
         then throwIO (userError "Failed to allocate Ring Buffer (C++ create_ring_buffer returned NULL)")
-        else newForeignPtr c_free_ring_buffer_ptr ptr
+        else newForeignPtr c_free_ring_buffer_ptr ptr `onException` c_free_ring_buffer ptr
 
 -- | Wrapper for read_from_uart
 readFromUart :: ForeignPtr RingBufferControl -> Fd -> IO Int
