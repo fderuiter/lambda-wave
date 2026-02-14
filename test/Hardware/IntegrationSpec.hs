@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE CPP #-}
 module Hardware.IntegrationSpec (spec) where
 
 import Test.Hspec
@@ -85,7 +86,8 @@ spec = do
             rb <- RingBuffer.createRingBuffer (1024 * 1024)
 
             -- Open File for Ingestion (ensuring close)
-            bracket (openFd testFile ReadOnly Nothing defaultFileFlags) closeFd $ \fd -> do
+            let openAction = openFd testFile ReadOnly defaultFileFlags
+            bracket openAction closeFd $ \fd -> do
 
                 -- Fork Threads
                 ingestTid <- RingBuffer.ingestionLoop rb fd

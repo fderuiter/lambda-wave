@@ -65,11 +65,13 @@ spec = do
             (frames, consumed, corrupted) = parseStream input
 
         length frames `shouldBe` 1
-        let frame = head frames
-        length (Data.Types.points frame) `shouldBe` 2
-        -- consumed should be length garbage + length payload
-        consumed `shouldBe` (BL.length garbage + BL.length payload)
-        corrupted `shouldBe` False
+        case frames of
+            (frame:_) -> do
+                length (Data.Types.points frame) `shouldBe` 2
+                -- consumed should be length garbage + length payload
+                consumed `shouldBe` (BL.length garbage + BL.length payload)
+                corrupted `shouldBe` False
+            [] -> expectationFailure "Expected 1 frame, got 0"
 
     it "Handles partial frames correctly (does not consume)" $ do
         -- Test that a partial frame at the end is NOT consumed
@@ -226,9 +228,11 @@ spec = do
 
         corrupted `shouldBe` False
         length frames `shouldBe` 1
-        let frame = head frames
-        length (Data.Types.points frame) `shouldBe` 1
-        consumed `shouldBe` 80
+        case frames of
+            (frame:_) -> do
+                length (Data.Types.points frame) `shouldBe` 1
+                consumed `shouldBe` 80
+            [] -> expectationFailure "Expected 1 frame, got 0"
 
 instance Arbitrary Point where
     arbitrary = Point <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary
