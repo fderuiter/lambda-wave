@@ -28,3 +28,16 @@
 **Context:** The hardware ingestion loop and the Gating/Kalman logic were implemented but disconnected. The system was ingesting data but not processing it to control the beam.
 **Decision:** Modified `Hardware.Consumer` to invoke `Control.Gating.processFrame` for every parsed frame. This ensures the Kalman Filter state is updated synchronously with data arrival, maintaining the physics model integrity.
 **Compliance Impact:** Satisfies P1-003 and ensures the Safety Core is driven by real-time data.
+
+## 2026-02-13 - [Web UI Pivot and Simulation Mode]
+**Context:** Task 5.1 required a visualization interface. The original plan specified Gloss/OpenGL, but verification in a headless environment is impossible with desktop graphics. Additionally, the project lacks a physical radar sensor for development.
+**Decision:**
+1. Pivoted from Desktop UI to Web UI (WebSocket + HTML5 Canvas).
+2. Added `websockets`, `warp`, `wai`, `aeson` dependencies to the *Executable* only, keeping the *Library* Class C compliant.
+3. Implemented a Simulation Mode (`SGRT_SIMULATION` env var) that pipes synthetic TLV packets into the ingestion ring buffer, validating the full data pipeline.
+**Compliance Impact:** Enables automated verification of UI (FR-UI-001) via Playwright in headless CI, while isolating SOUP dependencies from the safety-critical core.
+
+## 2026-02-13 - [Audit Thread Concurrency Fix]
+**Context:** During simulation startup, the `Safety.Audit` thread blocked indefinitely on an empty `TBQueue`, preventing it from updating its heartbeat. This caused the Watchdog to trip and kill the process after 100ms.
+**Decision:** Modified `Safety.Audit.auditLoop` to use `tryReadTBQueue` with a 10ms `threadDelay` loop instead of blocking `readTBQueue`.
+**Compliance Impact:** Ensures liveness guarantees (SR-WD-002) are met even during low-activity periods without compromising audit integrity.

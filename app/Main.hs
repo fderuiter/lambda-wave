@@ -5,10 +5,13 @@ import Control.Concurrent (forkOS, setNumCapabilities, threadDelay)
 import Control.Concurrent.STM
 import System.Environment (lookupEnv)
 import Data.Maybe (fromMaybe)
-import System.Posix.IO (openFd, OpenMode(..), defaultFileFlags, OpenFileFlags(..))
+import System.Posix.IO (openFd, OpenMode(..), defaultFileFlags, OpenFileFlags(..), createPipe)
 import System.Posix.Files (ownerReadMode, ownerWriteMode, unionFileModes)
 import Control.Monad (forever)
 import qualified Data.Map.Strict as Map
+
+import qualified Simulation
+import qualified UI.Web as UI
 
 import Data.Types
 import Data.Config (targetHeight)
@@ -61,21 +64,31 @@ main = do
     -- This ensures the buffer is automatically freed when all references (Main thread, consumer thread, ingestion thread) are gone.
     ringBuffer <- RingBuffer.createRingBuffer (4 * 1024 * 1024)
 
-    -- Open Serial Port using POSIX for the C++ driver
-    -- We need to open it here to pass the Fd to the ingestion loop.
-    -- Ideally, we should use 'SP.openSerial' then get the Fd, but 'serialport' doesn't expose Fd easily.
-    -- So we use 'openFd' from 'unix'.
-    -- The port is explicitly configured (baud rate 115200, raw mode) using 'configureRawSerial' below.
+    -- Check for Simulation Mode
+    simMode <- lookupEnv "SGRT_SIMULATION"
+    fd <- case simMode of
+        Just _ -> do
+            putStrLn "STARTING IN SIMULATION MODE (No Hardware Required)"
+            (readFd, writeFd) <- createPipe
+            _ <- forkOS $ Simulation.simulationLoop writeFd
+            return readFd
+        Nothing -> do
+            -- Open Serial Port using POSIX for the C++ driver
+            -- We need to open it here to pass the Fd to the ingestion loop.
+            -- Ideally, we should use 'SP.openSerial' then get the Fd, but 'serialport' doesn't expose Fd easily.
+            -- So we use 'openFd' from 'unix'.
+            -- The port is explicitly configured (baud rate 115200, raw mode) using 'configureRawSerial' below.
 
 #if MIN_VERSION_unix(2,8,0)
-    let flags = defaultFileFlags { nonBlock = False, creat = Just (ownerReadMode `unionFileModes` ownerWriteMode) }
-    fd <- openFd sensorPort ReadWrite flags
+            let flags = defaultFileFlags { nonBlock = False, creat = Just (ownerReadMode `unionFileModes` ownerWriteMode) }
+            f <- openFd sensorPort ReadWrite flags
 #else
-    fd <- openFd sensorPort ReadWrite (Just (ownerReadMode `unionFileModes` ownerWriteMode)) defaultFileFlags { nonBlock = False }
+            f <- openFd sensorPort ReadWrite (Just (ownerReadMode `unionFileModes` ownerWriteMode)) defaultFileFlags { nonBlock = False }
 #endif
 
-    -- Configure Port (Raw Mode) to prevent data corruption
-    configureRawSerial fd
+            -- Configure Port (Raw Mode) to prevent data corruption
+            configureRawSerial f
+            return f
 
     -- 2. Hardware Ingestion (Dedicated Thread)
     -- ingestionLoop accepts ForeignPtr
@@ -91,11 +104,9 @@ main = do
     -- 4. Audit Logging
     _ <- forkOS $ auditLoop systemState "session.log"
 
-    -- 5. UI (Disabled for Class C Build)
-    putStrLn "System Armed. UI Disabled."
-    -- initWindow
-    -- handleInput systemState
-    -- renderLoop systemState
+    -- 5. UI (Web-Based for Visualization)
+    _ <- forkOS $ UI.runServer 8080 systemState
+    putStrLn "System Armed. Web UI running on port 8080."
 
     -- Keep Main Alive
     forever $ threadDelay 1000000

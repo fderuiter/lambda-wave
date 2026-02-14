@@ -111,11 +111,11 @@
 
 **Goal:** Provide clinical situational awareness (Non-Critical, Class A/B).
 
-* \[ \] **5.1. Real-Time Plotting**  
-  * \[ \] **Task:** Connect Gloss or OpenGL renderer to the Data Stream.  
-  * \[ \] **Requirement:** FR-UI-001  
-  * \[ \] **Validation:**  
-    * \[ \] Visual check: Does the wave move smoothly? (Update rate \> 30Hz).  
+* [x] **5.1. Real-Time Plotting**
+  * [x] **Task:** Connect Web UI renderer to the Data Stream (Pivoted from Gloss/OpenGL).
+  * [x] **Requirement:** FR-UI-001
+  * [x] **Validation:**
+    * [x] Visual check: Does the wave move smoothly? (Update rate > 30Hz). Verified via `scripts/verify_viz.py` and screenshot.
 * \[ \] **5.2. Visual Alerts**  
   * \[ \] **Task:** Implement Green/Red background state based on Gating Decision.  
   * \[ \] **Requirement:** FR-UI-002  

@@ -66,12 +66,22 @@ executable sgrt-radar-system-exe
   main-is: Main.hs
   other-modules:
       Paths_sgrt_radar_system
+      Simulation
+      UI.Web
   hs-source-dirs:
       app
   ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
   extra-libraries: stdc++
   build-depends:
       sgrt-radar-system
+    , websockets
+    , wai
+    , wai-websockets
+    , warp
+    , http-types
+    , aeson
+    , text
+    , bytestring
 
 test-suite sgrt-radar-system-test
   import: common-options

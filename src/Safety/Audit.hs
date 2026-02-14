@@ -65,24 +65,33 @@ processEvents stateVar queue h = go
         atomically $ modifyTVar' stateVar $ \s ->
             s { threadHeartbeats = Map.insert "Audit" now (threadHeartbeats s) }
 
-        -- 2. Read Event (Blocking)
-        evt <- atomically $ readTBQueue queue
+        -- 2. Read Event (Non-Blocking)
+        -- We use tryReadTBQueue to avoid blocking indefinitely, which would cause
+        -- the Watchdog to kill the process during idle periods.
+        mEvt <- atomically $ tryReadTBQueue queue
 
-        -- 3. Write Event
-        -- Format: [TIMESTAMP] [SEVERITY] [COMPONENT] MESSAGE
-        -- using show for severity
-        let entry = printf "[%d] [%s] [%s] %s"
-                        (eventTime evt)
-                        (show (severity evt))
-                        (component evt)
-                        (message evt)
-        hPutStrLn h entry
+        case mEvt of
+            Nothing -> do
+                -- Queue Empty. Sleep briefly (10ms) to allow other threads to run
+                -- but wake up frequently enough to update heartbeat (Watchdog limit is 100ms).
+                threadDelay 10000
+                go
 
-        -- 4. Critical Flush (Safety)
-        when (severity evt == Critical) $ hFlush h
+            Just evt -> do
+                -- 3. Write Event
+                -- Format: [TIMESTAMP] [SEVERITY] [COMPONENT] MESSAGE
+                let entry = printf "[%d] [%s] [%s] %s"
+                                (eventTime evt)
+                                (show (severity evt))
+                                (component evt)
+                                (message evt)
+                hPutStrLn h entry
 
-        -- 5. Rotation Check
-        size <- hFileSize h
-        if size > 10 * 1024 * 1024 -- 10MB limit
-            then return RotationNeeded
-            else go
+                -- 4. Critical Flush (Safety)
+                when (severity evt == Critical) $ hFlush h
+
+                -- 5. Rotation Check
+                size <- hFileSize h
+                if size > 10 * 1024 * 1024 -- 10MB limit
+                    then return RotationNeeded
+                    else go

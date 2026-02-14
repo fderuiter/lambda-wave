@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Lambda-Wave SGRT</title>
+    <style>
+        body { background-color: #111; color: #eee; font-family: monospace; display: flex; flex-direction: column; align-items: center; }
+        #status { font-size: 24px; margin: 20px; font-weight: bold; }
+        canvas { background-color: #000; border: 2px solid #333; }
+        .beam-on { color: #f00; }
+        .beam-off { color: #0f0; }
+        .beam-hold { color: #ff0; }
+    </style>
+</head>
+<body>
+    <h1>Lambda-Wave SGRT Monitor</h1>
+    <div id="status">Connecting...</div>
+    <canvas id="radar" width="800" height="600"></canvas>
+
+    <script>
+        const canvas = document.getElementById('radar');
+        const ctx = canvas.getContext('2d');
+        const statusDiv = document.getElementById('status');
+
+        // Scale: 200 pixels per meter.
+        // Origin (Isocenter) is at (400, 300)
+        const SCALE = 200;
+        const CX = 400;
+        const CY = 300;
+
+        function connect() {
+            const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const ws = new WebSocket(protocol + "//" + location.host + "/ws");
+
+            ws.onopen = () => {
+                statusDiv.innerText = "Connected";
+                statusDiv.style.color = "#eee";
+            };
+
+            ws.onclose = () => {
+                statusDiv.innerText = "Disconnected (Retrying...)";
+                statusDiv.style.color = "#888";
+                setTimeout(connect, 1000);
+            };
+
+            ws.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    render(data);
+                } catch (e) {
+                    console.error("Parse error", e);
+                }
+            };
+        }
+
+        function render(state) {
+            // Update Beam Status
+            const beam = state.beam;
+            statusDiv.innerText = "BEAM STATUS: " + beam;
+            statusDiv.className = ""; // Reset
+            if (beam === "BeamOn") statusDiv.classList.add("beam-on");
+            else if (beam === "BeamHold") statusDiv.classList.add("beam-hold");
+            else statusDiv.classList.add("beam-off");
+
+            // Clear Canvas
+            ctx.fillStyle = "black";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw Grid
+            ctx.strokeStyle = "#222";
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(0, CY); ctx.lineTo(canvas.width, CY);
+            ctx.moveTo(CX, 0); ctx.lineTo(CX, canvas.height);
+            ctx.stroke();
+
+            // Draw Points (Green)
+            ctx.fillStyle = "#0f0";
+            if (state.points) {
+                state.points.forEach(p => {
+                    const x = CX + p.x * SCALE; // X is lateral
+                    const y = CY - p.z * SCALE; // Z is vertical (up is positive Z, so on screen Y decreases)
+                    ctx.fillRect(x, y, 2, 2);
+                });
+            }
+
+            // Draw Target (Red Crosshair)
+            if (state.target && state.target.position) {
+                const tx = state.target.position.x;
+                const ty = state.target.position.y;
+                const tz = state.target.position.z;
+
+                const screenX = CX + tx * SCALE;
+                const screenY = CY - tz * SCALE;
+
+                ctx.strokeStyle = "#f00";
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(screenX - 10, screenY); ctx.lineTo(screenX + 10, screenY);
+                ctx.moveTo(screenX, screenY - 10); ctx.lineTo(screenX, screenY + 10);
+                ctx.stroke();
+
+                // Draw Target Value
+                ctx.fillStyle = "#f00";
+                ctx.font = "12px monospace";
+                ctx.fillText(`Tgt: (${tx.toFixed(3)}, ${ty.toFixed(3)}, ${tz.toFixed(3)})`, screenX + 12, screenY - 12);
+            }
+        }
+
+        connect();
+    </script>
+</body>
+</html>
