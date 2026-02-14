@@ -27,7 +27,7 @@ withTestEnv action = do
     now <- getMonotonicTimeNS
     q <- newTBQueueIO 100
     let kConfig = KalmanConfig 1.0 1.0
-    let st = SystemState [] BeamOff now (Point3D 0 0 0 0 0) Map.empty (initKalman 0 kConfig) q
+    let st = SystemState [] BeamOff now (Point3D 0 0 0 0 0) Map.empty (initKalman 0 kConfig) q 0
     stateVar <- newTVarIO st
 
     -- Run Action
@@ -114,7 +114,7 @@ runChildCrash = do
     now <- getMonotonicTimeNS
     q <- newTBQueueIO 100
     let kConfig = KalmanConfig 1.0 1.0
-    let st = SystemState [] BeamOff now (Point3D 0 0 0 0 0) Map.empty (initKalman 0 kConfig) q
+    let st = SystemState [] BeamOff now (Point3D 0 0 0 0 0) Map.empty (initKalman 0 kConfig) q 0
     stateVar <- newTVarIO st
 
     _ <- forkIO $ auditLoop stateVar logPath

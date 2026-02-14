@@ -77,6 +77,7 @@ processFrame stateVar pts = do
             , lastFrameTime = currTime
             , threadHeartbeats = Map.insert "Gating" currTime (threadHeartbeats s)
             , kalmanState = newKState
+            , frameCount = frameCount s + 1
             }
 
 -- | Evaluate Gating Decision with Hysteresis and Latency Compensation

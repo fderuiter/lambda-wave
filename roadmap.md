@@ -52,7 +52,7 @@
   * [x] **Implementation:** Parse "Magic Word" 0x0102030405060708 and TLV headers.
   * [x] **Validation:**
     * [x] **Fuzz Testing:** Feed random ByteStrings; ensure system does not crash but logs "Corrupt Packet".
-    * \[ \] **Integration:** Replay a captured .bin file from TI mmWave Studio and verify frame count matches.  
+    * [x] **Integration:** Replay a captured .bin file from TI mmWave Studio and verify frame count matches.
 * [x] **2.3. Sensor Configuration**
   * [x] **Task:** Implement serial port writer to send .cfg to the sensor.
   * [x] **Requirement:** FR-DAQ-002

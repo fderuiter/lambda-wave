@@ -33,7 +33,7 @@ spec = describe "SignalProcessing.FMCW" $ do
     describe "Phase Unwrapping (Requirement FR-DSP-002)" $ do
         it "correctly unwraps a synthetic wrapping signal" $ do
             -- Generate true phase: linear ramp from 0 to 6*pi (3 wraps)
-            let n_samples = 100
+            let n_samples = 100 :: Int
                 true_phase = [ 6 * pi * (fromIntegral i / fromIntegral n_samples) | i <- [0..n_samples-1] ] :: [Double]
 
                 -- Wrap function: (x + pi) % 2pi - pi

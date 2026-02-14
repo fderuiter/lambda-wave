@@ -88,10 +88,11 @@ data SystemState = SystemState
   , threadHeartbeats :: Map String Word64 -- Heartbeats for Watchdog
   , kalmanState :: KalmanState -- ^ Filtered state (Position, Velocity, Accel)
   , auditQueue :: TBQueue AuditEvent -- ^ High-performance event queue
+  , frameCount :: Int -- ^ Total number of frames processed since boot
   }
 
 instance NFData SystemState where
-  rnf (SystemState pts bs t iso hb ks aq) = rnf pts `seq` rnf bs `seq` rnf t `seq` rnf iso `seq` rnf hb `seq` rnf ks `seq` aq `seq` ()
+  rnf (SystemState pts bs t iso hb ks aq fc) = rnf pts `seq` rnf bs `seq` rnf t `seq` rnf iso `seq` rnf hb `seq` rnf ks `seq` aq `seq` rnf fc
 
 -- | Raw parsed structure from the sensor
 data RadarFrame = RadarFrame

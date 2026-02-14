@@ -4,6 +4,7 @@ import qualified FFI.RingBuffer.TypesSpec
 import qualified FFI.RingBuffer.IOSpec
 import qualified Hardware.ConsumerSpec
 import qualified Hardware.ControlSpec
+import qualified Hardware.IntegrationSpec
 import qualified SignalProcessing.FMCWSpec
 import qualified System.RTSSpec
 import qualified Safety.WatchdogSpec
@@ -16,15 +17,16 @@ main = hspec $ do
   FFI.RingBuffer.IOSpec.spec
   Hardware.ConsumerSpec.spec
   Hardware.ControlSpec.spec
+  Hardware.IntegrationSpec.spec
   System.RTSSpec.spec
   Safety.WatchdogSpec.spec
 
   describe "Parser" $ do
     it "parses a known binary correctly" $ do
       -- Placeholder for Golden test
-      1 `shouldBe` 1
+      (1 :: Int) `shouldBe` 1
 
   describe "Gating" $ do
     it "keeps beam off when target is out of range" $ do
       -- Placeholder for QuickCheck
-      1 `shouldBe` 1
+      (1 :: Int) `shouldBe` 1

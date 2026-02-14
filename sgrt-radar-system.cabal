@@ -84,18 +84,21 @@ test-suite sgrt-radar-system-test
       RegressionSpec
       Hardware.ConsumerSpec
       Hardware.ControlSpec
+      Hardware.IntegrationSpec
       System.RTSSpec
       SignalProcessing.FMCWSpec
+      Safety.WatchdogSpec
   hs-source-dirs:
       test
   ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
-  buildable: False
+  buildable: True
   build-depends:
       sgrt-radar-system
     , hspec
     , QuickCheck
     , bytestring
     , binary
+    , unix
 
 test-suite kalman-verification
   import: common-options

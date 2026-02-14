@@ -42,6 +42,7 @@ main = do
           , threadHeartbeats = Map.empty
           , kalmanState = initialKState
           , auditQueue = auditQ
+          , frameCount = 0
           }
 
     systemState <- newTVarIO initialState
