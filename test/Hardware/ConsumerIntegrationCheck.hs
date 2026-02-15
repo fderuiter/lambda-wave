@@ -30,20 +30,18 @@ checkFrames expectedCount frames corrupted inputLen consumed =
 
         contentChecks = case frames of
             [] -> [Just "No frames to verify content."]
-            fs ->
-                let firstFrame = head fs
-                    lastFrame = last fs
+            (firstFrame : rest) ->
+                let lastFrame = if null rest then firstFrame else last rest
 
                     checkVel :: RadarFrame -> Int -> Maybe String
                     checkVel f expectedV =
                         let pts = points f
-                        in if null pts
-                           then Just "Frame has no points"
-                           else
-                               let p = head pts
-                               in if abs (v p - fromIntegral expectedV) < 0.001
-                                  then Nothing
-                                  else Just $ "Frame " ++ show expectedV ++ " velocity mismatch. Expected " ++ show expectedV ++ ", got " ++ show (v p)
+                        in case pts of
+                            [] -> Just "Frame has no points"
+                            (p:_) ->
+                               if abs (v p - fromIntegral expectedV) < 0.001
+                               then Nothing
+                               else Just $ "Frame " ++ show expectedV ++ " velocity mismatch. Expected " ++ show expectedV ++ ", got " ++ show (v p)
 
                     firstErr = checkVel firstFrame 0
                     lastErr = checkVel lastFrame (expectedCount - 1)
