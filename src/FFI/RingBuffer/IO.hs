@@ -16,6 +16,9 @@ module FFI.RingBuffer.IO
     , ingestionLoop
     , getWriteOffset
     , setReadOffset
+    , RingBufferSize -- Opaque newtype
+    , mkRingBufferSize
+    , ReadResult(..)
     ) where
 
 import Foreign.Ptr (Ptr, nullPtr, FunPtr)
@@ -24,9 +27,25 @@ import Foreign.C.Types (CSize(..), CInt(..))
 import System.Posix.Types (CSsize(..), Fd(..))
 import Control.Exception (throwIO, catch, SomeException, mask_)
 import Control.Concurrent (forkOS, ThreadId, threadDelay)
-import Control.Monad (when)
 import System.IO (hPutStrLn, stderr)
 import FFI.RingBuffer.Types (RingBufferControl)
+
+-- | Newtype to enforce positive size constraint at the type level.
+newtype RingBufferSize = RingBufferSize Int
+    deriving (Show, Eq)
+
+-- | Smart constructor for RingBufferSize.
+mkRingBufferSize :: Int -> Either String RingBufferSize
+mkRingBufferSize size
+    | size <= 0 = Left "Ring Buffer size must be positive"
+    | otherwise = Right (RingBufferSize size)
+
+-- | Result of a read operation.
+data ReadResult
+    = ReadSuccess Int -- ^ Bytes read
+    | ReadFull        -- ^ Buffer full (or empty/blocked) - Retry later
+    | ReadError Int   -- ^ Error code (negative value)
+    deriving (Show, Eq)
 
 -- | Creates a ring buffer of the specified size.
 -- Corresponds to C++ `RingBufferControl* create_ring_buffer(size_t size)`
@@ -56,20 +75,25 @@ foreign import ccall unsafe "set_read_offset"
 
 -- | Wrapper for create_ring_buffer.
 -- Returns a ForeignPtr with a finalizer ensuring memory is freed.
--- Throws userError if size <= 0 or allocation fails.
-createRingBuffer :: Int -> IO (ForeignPtr RingBufferControl)
-createRingBuffer size = mask_ $ do
-    when (size <= 0) $ throwIO (userError "Ring Buffer size must be positive")
+-- Throws userError if allocation fails.
+createRingBuffer :: RingBufferSize -> IO (ForeignPtr RingBufferControl)
+createRingBuffer (RingBufferSize size) = mask_ $ do
     ptr <- c_create_ring_buffer (fromIntegral size)
     if ptr == nullPtr
         then throwIO (userError "Failed to allocate Ring Buffer (C++ create_ring_buffer returned NULL)")
         else newForeignPtr c_free_ring_buffer_ptr ptr
 
--- | Wrapper for read_from_uart
-readFromUart :: ForeignPtr RingBufferControl -> Fd -> IO Int
+-- | Wrapper for read_from_uart.
+-- Converts the raw C return value into a safe ReadResult type.
+readFromUart :: ForeignPtr RingBufferControl -> Fd -> IO ReadResult
 readFromUart fp (Fd fd) = withForeignPtr fp $ \ptr -> do
     bytesRead <- c_read_from_uart ptr fd
-    return (fromIntegral bytesRead)
+    let val = fromIntegral bytesRead
+    return $ if val < 0
+             then ReadError val
+             else if val == 0
+                  then ReadFull -- 0 means Full (or Empty/Blocked depending on impl, but treated as 'Retry')
+                  else ReadSuccess val
 
 -- | Wrapper for get_write_offset
 getWriteOffset :: ForeignPtr RingBufferControl -> IO Int
@@ -84,7 +108,7 @@ setReadOffset fp off = withForeignPtr fp $ \ptr ->
 
 -- | Resource Management: Guarantees cleanup of the ring buffer.
 -- Kept for backward compatibility, but implementation uses ForeignPtr.
-withRingBuffer :: Int -> (ForeignPtr RingBufferControl -> IO a) -> IO a
+withRingBuffer :: RingBufferSize -> (ForeignPtr RingBufferControl -> IO a) -> IO a
 withRingBuffer size action = do
     fp <- createRingBuffer size
     action fp
@@ -102,9 +126,12 @@ ingestionLoop fp fd = forkOS loop
         return ()
 
     safeLoop = do
-        bytesRead <- readFromUart fp fd
-        if bytesRead < 0
-            then hPutStrLn stderr "CRITICAL FAILURE: readFromUart returned negative value. Ingestion thread TERMINATING. System may be unresponsive."
-            else do
-                when (bytesRead == 0) $ threadDelay 1000 -- 1ms pause if full or empty
+        result <- readFromUart fp fd
+        case result of
+            ReadError code ->
+                hPutStrLn stderr $ "CRITICAL FAILURE: readFromUart returned negative value (" ++ show code ++ "). Ingestion thread TERMINATING. System may be unresponsive."
+            ReadFull -> do
+                threadDelay 1000 -- 1ms pause if full or empty
                 loop
+            ReadSuccess _ ->
+                loop -- Keep reading immediately if we got data

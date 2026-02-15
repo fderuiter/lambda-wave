@@ -4,7 +4,7 @@ module Main (main) where
 import Control.Exception (try, SomeException)
 import Control.Monad (when)
 import Data.Time.HighRes (getMonotonicTimeNS, getRealTimeNS)
-import FFI.RingBuffer.IO (createRingBuffer, getWriteOffset)
+import FFI.RingBuffer.IO (createRingBuffer, getWriteOffset, mkRingBufferSize, RingBufferSize)
 import FFI.RingBuffer.Types (RingBufferControl(..))
 import Foreign.Storable
 import Foreign.Ptr
@@ -32,24 +32,26 @@ main = do
         Right val -> putStrLn $ "PASS: getRealTimeNS returned " ++ show val
 
     -- 2. Test RingBuffer Creation (Invalid Size)
-    putStrLn "[Test] RingBuffer Invalid Size..."
-    res <- try $ createRingBuffer 0
-    case res of
-        Left e -> putStrLn $ "PASS: createRingBuffer(0) threw exception: " ++ show (e :: SomeException)
+    putStrLn "[Test] RingBuffer Invalid Size (Smart Constructor)..."
+    case mkRingBufferSize 0 of
+        Left _ -> putStrLn "PASS: mkRingBufferSize(0) returned Left"
         Right _ -> do
-             putStrLn "FAIL: createRingBuffer(0) succeeded unexpectedly"
+             putStrLn "FAIL: mkRingBufferSize(0) succeeded unexpectedly"
              exitFailure
 
-    res2 <- try $ createRingBuffer (-100)
-    case res2 of
-        Left e -> putStrLn $ "PASS: createRingBuffer(-100) threw exception: " ++ show (e :: SomeException)
+    case mkRingBufferSize (-100) of
+        Left _ -> putStrLn "PASS: mkRingBufferSize(-100) returned Left"
         Right _ -> do
-             putStrLn "FAIL: createRingBuffer(-100) succeeded unexpectedly"
+             putStrLn "FAIL: mkRingBufferSize(-100) succeeded unexpectedly"
              exitFailure
 
     -- 3. Test RingBuffer Creation (Valid)
     putStrLn "[Test] RingBuffer Valid Creation & FFI..."
-    fp <- createRingBuffer 1024
+    let validSize = case mkRingBufferSize 1024 of
+            Right sz -> sz
+            Left err -> error $ "Failed to create valid size: " ++ err
+
+    fp <- createRingBuffer validSize
     putStrLn "PASS: createRingBuffer(1024) succeeded"
 
     -- 4. Test FFI Interaction (getWriteOffset)

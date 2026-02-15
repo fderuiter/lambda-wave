@@ -59,7 +59,10 @@ main = do
     -- We use the new FFI.RingBuffer.IO directly.
     -- NOW RETURNS ForeignPtr RingBufferControl.
     -- This ensures the buffer is automatically freed when all references (Main thread, consumer thread, ingestion thread) are gone.
-    ringBuffer <- RingBuffer.createRingBuffer (4 * 1024 * 1024)
+    let rbSize = case RingBuffer.mkRingBufferSize (4 * 1024 * 1024) of
+            Left err -> error $ "Invalid Buffer Size: " ++ err
+            Right sz -> sz
+    ringBuffer <- RingBuffer.createRingBuffer rbSize
 
     -- Open Serial Port using POSIX for the C++ driver
     -- We need to open it here to pass the Fd to the ingestion loop.
