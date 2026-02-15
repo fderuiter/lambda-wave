@@ -4,7 +4,7 @@ module Main (main) where
 import Control.Exception (try, SomeException)
 import Control.Monad (when)
 import Data.Time.HighRes (getMonotonicTimeNS, getRealTimeNS)
-import FFI.RingBuffer.IO (createRingBuffer, getWriteOffset, mkRingBufferSize, RingBufferSize)
+import FFI.RingBuffer.IO (createRingBuffer, getWriteOffset, mkRingBufferSize)
 import FFI.RingBuffer.Types (RingBufferControl(..))
 import Foreign.Storable
 import Foreign.Ptr
