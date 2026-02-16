@@ -76,6 +76,8 @@ data RingBufferControl = RingBufferControl
 instance Storable RingBufferControl where
     sizeOf _ = 64
     alignment _ = 64
+    -- WARNING: This peek reads atomic fields (writeOffset, readOffset) non-atomically.
+    -- DO NOT USE for concurrent access. Use getWriteOffset/setReadOffset from FFI.RingBuffer.IO.
     peek ptr = do
         let sizeT = sizeOf (undefined :: CSize)
             -- Assumes strict packing which is standard for size_t/ptr

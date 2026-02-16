@@ -3,9 +3,10 @@ module Hardware.Control (configureSensor, parseConfig, configureRawSerial, setBe
 import Control.Monad (forM_)
 import Control.Concurrent (threadDelay)
 import qualified Data.ByteString.Char8 as BC
-import Control.Exception (try, IOException, bracket)
+import Control.Exception (try, IOException, bracket, evaluate)
 import Data.Char (isSpace)
 import Data.List (dropWhileEnd)
+import System.IO (withFile, hGetContents, IOMode(ReadMode))
 import System.Posix.Terminal
 import System.Posix.IO (openFd, closeFd, fdWriteBuf, OpenMode(ReadWrite), defaultFileFlags)
 import System.Posix.Types (Fd(..))
@@ -30,7 +31,12 @@ configureSensor configPath portPath = do
     putStrLn $ "[Control] Configuring sensor on " ++ portPath ++ " with config " ++ configPath
 
     -- Read config file
-    fileContentResult <- try $ readFile configPath
+    -- Use withFile to ensure the handle is closed deterministically.
+    fileContentResult <- try $ withFile configPath ReadMode $ \h -> do
+        c <- hGetContents h
+        _ <- evaluate (length c) -- Force strictness
+        return c
+
     case fileContentResult of
         Left ex -> return $ Left $ "Failed to read config file: " ++ show (ex :: IOException)
         Right content -> do
