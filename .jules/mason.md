@@ -28,3 +28,8 @@
 **Context:** The hardware ingestion loop and the Gating/Kalman logic were implemented but disconnected. The system was ingesting data but not processing it to control the beam.
 **Decision:** Modified `Hardware.Consumer` to invoke `Control.Gating.processFrame` for every parsed frame. This ensures the Kalman Filter state is updated synchronously with data arrival, maintaining the physics model integrity.
 **Compliance Impact:** Satisfies P1-003 and ensures the Safety Core is driven by real-time data.
+
+## 2026-02-16 - [Synthetic Integration Test Data]
+**Context:** The roadmap requires validation against a real TI mmWave Studio capture file. However, the development environment lacks access to physical hardware to generate this file.
+**Decision:** Implemented a synthetic data generator (`scripts/generate_synthetic_capture.hs`) based on the TI mmWave SDK protocol specification. This allows for deterministic integration testing of the parser logic in the absence of hardware.
+**Compliance Impact:** Deviates from original roadmap validation method but ensures parser correctness against the protocol specification. Real hardware validation is deferred to Phase 6 (System Validation).
