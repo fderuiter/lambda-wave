@@ -203,3 +203,17 @@ benchmark kalman-bench
   build-depends:
       sgrt-radar-system
     , criterion
+
+test-suite consumer-integration-check
+  import: common-options
+  type: exitcode-stdio-1.0
+  main-is: ConsumerIntegrationCheck.hs
+  other-modules:
+      Paths_sgrt_radar_system
+  hs-source-dirs:
+      test/Hardware
+  ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
+  build-depends:
+      sgrt-radar-system
+    , base
+    , bytestring
