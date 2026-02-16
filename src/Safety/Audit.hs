@@ -65,24 +65,36 @@ processEvents stateVar queue h = go
         atomically $ modifyTVar' stateVar $ \s ->
             s { threadHeartbeats = Map.insert "Audit" now (threadHeartbeats s) }
 
-        -- 2. Read Event (Blocking)
-        evt <- atomically $ readTBQueue queue
+        -- 2. Read Event with Timeout (100ms)
+        -- We use registerDelay to wake up the transaction if no event arrives.
+        delayVar <- registerDelay 100_000 -- 100ms
 
-        -- 3. Write Event
-        -- Format: [TIMESTAMP] [SEVERITY] [COMPONENT] MESSAGE
-        -- using show for severity
-        let entry = printf "[%d] [%s] [%s] %s"
-                        (eventTime evt)
-                        (show (severity evt))
-                        (component evt)
-                        (message evt)
-        hPutStrLn h entry
+        mEvt <- atomically $ do
+            (readTBQueue queue >>= return . Just)
+            `orElse`
+            (do
+                expired <- readTVar delayVar
+                if expired then return Nothing else retry
+            )
 
-        -- 4. Critical Flush (Safety)
-        when (severity evt == Critical) $ hFlush h
+        case mEvt of
+            Nothing -> go -- Timeout, loop back to update heartbeat
+            Just evt -> do
+                -- 3. Write Event
+                -- Format: [TIMESTAMP] [SEVERITY] [COMPONENT] MESSAGE
+                -- using show for severity
+                let entry = printf "[%d] [%s] [%s] %s"
+                                (eventTime evt)
+                                (show (severity evt))
+                                (component evt)
+                                (message evt)
+                hPutStrLn h entry
 
-        -- 5. Rotation Check
-        size <- hFileSize h
-        if size > 10 * 1024 * 1024 -- 10MB limit
-            then return RotationNeeded
-            else go
+                -- 4. Critical Flush (Safety)
+                when (severity evt == Critical) $ hFlush h
+
+                -- 5. Rotation Check
+                size <- hFileSize h
+                if size > 10 * 1024 * 1024 -- 10MB limit
+                    then return RotationNeeded
+                    else go
