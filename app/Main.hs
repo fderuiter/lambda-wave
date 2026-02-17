@@ -9,53 +9,16 @@ import System.Posix.IO (openFd, OpenMode(..), defaultFileFlags, OpenFileFlags(..
 import System.Posix.Files (ownerReadMode, ownerWriteMode, unionFileModes)
 import Control.Monad (forever)
 import qualified Data.Map.Strict as Map
-import Foreign.ForeignPtr (ForeignPtr)
-import System.Posix.Types (Fd)
 
 import Data.Types
 import Data.Config (targetHeight)
 import SignalProcessing.Kalman (initKalman, KalmanConfig(..))
 import qualified FFI.RingBuffer.IO as RingBuffer
-import FFI.RingBuffer.Types (RingBufferControl)
 import Hardware.Control (configureRawSerial)
 import Hardware.Consumer (consumerLoop)
 import Safety.Watchdog
 import Safety.Audit
 import Data.Time.HighRes (getMonotonicTimeNS)
-
-#ifdef ENABLE_UI
-import Control.UI.Window (initWindow)
-import Control.UI.Input (handleInput)
-import Control.UI.Renderer (renderLoop)
-#endif
-
-#ifdef ENABLE_WEB_UI
-import Control.WebUI.Server (runServer)
-#endif
-
-radarLoop :: TVar SystemState -> ForeignPtr RingBufferControl -> Fd -> IO ()
-radarLoop systemState ringBuffer fd = do
-    -- Configure Port (Raw Mode) to prevent data corruption
-    configureRawSerial fd
-
-    -- 2. Hardware Ingestion (Dedicated Thread)
-    -- ingestionLoop accepts ForeignPtr
-    _ <- RingBuffer.ingestionLoop ringBuffer fd
-
-    -- 3. Consumer/Parser (Dedicated Thread)
-    -- consumerLoop accepts ForeignPtr
-    _ <- forkOS $ consumerLoop ringBuffer systemState
-
-    -- 3. Safety Watchdog (High Priority Thread)
-    _ <- forkOS $ watchdogLoop systemState
-
-    -- 4. Audit Logging
-    _ <- forkOS $ auditLoop systemState "session.log"
-
-    putStrLn "Radar Logic Started."
-
-    -- Keep Radar Loop Alive
-    forever $ threadDelay 1000000
 
 main :: IO ()
 main = do
@@ -89,6 +52,9 @@ main = do
 
     putStrLn $ "Configuration: Sensor=" ++ sensorPort ++ ", CLI=" ++ cliPort
 
+    -- 0. Configure Hardware
+    -- forkOS $ configureSensor cliPort
+
     -- 1. Setup Ring Buffer (4MB)
     -- We use the new FFI.RingBuffer.IO directly.
     -- NOW RETURNS ForeignPtr RingBufferControl.
@@ -108,23 +74,28 @@ main = do
     fd <- openFd sensorPort ReadWrite (Just (ownerReadMode `unionFileModes` ownerWriteMode)) defaultFileFlags { nonBlock = False }
 #endif
 
-#ifdef ENABLE_WEB_UI
-    putStrLn "Web UI Enabled."
-    -- Run Web Server in background thread
-    _ <- forkOS $ runServer systemState 8080
-#endif
+    -- Configure Port (Raw Mode) to prevent data corruption
+    configureRawSerial fd
 
-#ifdef ENABLE_UI
-    putStrLn "System Armed. OpenGL UI Enabled."
-    -- Run radar logic in background
-    _ <- forkOS $ radarLoop systemState ringBuffer fd
+    -- 2. Hardware Ingestion (Dedicated Thread)
+    -- ingestionLoop accepts ForeignPtr
+    _ <- RingBuffer.ingestionLoop ringBuffer fd
 
-    -- Run UI in main thread (GLUT requires this)
-    initWindow
-    handleInput systemState
-    renderLoop systemState
-#else
-    putStrLn "System Armed. Headless Mode."
-    -- Run radar logic in main thread
-    radarLoop systemState ringBuffer fd
-#endif
+    -- 3. Consumer/Parser (Dedicated Thread)
+    -- consumerLoop accepts ForeignPtr
+    _ <- forkOS $ consumerLoop ringBuffer systemState
+
+    -- 3. Safety Watchdog (High Priority Thread)
+    _ <- forkOS $ watchdogLoop systemState
+
+    -- 4. Audit Logging
+    _ <- forkOS $ auditLoop systemState "session.log"
+
+    -- 5. UI (Disabled for Class C Build)
+    putStrLn "System Armed. UI Disabled."
+    -- initWindow
+    -- handleInput systemState
+    -- renderLoop systemState
+
+    -- Keep Main Alive
+    forever $ threadDelay 1000000

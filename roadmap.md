@@ -10,7 +10,7 @@
 
 **Compliance Target:** IEC 62304 Class C / ISO 14971
 
-**Status:** Phase 6 (System Validation)
+**Status:** Phase 1 (In Progress)
 
 ## **Phase 1: Infrastructure & High-Assurance Setup**
 
@@ -111,54 +111,46 @@
 
 **Goal:** Provide clinical situational awareness (Non-Critical, Class A/B).
 
-* [x] **5.1. Real-Time Plotting (OpenGL)**
-  * [x] **Task:** Connect OpenGL renderer to the Data Stream using Immediate Mode.
-  * [x] **Requirement:** FR-UI-001
-  * [x] **Implementation:** `app/Control/UI/` (Isolated from Safety Core).
-  * [x] **Validation:**
-    * [x] Visual check: Points and Target update smoothly (> 30Hz).
-* [x] **5.2. Visual Alerts**
-  * [x] **Task:** Implement Red/Green/Yellow indicators based on Gating Decision.
-  * [x] **Requirement:** FR-UI-002
-  * [x] **Implementation:** Integrated into Renderer `display` loop.
-  * [x] **Validation:**
-    * [x] Simulate "Cough" (high velocity). Screen indicator flashes Red instantly.
-* [x] **5.3. Web Dashboard (Remote Monitoring)**
-  * [x] **Task:** Implement WebSocket server and HTML5 Canvas frontend.
-  * [x] **Requirement:** FR-UI-003 (Remote View)
-  * [x] **Implementation:** `app/Control/WebUI/` (Warp + WebSockets).
-  * [x] **Validation:**
-    * [x] **E2E Test:** `test/WebUI/verify_frontend.py` validates HTML structure.
+* \[ \] **5.1. Real-Time Plotting**
+  * \[ \] **Task:** Connect Gloss or OpenGL renderer to the Data Stream.
+  * \[ \] **Requirement:** FR-UI-001
+  * \[ \] **Validation:**
+    * \[ \] Visual check: Does the wave move smoothly? (Update rate \> 30Hz).
+* \[ \] **5.2. Visual Alerts**
+  * \[ \] **Task:** Implement Green/Red background state based on Gating Decision.
+  * \[ \] **Requirement:** FR-UI-002
+  * \[ \] **Validation:**
+    * \[ \] Simulate "Cough" (high velocity). Screen must flash Red instantly.
 
 ## **Phase 6: System Validation (Verification)**
 
 **Goal:** Final "Black Box" testing against physical reality.
 
-* [ ] **6.1. Phantom Study (The "Gold Standard")**
-  * [ ] **Task:** Setup QUASAR/CIRS motion phantom.
-  * [ ] **Requirement:** PR-ACC-01
-  * [ ] **Protocol:**
+* \[ \] **6.1. Phantom Study (The "Gold Standard")**
+  * \[ \] **Task:** Setup QUASAR/CIRS motion phantom.
+  * \[ \] **Requirement:** PR-ACC-01
+  * \[ \] **Protocol:**
     1. Set Phantom amplitude to 10mm, period 4s.  
     2. Record Radar trace.  
     3. Compare Radar Trace vs. Phantom Encoder logs.  
-  * [ ] **Acceptance:** Correlation Coefficient ![][image7].
-* [ ] **6.2. Latency Verification (Oscilloscope)**
-  * [ ] **Task:** Measure physical delay.
-  * [ ] **Requirement:** FR-GAT-002
-  * [ ] **Protocol:**
+  * \[ \] **Acceptance:** Correlation Coefficient ![][image7].
+* \[ \] **6.2. Latency Verification (Oscilloscope)**
+  * \[ \] **Task:** Measure physical delay.
+  * \[ \] **Requirement:** FR-GAT-002
+  * \[ \] **Protocol:**
     1. Input signal crosses threshold.  
     2. Probe TTL output pin.  
-  * [ ] **Acceptance:** ![][image8]ms total system latency.
+  * \[ \] **Acceptance:** ![][image8]ms total system latency.
 
 ## **Release Checklist (1.0.0 Candidate)**
 
-* [x] All Unit Tests Pass.
-* [x] All Benchmarks meet Latency requirements.
-* [ ] Traceability Matrix populated.
-* [ ] SOUP Analysis (GHC RTS) documented.
-* [ ] Release binary signed.
+* \[ \] All Unit Tests Pass.
+* \[ \] All Benchmarks meet Latency requirements.
+* \[ \] Traceability Matrix populated.
+* \[ \] SOUP Analysis (GHC RTS) documented.
+* \[ \] Release binary signed.
 
-[image1]: <data:image/png;base64,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>
+[image1]: <data:image/png;base64,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>
 
 [image2]: <data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAYCAYAAACbU/80AAABjElEQVR4Xu2Tu0oDURCGN403EAULMclmrxqJgigoingDL6W1jQ9hYWFhk8LWRixECaQRES1EBBHyABb6HFba2En8Jhx0M7i6sUi1H/zsnJ2Zc2bOzlpWSkoKFIvF3jAMO/X7tuF53oTjOA+FQmE/l8sNaH+7yLiuu0khNZ6HQRDYOqBVfN/vYz/Ptu0gn8+HaNgopFlfx3+Bc5XEO3RGMaPanwRyy+gd1WP0IcXovCb4NDMEXqFLupjW/jiI36PwC7QhNjqhqXnW92hLbPYb13mxkDDGJlV0S1GL2h+lVCp1EL+LmZE1dgWtiU3+s3yWpoSkyEywwTV6TPrH0G0X8S9cdbcUhv2qY/6EikdIPJXro/t17f8NOt8mtya2+dPq7NOv436E4Ek2ODddz2l/Esh7khkQm4OXpQC0ouOaYDgWCLpB1ZYGRcGBS+bAKbN2zXpHxzaQiZVrJuAIedrfKtzesdyAZYZRnqzfUDka14CDZ0k44DsNat9/yWazPTKE0XccPmR9F5SSktLgE0u4Vn2cqueuAAAAAElFTkSuQmCC>
 

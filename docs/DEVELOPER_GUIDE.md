@@ -12,13 +12,12 @@ This guide provides developers with essential information about code structure, 
 1. [Quick Reference](#quick-reference)
 2. [Codebase Structure](#codebase-structure)
 3. [Development Workflow](#development-workflow)
-4. [User Interface Development](#user-interface-development)
-5. [Coding Standards](#coding-standards)
-6. [Testing Strategy](#testing-strategy)
-7. [Performance Guidelines](#performance-guidelines)
-8. [Safety-Critical Code](#safety-critical-code)
-9. [Debugging Tips](#debugging-tips)
-10. [Common Tasks](#common-tasks)
+4. [Coding Standards](#coding-standards)
+5. [Testing Strategy](#testing-strategy)
+6. [Performance Guidelines](#performance-guidelines)
+7. [Safety-Critical Code](#safety-critical-code)
+8. [Debugging Tips](#debugging-tips)
+9. [Common Tasks](#common-tasks)
 
 ---
 
@@ -27,14 +26,8 @@ This guide provides developers with essential information about code structure, 
 ### Essential Commands
 
 ```bash
-# Build (Core Only)
+# Build
 cabal build
-
-# Build with OpenGL UI
-cabal build --flags=enable-ui
-
-# Build with Web Dashboard
-cabal build --flags=enable-web-ui
 
 # Test
 cabal test
@@ -62,8 +55,6 @@ cabal haddock
 - **`src/SignalProcessing/FMCW.hs`** - Radar signal processing
 - **`src/Safety/Watchdog.hs`** - Watchdog timer (safety-critical)
 - **`cbits/src/ring_buffer.cpp`** - C++ ring buffer for data ingestion
-- **`app/Control/UI/`** - OpenGL Visualization
-- **`app/Control/WebUI/`** - Web Dashboard Server
 
 ---
 
@@ -74,6 +65,10 @@ cabal haddock
 #### `Control/` - Control Plane
 *   **`Gating.hs`**: **⚠️ SAFETY-CRITICAL**. Beam ON/OFF decision logic. Four-eyes review required.
 *   **`Mesher.hs`**: Polynomial surface fitting for virtual mesh generation.
+*   **`UI/`**: User interface components (OpenGL rendering)
+    *   `Window.hs`: Window management
+    *   `Renderer.hs`: 3D mesh visualization
+    *   `Input.hs`: User input handling
 
 #### `Data/` - Data Types
 *   **`Types.hs`**: Core data structures (`RadarFrame`, `Point3D`, `SystemState`)
@@ -106,8 +101,6 @@ cabal haddock
 
 ### `/app` - Application Entry Point
 *   **`Main.hs`**: Wires together Ingestion, Parser, Gating, Watchdog, and UI threads using `forkOS` and `STM`
-*   **`Control/UI/`**: OpenGL Visualization (Moved from `src` for isolation)
-*   **`Control/WebUI/`**: Web Dashboard Server (Isolated)
 
 ### `/test` - Test Suites
 *   **`FFI/RingBuffer/`**: FFI layer tests
@@ -115,6 +108,12 @@ cabal haddock
 *   **`SignalProcessing/`**: DSP algorithm tests
 *   **`System/`**: Runtime system tests
 *   **`Spec.hs`**: Test runner (main entry point)
+
+### `/bench` - Performance Benchmarks
+*   **`LatencyBench.hs`**: End-to-end latency measurements
+
+### `/config` - Configuration Files
+*   **`ti_iwr6843isk/sgrt_profile.cfg`**: Sensor chirp configuration
 
 ---
 
@@ -161,35 +160,55 @@ git pull origin develop
 git checkout -b feature/your-feature
 ```
 
----
+### 4. Make Changes
 
-## 🎨 User Interface Development
+- Write code following [Coding Standards](#coding-standards)
+- Add tests for new functionality
+- Update documentation if needed
+- Run linter and tests frequently
 
-The UI components are intentionally isolated in `app/Control` to separate them from the safety-critical library in `src/`. This separation ensures that complex dependencies (OpenGL, WebSockets) do not pollute the certified core.
+### 5. Test Your Changes
 
-### OpenGL UI (Local)
+```bash
+# Run tests
+cabal test
 
-*   **Location:** `app/Control/UI/`
-*   **Flag:** `enable-ui` (Default: False)
-*   **Technology:** `OpenGL` (Immediate Mode) + `GLUT`
-*   **Architecture:**
-    *   Runs on the **Main Thread** (GLUT requirement).
-    *   Polls `SystemState` TVar in `display` callback.
-    *   Visualization: Points (Cyan), Target (Red Crosshair), Beam Status (Color Indicator).
-*   **Verification:** Visual inspection via `cabal run --flags=enable-ui`.
+# Run specific test
+cabal test --test-options="-m YourModule"
 
-### Web Dashboard (Remote)
+# Run benchmarks if performance-critical
+cabal bench
 
-*   **Location:** `app/Control/WebUI/`
-*   **Flag:** `enable-web-ui` (Default: False)
-*   **Technology:** `Warp` (HTTP) + `WebSockets` + HTML5 Canvas
-*   **Architecture:**
-    *   Runs in a background thread via `forkOS`.
-    *   Streams JSON updates at 30Hz via WebSocket.
-    *   Frontend assets embedded into binary via `Data.FileEmbed`.
-*   **Verification:**
-    *   **Unit:** `test/WebUI/ServerSpec.hs` checks WebSocket JSON validity.
-    *   **E2E:** `test/WebUI/verify_frontend.py` checks HTML structure using Playwright.
+# Check with hlint
+hlint src/ app/ test/
+```
+
+### 6. Commit and Push
+
+```bash
+# Stage changes
+git add .
+
+# Commit with descriptive message
+git commit -m "feat: Add Kalman filter implementation
+
+- Implement state vector and prediction step
+- Add measurement update with Kalman gain
+- Include unit tests with synthetic data
+- Refs #123"
+
+# Push to GitHub
+git push origin feature/your-feature
+```
+
+### 7. Open Pull Request
+
+1. Go to GitHub repository
+2. Click "New Pull Request"
+3. Fill out PR template completely
+4. Request review from at least 2 people (4 eyes for safety-critical code)
+5. Address review comments
+6. Wait for CI to pass
 
 ---
 
@@ -214,7 +233,65 @@ calculateGatingDecision :: SystemState -> BeamState
 
 -- Constants: camelCase
 defaultTimeout :: Int
+
+-- Type variables: lowercase single letters
+map :: (a -> b) -> [a] -> [b]
 ```
+
+#### Example Good Code
+```haskell
+-- Good: Type signature, clear name, pure function
+calculateDistance :: Point3D -> Point3D -> Double
+calculateDistance p1 p2 =
+    sqrt (dx^2 + dy^2 + dz^2)
+  where
+    dx = x p1 - x p2
+    dy = y p1 - y p2
+    dz = z p1 - z p2
+
+-- Good: Guards for clarity
+evaluateGating :: KalmanState -> Tolerance -> GatingDecision
+evaluateGating state tol
+    | displacement < tol = BeamOn
+    | otherwise          = BeamOff
+  where
+    displacement = calculateDisplacement state
+```
+
+#### Example Bad Code
+```haskell
+-- Bad: No type signature, unclear name, imperative style
+calc p1 p2 = do
+    let d = sqrt ((x p1 - x p2)^2 + (y p1 - y p2)^2 + (z p1 - z p2)^2)
+    return d  -- Unnecessary IO
+```
+
+### C++ Style (cbits/)
+
+- Use **C++11** standard
+- Follow **snake_case** for functions and variables
+- Use **RAII** for resource management
+- Prefer `std::atomic` over manual memory barriers
+- Document thread safety assumptions
+
+```cpp
+// Good example
+class RingBuffer {
+private:
+    std::atomic<size_t> head_;
+    std::atomic<size_t> tail_;
+
+public:
+    // Thread-safe: Can be called from multiple threads
+    bool write(const uint8_t* data, size_t len);
+};
+```
+
+### Formatting
+
+- **Indentation**: 4 spaces (Haskell), 2 spaces (C++)
+- **Line length**: 80-100 characters (soft limit)
+- **Future**: Will use `ormolu` for automatic formatting
 
 ---
 
@@ -228,17 +305,61 @@ test/
 ├── FFI/                       # FFI layer tests
 ├── Hardware/                  # Hardware tests
 ├── SignalProcessing/          # DSP tests
-├── System/                    # Integration tests
-└── WebUI/                     # Web Dashboard verification
+└── System/                    # Integration tests
 ```
 
-### UI Testing
+### Types of Tests
 
-Testing UI components requires a different strategy than pure logic:
+#### 1. Unit Tests (HSpec)
+```haskell
+spec :: Spec
+spec = describe "Phase unwrapping" $ do
+    it "handles single wrap" $ do
+        let input = [0, pi - 0.1, pi + 0.1, 2*pi]
+        let expected = [0, pi - 0.1, pi + 0.1, 2*pi]
+        unwrapPhase input `shouldBe` expected
+```
 
-1.  **Isolation:** UI logic (e.g., coordinate transformation) should be separated into pure functions where possible and unit tested.
-2.  **Visual Verification:** Use `cabal run --flags=enable-ui` to manually verify rendering.
-3.  **Automated Checks:** Use `Playwright` scripts (like `test/WebUI/verify_frontend.py`) to verify web assets and structure.
+#### 2. Property Tests (QuickCheck)
+```haskell
+prop_linearityOfKalmanFilter :: KalmanState -> Property
+prop_linearityOfKalmanFilter state =
+    forAll arbitrary $ \scale ->
+        let scaled = scaleState scale state
+            result1 = kalmanPredict scaled
+            result2 = scaleState scale (kalmanPredict state)
+        in result1 === result2
+```
+
+#### 3. Integration Tests
+```haskell
+spec :: Spec
+spec = describe "End-to-end pipeline" $ do
+    it "processes real sensor data" $ do
+        frameData <- BS.readFile "test/fixtures/sample_frame.bin"
+        let parsed = parseFrame frameData
+        parsed `shouldSatisfy` isRight
+```
+
+### Running Tests
+
+```bash
+# All tests
+cabal test
+
+# With coverage
+cabal test --enable-coverage
+cabal hpc report sgrt-radar-system-test
+
+# Specific module
+cabal test --test-options="-m FMCW"
+
+# Verbose output
+cabal test --test-show-details=direct
+
+# With QuickCheck options
+cabal test --test-options="--qc-max-success=1000"
+```
 
 ---
 
@@ -264,6 +385,30 @@ processPoints :: Vector Point3D -> Result
 processPoints ps = V.map expensive ps
 ```
 
+#### Use Strict Data
+```haskell
+-- Enable strict fields globally
+{-# LANGUAGE StrictData #-}
+
+-- Or per-field
+data SystemState = SystemState
+    { currentPoints :: ![Point3D]  -- Strict list
+    , !beamState :: BeamState      -- Strict field
+    }
+```
+
+#### Profile Before Optimizing
+```bash
+# Build with profiling
+cabal build --enable-profiling
+
+# Run with profiling
+cabal run sgrt-radar-system-exe -- +RTS -p -RTS
+
+# View report
+cat sgrt-radar-system-exe.prof
+```
+
 ---
 
 ## ⚠️ Safety-Critical Code
@@ -282,6 +427,65 @@ Files marked with **⚠️ SAFETY-CRITICAL** require special attention:
 3. **Property Testing**: QuickCheck properties required
 4. **Documentation**: Detailed comments explaining safety logic
 5. **Traceability**: Link to requirements (FR-*, SR-*)
+
+### Example Safety Comment
+```haskell
+-- SAFETY-CRITICAL: Gating Logic
+-- Requirement: FR-GAT-001
+-- Failure Mode: Beam remains ON during patient motion
+-- Mitigation: Hysteresis with conservative thresholds
+evaluateGating :: KalmanState -> Tolerance -> GatingDecision
+evaluateGating state tol
+    | displacement < (tol - hysteresis) = BeamOn
+    | displacement > (tol + hysteresis) = BeamOff
+    | otherwise = maintainCurrentState
+  where
+    displacement = calculateDisplacement state
+    hysteresis = 0.001  -- 1mm safety margin
+```
+
+---
+
+## 🐛 Debugging Tips
+
+### Common Issues
+
+#### GC Pauses
+```bash
+# Check GC statistics
+cabal run sgrt-radar-system-exe -- +RTS -s -RTS
+
+# If pauses > 5ms, tune RTS
+cabal run sgrt-radar-system-exe -- +RTS -A32m -n4m -RTS
+```
+
+#### FFI Memory Issues
+```bash
+# Run with Valgrind (requires Linux)
+valgrind --leak-check=full cabal run sgrt-radar-system-exe
+```
+
+#### Thread Deadlocks
+```bash
+# Enable thread debugging
+cabal run sgrt-radar-system-exe -- +RTS -Ds -RTS
+```
+
+### Useful GHC Options
+
+```bash
+# Verbose compilation
+cabal build -v3
+
+# Show all warnings
+cabal build --ghc-options="-Wall -Wcompat"
+
+# Optimize
+cabal build --ghc-options="-O2"
+
+# Debug symbols
+cabal build --ghc-options="-g"
+```
 
 ---
 
@@ -308,6 +512,23 @@ Files marked with **⚠️ SAFETY-CRITICAL** require special attention:
 2. Update `docs/README.md` index if structure changes
 3. Run markdown lint (if available)
 4. Commit with docs: prefix
+
+### Creating a Release
+
+See [TODO.md](../TODO.md) Release Checklist section
+
+---
+
+## 📚 Additional Resources
+
+- **[TODO.md](../TODO.md)** - Current development tasks
+- **[BUILD_GUIDE.md](BUILD_GUIDE.md)** - Detailed build instructions
+- **[PURPOSE_AND_ARCHITECTURE.md](PURPOSE_AND_ARCHITECTURE.md)** - System architecture
+- **[CONTRIBUTING.md](../CONTRIBUTING.md)** - Contribution process
+- **Haskell Resources**:
+  - [Learn You a Haskell](http://learnyouahaskell.com/)
+  - [Real World Haskell](http://book.realworldhaskell.org/)
+  - [Haskell Wiki](https://wiki.haskell.org/)
 
 ---
 
