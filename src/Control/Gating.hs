@@ -29,7 +29,6 @@ processFrame stateVar pts = do
     oldSystemState <- readTVarIO stateVar
     let lastTime = lastFrameTime oldSystemState
         oldKState = kalmanState oldSystemState
-        oldBeamState = beamState oldSystemState
 
     -- 2. Calculate DT (Seconds)
     let dtNS = if currTime > lastTime then currTime - lastTime else 0
@@ -49,15 +48,16 @@ processFrame stateVar pts = do
                  in update meas kConfig predState
             else predState -- Coasting (Dead Reckoning) if signal lost
 
-    -- 5. Gating Logic
-    -- Note: We calculate based on 'oldBeamState', but we must re-check inside atomically
-    -- to respect concurrent changes (e.g. BeamHold from UI).
-    let proposedBeamState = evaluateGating targetHeight gatingTolerance hysteresisMargin systemLatencyNS newKState oldBeamState
-
     -- 6. Update System State & Resolve Final Beam State
     finalBeamState <- atomically $ do
         s <- readTVar stateVar
         let currentBeam = beamState s
+
+        -- 5. Gating Logic
+        -- Note: We calculate based on 'currentBeam' inside the transaction.
+        -- This ensures that if the UI thread released BeamHold or modified the state concurrently,
+        -- we use the fresh state as the basis for hysteresis and transition logic.
+        let proposedBeamState = evaluateGating targetHeight gatingTolerance hysteresisMargin systemLatencyNS newKState currentBeam
 
         -- Safety: If current state is BeamHold, we MUST respect it.
         -- Otherwise, we transition to the proposed state.
