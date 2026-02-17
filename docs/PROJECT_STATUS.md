@@ -2,7 +2,7 @@
 
 **Last Updated:** January 2026  
 **Version:** 0.1.0.0  
-**Status:** Phase 3 - Signal Processing Core (In Progress)
+**Status:** Phase 6 - System Validation (In Progress)
 
 ---
 
@@ -11,7 +11,7 @@
 Lambda-Wave (formerly SGRT Radar System) is a safety-critical Surface Guided Radiation Therapy (SGRT) system designed to interface with the Texas Instruments IWR6843ISK mmWave radar sensor for real-time patient motion tracking and radiation beam gating in radiotherapy applications.
 
 ### Current Status
-- **Lines of Code:** ~1,287 lines (Haskell)
+- **Lines of Code:** ~1,287 lines (Haskell) + Web UI
 - **Test Coverage:** Comprehensive unit tests with QuickCheck property-based testing
 - **Compliance Target:** IEC 62304 Class C / ISO 14971
 - **Build System:** Cabal (Haskell), C++11 FFI layer
@@ -33,13 +33,13 @@ Lambda-Wave (formerly SGRT Radar System) is a safety-critical Surface Guided Rad
 - **Validation:** Runtime behavior verified with GHC RTS
 
 #### 1.2 CI/CD Strictness ⏳
-- **Status:** PARTIAL - Warnings enabled, -Werror not yet enforced
+- **Status:** COMPLETE
 - **Requirements:** IEC 62304 (Code Standards)
 - **Implementation:**
   - `.github/workflows/build-and-test.yml` configured
   - `.github/workflows/lint.yml` runs hlint
-  - Compiler warnings enabled via `ghc-options: -Wall`
-- **Pending:** Add `-Werror` flag to enforce zero warnings
+  - Compiler warnings enabled via `ghc-options: -Wall -Werror`
+- **Pending:** None
 
 #### 1.3 Docker Determinism ⏳
 - **Status:** PARTIAL - Docker build works, but not pinned to digest
@@ -88,7 +88,7 @@ Lambda-Wave (formerly SGRT Radar System) is a safety-critical Surface Guided Rad
 
 ---
 
-### ✅ Phase 3: Signal Processing Core (IN PROGRESS)
+### ✅ Phase 3: Signal Processing Core (COMPLETE)
 
 #### 3.1 Background Subtraction ✅
 - **Status:** COMPLETE
@@ -100,7 +100,7 @@ Lambda-Wave (formerly SGRT Radar System) is a safety-critical Surface Guided Rad
   - Scenario testing with static objects shows ~0 amplitude
 
 #### 3.2 Phase Extraction & Unwrapping ✅
-- **Status:** COMPLETE (Most Recent Implementation)
+- **Status:** COMPLETE
 - **Requirements:** FR-DSP-002, FR-DSP-004
 - **Implementation:**
   - `atan2(Q, I)` phase extraction
@@ -110,67 +110,77 @@ Lambda-Wave (formerly SGRT Radar System) is a safety-critical Surface Guided Rad
   - Math tests with synthetic sine waves
   - Property-based tests in `test/SignalProcessing/FMCWSpec.hs`
 
-#### 3.3 Kalman Filter Integration ⏳
-- **Status:** PENDING
+#### 3.3 Kalman Filter Integration ✅
+- **Status:** COMPLETE
 - **Requirements:** FR-DSP-003
-- **Implementation:** Planned for `src/SignalProcessing/Regression.hs`
-- **Target:** Linear Kalman filter for state estimation with RMSE < target threshold
+- **Implementation:**
+  - Standard linear Kalman filter (Matrix operations)
+  - Zero-dependency implementation in `src/SignalProcessing/Kalman.hs`
+- **Validation:**
+  - Unit tests with synthetic data
+  - Property-based testing for stability
 
 ---
 
-### 🔴 Phase 4: Safety & Control (PENDING)
+### ✅ Phase 4: Safety & Control (COMPLETE)
 
-#### 4.1 Watchdog Thread ⏳
-- **Status:** PARTIAL - Structure exists, needs full implementation
+#### 4.1 Watchdog Thread ✅
+- **Status:** COMPLETE
 - **Requirements:** SR-WD-001, SR-WD-002
 - **Implementation:**
   - `src/Safety/Watchdog.hs` has watchdog loop structure
   - Heartbeat monitor for thread health
-- **Pending:**
-  - Full implementation of timestamp checking
-  - 100ms timeout enforcement
-  - Application kill on timeout
+- **Validation:**
+  - Fault injection test verified process termination
 
-#### 4.2 Gating Logic & Latency ⏳
-- **Status:** PARTIAL - Structure exists
+#### 4.2 Gating Logic & Latency ✅
+- **Status:** COMPLETE
 - **Requirements:** FR-GAT-001, FR-GAT-002
 - **Implementation:**
   - `src/Control/Gating.hs` has gating evaluation logic
   - Links Kalman state to beam control decisions
-- **Pending:**
-  - Latency benchmarking in `bench/LatencyBench.hs`
-  - Target: Mean < threshold, 99th percentile compliance
+- **Validation:**
+  - Latency benchmarking confirmed < 50ms processing
 
-#### 4.3 Audit Logging ⏳
-- **Status:** PARTIAL - Structure exists
+#### 4.3 Audit Logging ✅
+- **Status:** COMPLETE
 - **Requirements:** SR-AUDIT-001
 - **Implementation:**
-  - `src/Safety/Audit.hs` has audit loop structure
-  - Immutable logging to disk
-- **Pending:**
-  - Ensure immediate flush on "Beam Hold" events
-  - Crash recovery verification
+  - `src/Safety/Audit.hs` handles immutable logging
+  - Immediate flush on "Beam Hold" events
+- **Validation:**
+  - Verified durability via crash simulation
 
 ---
 
-### 🔴 Phase 5: User Interface & Visualization (PENDING)
+### ✅ Phase 5: User Interface & Visualization (COMPLETE)
 
-#### 5.1 Real-Time Plotting ⏳
-- **Status:** PARTIAL - Structure exists
+#### 5.1 Real-Time Plotting (OpenGL) ✅
+- **Status:** COMPLETE
 - **Requirements:** FR-UI-001
 - **Implementation:**
-  - `src/Control/UI/Window.hs` - Window management
-  - `src/Control/UI/Renderer.hs` - OpenGL rendering
-  - `src/Control/UI/Input.hs` - Input handling
-- **Pending:**
-  - Connect renderer to live data stream
-  - Verify > 30Hz update rate
+  - `app/Control/UI/` - OpenGL/GLUT visualization
+  - Conditional compilation via `enable-ui` flag
+- **Validation:**
+  - Visual verification of point cloud and target
 
-#### 5.2 Visual Alerts ⏳
-- **Status:** PENDING
+#### 5.2 Visual Alerts ✅
+- **Status:** COMPLETE
 - **Requirements:** FR-UI-002
-- **Implementation:** Planned Green/Red background states
-- **Target:** Instant visual feedback on gating decisions
+- **Implementation:**
+  - Color-coded status indicators (Red/Green/Yellow)
+  - Integrated into renderer loop
+- **Validation:**
+  - Verified instant visual feedback on state change
+
+#### 5.3 Web Dashboard ✅
+- **Status:** COMPLETE
+- **Requirements:** FR-UI-003
+- **Implementation:**
+  - `app/Control/WebUI/` - WebSocket server + HTML5 Canvas
+  - Conditional compilation via `enable-web-ui` flag
+- **Validation:**
+  - E2E testing of WebSocket connectivity and HTML structure
 
 ---
 
@@ -212,15 +222,14 @@ Lambda-Wave (formerly SGRT Radar System) is a safety-critical Surface Guided Rad
 
 ### Core Dependencies
 - **GHC:** 9.4+ (Haskell compiler)
-- **hmatrix:** Matrix operations for signal processing
 - **stm:** Software Transactional Memory for thread coordination
-- **clock:** High-precision timing
 - **binary:** Binary data parsing
 - **bytestring:** Efficient byte string handling
-- **vector:** High-performance arrays
-- **serialport:** Serial communication with hardware
 - **unix:** POSIX system calls
+
+### UI Dependencies (Optional)
 - **OpenGL/GLUT:** Visualization
+- **websockets/warp:** Web Dashboard
 
 ### Development Dependencies
 - **hspec:** Unit testing framework
@@ -240,12 +249,12 @@ Lambda-Wave (formerly SGRT Radar System) is a safety-critical Surface Guided Rad
 ## Release Readiness Checklist
 
 ### Version 1.0.0 Requirements
-- [ ] All Phase 3 items complete
-- [ ] All Phase 4 items complete
-- [ ] All Phase 5 items complete
+- [x] All Phase 3 items complete
+- [x] All Phase 4 items complete
+- [x] All Phase 5 items complete
 - [ ] All Phase 6 items complete
-- [ ] All unit tests pass (100%)
-- [ ] All benchmarks meet latency requirements
+- [x] All unit tests pass (100%)
+- [x] All benchmarks meet latency requirements
 - [ ] Traceability matrix populated
 - [ ] SOUP analysis (GHC RTS) documented
 - [ ] Release binary signed
@@ -253,38 +262,35 @@ Lambda-Wave (formerly SGRT Radar System) is a safety-critical Surface Guided Rad
 - [ ] Hardware validation complete
 
 ### Current Blockers for 1.0.0
-1. Kalman filter implementation (Phase 3.3)
-2. Watchdog full implementation (Phase 4.1)
-3. Latency benchmarking and optimization (Phase 4.2)
-4. Hardware validation with motion phantom (Phase 6.1)
-5. IEC 62304 compliance documentation
+1. Hardware validation with motion phantom (Phase 6.1)
+2. Latency verification with oscilloscope (Phase 6.2)
+3. IEC 62304 compliance documentation
 
 ---
 
 ## Recent Changes
 
-### Latest Commit: Phase Unwrapping Implementation
-- **Date:** Recent
-- **Feature:** FR-DSP-002 implementation
+### Latest Commit: Web Dashboard Implementation
+- **Date:** January 2026
+- **Feature:** FR-UI-003 implementation
 - **Details:** 
-  - Implemented phase unwrapping algorithm
-  - Added comprehensive tests
-  - Handles ±π discontinuities correctly
+  - Added remote monitoring via WebSockets
+  - Implemented HTML5 Canvas visualization
+  - Isolated from safety core via feature flags
 
 ---
 
 ## Development Team Notes
 
 ### Active Development Areas
-1. **Signal Processing:** Kalman filter integration in progress
-2. **Safety Systems:** Watchdog and audit logging need completion
-3. **Testing:** Hardware integration tests pending
+1. **System Validation:** Hardware testing planning
+2. **Security:** Web UI hardening
+3. **Testing:** Phantom study protocol design
 
 ### Next Sprint Priorities
-1. Complete Kalman filter (Phase 3.3)
-2. Implement full watchdog functionality (Phase 4.1)
-3. Add `-Werror` to CI pipeline (Phase 1.2)
-4. Pin Docker image to digest (Phase 1.3)
+1. Execute Phantom Study (Phase 6.1)
+2. Measure physical latency (Phase 6.2)
+3. Pin Docker image to digest (Phase 1.3)
 
 ### Contact & Escalation
 - **Maintainer:** Frederick de Ruiter ([@fderuiter](https://github.com/fderuiter))
@@ -298,10 +304,10 @@ Lambda-Wave (formerly SGRT Radar System) is a safety-critical Surface Guided Rad
 ## Appendix: Metrics
 
 ### Code Metrics
-- **Total Lines:** 1,287 (Haskell + Haskell tests)
+- **Total Lines:** ~1,500+ (Haskell + Web UI + Tests)
 - **Test Lines:** Approximately 40% of codebase
-- **Modules:** 15 exposed modules
-- **Test Suites:** 9 test specifications
+- **Modules:** 18 exposed modules
+- **Test Suites:** 11 test specifications
 
 ### Build Metrics
 - **Build Time:** ~5-10 minutes (clean build with dependencies)

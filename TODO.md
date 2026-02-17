@@ -3,7 +3,7 @@
 **Last Updated:** January 28, 2026  
 **Project:** Lambda-Wave (SGRT Radar System)  
 **Compliance Target:** IEC 62304 Class C / ISO 14971  
-**Current Phase:** Phase 5 (User Interface & Visualization)
+**Current Phase:** Phase 6 (System Validation)
 
 ---
 
@@ -149,6 +149,23 @@ Replay captured .bin file from TI mmWave Studio and verify frame count and parsi
 - `test/Hardware/ConsumerSpec.hs`
 - New: `test/fixtures/sample_capture.bin`
 
+### P1-006: Web Dashboard
+**Status:** ✅ Complete
+**Phase:** 5.3 - User Interface
+**Priority:** P1 (Remote Monitoring)
+
+**Description:**
+Implement real-time web dashboard for remote patient monitoring.
+
+**Requirements:**
+- FR-UI-003: Remote view of patient position and beam status.
+
+**Tasks:**
+- [x] Implement WebSocket server in Haskell.
+- [x] Create HTML5 Canvas frontend.
+- [x] Embed static assets.
+- [x] Add verification tests.
+
 ---
 
 ## Medium Priority Items (P2)
@@ -240,6 +257,31 @@ Profile and optimize signal processing pipeline to reduce per-frame latency.
 **Assignee:** TBD  
 **Related Files:**
 - `src/SignalProcessing/FMCW.hs`
+
+### P2-006: Web UI Security Hardening
+**Status:** ⏳ Planned
+**Phase:** 5 - User Interface
+**Priority:** P2 (Security)
+
+**Description:**
+Implement SSL/TLS encryption and basic authentication for the Web Dashboard.
+
+**Tasks:**
+- [ ] Configure Warp to use TLS.
+- [ ] Implement Basic Auth middleware.
+- [ ] Document certificate management.
+
+### P2-007: OpenGL Performance Optimization
+**Status:** ⏳ Planned
+**Phase:** 5 - User Interface
+**Priority:** P2 (Performance)
+
+**Description:**
+Migrate from Immediate Mode to VBOs (Vertex Buffer Objects) for efficient rendering of large point clouds.
+
+**Tasks:**
+- [ ] Implement VBO management in `Renderer.hs`.
+- [ ] Update `display` loop to use `drawArrays`.
 
 ---
 
@@ -374,6 +416,7 @@ Required:
 - [x] P1-003: Gating logic & latency
 - [x] P1-004: Audit logging completion
 - [ ] P1-005: Integration test with sensor replay
+- [x] P1-006: Web Dashboard
 
 Quality Gates:
 - [ ] All unit tests pass
