@@ -35,6 +35,11 @@ flag enable-ui
   default: False
   manual: True
 
+flag enable-web-ui
+  description: Enable the Web-based visualization UI
+  default: False
+  manual: True
+
 library
   import: common-options
   exposed-modules:
@@ -82,6 +87,11 @@ executable sgrt-radar-system-exe
     build-depends: GLUT, OpenGL
     cpp-options: -DENABLE_UI
     other-modules: Control.UI.Renderer, Control.UI.Window, Control.UI.Input
+
+  if flag(enable-web-ui)
+    build-depends: websockets, aeson, text, wai, warp, http-types, file-embed, bytestring
+    cpp-options: -DENABLE_WEB_UI
+    other-modules: Control.WebUI.Server, Control.WebUI.Types, Control.WebUI.Assets
 
 test-suite sgrt-radar-system-test
   import: common-options

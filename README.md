@@ -17,6 +17,7 @@ Lambda-Wave is a **medical device software system** that uses millimeter-wave (m
 - 🎯 **Sub-millimeter tracking accuracy** using phase-based radar processing
 - ⚡ **Real-time beam gating** with <50ms latency
 - 🛡️ **Safety-critical design** compliant with IEC 62304 Class C
+- 📊 **Real-Time Visualization** via OpenGL (Local) or Web Dashboard (Remote)
 - 📡 **Non-contact monitoring** - no markers or devices on patient
 - 💰 **Cost-effective** - uses commodity mmWave sensor (~$500 vs $100K+ optical systems)
 - 🔓 **Open source** - transparent, auditable, community-driven
@@ -39,20 +40,6 @@ Lambda-Wave is a **medical device software system** that uses millimeter-wave (m
 | 🏥 **Medical Physicist** | [Purpose & Architecture](docs/PURPOSE_AND_ARCHITECTURE.md) → [Mathematical Framework](docs/mathematical_framework.md) |
 | 🛡️ **QA/Compliance** | [Project Status](docs/PROJECT_STATUS.md) → [Purpose & Architecture](docs/PURPOSE_AND_ARCHITECTURE.md#safety--compliance) |
 | 📊 **Project Manager** | [Project Status](docs/PROJECT_STATUS.md) → [TODO](TODO.md) |
-
-**All Documentation:**
-
-| Document | Description |
-|----------|-------------|
-| [**Quick Start Guide**](docs/QUICKSTART.md) | Get running in 15 minutes |
-| [**TODO**](TODO.md) | Prioritized development tasks (replaces roadmap.md) |
-| [**Project Status**](docs/PROJECT_STATUS.md) | Current implementation status and roadmap |
-| [**Build Guide**](docs/BUILD_GUIDE.md) | Comprehensive build and dependency management |
-| [**Purpose & Architecture**](docs/PURPOSE_AND_ARCHITECTURE.md) | System design and medical context |
-| [**Developer Guide**](docs/DEVELOPER_GUIDE.md) | Development workflow and code structure |
-| [**Mathematical Framework**](docs/mathematical_framework.md) | Signal processing algorithms and theory |
-| [**Contributing**](CONTRIBUTING.md) | How to contribute to the project |
-| [**Documentation Index**](docs/README.md) | Complete documentation navigation |
 
 ---
 
@@ -79,8 +66,14 @@ cabal update
 cabal build
 cabal test
 
-# Run application
+# Run application (Headless Mode)
 cabal run sgrt-radar-system-exe
+
+# Run with OpenGL Visualization (Requires Display)
+cabal run sgrt-radar-system-exe --flags=enable-ui
+
+# Run with Web Dashboard (http://localhost:8080)
+cabal run sgrt-radar-system-exe --flags=enable-web-ui
 ```
 
 ### Option 3: Hardware Mode (Requires TI IWR6843ISK)
@@ -122,6 +115,11 @@ See [Quick Start Guide](docs/QUICKSTART.md) for detailed instructions.
 │            │   Safety Layer      │                          │
 │            │ (Watchdog, Audit)   │                          │
 │            └─────────────────────┘                          │
+│                       │                                     │
+│            ┌──────────▼──────────┐                          │
+│            │   UI Layer (App)    │                          │
+│            │ (OpenGL / WebUI)    │                          │
+│            └─────────────────────┘                          │
 └─────────────────────────────────────────────────────────────┘
                         │
                         ▼
@@ -135,7 +133,7 @@ See [Quick Start Guide](docs/QUICKSTART.md) for detailed instructions.
 - **Core Logic:** Haskell (safety, type safety, pure functions)
 - **Hardware I/O:** C++ (zero-copy, low latency)
 - **Signal Processing:** FMCW radar, Chirp Z-Transform, Kalman filtering
-- **Visualization:** OpenGL/GLUT
+- **Visualization:** OpenGL/GLUT (Local), WebSocket/Canvas (Remote)
 - **Build System:** Cabal + GHC 9.4+
 - **Testing:** Hspec + QuickCheck (property-based testing)
 
@@ -153,12 +151,12 @@ See [Quick Start Guide](docs/QUICKSTART.md) for detailed instructions.
 |-------|-----------|--------|
 | Phase 1 | Infrastructure & RTS | ✅ Complete |
 | Phase 2 | Hardware Interface | ✅ Complete |
-| Phase 3 | Signal Processing | 🔄 In Progress (80%) |
-| Phase 4 | Safety & Control | ⏳ Pending |
-| Phase 5 | User Interface | ⏳ Pending |
+| Phase 3 | Signal Processing | ✅ Complete |
+| Phase 4 | Safety & Control | ✅ Complete |
+| Phase 5 | User Interface | ✅ Complete |
 | Phase 6 | System Validation | ⏳ Pending |
 
-**Recent Milestone:** Phase unwrapping implementation (FR-DSP-002) ✅
+**Recent Milestone:** Web Dashboard Implementation (Phase 5.1 Extension) ✅
 
 See [Project Status](docs/PROJECT_STATUS.md) for detailed roadmap.
 

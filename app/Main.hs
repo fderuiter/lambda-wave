@@ -29,6 +29,10 @@ import Control.UI.Input (handleInput)
 import Control.UI.Renderer (renderLoop)
 #endif
 
+#ifdef ENABLE_WEB_UI
+import Control.WebUI.Server (runServer)
+#endif
+
 radarLoop :: TVar SystemState -> ForeignPtr RingBufferControl -> Fd -> IO ()
 radarLoop systemState ringBuffer fd = do
     -- Configure Port (Raw Mode) to prevent data corruption
@@ -104,8 +108,14 @@ main = do
     fd <- openFd sensorPort ReadWrite (Just (ownerReadMode `unionFileModes` ownerWriteMode)) defaultFileFlags { nonBlock = False }
 #endif
 
+#ifdef ENABLE_WEB_UI
+    putStrLn "Web UI Enabled."
+    -- Run Web Server in background thread
+    _ <- forkOS $ runServer systemState 8080
+#endif
+
 #ifdef ENABLE_UI
-    putStrLn "System Armed. UI Enabled."
+    putStrLn "System Armed. OpenGL UI Enabled."
     -- Run radar logic in background
     _ <- forkOS $ radarLoop systemState ringBuffer fd
 
@@ -114,7 +124,7 @@ main = do
     handleInput systemState
     renderLoop systemState
 #else
-    putStrLn "System Armed. UI Disabled."
+    putStrLn "System Armed. Headless Mode."
     -- Run radar logic in main thread
     radarLoop systemState ringBuffer fd
 #endif

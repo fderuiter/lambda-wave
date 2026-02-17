@@ -3,7 +3,7 @@
 **Last Updated:** January 28, 2026  
 **Project:** Lambda-Wave (SGRT Radar System)  
 **Compliance Target:** IEC 62304 Class C / ISO 14971  
-**Current Phase:** Phase 3 (Signal Processing Core)
+**Current Phase:** Phase 5 (User Interface & Visualization)
 
 ---
 
@@ -44,77 +44,6 @@ This TODO document consolidates all actionable development items from the roadma
 
 ## Critical Path Items (P0)
 
-### P0-001: Complete Kalman Filter Implementation
-**Status:** ✅ Complete
-**Phase:** 3.3 - Signal Processing Core  
-**Priority:** P0 (Critical for gating accuracy)
-
-**Description:**  
-Implement linear Kalman filter for state estimation to reduce noise in respiratory signal and provide predictive gating.
-
-**Requirements:**
-- FR-DSP-003: Kalman filter for motion prediction
-- Acceptance: RMSE < 1mm on synthetic noisy sine wave (SNR 10dB)
-
-**Tasks:**
-- [x] Implement state vector [position, velocity, acceleration]
-- [x] Implement prediction step using process model
-- [x] Implement update step with measurement correction
-- [x] Add noise covariance matrices (Q, R)
-- [x] Write unit tests with synthetic data
-- [x] Validate with QuickCheck properties (linearity, stability) (Validated via standalone Property & Unit Tests in `KalmanCheck.hs`)
-- [x] Benchmark latency (must be < 5ms per frame) (Zero-alloc implementation ensures low latency)
-
-**Dependencies:**
-- Phase 3.2 (Phase unwrapping) ✅ Complete
-- hmatrix library for matrix operations (Replaced with internal Zero-Dependency types)
-
-**Effort Estimate:** 2-3 weeks  
-**Assignee:** Mason
-**Related Files:**
-- `src/SignalProcessing/Kalman.hs`
-- `test/SignalProcessing/KalmanCheck.hs`
-
----
-
-### P0-002: Implement Full Watchdog Functionality
-**Status:** ✅ Complete
-**Phase:** 4.1 - Safety & Control  
-**Priority:** P0 (Critical for safety compliance)
-
-**Description:**  
-Complete the watchdog thread implementation to detect system hangs, thread deadlocks, and hardware disconnections.
-
-**Requirements:**
-- SR-WD-001: Watchdog monitors all critical threads
-- SR-WD-002: Application termination on timeout (100ms)
-- IEC 62304 Class C: Fail-safe operation
-
-**Tasks:**
-- [x] Implement TVar map of thread timestamps (Added `threadHeartbeats` to `SystemState`)
-- [x] Add heartbeat mechanism for all critical threads (Gating thread updates heartbeat)
-- [x] Implement timeout detection (now - last_seen > 100ms)
-- [x] Add graceful shutdown with error logging (ExitFailure)
-- [x] Implement beam-off signal on watchdog trip (Implicit in shutdown)
-- [x] Write fault injection tests (artificial delays) (Verified via `test/WatchdogCheck.hs`)
-- [x] Document watchdog behavior in Safety/Watchdog.hs
-
-**Acceptance Criteria:**
-- Watchdog kills application when processing thread delays >100ms
-- All critical threads check in every frame
-- Error logged to audit log before termination
-
-**Dependencies:**
-- None (can start immediately)
-
-**Effort Estimate:** 1-2 weeks  
-**Assignee:** TBD  
-**Related Files:**
-- `src/Safety/Watchdog.hs`
-- `test/System/RTSSpec.hs`
-
----
-
 ### P0-003: Hardware Validation with Motion Phantom
 **Status:** ⏳ Planned  
 **Phase:** 6.1 - System Validation  
@@ -154,40 +83,6 @@ Validate system accuracy using QUASAR or CIRS motion phantom with known displace
 
 ## High Priority Items (P1)
 
-### P1-001: CI/CD Strictness (-Werror)
-**Status:** ✅ Complete
-**Phase:** 1.2 - Infrastructure  
-**Priority:** P1 (Code quality gate)
-
-**Description:**  
-Update CI pipeline to fail on any compiler warning, enforcing zero-warning policy.
-
-**Requirements:**
-- IEC 62304: Code standards compliance
-- All builds must be warning-free
-
-**Tasks:**
-- [x] Add `-Werror` to ghc-options in sgrt-radar-system.cabal
-- [x] Update .github/workflows/build-and-test.yml
-- [x] Fix all existing warnings in codebase
-- [x] Test CI with intentional warning to verify failure
-- [x] Document warning policy in CONTRIBUTING.md
-
-**Acceptance Criteria:**
-- CI fails when code has compiler warnings
-- Existing code compiles with -Werror
-
-**Dependencies:**
-- None
-
-**Effort Estimate:** 3-5 days  
-**Assignee:** TBD  
-**Related Files:**
-- `sgrt-radar-system.cabal`
-- `.github/workflows/build-and-test.yml`
-
----
-
 ### P1-002: Docker Image Determinism
 **Status:** ⏳ Planned  
 **Phase:** 1.3 - Infrastructure  
@@ -219,80 +114,6 @@ Pin Docker base image to specific SHA-256 digest for reproducible builds across 
 **Related Files:**
 - `Dockerfile`
 - `docs/BUILD_GUIDE.md`
-
----
-
-### P1-003: Gating Logic & Latency Optimization
-**Status:** ✅ Complete
-**Phase:** 4.2 - Safety & Control  
-**Priority:** P1 (Core functionality)
-
-**Description:**  
-Link Kalman state to beam control triggers (GPIO/TTL) with latency compensation.
-
-**Requirements:**
-- FR-GAT-001: Automatic beam gating
-- FR-GAT-002: Total latency < 50ms (mean), < 75ms (99th percentile)
-
-**Tasks:**
-- [x] Implement evaluateGating function
-- [x] Add Hardware.Control.setBeam GPIO interface
-- [x] Implement latency compensation using velocity prediction
-- [x] Add hysteresis logic (Schmidt trigger)
-- [x] Run bench/LatencyBench.hs and optimize (Verified < 1ms latency)
-- [x] Profile with +RTS -s and reduce GC pauses
-- [x] Document gating algorithm in Control/Gating.hs
-
-**Acceptance Criteria:**
-- Mean processing time < 50ms
-- 99th percentile < 75ms
-- Beam gates correctly on synthetic data
-
-**Dependencies:**
-- P0-001 (Kalman filter) required
-
-**Effort Estimate:** 2-3 weeks  
-**Assignee:** TBD  
-**Related Files:**
-- `src/Control/Gating.hs`
-- `bench/LatencyBench.hs`
-
----
-
-### P1-004: Audit Logging Completion
-**Status:** ✅ Complete
-**Phase:** 4.3 - Safety & Control  
-**Priority:** P1 (Compliance requirement)
-
-**Description:**  
-Finalize immutable audit logging with immediate disk flush on critical events.
-
-**Requirements:**
-- SR-AUDIT-001: Immutable event log
-- IEC 62304: Audit trail for safety events
-
-**Tasks:**
-- [x] Implement immediate flush on "Beam Hold" events
-- [x] Add buffered logging for non-critical events (TBQueue with 10MB rotation)
-- [x] Implement log rotation and archival (Rename to .bak on limit)
-- [x] Add crash recovery test (power plug simulation) (Simulated via Unit Test `test/Safety/AuditCheck.hs`)
-- [x] Verify last event recorded after crash
-- [x] Document log format and retention policy
-
-**Acceptance Criteria:**
-- Beam events flushed to disk immediately
-- Last event recoverable after crash
-- Log files immutable (append-only)
-
-**Dependencies:**
-- None
-
-**Effort Estimate:** 1 week  
-**Assignee:** TBD  
-**Related Files:**
-- `src/Safety/Audit.hs`
-
----
 
 ### P1-005: Integration Test with Sensor Replay
 **Status:** ⏳ Planned  
@@ -332,77 +153,6 @@ Replay captured .bin file from TI mmWave Studio and verify frame count and parsi
 
 ## Medium Priority Items (P2)
 
-### P2-001: Real-Time Plotting Enhancement
-**Status:** ⏳ Planned  
-**Phase:** 5.1 - User Interface  
-**Priority:** P2 (Usability)
-
-**Description:**  
-Connect OpenGL renderer to live data stream with smooth animation (>30Hz).
-
-**Requirements:**
-- FR-UI-001: Real-time visualization
-- Update rate > 30Hz for smooth display
-
-**Tasks:**
-- [ ] Implement VBO update for mesh vertices
-- [ ] Connect renderer to SystemState TVar
-- [ ] Optimize rendering pipeline
-- [ ] Add FPS counter for monitoring
-- [ ] Test on different hardware configurations
-- [ ] Document performance requirements
-
-**Acceptance Criteria:**
-- Mesh updates smoothly at 30+ FPS
-- No visual jitter or lag
-- CPU usage < 20% for rendering
-
-**Dependencies:**
-- P0-001 (Kalman filter) for smooth data
-
-**Effort Estimate:** 2 weeks  
-**Assignee:** TBD  
-**Related Files:**
-- `src/Control/UI/Renderer.hs`
-- `src/Control/UI/Window.hs`
-
----
-
-### P2-002: Visual Alerts Implementation
-**Status:** ⏳ Planned  
-**Phase:** 5.2 - User Interface  
-**Priority:** P2 (Usability)
-
-**Description:**  
-Implement color-coded background (Green/Red) based on gating decision.
-
-**Requirements:**
-- FR-UI-002: Visual gating feedback
-- Instant response to motion detection
-
-**Tasks:**
-- [ ] Implement background color state machine
-- [ ] Connect to BeamState from SystemState
-- [ ] Add color transitions (smooth fade recommended)
-- [ ] Test with simulated motion events
-- [ ] Ensure visibility in clinical lighting conditions
-- [ ] Add optional audio alerts (beep on beam-off)
-
-**Acceptance Criteria:**
-- Background changes instantly (<50ms) on gating decision
-- Colors clearly distinguishable (accessibility)
-- No performance impact on processing
-
-**Dependencies:**
-- P1-003 (Gating logic) required
-
-**Effort Estimate:** 1 week  
-**Assignee:** TBD  
-**Related Files:**
-- `src/Control/UI/Renderer.hs`
-
----
-
 ### P2-003: Improve Error Handling in Hardware Layer
 **Status:** ⏳ Planned  
 **Phase:** 2 - Hardware Abstraction Layer  
@@ -433,8 +183,6 @@ Enhance error propagation and recovery in hardware communication layer.
 - `src/Hardware/Consumer.hs`
 - `src/Hardware/Control.hs`
 
----
-
 ### P2-004: API Documentation (Haddock)
 **Status:** ⏳ Planned  
 **Phase:** Documentation  
@@ -463,8 +211,6 @@ Generate and publish comprehensive API documentation using Haddock.
 **Assignee:** TBD  
 **Related Files:**
 - All `src/**/*.hs` files
-
----
 
 ### P2-005: Optimize FMCW Processing Performance
 **Status:** 💡 Needs Design  
@@ -526,8 +272,6 @@ Apply consistent code formatting across all Haskell modules using ormolu.
 **Related Files:**
 - All `src/**/*.hs`, `app/**/*.hs`, `test/**/*.hs`
 
----
-
 ### P3-002: Improve Inline Documentation
 **Status:** ⏳ Planned  
 **Phase:** Documentation  
@@ -555,35 +299,6 @@ Add explanatory comments to complex algorithms and non-obvious code sections.
 **Assignee:** All developers  
 **Related Files:**
 - Various
-
----
-
-### P3-003: Web-Based UI (Future)
-**Status:** 💡 Needs Design  
-**Phase:** Future Enhancement  
-**Priority:** P3 (Future)
-
-**Description:**  
-Investigate web-based UI as alternative to OpenGL for cross-platform deployment.
-
-**Tasks:**
-- [ ] Evaluate websocket streaming of data
-- [ ] Prototype with Three.js or similar
-- [ ] Compare latency vs native OpenGL
-- [ ] Assess network security implications
-- [ ] Document findings and recommendation
-
-**Acceptance Criteria:**
-- Feasibility documented
-- Prototype demonstrates concept
-
-**Dependencies:**
-- P2-001 (Real-time plotting) complete
-
-**Effort Estimate:** 2-3 weeks  
-**Assignee:** TBD  
-**Related Files:**
-- New: `prototypes/web-ui/`
 
 ---
 
@@ -619,48 +334,28 @@ Investigate web-based UI as alternative to OpenGL for cross-platform deployment.
 ## Completed Items
 
 ### ✅ Phase 1: Infrastructure & High-Assurance Setup
+- Toolchain & RTS Locking (1.1)
+- CI/CD Strictness (1.2) - CI Strictness (-Werror)
 
-#### ✅ 1.1: Toolchain & RTS Locking
-- Configured GHC RTS flags (-N2, -qa)
-- Implemented Control.Concurrent.setNumCapabilities
-- Validated GC pause times < 5ms
-- **Completed:** Phase 1
+### ✅ Phase 2: Hardware Abstraction Layer
+- C++ Ring Buffer Implementation (2.1)
+- TLV Packet Parser (2.2)
+- Sensor Configuration (2.3)
 
-#### ✅ Phase 2: Hardware Abstraction Layer
+### ✅ Phase 3: Signal Processing Core
+- Background Subtraction (3.1)
+- Phase Extraction & Unwrapping (3.2)
+- Kalman Filter Implementation (3.3)
 
-#### ✅ 2.1: C++ Ring Buffer Implementation
-- Implemented atomic head/tail pointers with std::atomic
-- Zero-copy data ingestion working
-- Unit tests passing (1M items read/write)
-- Memory leak testing with Valgrind passed
-- **Completed:** Phase 2
+### ✅ Phase 4: Safety & Control
+- Watchdog Thread (4.1)
+- Gating Logic & Latency (4.2)
+- Audit Logging (4.3)
 
-#### ✅ 2.2: TLV Packet Parser
-- TLV parser implemented in Hardware.Consumer
-- Magic word detection (0x0102030405060708)
-- Robust error handling for corrupt packets
-- Fuzz testing passed
-- **Completed:** Phase 2
-
-#### ✅ 2.3: Sensor Configuration
-- Serial port configuration implemented
-- .cfg file parsing working
-- Unit tests for parseConfig/configureSensor
-- **Completed:** Phase 2
-
-### ✅ Phase 3: Signal Processing Core (Partial)
-
-#### ✅ 3.1: Background Subtraction
-- Static clutter removal implemented
-- Testing with static objects verified
-- **Completed:** Phase 3
-
-#### ✅ 3.2: Phase Extraction & Unwrapping
-- atan2(Q,I) phase extraction implemented
-- Phase unwrapping handles ±π jumps
-- Math tests with synthetic data passed
-- QuickCheck properties validated
-- **Completed:** Phase 3 (Most recent)
+### ✅ Phase 5: User Interface & Visualization
+- Real-Time Plotting (OpenGL) (5.1) - Implemented behind `enable-ui` flag.
+- Web Dashboard (5.1 Extension) - Implemented behind `enable-web-ui` flag.
+- Visual Alerts (5.2) - Integrated into UI components.
 
 ---
 
@@ -674,7 +369,7 @@ Blockers:
 - [ ] P0-003: Hardware validation with motion phantom
 
 Required:
-- [ ] P1-001: CI/CD strictness (-Werror)
+- [x] P1-001: CI/CD strictness (-Werror)
 - [ ] P1-002: Docker determinism
 - [x] P1-003: Gating logic & latency
 - [x] P1-004: Audit logging completion
@@ -687,28 +382,6 @@ Quality Gates:
 - [ ] SOUP analysis (GHC RTS) documented
 - [ ] Release binary signed
 - [ ] IEC 62304 documentation complete
-
----
-
-## Notes
-
-### Priority Escalation Process
-If an item needs priority change:
-1. Discuss in team meeting or GitHub issue
-2. Update priority in this document
-3. Adjust sprint planning accordingly
-
-### Effort Estimation
-- Days: < 1 week
-- Weeks: 1-4 weeks
-- Months: > 1 month
-- Major: > 3 months
-
-### Assignment Process
-- Review TODO during sprint planning
-- Assign based on expertise and availability
-- Update assignee field in this document
-- Track progress in GitHub Projects or issues
 
 ---
 
