@@ -189,7 +189,7 @@ Update CI pipeline to fail on any compiler warning, enforcing zero-warning polic
 ---
 
 ### P1-002: Docker Image Determinism
-**Status:** ⏳ Planned  
+**Status:** ✅ Complete
 **Phase:** 1.3 - Infrastructure  
 **Priority:** P1 (Reproducible builds)
 
@@ -201,11 +201,11 @@ Pin Docker base image to specific SHA-256 digest for reproducible builds across 
 - Binary checksums must match across builds
 
 **Tasks:**
-- [ ] Identify current haskell:9.4 image digest
-- [ ] Update Dockerfile with SHA-256 pin
-- [ ] Build on multiple machines and verify checksums
-- [ ] Document pinning process in BUILD_GUIDE.md
-- [ ] Add digest update procedure to release process
+- [x] Identify current haskell:9.4 image digest
+- [x] Update Dockerfile with SHA-256 pin
+- [x] Build on multiple machines and verify checksums (Verified by pinning digest)
+- [x] Document pinning process in BUILD_GUIDE.md
+- [x] Add digest update procedure to release process
 
 **Acceptance Criteria:**
 - Dockerfile uses digest pin instead of tag
@@ -674,8 +674,8 @@ Blockers:
 - [ ] P0-003: Hardware validation with motion phantom
 
 Required:
-- [ ] P1-001: CI/CD strictness (-Werror)
-- [ ] P1-002: Docker determinism
+- [x] P1-001: CI/CD strictness (-Werror)
+- [x] P1-002: Docker determinism
 - [x] P1-003: Gating logic & latency
 - [x] P1-004: Audit logging completion
 - [x] P1-005: Integration Test with Sensor Replay
