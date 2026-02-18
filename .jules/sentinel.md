@@ -51,3 +51,7 @@ The `parseTLVs` function failed to validate `tlvLen` against a maximum reasonabl
 ## 2026-06-02 - [Risk Level: MEDIUM] **Vector:** src/Data/Time/HighRes.hs **Hazard:** FFI ABI Mismatch
 The `Storable` instance for `TimeSpec` hardcoded offsets (`0` and `8`) and size (`16`), assuming a 64-bit architecture with 8-byte `time_t` and `long`. On 32-bit systems (or systems with different alignment), this would lead to reading garbage data or segfaults when accessing `clock_gettime`.
 **Fix:** Implemented dynamic offset and size calculation using `alignment` and `sizeOf` of `CTime` and `CLong`. This ensures robust cross-platform compatibility.
+
+## 2026-06-03 - [Risk Level: MEDIUM] **Vector:** src/FFI/RingBuffer/IO.hs **Hazard:** Unchecked FFI Return Code
+The `readFromUart` function returned an `Int`, relying on implicit conventions (-1 for error, 0 for full/retry) which are prone to misuse. If a caller treated 0 as success (bytes read), it would process garbage or loop infinitely.
+**Fix:** Changed return type to `ReadResult` ADT (`ReadSuccess Int | ReadFull | ReadError`). Updated `ingestionLoop` to explicitly handle each case, ensuring robust error handling and flow control.
