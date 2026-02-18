@@ -113,11 +113,10 @@ verifySyntheticComplex frames = do
 
     let mismatches = filter (not . checkFramePattern) (zip [1..] frames)
 
-    if null mismatches
-        then putStrLn "PASS: Point count pattern matches sine wave logic."
-        else do
+    case mismatches of
+        [] -> putStrLn "PASS: Point count pattern matches sine wave logic."
+        ((idx, frame):_) -> do
             hPutStrLn stderr $ "FAIL: Found " ++ show (length mismatches) ++ " frames with incorrect point counts."
-            let (idx, frame) = head mismatches
             hPutStrLn stderr $ "Example: Frame " ++ show idx ++ " has " ++ show (length (points frame)) ++ " points, expected " ++ show ((idx `mod` 10) + 1)
             exitFailure
 
