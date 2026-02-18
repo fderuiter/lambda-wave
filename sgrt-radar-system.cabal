@@ -30,6 +30,16 @@ common common-options
     , containers
   default-language: Haskell2010
 
+flag enable-ui
+  description: Enable OpenGL UI
+  manual: True
+  default: False
+
+flag enable-web-ui
+  description: Enable Web UI
+  manual: True
+  default: False
+
 library
   import: common-options
   exposed-modules:
@@ -72,6 +82,31 @@ executable sgrt-radar-system-exe
   extra-libraries: stdc++
   build-depends:
       sgrt-radar-system
+
+  if flag(enable-ui)
+    build-depends:
+        GLUT
+      , OpenGL
+    cpp-options: -DENABLE_UI
+    other-modules:
+        Control.UI.Renderer
+        Control.UI.Window
+        Control.UI.Input
+
+  if flag(enable-web-ui)
+    build-depends:
+        wai
+      , warp
+      , websockets
+      , wai-websockets
+      , aeson
+      , text
+      , http-types
+      , file-embed
+    cpp-options: -DENABLE_WEB_UI
+    other-modules:
+        Control.WebUI
+        Control.WebUI.Types
 
 test-suite sgrt-radar-system-test
   import: common-options
