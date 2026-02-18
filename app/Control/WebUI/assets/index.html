@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Lambda-Wave Monitor</title>
+    <style>
+        body { font-family: monospace; background: #111; color: #eee; margin: 0; padding: 20px; }
+        #beam-status { font-size: 2em; text-align: center; padding: 20px; border-radius: 10px; margin-bottom: 20px; }
+        .BeamOn { background: #0f0; color: #000; }
+        .BeamOff { background: #f00; color: #fff; }
+        .BeamHold { background: #ff0; color: #000; }
+        canvas { border: 1px solid #333; background: #000; display: block; margin: 0 auto; }
+        #stats { text-align: center; margin-top: 10px; }
+    </style>
+</head>
+<body>
+    <div id="beam-status" class="BeamOff">BEAM OFF</div>
+    <canvas id="plot" width="800" height="400"></canvas>
+    <div id="stats">
+        Frame Time: <span id="ts">0</span> | Points: <span id="pt-count">0</span>
+    </div>
+
+    <script>
+        const ws = new WebSocket("ws://" + location.host + "/ws");
+        const statusEl = document.getElementById('beam-status');
+        const tsEl = document.getElementById('ts');
+        const ptCountEl = document.getElementById('pt-count');
+        const canvas = document.getElementById('plot');
+        const ctx = canvas.getContext('2d');
+        const width = canvas.width;
+        const height = canvas.height;
+
+        // Trace history for plot (Y-axis: Position Z, X-axis: Time)
+        const trace = [];
+        const maxTrace = 300; // 10 seconds at 30Hz
+
+        ws.onmessage = (event) => {
+            const state = JSON.parse(event.data);
+
+            // 1. Update Beam Status
+            statusEl.innerText = state.beamState.toUpperCase();
+            statusEl.className = state.beamState;
+
+            // 2. Update Stats
+            tsEl.innerText = state.timestamp;
+            ptCountEl.innerText = state.pointCloud.length;
+
+            // 3. Update Trace
+            // Kalman State vector x is [Pos, Vel, Accel].
+            // In Types.hs we serialized stateVector as V3(x, y, z).
+            // So state.respiratoryTrace.stateVector.x is Position.
+            const position = state.respiratoryTrace.stateVector.x;
+            trace.push(position);
+            if (trace.length > maxTrace) trace.shift();
+
+            // 4. Render
+            draw(state.pointCloud, trace);
+        };
+
+        function draw(points, trace) {
+            ctx.clearRect(0, 0, width, height);
+
+            // Draw Trace (Line Graph)
+            // Map position (mm) to Y pixels. Assume breathing range is e.g. -20mm to +20mm around 0.
+            // Let's use fixed scale: +/- 100mm range.
+            ctx.strokeStyle = '#0ff';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            const scaleY = height / 200; // 200mm range (-100 to +100)
+            const midY = height / 2;
+
+            trace.forEach((val, i) => {
+                const x = (i / maxTrace) * width;
+                const y = midY - (val * scaleY);
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            });
+            ctx.stroke();
+
+            // Draw Point Cloud (Dots)
+            // We visualize the Z-coordinate of points at the current time slice (right edge).
+            ctx.fillStyle = 'rgba(255, 0, 0, 0.5)';
+            const rightX = width - 10;
+            points.forEach(p => {
+                 // p.z is usually the depth/distance from sensor.
+                 // p.y is usually height.
+                 // Let's plot p.z relative to isocenter (which is 0 in Kalman filter usually).
+                 const y = midY - (p.z * scaleY);
+                 ctx.fillRect(rightX, y, 3, 3);
+            });
+        }
+    </script>
+</body>
+</html>
