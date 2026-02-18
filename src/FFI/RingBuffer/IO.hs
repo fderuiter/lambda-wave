@@ -12,6 +12,7 @@ hardware via C++ FFI calls.
 module FFI.RingBuffer.IO
     ( createRingBuffer
     , readFromUart
+    , ReadResult(..)
     , withRingBuffer -- Deprecated
     , ingestionLoop
     , getWriteOffset
@@ -27,6 +28,13 @@ import Control.Concurrent (forkOS, ThreadId, threadDelay)
 import Control.Monad (when)
 import System.IO (hPutStrLn, stderr)
 import FFI.RingBuffer.Types (RingBufferControl)
+
+-- | Result of a read operation from the Ring Buffer / UART
+data ReadResult
+    = ReadSuccess Int -- ^ Bytes successfully read and written to buffer
+    | ReadFull        -- ^ Buffer full or no data available (retry later)
+    | ReadError       -- ^ Critical failure (e.g. UART error)
+    deriving (Show, Eq)
 
 -- | Creates a ring buffer of the specified size.
 -- Corresponds to C++ `RingBufferControl* create_ring_buffer(size_t size)`
@@ -71,10 +79,15 @@ createRingBuffer size = mask_ $ do
                 `onException` c_free_ring_buffer_direct ptr
 
 -- | Wrapper for read_from_uart
-readFromUart :: ForeignPtr RingBufferControl -> Fd -> IO Int
+-- Enforces type-safe error handling via ReadResult ADT.
+readFromUart :: ForeignPtr RingBufferControl -> Fd -> IO ReadResult
 readFromUart fp (Fd fd) = withForeignPtr fp $ \ptr -> do
     bytesRead <- c_read_from_uart ptr fd
-    return (fromIntegral bytesRead)
+    return $ if bytesRead > 0
+             then ReadSuccess (fromIntegral bytesRead)
+             else if bytesRead == 0
+                  then ReadFull
+                  else ReadError
 
 -- | Wrapper for get_write_offset
 getWriteOffset :: ForeignPtr RingBufferControl -> IO Int
@@ -95,8 +108,8 @@ withRingBuffer size action = do
     action fp
 
 -- | Ingestion Thread: Spawns a bound thread that loops calling read_from_uart.
--- The loop terminates if read_from_uart returns a negative value (Error).
--- If it returns 0 (Full or EOF), we pause briefly and retry.
+-- The loop terminates if read_from_uart returns ReadError.
+-- If it returns ReadFull (Full or EOF), we pause briefly and retry.
 -- Accepts ForeignPtr to ensure the buffer is not freed while thread is running.
 ingestionLoop :: ForeignPtr RingBufferControl -> Fd -> IO ThreadId
 ingestionLoop fp fd = forkOS loop
@@ -107,9 +120,10 @@ ingestionLoop fp fd = forkOS loop
         return ()
 
     safeLoop = do
-        bytesRead <- readFromUart fp fd
-        if bytesRead < 0
-            then hPutStrLn stderr "CRITICAL FAILURE: readFromUart returned negative value. Ingestion thread TERMINATING. System may be unresponsive."
-            else do
-                when (bytesRead == 0) $ threadDelay 1000 -- 1ms pause if full or empty
+        result <- readFromUart fp fd
+        case result of
+            ReadError -> hPutStrLn stderr "CRITICAL FAILURE: readFromUart returned negative value. Ingestion thread TERMINATING. System may be unresponsive."
+            ReadFull -> do
+                threadDelay 1000 -- 1ms pause if full or empty
                 loop
+            ReadSuccess _ -> loop
