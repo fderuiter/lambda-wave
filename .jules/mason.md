@@ -33,3 +33,8 @@
 **Context:** The roadmap requires validation against a real TI mmWave Studio capture file. However, the development environment lacks access to physical hardware to generate this file.
 **Decision:** Implemented a synthetic data generator (`scripts/generate_synthetic_capture.hs`) based on the TI mmWave SDK protocol specification. This allows for deterministic integration testing of the parser logic in the absence of hardware.
 **Compliance Impact:** Deviates from original roadmap validation method but ensures parser correctness against the protocol specification. Real hardware validation is deferred to Phase 6 (System Validation).
+
+## 2026-02-18 - [Docker Image Pinning]
+**Context:** Reproducible builds are critical for regulatory compliance (IEC 62304). Using mutable tags like `haskell:9.4.7` introduces the risk of upstream changes altering the build environment without traceability.
+**Decision:** Pinned the Docker base image to a specific SHA-256 digest (`sha256:9cf51a75...`).
+**Compliance Impact:** Satisfies P1-002 (Docker Image Determinism) and ensures the SOUP (Software of Unknown Provenance) environment is immutable and auditable.

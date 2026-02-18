@@ -313,6 +313,8 @@ cabal build --ghc-options="-O2"
 
 ### Standard Docker Build
 
+The Dockerfile uses a specific SHA-256 digest for the base image (`haskell:9.4.7`) to ensure build determinism (P1-002).
+
 ```bash
 # Build image
 docker build -t lambda-wave:latest .
@@ -328,6 +330,22 @@ docker run -it \
     -e SGRT_CLI_PORT=/dev/ttyUSB1 \
     lambda-wave:latest
 ```
+
+### Updating the Base Image
+
+To update the base image (e.g., for security patches), follow this procedure (SOUP Management):
+
+1.  Pull the new image tag locally to verify it:
+    ```bash
+    docker pull haskell:9.4.7
+    ```
+2.  Inspect the image to get the specific SHA-256 digest:
+    ```bash
+    docker inspect --format='{{index .RepoDigests 0}}' haskell:9.4.7
+    ```
+    Ensure the output is in the format `haskell@sha256:...`.
+3.  Update the `Dockerfile` `FROM` instruction with the new digest.
+4.  Rebuild and verify determinism as per the [Standard Docker Build](#standard-docker-build) section.
 
 ### Docker Compose (Multi-stage Development)
 
