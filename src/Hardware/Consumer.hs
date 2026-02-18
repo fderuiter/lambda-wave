@@ -264,14 +264,16 @@ parseTLVs count = go count []
         tlvType <- G.getWord32le
         tlvLen <- G.getWord32le
 
+        -- 🛡️ SECURITY FIX: Validate TLV length for ALL types to prevent DoS (P1-002)
+        when (tlvLen > maxTLVSize) $ fail "TLV Too Large"
+        when (tlvLen < 8) $ fail "Invalid TLV Length (Partial Header)"
+
         case tlvType of
             1 -> do -- Detected Points
-                when (tlvLen > maxTLVSize) $ fail "TLV Too Large"
-
                 -- Payload: Array of Point {x,y,z,v} (4 * 4 = 16 bytes)
                 -- TI SDK Standard: tlvLen includes Header (8 bytes).
                 -- So Payload Length = tlvLen - 8.
-                let payloadLen = if tlvLen >= 8 then tlvLen - 8 else 0
+                let payloadLen = tlvLen - 8
 
                 -- Num points
                 let numPoints = fromIntegral payloadLen `div` 16
@@ -289,7 +291,6 @@ parseTLVs count = go count []
             _ -> do
                 -- Skip unknown TLV
                 -- tlvLen includes Header (8 bytes). We already read header.
-                when (tlvLen < 8) $ fail "Invalid TLV Length (Partial Header)"
                 let skipLen = fromIntegral (tlvLen - 8)
                 G.skip skipLen
                 go (n - 1) acc
