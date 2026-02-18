@@ -2,6 +2,9 @@
 module Main (main) where
 
 import Control.Concurrent (forkOS, setNumCapabilities, threadDelay)
+#ifdef ENABLE_WEB_UI
+import Control.Concurrent (forkIO)
+#endif
 import Control.Concurrent.STM
 import System.Environment (lookupEnv)
 import Data.Maybe (fromMaybe)
@@ -19,6 +22,16 @@ import Hardware.Consumer (consumerLoop)
 import Safety.Watchdog
 import Safety.Audit
 import Data.Time.HighRes (getMonotonicTimeNS)
+
+#ifdef ENABLE_UI
+import Control.UI.Window (initWindow)
+import Control.UI.Renderer (renderLoop)
+import Control.UI.Input (handleInput)
+#endif
+
+#ifdef ENABLE_WEB_UI
+import Control.WebUI (runWebUI)
+#endif
 
 main :: IO ()
 main = do
@@ -52,9 +65,6 @@ main = do
 
     putStrLn $ "Configuration: Sensor=" ++ sensorPort ++ ", CLI=" ++ cliPort
 
-    -- 0. Configure Hardware
-    -- forkOS $ configureSensor cliPort
-
     -- 1. Setup Ring Buffer (4MB)
     -- We use the new FFI.RingBuffer.IO directly.
     -- NOW RETURNS ForeignPtr RingBufferControl.
@@ -82,7 +92,6 @@ main = do
     _ <- RingBuffer.ingestionLoop ringBuffer fd
 
     -- 3. Consumer/Parser (Dedicated Thread)
-    -- consumerLoop accepts ForeignPtr
     _ <- forkOS $ consumerLoop ringBuffer systemState
 
     -- 3. Safety Watchdog (High Priority Thread)
@@ -91,11 +100,20 @@ main = do
     -- 4. Audit Logging
     _ <- forkOS $ auditLoop systemState "session.log"
 
-    -- 5. UI (Disabled for Class C Build)
-    putStrLn "System Armed. UI Disabled."
-    -- initWindow
-    -- handleInput systemState
-    -- renderLoop systemState
+    -- 5. Web UI (Optional)
+#ifdef ENABLE_WEB_UI
+    putStrLn "Starting Web UI..."
+    _ <- forkIO $ runWebUI systemState
+#endif
 
+    -- 6. OpenGL UI (Optional, must be Main Thread if used)
+#ifdef ENABLE_UI
+    putStrLn "Starting OpenGL UI..."
+    initWindow
+    handleInput systemState
+    renderLoop systemState
+#else
+    putStrLn "System Armed. Headless Mode."
     -- Keep Main Alive
     forever $ threadDelay 1000000
+#endif
