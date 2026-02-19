@@ -3,7 +3,7 @@ module Hardware.Control (configureSensor, parseConfig, configureRawSerial, setBe
 import Control.Monad (forM_)
 import Control.Concurrent (threadDelay)
 import qualified Data.ByteString.Char8 as BC
-import Control.Exception (try, IOException, bracket, evaluate)
+import Control.Exception (try, IOException, bracket, evaluate, throwIO)
 import Data.Char (isSpace)
 import Data.List (dropWhileEnd)
 import System.IO (withFile, hGetContents, IOMode(ReadMode))
@@ -12,6 +12,12 @@ import System.Posix.IO (openFd, closeFd, fdWriteBuf, OpenMode(ReadWrite), defaul
 import System.Posix.Types (Fd(..))
 import Foreign.Ptr (castPtr)
 import Data.ByteString.Unsafe (unsafeUseAsCStringLen)
+import Foreign.C.Types (CInt(..))
+import Data.Config (uartBaudRate)
+
+-- | External C function to configure serial port (supports 921600 baud)
+foreign import ccall safe "configure_serial_port"
+    c_configure_serial_port :: CInt -> CInt -> IO CInt
 
 -- | Parses the configuration file content into a list of commands.
 -- Ignores comments (starting with #) and empty lines.
@@ -84,27 +90,16 @@ configureConfigSerial fd = do
 -- Disables Canonical Mode (ICANON), Echo, Signals, and sets Baud Rate.
 -- This is critical for receiving binary data from the radar.
 --
--- Note: Requires 'B921600' support. If compilation fails, check unix package version.
+-- Note: Uses FFI to 'serial_config.cpp' to support high baud rates (921600).
 configureRawSerial :: Fd -> IO ()
-configureRawSerial fd = do
-    attrs <- getTerminalAttributes fd
-    let rawAttrs = attrs
-            `withoutMode` ProcessInput      -- ICANON (Canonical Mode)
-            `withoutMode` EnableEcho        -- ECHO
-            `withoutMode` EchoLF            -- ECHONL
-            `withoutMode` KeyboardInterrupts -- ISIG (Signals like SIGINT on Ctrl-C)
-            `withoutMode` ExtendedFunctions -- IEXTEN
-            `withoutMode` MapCRtoLF         -- ICRNL
-            `withoutMode` MapLFtoCR         -- INLCR
-            `withoutMode` StartStopOutput   -- IXON/IXOFF (Flow Control)
-            -- VMIN and VTIME share the same slots as EndOfFile (VEOF) and EndOfLine (VEOL) in non-canonical mode.
-            `withCC` (EndOfFile, '\1')      -- VMIN = 1 (Block until 1 byte)
-            `withCC` (EndOfLine, '\0')      -- VTIME = 0 (No timeout)
-            `withInputSpeed` B115200 -- Fallback from B921600 (not available in env)
-            `withOutputSpeed` B115200
+configureRawSerial (Fd fd) = do
+    -- We use the configured baud rate from Data.Config (921600)
+    let baud = fromIntegral uartBaudRate :: CInt
+    res <- c_configure_serial_port fd baud
 
-    setTerminalAttributes fd rawAttrs Immediately
-    putStrLn "[Control] Data Port Configured (Raw Mode, 115200 baud)"
+    if res /= 0
+        then throwIO (userError $ "Failed to configure serial port (C FFI returned " ++ show res ++ ")")
+        else putStrLn $ "[Control] Data Port Configured (Raw Mode, " ++ show uartBaudRate ++ " baud)"
 
 -- | Control the beam status (Simulated via GPIO).
 -- True = Beam ON
