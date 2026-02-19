@@ -11,6 +11,7 @@ import qualified Data.ByteString as B
 
 import Data.Types
 import Hardware.Consumer
+import Hardware.Types
 
 spec :: Spec
 spec = do
@@ -28,12 +29,8 @@ spec = do
             testPoints = [point, point]
 
             -- Construct a valid frame
-            -- Magic Word: 0x0102030405060708 (Byte sequence: 1, 2, 3, 4, 5, 6, 7, 8)
+            -- Magic Word: 0x0102030405060708
             magic = mapM_ P.putWord8 [1, 2, 3, 4, 5, 6, 7, 8]
-            -- Header: Version(4), Len(4), Plat(4), Frame(4), CPU(4), NumTLVs(4), SubFrame(4)
-            -- Total Len = 32 (header without magic) + 8 (magic) + TLV size
-            -- TLV Size = 8 (Header) + 16 * 2 (Points) = 40
-            -- Total Packet Len = 40 + 40 = 80
             testHeader = do
                 P.putWord32le 0 -- Version
                 P.putWord32le 80 -- Total Len
@@ -57,18 +54,18 @@ spec = do
 
             payload = P.runPut (magic >> testHeader >> tlv)
 
-            -- Add some garbage before (using 0xFF to avoid accidental magic word match)
+            -- Add some garbage before
             garbage = BL.pack (replicate 10 0xFF)
             input = garbage <> payload
 
-            (frames, consumed, corrupted) = parseStream input
+            (frames, consumed, err) = parseStream input
 
         length frames `shouldBe` 1
         let frame = head frames
         length (Data.Types.points frame) `shouldBe` 2
         -- consumed should be length garbage + length payload
         consumed `shouldBe` (BL.length garbage + BL.length payload)
-        corrupted `shouldBe` False
+        err `shouldBe` Nothing
 
     it "Handles partial frames correctly (does not consume)" $ do
         -- Test that a partial frame at the end is NOT consumed
@@ -82,29 +79,17 @@ spec = do
             frame = P.runPut (magic >> header) -- 36 bytes
 
         let input = frame <> partialMagic
-        let (frames, consumed, corrupted) = parseStream input
+        let (frames, consumed, err) = parseStream input
 
         length frames `shouldBe` 1
         -- Should consume the frame (36) but NOT the partial magic (4)
         consumed `shouldBe` BL.length frame
-        corrupted `shouldBe` False
+        err `shouldBe` Nothing
 
     it "Handles Padded TLVs correctly" $ do
         let point = Point 1.0 2.0 3.0 4.0
             testPoints = [point] -- 1 point = 16 bytes
-
-            -- Magic Word
             magic = mapM_ P.putWord8 [1, 2, 3, 4, 5, 6, 7, 8]
-
-            -- TLV Construction with Padding
-            -- Payload is 16 bytes.
-            -- But we claim Length is 28 (16 bytes payload + 4 bytes padding + 8 bytes Header)
-            -- Header size = 8
-
-            -- If we say tlvLen = 28. payloadLen = 20. numPoints = 1. bytesRead = 16. padding = 4.
-            -- So we need to put 20 bytes of "Value" (16 bytes point + 4 bytes junk).
-            -- AND TLV Header (8 bytes).
-            -- So Total Packet Len should account for this.
 
             tlvLenVal = 28 -- 16 bytes point + 4 bytes padding + 8 bytes header
 
@@ -134,27 +119,24 @@ spec = do
             -- Append another frame to verify alignment is maintained
             payload2 = payload <> payload
 
-            (frames, consumed, corrupted) = parseStream payload2
+            (frames, consumed, err) = parseStream payload2
 
         -- Should parse both frames
         length frames `shouldBe` 2
-        corrupted `shouldBe` False
+        err `shouldBe` Nothing
         consumed `shouldBe` BL.length payload2
 
 
     it "Fuzz Testing: Handles random garbage without crashing" $ property $ \bytes -> do
         let input = BL.fromStrict (B.pack bytes)
-            (frames, consumed, corrupted) = parseStream input
+            (frames, consumed, err) = parseStream input
 
         -- We don't expect it to crash.
-        -- If it found frames, good.
-        -- If it consumed bytes, good.
         if BL.null input
            then do
              consumed `shouldBe` 0
-             corrupted `shouldBe` False
+             err `shouldBe` Nothing
            else
-             -- Just ensure evaluation doesn't crash
              consumed `shouldSatisfy` (>= 0)
 
     it "Fuzz Testing: Detects corruption in invalid streams" $ do
@@ -172,10 +154,14 @@ spec = do
             payload = P.runPut (magic >> header)
 
             -- We expect parseStream to fail on this
-            (frames, consumed, corrupted) = parseStream payload
+            (frames, consumed, err) = parseStream payload
 
-        -- Should return corrupted = True
-        corrupted `shouldBe` True
+        -- Should return InvalidLength (which is what "Invalid Packet Length" maps to in parseStream)
+        case err of
+            Just InvalidLength -> return ()
+            Just (ParseError _) -> return () -- Acceptable if mapped differently
+            _ -> expectationFailure $ "Expected InvalidLength, got " ++ show err
+
         -- And probably 0 frames
         length frames `shouldBe` 0
 
@@ -183,11 +169,9 @@ spec = do
         let point = Point 1.0 2.0 3.0 4.0
             testPoints = [point]
 
-            -- Magic Word
             magic = mapM_ P.putWord8 [1, 2, 3, 4, 5, 6, 7, 8]
 
             -- TLV 1: Unknown (Type 999)
-            -- Total Length 20 (8 Header + 12 Payload)
             unknownTlv = do
                 P.putWord32le 999 -- Type
                 P.putWord32le 20  -- Length
@@ -196,7 +180,6 @@ spec = do
                 P.putWord32le 0xCCCCCCCC -- Payload 3
 
             -- TLV 2: Valid Points (Type 1)
-            -- Total Length 24 (8 Header + 16 Payload)
             validTlv = do
                 P.putWord32le 1 -- Type
                 P.putWord32le 24 -- Length
@@ -209,7 +192,6 @@ spec = do
                 P.putFloatle v
 
             -- Header
-            -- Total Packet Len = 36 (Header) + 20 (Unknown) + 24 (Valid) = 80
             header = do
                 P.putWord32le 0 -- Version
                 P.putWord32le 80 -- Total Len
@@ -221,13 +203,36 @@ spec = do
 
             payload = P.runPut (magic >> header >> unknownTlv >> validTlv)
 
-            (frames, consumed, corrupted) = parseStream payload
+            (frames, consumed, err) = parseStream payload
 
-        corrupted `shouldBe` False
+        err `shouldBe` Nothing
         length frames `shouldBe` 1
         let frame = head frames
         length (Data.Types.points frame) `shouldBe` 1
         consumed `shouldBe` 80
+
+    it "Detects DoS Attack (TLV too large)" $ do
+         -- Construct a frame with TLV length > 65536
+         let magic = mapM_ P.putWord8 [1, 2, 3, 4, 5, 6, 7, 8]
+             header = do
+                 P.putWord32le 0
+                 P.putWord32le (36 + 70000) -- Total Packet Len
+                 P.putWord32le 0
+                 P.putWord32le 1
+                 P.putWord32le 0
+                 P.putWord32le 1 -- 1 TLV
+                 P.putWord32le 0
+
+             tlv = do
+                 P.putWord32le 1
+                 P.putWord32le 70000 -- Too large
+                 -- Payload not needed as it should fail immediately
+
+             payload = P.runPut (magic >> header >> tlv)
+             (frames, consumed, err) = parseStream payload
+
+         err `shouldBe` Just DoSAttackDetected
+         length frames `shouldBe` 0
 
 instance Arbitrary Point where
     arbitrary = Point <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary
