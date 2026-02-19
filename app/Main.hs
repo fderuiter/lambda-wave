@@ -12,6 +12,7 @@ import System.Posix.IO (openFd, OpenMode(..), defaultFileFlags, OpenFileFlags(..
 import System.Posix.Files (ownerReadMode, ownerWriteMode, unionFileModes)
 import Control.Monad (forever)
 import qualified Data.Map.Strict as Map
+import System.Exit (exitFailure)
 
 import Data.Types
 import Data.Config (targetHeight)
@@ -85,7 +86,12 @@ main = do
 #endif
 
     -- Configure Port (Raw Mode) to prevent data corruption
-    configureRawSerial fd
+    res <- configureRawSerial fd
+    case res of
+        Left err -> do
+            putStrLn $ "FATAL: Failed to configure serial port: " ++ show err
+            exitFailure
+        Right () -> return ()
 
     -- 2. Hardware Ingestion (Dedicated Thread)
     -- ingestionLoop accepts ForeignPtr

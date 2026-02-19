@@ -7,6 +7,7 @@ import System.Exit (exitFailure, exitSuccess)
 import System.Environment (lookupEnv)
 import System.IO (hPutStrLn, stderr)
 import Data.List (isSuffixOf)
+import Data.Maybe (isJust)
 
 import Hardware.Consumer (parseStream)
 import Data.Types (RadarFrame(..), Point3D(..))
@@ -50,10 +51,10 @@ consumeAll = go [] 0 False
     go accFrames accBytes hadCorruption input
         | BL.null input = (reverse accFrames, accBytes, hadCorruption)
         | otherwise =
-            let (frames, consumed, corrupted) = parseStream input
+            let (frames, consumed, maybeErr) = parseStream input
                 newFrames = reverse frames ++ accFrames -- parseStream returns frames in order, we push to acc
                 newBytes = accBytes + consumed
-                newCorruption = hadCorruption || corrupted
+                newCorruption = hadCorruption || isJust maybeErr
             in if consumed == 0 && not (BL.null input)
                then
                    -- Stuck? Force advance by 1 byte to avoid infinite loop

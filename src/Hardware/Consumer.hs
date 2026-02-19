@@ -33,11 +33,13 @@ import qualified Data.ByteString.Internal as BI
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.Binary.Get as G
 import System.IO (hPutStrLn, stderr)
+import Data.Time.HighRes (getMonotonicTimeNS)
 
 import FFI.RingBuffer.Types (RingBufferControl(..), peekStaticFields)
 import FFI.RingBuffer.IO (getWriteOffset, setReadOffset)
 import Data.Types
 import Control.Gating (processFrame)
+import Hardware.Types
 
 -- | The Magic Word sequence for TI Millimeter Wave Radar
 magicPattern :: BL.ByteString
@@ -55,6 +57,7 @@ maxTLVSize = 65536
 -- * If new data exists, creates a Lazy ByteString referencing the buffer (Zero-Copy).
 -- * Parses frames using 'Data.Binary.Get'.
 -- * Updates 'SystemState'.
+-- * Logs errors to 'auditQueue'.
 consumerLoop :: ForeignPtr RingBufferControl -> TVar SystemState -> IO ()
 consumerLoop controlFp stateVar = withForeignPtr controlFp $ \controlPtr -> do
     -- Read initial control block (non-atomic for immutable fields)
@@ -98,7 +101,7 @@ consumerLoop controlFp stateVar = withForeignPtr controlFp $ \controlPtr -> do
                     -- from the current snapshot. A robust implementation would maintain
                     -- the decoder state across loops.
 
-                    let (frames, bytesConsumed, corrupted) = parseStream lbs
+                    let (frames, bytesConsumed, maybeErr) = parseStream lbs
 
                     -- 5. Force Evaluation (Critical for FFI Safety)
                     -- We must ensure all data is copied out of the Ring Buffer (via Lazy ByteString)
@@ -106,9 +109,33 @@ consumerLoop controlFp stateVar = withForeignPtr controlFp $ \controlPtr -> do
                     -- the memory while we are lazily parsing it.
                     _ <- evaluate (force frames)
 
-                    -- Log corruption if detected
-                    when corrupted $ do
-                         hPutStrLn stderr "[Consumer] Corrupt Packet detected."
+                    -- Log Error if detected
+                    case maybeErr of
+                        Nothing -> return ()
+                        Just err -> do
+                            -- Construct AuditEvent
+                            now <- getMonotonicTimeNS
+                            let (sev, msg) = case err of
+                                    DoSAttackDetected -> (Critical, "Potential DoS: TLV Too Large")
+                                    ParseError m -> (Warning, "Parse Error: " ++ m)
+                                    MagicWordMissing -> (Warning, "Sync Lost: Magic Word Missing")
+                                    InvalidLength -> (Warning, "Corrupt Packet: Invalid Length")
+                                    TlvError m -> (Warning, "TLV Error: " ++ m)
+                                    _ -> (Warning, show err)
+
+                            let evt = AuditEvent
+                                    { eventTime = now
+                                    , severity  = sev
+                                    , component = "Consumer"
+                                    , message   = msg
+                                    }
+
+                            atomically $ do
+                                st <- readTVar stateVar
+                                writeTBQueue (auditQueue st) evt
+
+                            -- Also print to stderr for immediate feedback during dev
+                            hPutStrLn stderr $ "[Consumer] Error: " ++ show err
 
                     -- 6. Update State
                     -- Link Kalman State & Gating Logic (P1-003)
@@ -116,9 +143,6 @@ consumerLoop controlFp stateVar = withForeignPtr controlFp $ \controlPtr -> do
                     unless (null frames) $ do
                         forM_ frames $ \frame ->
                             processFrame stateVar (points frame)
-
-                    when (bytesConsumed > 0 && null frames) $
-                        putStrLn "[Consumer] Warning: Skipped garbage data (Magic Word search or Parse Error)."
 
                     -- 7. Update Read Offset
                     -- In a real ring buffer, we advance readOff by how much we processed.
@@ -180,14 +204,14 @@ skipToMagicWord = go 0
 
 
 -- | Parses a stream of bytes into RadarFrames.
--- Returns the frames, the total bytes consumed, and a boolean indicating corruption.
+-- Returns the frames, the total bytes consumed, and an optional error.
 -- Uses incremental parsing to handle partial frames safely.
 -- Optimization: Pre-scans for Magic Word to skip garbage efficiently.
-parseStream :: BL.ByteString -> ([RadarFrame], Int64, Bool)
+parseStream :: BL.ByteString -> ([RadarFrame], Int64, Maybe HardwareError)
 parseStream input =
     let (skipped, cleanInput) = skipToMagicWord input
-        (frames, consumed, corrupted) = parseLoop (G.runGetIncremental getRadarFrame) (BL.toChunks cleanInput) 0 []
-    in (frames, skipped + consumed, corrupted)
+        (frames, consumed, err) = parseLoop (G.runGetIncremental getRadarFrame) (BL.toChunks cleanInput) 0 []
+    in (frames, skipped + consumed, err)
   where
     parseLoop decoder chunks totalConsumed acc =
         case decoder of
@@ -204,10 +228,17 @@ parseStream input =
                    then parseLoop nextDecoder chunks newTotal (frame : acc)
                    else parseLoop (G.pushChunk nextDecoder unused) chunks newTotal (frame : acc)
 
-            G.Fail _ consumed _ ->
-                -- Failure. Consume bytes and stop.
+            G.Fail _ consumed msg ->
+                -- Map failure message to HardwareError
                 let advanced = if consumed == 0 then 1 else consumed
-                in (reverse acc, totalConsumed + advanced, True)
+                    hwError = case msg of
+                        "TLV Too Large" -> DoSAttackDetected
+                        "Invalid TLV Length (Partial Header)" -> InvalidLength -- Or TlvError
+                        "Invalid Packet Length" -> InvalidLength
+                        "Too many TLVs" -> TlvError "Too many TLVs"
+                        "Invalid Magic Word" -> MagicWordMissing
+                        _ -> ParseError msg
+                in (reverse acc, totalConsumed + advanced, Just hwError)
 
             G.Partial k ->
                 case chunks of
@@ -215,7 +246,7 @@ parseStream input =
                         -- No more chunks. We are partial.
                         -- Do NOT consume the partial bytes.
                         -- Return only what was fully consumed.
-                        (reverse acc, totalConsumed, False)
+                        (reverse acc, totalConsumed, Nothing)
                     (c:cs) ->
                         -- Feed next chunk
                         parseLoop (k (Just c)) cs totalConsumed acc
