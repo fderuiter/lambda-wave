@@ -28,6 +28,7 @@ import Control.Concurrent (forkOS, ThreadId, threadDelay)
 import Control.Monad (when)
 import System.IO (hPutStrLn, stderr)
 import FFI.RingBuffer.Types (RingBufferControl)
+import Control.DeepSeq (NFData(..))
 
 -- | Result of a read operation from the Ring Buffer / UART
 data ReadResult
@@ -35,6 +36,11 @@ data ReadResult
     | ReadFull        -- ^ Buffer full or no data available (retry later)
     | ReadError       -- ^ Critical failure (e.g. UART error)
     deriving (Show, Eq)
+
+instance NFData ReadResult where
+    rnf (ReadSuccess n) = rnf n
+    rnf ReadFull        = ()
+    rnf ReadError       = ()
 
 -- | Creates a ring buffer of the specified size.
 -- Corresponds to C++ `RingBufferControl* create_ring_buffer(size_t size)`
