@@ -66,9 +66,13 @@ testFindsMagicWord = do
         input = garbage <> payload
         (frames, consumed, err) = parseStream input
 
+    let pointCheck = case frames of
+            (f:_) -> length (Data.Types.points f) == 2
+            _ -> False
+
     assert "Finds Magic Word" $
         length frames == 1 &&
-        length (Data.Types.points (head frames)) == 2 &&
+        pointCheck &&
         consumed == (BL.length garbage + BL.length payload) &&
         err == Nothing
 
@@ -160,10 +164,14 @@ testUnknownTLVs = do
         payload = P.runPut (magic >> hdr >> unknownTlv >> validTlv)
         (frames, consumed, err) = parseStream payload
 
+    let pointCheck = case frames of
+            (f:_) -> length (Data.Types.points f) == 1
+            _ -> False
+
     assert "Skips Unknown TLVs" $
         err == Nothing &&
         length frames == 1 &&
-        length (Data.Types.points (head frames)) == 1 &&
+        pointCheck &&
         consumed == 80
 
 testDoSAttack :: IO ()
