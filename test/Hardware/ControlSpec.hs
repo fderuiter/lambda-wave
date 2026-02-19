@@ -3,6 +3,7 @@ module Hardware.ControlSpec (spec) where
 
 import Test.Hspec
 import Hardware.Control
+import Hardware.Types (HardwareError(..))
 
 spec :: Spec
 spec = do
@@ -34,5 +35,6 @@ spec = do
             let missingConfig = "non_existent_config.cfg"
             result <- configureSensor missingConfig "/dev/null"
             case result of
-                Left msg -> msg `shouldContain` "Failed to read config file"
+                Left (ConfigurationFailed msg) -> msg `shouldContain` "Failed to read config file"
+                Left err -> expectationFailure $ "Unexpected error type: " ++ show err
                 Right _  -> expectationFailure "Should have failed with missing config file"
