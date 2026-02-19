@@ -6,6 +6,7 @@ import Control.Concurrent.STM
 import Control.Concurrent (threadDelay)
 import System.IO
 import Control.Monad (when)
+import Data.Functor ((<&>))
 import Data.Time.HighRes (getMonotonicTimeNS)
 import qualified Data.Map.Strict as Map
 import Control.Exception (try, IOException)
@@ -69,13 +70,12 @@ processEvents stateVar queue h = go
         -- We use registerDelay to wake up the transaction if no event arrives.
         delayVar <- registerDelay 100_000 -- 100ms
 
-        mEvt <- atomically $ do
-            (readTBQueue queue >>= return . Just)
+        mEvt <- atomically $
+            (readTBQueue queue <&> Just)
             `orElse`
-            (do
+            do
                 expired <- readTVar delayVar
                 if expired then return Nothing else retry
-            )
 
         case mEvt of
             Nothing -> go -- Timeout, loop back to update heartbeat
