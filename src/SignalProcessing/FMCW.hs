@@ -63,7 +63,7 @@ chirpZTransform params x_n = map calculateBin [0 .. cztSteps params - 1]
             freq_k = f0 + b_zoom * (k_idx / k_max)
 
             -- Phase term per sample: -i * 2 * pi * (freq_k / f_s)
-            theta_step = (-2 * pi * freq_k) / fs
+            theta_step = ((-2) * pi * freq_k) / fs
 
             -- Summation: sum(x[n] * exp(i * theta_step * n))
             summation acc _ [] = acc
