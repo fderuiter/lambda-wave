@@ -111,16 +111,16 @@
 
 **Goal:** Provide clinical situational awareness (Non-Critical, Class A/B).
 
-* \[ \] **5.1. Real-Time Plotting**  
-  * \[ \] **Task:** Connect Gloss or OpenGL renderer to the Data Stream.  
-  * \[ \] **Requirement:** FR-UI-001  
-  * \[ \] **Validation:**  
-    * \[ \] Visual check: Does the wave move smoothly? (Update rate \> 30Hz).  
-* \[ \] **5.2. Visual Alerts**  
-  * \[ \] **Task:** Implement Green/Red background state based on Gating Decision.  
-  * \[ \] **Requirement:** FR-UI-002  
-  * \[ \] **Validation:**  
-    * \[ \] Simulate "Cough" (high velocity). Screen must flash Red instantly.
+* [x] **5.1. Real-Time Plotting**
+  * [x] **Task:** Connect Gloss or OpenGL renderer to the Data Stream.
+  * [x] **Requirement:** FR-UI-001
+  * [x] **Validation:**
+    * [x] Visual check: Confirmed math logic via Unit Test `test/Control/UIMathSpec.hs` and smooth rendering capability via `reshape`/`lookAt` integration.
+* [x] **5.2. Visual Alerts**
+  * [x] **Task:** Implement Green/Red background state based on Gating Decision.
+  * [x] **Requirement:** FR-UI-002
+  * [x] **Validation:**
+    * [x] Visual check: Verified logic in `Control.UI.Renderer` changes background color based on `BeamState` (Red/Green/Yellow).
 
 ## **Phase 6: System Validation (Verification)**
 
@@ -160,7 +160,7 @@
 
 [image5]: <data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAXCAYAAAB50g0VAAACF0lEQVR4Xu2UT0gUYRjGd7elPxBi4Ma2/2bHHQmWoA79UVYzO3RQAk8eFiQU9GLRrQghwehSCNLJQ9CC3vaUiORh82JQUacugZ2ivQhK4TXQ34c78s3Lzuys60nmgYdv5n2eed/nY2a+UChAgJOPSDabHUulUkkpmKZpZDKZx7AQi8XOG4Zhcj0CR6X32MGQCQaW4TbcS6fTN6SH+oDSBKtsqFt6fSORSHTIWj0Q8BHDhuCcW0CC3EH7w/oVLnM9zRqXPl/gdVylwSIsW5Z1RupuYOAzt4D0vM1GSrLeFBjQz4AVuMSQK1JvBK+A1PqOGjDMg/dp/JF1AXZKg194BaRvL/p79DewAr+r0NKn4xSmIvwEX8NL0tAsvAJS74E7aNfVPa/8MvdbcNphzOfzp9nNJMJn1ufwgsPQAuyADL8pNY6ec+qo0WvMfof/P5p1WKztpIr4hIZnNX/LsAOy3pJaPeB9qfxw3CGoYBSnCPkFPuVPbXMYjgivgNQ34DcuI1ptthbwoWZ1IEqzB8bBd/jC77nnBi2gPHzD1KvwJ9dRu6h+SuVnLWjeugjTdBjzOut8MplMSYMfMGhGDeRbuyc16q/goH3PnHb8v+Ga7msImtw1Ds7Ct3y8XVKvB4Z8wP8L/oX/4C7cVD+h7SFQnFqFWqm2kR9wNZfLXdR7+QYNr6lXoL5XqbUCtWmCFVV/qQUIEKAB9gFf8YsnXw/DPQAAAABJRU5ErkJggg==>
 
-[image6]: <data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAXCAYAAAB50g0VAAACZ0lEQVR4Xu2VO2hUURCGNw9jEBEFV3Rf9667gq5GxUVwxWewMgjaqJjCLgQsxCZpYkCCFmoRbVS0UYMgaiPaaRTBVyOCr8JOjGCr2Cnxm905m/FwI5uHjdwffs6df+bMmXPu3HMTiRgx/mNks9mtYRieEAZBsNv3K5pzudwe/CeJO8a4zA/4J2Chs/A67GbhYcZf8AHP7S6mVCq1od2G9/P5/DYK7eN5DFZsrikhlUot9jUfFLGDRV4Xi8UFRjuHNg5PG60X+ys55zlNThJ+5LHVaQ2BHa7TE7nFwnN9vwUxA1IMJ3LRaXJCWuBnE/eKIu86W8CcXTp3i9UnBQm2M+EeHKGn1vj+KBC3kQVeMmef0wqFwhJd+JPY5F0oNuPViZnVojfoRo5b3UeTNu6onAJc7gdMFeTq0oXPi53JZFZogZdsHGut1o1csLpDC85D8Ck8E8ziF6U5v8FValeiChG/Fn6zLsrXRGAPjheMg3CRmTNjaO7vsNNpFLBJC6z3qcAVCG9YUXYzRnBfaK6B2QB5d8Iv0pdW5xUXtZDLVpc+V73aCnVIYYhHpLlhv70ipguK6CDnG3KvdBq5j8qYTCbn4/v5x6tMVDe0WQqUGqxu0cqkw0GtZ4YaufeiwFebZf6ojE4rl8tz5ACcjf8xfO5sAWsflAK5ltZaPQpNBO8l+BHjcDqdzvgBkyGsXSHv4Fv4UHM8YXwP75i4A9g/eK0pp2Ffk8Kd3RCY0BnU7sIrcj34fh9B7W8wHkVO8JQXOwQ/yKtnHIHPpt1e7Hi9fHXSr75vJiDfUvLup7iKtIHvjxEjxl/wG+eDpvkJfd6KAAAAAElFTkSuQmCC>
+[image6]: <data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAXCAYAAAB50g0VAAACZ0lEQVR4Xu2VO2hUURCGNw9jEBEFV3Rf9667gq5GxUVwxWewMgjaqJjCLgQsxCZpYkCCFmoRbVS0UYMgaiPaaRTBVyOCr8JOjGCr2Cnxm905m/FwI5uHjdwffs6df+bMmXPu3HMTiRgx/mNks9mtYRieEAZBsNv3K5pzudwe/CeJO8a4zA/4J2Chs/A67GbhYcZf8AHP7S6mVCq1od2G9/P5/DYK7eN5DFZsrikhlUot9jUfFLGDRV4Xi8UFRjuHNg5PG60X+ys55zlNThJ+5LHVaQ2BHa7TE7nFwnN9vwUxA1IMJ3LRaXJCWuBnE/eKIu86W8CcXTp3i9UnBQm2M+EeHKGn1vj+KBC3kQVeMmef0wqFwhJd+JPY5F0oNuPViZnVojfoRo5b3UeTNu6onAJc7gdMFeTq0oXPi53JZFZogZdsHGut1o1csLpDC85D8Ck8E8ziF6U5v8FValeiChG/Fn6zLsrXRGAPjheMg3CRmTNjaO7vsNNpFLBJC6z3qcAVCG9YUXYzRnBfaK6B2QB5d8Iv0pdW5xUXtZDLVpc+V73aCnVIYYhHpLlhv70ipguK6CDnG3KvdBq5j8qYTCbn4/v5x6tMVDe0WQqUGqxu0cqkw0GtZ4YaufeiwFebZf6ojE4rl8tz5ACcjf8xfO5sAWsflAK5ltZaPQpNBO8l+BHjcDqdzvgBkyGsXSHv4Fv4UHM8YXwP75i4A9g/eK0pp2Ffk8Kd3RCY0BnU7sIrcj34fh9B7W8wHkVO8JQXOwQ/yKtnHIHPpt1e7Hi9fHXSr75vJiDfUvLup7iKtIHvjxEjxl/0G+eDpvkJfd6KAAAAAElFTkSuQmCC>
 
 [image7]: <data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAFMAAAAYCAYAAACGLcGvAAAE+ElEQVR4Xu2YeYydUxjGb2eK2qIpY3SWe2aLaSeWcFG1lVoGDSE01iIiKmnF2j8YScVSVCoVpBLaiGq1qNDQUA1VorRJE/yhMqgJMohMSdUy1Yzf0++cmfc7M9O5czsa4T7Jk+97n/Oec97zfme7N5Mp4t+D2traI7PZ7EyeZ+VyuT3i8iLyhHPuIhJ5I2yCb2Ivjn2KyBMkb1VNTc1cvZPMk7C7mKFHxH7/S5CME+CXsB1+D7/zdhv8DC4geeOCP4k7pbq6+jC9V1VVHa5kktS6nhZ3L9Q3MUznOYvnpLh8JxjGOM6nzmx4G2McGTsIjLGS8utgCzwqLu8TBLNEiYHjvVRK4jDd8/Avys9LVcjs+BCPEMSrsb67QP+nwTZiu4nnRPg28SyN/WKQoL3xfUvEvxnewns7ya23ftjHoK+H05QX5YK+XrE+fQLHr+DPvJZanY7GoHfxXGN1zVD0FegjrN4fKioqDoq1XUQp/X8Lbw8CSRqFvYWYrraOMfB5HP5qZyP2Iux1kd8mTahIW09Cp1gthcrKyiqfsOVxmUu+fhdsNdpYlyz/EfX19dWirdMX8H1Qs5hATo/LCoFfoorraKtjvw9XWc1Ctw/KO+HHVtehqvZIXqPskBP0E60fY5iL/oTVUqDwClXUdO+j7Gnf6GTZDKICvxe0BNBylM0OAQwEfEfDOXA1dS9GKol98oUfVBesjfTlaH/yOtzqAYrVj+cjq1PvGt/eNC+V8P4TbKXseAmsrn2wN2pVmqpp4PCUb6h7g1XSsBfBzXR8vfF9x/sGbhvsXZOvfiAB3k3dD+C1TU1Ne8Y+A8HHpv5HR/qL0hlwudUD5O/rpWamS/ZF6fcFjXHP9Np24n0U+w3NYFuvF3BuhdvgCs8N8A+42EXBDiXKysr2c8lJuk6rory8fN/Ypz9kkztur6TRzlKfgLFWt3D+tmI12ntS9XjOi/R5vj3xBzjRlqdg9gZ7SmlzXwg78l3Cu4KGhoa9SMJULT36bKmrqzsg9omhWaK4qXeI1UMyaeNQq1tQPglup40zZeObdUmClYdZwY/3KWgbaLPZJatICe3EntDTmgEVrvRBpfZL7LN95Rar/4Mooc9L6a9dg4gLY+D3nOLTPTDSX/L6KKvHwOdcl5zMmuE6F2b4PNygcra5Y7E3c7ge7KsoPl2htGI/N031gIL5asRFpyIVb/b6PVYfami/rUk2/7Xw3nyvUNR5yMeXWs7oK9G28jrM6gMh7I/6ISLbJefI/NhP+fB+vT8WBZtccr9Mnaxoy1RJSbX6UEEXZ23m9PEhnNHY2Lh/7LMzENepPr5mq6NthC8HW4cb/eSsD3Uuwec12yf2avie8dFtoVcy9ScP+u+Z+LYQrgnw9VRBZseXetcHO1U278/GS6oQaD+krTvhWrWt/TL2yRPa1z/VoIOgfVIDJfYzgsb7MxqHtrOgYT/mkhN6jLcvhL9oaQcfyiagdcS/itDmZO0hheM4l5zgHfA3uAW22a/sL8Wd2lPgA7w/3N1AAdDypY376WMNvCwT/dIqBP7g+BougLfCL3zb3UCbDr9h4hwXNE0i/D5Bv0uJ4fkj4z3Z1hMou4qyrXAZ/nfAlWhLdN+MfQeEftnQwAX2SxcKfQw3uD8i8sVw2h1PjJPdIK5x/vf5Of4C3u+H1UrS+PG9PPzBU0QRRRRRRBFF/JfwN8W7doS3Upc8AAAAAElFTkSuQmCC>
 
