@@ -2,10 +2,11 @@
 module Control.UIMathSpec (spec) where
 
 import Test.Hspec
-import Control.Monad (unless)
+-- Removed unused Control.Monad (unless)
 
 -- | Mock types for verification
-data Point3D = Point3D { px :: Double, py :: Double, pz :: Double, v :: Double, snr :: Double }
+-- Removed unused fields 'v' and 'snr' to satisfy -Wunused-top-binds
+data Point3D = Point3D { px :: Double, py :: Double, pz :: Double }
 data Vertex3 a = Vertex3 a a a deriving (Show, Eq)
 
 -- | Pure transformation logic to verify
@@ -26,8 +27,8 @@ magnitude :: Vector3 -> Double
 magnitude (x, y, z) = sqrt (x*x + y*y + z*z)
 
 normalize :: Vector3 -> Vector3
-normalize v@(x, y, z) =
-    let m = magnitude v
+normalize vec@(x, y, z) = -- Renamed 'v' to 'vec' to avoid shadowing
+    let m = magnitude vec
     in if m == 0 then (0,0,0) else (x/m, y/m, z/m)
 
 sub :: Vector3 -> Vector3 -> Vector3
@@ -49,16 +50,16 @@ spec :: Spec
 spec = describe "Control.UI.Math" $ do
     describe "Coordinate Transformation (mm to meters)" $ do
         it "correctly scales and converts Point3D to Vertex3" $ do
-            let p1 = Point3D 1000 2000 3000 0 0
+            let p1 = Point3D 1000 2000 3000
             let v1 = transformPoint p1
             let expected = Vertex3 1.0 2.0 3.0
             v1 `shouldBe` expected
 
         it "handles negative coordinates" $ do
-            let p = Point3D (-500) (-100) 0 0 0
-            let v = transformPoint p
+            let p = Point3D (-500) (-100) 0
+            let vec = transformPoint p -- Renamed 'v' to 'vec'
             let expected = Vertex3 (-0.5) (-0.1) 0.0
-            v `shouldBe` expected
+            vec `shouldBe` expected
 
     describe "Camera Projection Logic (FOV Coverage)" $ do
         it "ensures a target at (0, 0, 2m) is centered in view from (0, 2, -2)" $ do
