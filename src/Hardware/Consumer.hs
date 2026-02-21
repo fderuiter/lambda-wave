@@ -103,6 +103,13 @@ consumerLoop controlFp stateVar = withForeignPtr controlFp $ \controlPtr -> do
 
                     let (frames, bytesConsumed, maybeErr) = parseStream lbs
 
+                    -- Check for Busy Loop Condition:
+                    -- If we consumed 0 bytes and have no error, it means we are stuck
+                    -- (likely due to a partial magic word at the end of the buffer).
+                    -- We MUST sleep to allow the producer to add more data.
+                    unless (bytesConsumed > 0 || maybeErr /= Nothing) $
+                        threadDelay 1000 -- 1ms
+
                     -- 5. Force Evaluation (Critical for FFI Safety)
                     -- We must ensure all data is copied out of the Ring Buffer (via Lazy ByteString)
                     -- BEFORE we update the read_offset. If we don't, the producer might overwrite
