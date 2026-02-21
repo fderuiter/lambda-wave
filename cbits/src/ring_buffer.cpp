@@ -94,9 +94,13 @@ ssize_t read_from_uart(RingBufferControl* handle, int uart_fd) {
 
     if (bytes_read == -1) {
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
-            return 0;
+            return -3; // EAGAIN / Would Block
         }
-        return -1;
+        return -1; // Critical Error
+    }
+
+    if (bytes_read == 0) {
+        return -2; // EOF (Device Disconnected)
     }
 
     if (bytes_read > 0) {

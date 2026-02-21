@@ -33,13 +33,15 @@ import Control.DeepSeq (NFData(..))
 -- | Result of a read operation from the Ring Buffer / UART
 data ReadResult
     = ReadSuccess Int -- ^ Bytes successfully read and written to buffer
-    | ReadFull        -- ^ Buffer full or no data available (retry later)
+    | ReadBusy        -- ^ Buffer full or no data available (retry later)
+    | ReadEOF         -- ^ Device Disconnected (End of Stream)
     | ReadError       -- ^ Critical failure (e.g. UART error)
     deriving (Show, Eq)
 
 instance NFData ReadResult where
     rnf (ReadSuccess n) = rnf n
-    rnf ReadFull        = ()
+    rnf ReadBusy        = ()
+    rnf ReadEOF         = ()
     rnf ReadError       = ()
 
 -- | Creates a ring buffer of the specified size.
@@ -89,11 +91,12 @@ createRingBuffer size = mask_ $ do
 readFromUart :: ForeignPtr RingBufferControl -> Fd -> IO ReadResult
 readFromUart fp (Fd fd) = withForeignPtr fp $ \ptr -> do
     bytesRead <- c_read_from_uart ptr fd
-    return $ if bytesRead > 0
-             then ReadSuccess (fromIntegral bytesRead)
-             else if bytesRead == 0
-                  then ReadFull
-                  else ReadError
+    return $ case bytesRead of
+        n | n > 0 -> ReadSuccess (fromIntegral n)
+        0         -> ReadBusy -- Buffer Logic Full
+        -2        -> ReadEOF  -- EOF (Device Disconnected)
+        -3        -> ReadBusy -- EAGAIN (No Data)
+        _         -> ReadError
 
 -- | Wrapper for get_write_offset
 getWriteOffset :: ForeignPtr RingBufferControl -> IO Int
@@ -114,8 +117,8 @@ withRingBuffer size action = do
     action fp
 
 -- | Ingestion Thread: Spawns a bound thread that loops calling read_from_uart.
--- The loop terminates if read_from_uart returns ReadError.
--- If it returns ReadFull (Full or EOF), we pause briefly and retry.
+-- The loop terminates if read_from_uart returns ReadError or ReadEOF.
+-- If it returns ReadBusy (Full or No Data), we pause briefly and retry.
 -- Accepts ForeignPtr to ensure the buffer is not freed while thread is running.
 ingestionLoop :: ForeignPtr RingBufferControl -> Fd -> IO ThreadId
 ingestionLoop fp fd = forkOS loop
@@ -128,8 +131,11 @@ ingestionLoop fp fd = forkOS loop
     safeLoop = do
         result <- readFromUart fp fd
         case result of
-            ReadError -> hPutStrLn stderr "CRITICAL FAILURE: readFromUart returned negative value. Ingestion thread TERMINATING. System may be unresponsive."
-            ReadFull -> do
+            ReadError -> hPutStrLn stderr "CRITICAL FAILURE: readFromUart returned error. Ingestion thread TERMINATING."
+            ReadEOF -> do
+                hPutStrLn stderr "Ingestion Thread: Device Disconnected (EOF). Terminating."
+                return ()
+            ReadBusy -> do
                 threadDelay 1000 -- 1ms pause if full or empty
                 loop
             ReadSuccess _ -> loop
