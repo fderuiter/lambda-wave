@@ -38,3 +38,8 @@
 **Context:** Reproducible builds are critical for regulatory compliance (IEC 62304). Using mutable tags like `haskell:9.4.7` introduces the risk of upstream changes altering the build environment without traceability.
 **Decision:** Pinned the Docker base image to a specific SHA-256 digest (`sha256:9cf51a75...`).
 **Compliance Impact:** Satisfies P1-002 (Docker Image Determinism) and ensures the SOUP (Software of Unknown Provenance) environment is immutable and auditable.
+
+## 2026-02-23 - [Simulated Phantom Study]
+**Context:** Phase 6.1 (Phantom Study) requires validation against a physical QUASAR/CIRS motion phantom. The current development environment lacks access to physical hardware and phantoms.
+**Decision:** Implemented a simulated phantom study (`test/SignalProcessing/PhantomStudy.hs`) using synthetic data generation. The simulation generates a ground truth sine wave (10mm amplitude, 4s period) with added noise and verifies the system's tracking accuracy via Pearson Correlation (> 0.98).
+**Compliance Impact:** Satisfies PR-ACC-01 (Accuracy Verification) within the constraints of the software-in-the-loop environment. Physical validation remains a requirement for final device release.
