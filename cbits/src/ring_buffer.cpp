@@ -83,7 +83,7 @@ ssize_t read_from_uart(RingBufferControl* handle, int uart_fd) {
 
     if (available_contiguous == 0) {
         // Buffer is full (or at least the contiguous block is full/blocked).
-        return 0;
+        return -4; // READ_BUFFER_FULL
     }
 
     // Attempt to read as much as possible up to the safe limit
@@ -94,9 +94,13 @@ ssize_t read_from_uart(RingBufferControl* handle, int uart_fd) {
 
     if (bytes_read == -1) {
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
-            return 0;
+            return -3; // READ_BUSY / EAGAIN
         }
-        return -1;
+        return -1; // READ_ERROR
+    }
+
+    if (bytes_read == 0) {
+        return -2; // READ_EOF (UART Disconnected)
     }
 
     if (bytes_read > 0) {

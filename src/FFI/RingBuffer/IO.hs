@@ -33,13 +33,17 @@ import Control.DeepSeq (NFData(..))
 -- | Result of a read operation from the Ring Buffer / UART
 data ReadResult
     = ReadSuccess Int -- ^ Bytes successfully read and written to buffer
-    | ReadFull        -- ^ Buffer full or no data available (retry later)
+    | ReadFull        -- ^ Buffer full (retry later)
+    | ReadBusy        -- ^ No data available (retry later)
+    | ReadEOF         -- ^ UART Disconnected (critical)
     | ReadError       -- ^ Critical failure (e.g. UART error)
     deriving (Show, Eq)
 
 instance NFData ReadResult where
     rnf (ReadSuccess n) = rnf n
     rnf ReadFull        = ()
+    rnf ReadBusy        = ()
+    rnf ReadEOF         = ()
     rnf ReadError       = ()
 
 -- | Creates a ring buffer of the specified size.
@@ -89,11 +93,12 @@ createRingBuffer size = mask_ $ do
 readFromUart :: ForeignPtr RingBufferControl -> Fd -> IO ReadResult
 readFromUart fp (Fd fd) = withForeignPtr fp $ \ptr -> do
     bytesRead <- c_read_from_uart ptr fd
-    return $ if bytesRead > 0
-             then ReadSuccess (fromIntegral bytesRead)
-             else if bytesRead == 0
-                  then ReadFull
-                  else ReadError
+    return $ case bytesRead of
+        n | n > 0  -> ReadSuccess (fromIntegral n)
+        -4         -> ReadFull -- Buffer Full
+        -3         -> ReadBusy -- EAGAIN
+        -2         -> ReadEOF  -- EOF
+        _          -> ReadError -- -1 or other
 
 -- | Wrapper for get_write_offset
 getWriteOffset :: ForeignPtr RingBufferControl -> IO Int
@@ -128,8 +133,12 @@ ingestionLoop fp fd = forkOS loop
     safeLoop = do
         result <- readFromUart fp fd
         case result of
-            ReadError -> hPutStrLn stderr "CRITICAL FAILURE: readFromUart returned negative value. Ingestion thread TERMINATING. System may be unresponsive."
+            ReadError -> hPutStrLn stderr "CRITICAL FAILURE: readFromUart returned error. Ingestion thread TERMINATING."
+            ReadEOF   -> hPutStrLn stderr "CRITICAL FAILURE: UART Disconnected (EOF). Ingestion thread TERMINATING."
             ReadFull -> do
-                threadDelay 1000 -- 1ms pause if full or empty
+                threadDelay 1000 -- 1ms pause if full
+                loop
+            ReadBusy -> do
+                threadDelay 1000 -- 1ms pause if busy/empty
                 loop
             ReadSuccess _ -> loop
