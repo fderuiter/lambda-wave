@@ -56,7 +56,10 @@ main = do
 
     -- Initialize Kalman Filter
     -- We start with the first noisy measurement
-    let (_, z0) = head measurements
+    z0 <- case measurements of
+            ((_, val):_) -> return val
+            [] -> error "Measurements list is empty"
+
     let config = KalmanConfig { procNoise = 2.0, measNoise = 1.0 }
     let startState = initKalman z0 config
 
