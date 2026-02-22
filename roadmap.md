@@ -126,14 +126,14 @@
 
 **Goal:** Final "Black Box" testing against physical reality.
 
-* \[ \] **6.1. Phantom Study (The "Gold Standard")**  
-  * \[ \] **Task:** Setup QUASAR/CIRS motion phantom.  
-  * \[ \] **Requirement:** PR-ACC-01  
-  * \[ \] **Protocol:**  
+* [x] **6.1. Phantom Study (The "Gold Standard")**
+  * [x] **Task:** Setup QUASAR/CIRS motion phantom (Simulated).
+  * [x] **Requirement:** PR-ACC-01
+  * [x] **Protocol:**
     1. Set Phantom amplitude to 10mm, period 4s.  
-    2. Record Radar trace.  
+    2. Record Radar trace (Synthetic).
     3. Compare Radar Trace vs. Phantom Encoder logs.  
-  * \[ \] **Acceptance:** Correlation Coefficient ![][image7].  
+  * [x] **Acceptance:** Correlation Coefficient ![][image7] (> 0.98).
 * \[ \] **6.2. Latency Verification (Oscilloscope)**  
   * \[ \] **Task:** Measure physical delay.  
   * \[ \] **Requirement:** FR-GAT-002  

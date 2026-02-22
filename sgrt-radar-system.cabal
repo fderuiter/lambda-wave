@@ -297,3 +297,16 @@ test-suite ui-math-check
       sgrt-radar-system
     , base
     , hspec
+
+test-suite phantom-study
+  import: common-options
+  type: exitcode-stdio-1.0
+  main-is: PhantomStudy.hs
+  other-modules:
+      Paths_sgrt_radar_system
+  hs-source-dirs:
+      test/SignalProcessing
+  ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
+  build-depends:
+      sgrt-radar-system
+    , base
