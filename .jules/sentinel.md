@@ -55,3 +55,7 @@ The `Storable` instance for `TimeSpec` hardcoded offsets (`0` and `8`) and size 
 ## 2026-06-03 - [Risk Level: MEDIUM] **Vector:** src/FFI/RingBuffer/IO.hs **Hazard:** Unchecked FFI Return Code
 The `readFromUart` function returned an `Int`, relying on implicit conventions (-1 for error, 0 for full/retry) which are prone to misuse. If a caller treated 0 as success (bytes read), it would process garbage or loop infinitely.
 **Fix:** Changed return type to `ReadResult` ADT (`ReadSuccess Int | ReadFull | ReadError`). Updated `ingestionLoop` to explicitly handle each case, ensuring robust error handling and flow control.
+
+## 2026-06-05 - [Risk Level: HIGH] **Vector:** cbits/src/ring_buffer.cpp **Hazard:** IO Ambiguity / Livelock
+The `read_from_uart` function returned `0` for both "Buffer Full" and "EOF" (Device Disconnected). The Haskell ingestion loop treated `0` as "Buffer Full" and retried indefinitely. If the UART device was disconnected, the system would enter an infinite busy-wait loop (Livelock), consuming CPU and failing to report the disconnection.
+**Fix:** Modified `ring_buffer.cpp` to return `-2` for Buffer Full. Updated `FFI.RingBuffer.IO.hs` to define `ReadResult` with `ReadEOF` (mapped to 0) and `ReadFull` (mapped to -2), allowing explicit handling of EOF by terminating the ingestion thread.

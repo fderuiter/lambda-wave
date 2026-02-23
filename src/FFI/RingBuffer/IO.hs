@@ -35,12 +35,14 @@ data ReadResult
     = ReadSuccess Int -- ^ Bytes successfully read and written to buffer
     | ReadFull        -- ^ Buffer full or no data available (retry later)
     | ReadError       -- ^ Critical failure (e.g. UART error)
+    | ReadEOF         -- ^ End of File (Device disconnected or stream closed)
     deriving (Show, Eq)
 
 instance NFData ReadResult where
     rnf (ReadSuccess n) = rnf n
     rnf ReadFull        = ()
     rnf ReadError       = ()
+    rnf ReadEOF         = ()
 
 -- | Creates a ring buffer of the specified size.
 -- Corresponds to C++ `RingBufferControl* create_ring_buffer(size_t size)`
@@ -86,14 +88,20 @@ createRingBuffer size = mask_ $ do
 
 -- | Wrapper for read_from_uart
 -- Enforces type-safe error handling via ReadResult ADT.
+-- C++ Return Codes:
+-- > 0 : Bytes Read (Success)
+--   0 : EOF (Device Disconnected)
+--  -1 : Error (Critical Failure)
+--  -2 : Buffer Full or EAGAIN (Retry)
 readFromUart :: ForeignPtr RingBufferControl -> Fd -> IO ReadResult
 readFromUart fp (Fd fd) = withForeignPtr fp $ \ptr -> do
     bytesRead <- c_read_from_uart ptr fd
-    return $ if bytesRead > 0
-             then ReadSuccess (fromIntegral bytesRead)
-             else if bytesRead == 0
-                  then ReadFull
-                  else ReadError
+    return $ case bytesRead of
+        0 -> ReadEOF
+        -2 -> ReadFull
+        -1 -> ReadError
+        n | n > 0 -> ReadSuccess (fromIntegral n)
+        _ -> ReadError -- Unexpected negative value
 
 -- | Wrapper for get_write_offset
 getWriteOffset :: ForeignPtr RingBufferControl -> IO Int
@@ -128,7 +136,8 @@ ingestionLoop fp fd = forkOS loop
     safeLoop = do
         result <- readFromUart fp fd
         case result of
-            ReadError -> hPutStrLn stderr "CRITICAL FAILURE: readFromUart returned negative value. Ingestion thread TERMINATING. System may be unresponsive."
+            ReadError -> hPutStrLn stderr "CRITICAL FAILURE: readFromUart returned Error. Ingestion thread TERMINATING."
+            ReadEOF -> hPutStrLn stderr "WARNING: readFromUart returned EOF. Device disconnected? Ingestion thread TERMINATING."
             ReadFull -> do
                 threadDelay 1000 -- 1ms pause if full or empty
                 loop
