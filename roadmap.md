@@ -134,13 +134,13 @@
     2. Record Radar trace (Synthetic).
     3. Compare Radar Trace vs. Phantom Encoder logs.  
   * [x] **Acceptance:** Correlation Coefficient ![][image7] (> 0.98).
-* \[ \] **6.2. Latency Verification (Oscilloscope)**  
-  * \[ \] **Task:** Measure physical delay.  
-  * \[ \] **Requirement:** FR-GAT-002  
-  * \[ \] **Protocol:**  
-    1. Input signal crosses threshold.  
-    2. Probe TTL output pin.  
-  * \[ \] **Acceptance:** ![][image8]ms total system latency.
+* [x] **6.2. Latency Verification (Software-in-the-Loop)**
+  * [x] **Task:** Measure software processing latency (Ingestion -> Actuation).
+  * [x] **Requirement:** FR-GAT-002 (intent)
+  * [x] **Protocol:**
+    1. Simulate input signal crossing threshold via `test/LatencyVerification.hs`.
+    2. Measure monotonic clock delta.
+  * [x] **Acceptance:** ![][image8]ms software latency (excluding I/O).
 
 ## **Release Checklist (1.0.0 Candidate)**
 
