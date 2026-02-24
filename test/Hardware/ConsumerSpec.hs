@@ -62,7 +62,9 @@ spec = do
             (frames, consumed, err) = parseStream input
 
         length frames `shouldBe` 1
-        let frame = head frames
+        let frame = case frames of
+                      (f:_) -> f
+                      [] -> error "Test failed: Expected at least one frame"
         length (Data.Types.points frame) `shouldBe` 2
         -- consumed should be length garbage + length payload
         consumed `shouldBe` (BL.length garbage + BL.length payload)
@@ -208,7 +210,9 @@ spec = do
 
         err `shouldBe` Nothing
         length frames `shouldBe` 1
-        let frame = head frames
+        let frame = case frames of
+                      (f:_) -> f
+                      [] -> error "Test failed: Expected at least one frame"
         length (Data.Types.points frame) `shouldBe` 1
         consumed `shouldBe` 80
 
