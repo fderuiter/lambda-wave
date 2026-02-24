@@ -2,13 +2,8 @@
 module Main (main) where
 
 import Control.Exception (try, SomeException)
-import Control.Monad (when)
 import Data.Time.HighRes (getMonotonicTimeNS, getRealTimeNS)
 import FFI.RingBuffer.IO (createRingBuffer, getWriteOffset)
-import FFI.RingBuffer.Types (RingBufferControl(..))
-import Foreign.Storable
-import Foreign.Ptr
-import Foreign.Marshal.Alloc (alloca)
 import System.Exit (exitFailure, exitSuccess)
 
 main :: IO ()
@@ -33,55 +28,42 @@ main = do
 
     -- 2. Test RingBuffer Creation (Invalid Size)
     putStrLn "[Test] RingBuffer Invalid Size..."
-    res <- try $ createRingBuffer 0
+    res <- createRingBuffer 0
     case res of
-        Left e -> putStrLn $ "PASS: createRingBuffer(0) threw exception: " ++ show (e :: SomeException)
+        Left err -> putStrLn $ "PASS: createRingBuffer(0) returned error: " ++ err
         Right _ -> do
              putStrLn "FAIL: createRingBuffer(0) succeeded unexpectedly"
              exitFailure
 
-    res2 <- try $ createRingBuffer (-100)
+    res2 <- createRingBuffer (-100)
     case res2 of
-        Left e -> putStrLn $ "PASS: createRingBuffer(-100) threw exception: " ++ show (e :: SomeException)
+        Left err -> putStrLn $ "PASS: createRingBuffer(-100) returned error: " ++ err
         Right _ -> do
              putStrLn "FAIL: createRingBuffer(-100) succeeded unexpectedly"
              exitFailure
 
     -- 3. Test RingBuffer Creation (Valid)
     putStrLn "[Test] RingBuffer Valid Creation & FFI..."
-    fp <- createRingBuffer 1024
-    putStrLn "PASS: createRingBuffer(1024) succeeded"
+    res3 <- createRingBuffer 1024
+    case res3 of
+        Left err -> do
+            putStrLn $ "FAIL: createRingBuffer(1024) failed: " ++ err
+            exitFailure
+        Right fp -> do
+            putStrLn "PASS: createRingBuffer(1024) succeeded"
 
-    -- 4. Test FFI Interaction (getWriteOffset)
-    -- This verifies the pointer is valid and C++ object is alive.
-    offset <- getWriteOffset fp
-    if offset == 0
-       then putStrLn "PASS: Initial getWriteOffset is 0"
-       else do
-           putStrLn $ "FAIL: Initial getWriteOffset is " ++ show offset
-           exitFailure
+            -- 4. Test FFI Interaction (getWriteOffset)
+            -- This verifies the pointer is valid and C++ object is alive.
+            offset <- getWriteOffset fp
+            if offset == 0
+               then putStrLn "PASS: Initial getWriteOffset is 0"
+               else do
+                   putStrLn $ "FAIL: Initial getWriteOffset is " ++ show offset
+                   exitFailure
 
-    -- 5. Test RingBufferControl Layout
-    putStrLn "[Test] RingBufferControl Storable Layout..."
-    let actualSize = sizeOf (undefined :: RingBufferControl)
-    putStrLn $ "RingBufferControl Size: " ++ show actualSize ++ " (Expected: 64)"
-    when (actualSize /= 64) $ do
-        putStrLn "FAIL: Incorrect RingBufferControl size"
-        exitFailure
-
-    -- Verify poke/peek roundtrip
-    putStrLn "[Test] RingBufferControl Poke/Peek..."
-    alloca $ \ptr -> do
-        let rb = RingBufferControl 1 2 nullPtr 100
-        poke ptr rb
-        rb' <- peek ptr
-        if rb == rb'
-           then putStrLn "PASS: Roundtrip successful"
-           else do
-               putStrLn "FAIL: Roundtrip failed"
-               putStrLn $ "Original: " ++ show rb
-               putStrLn $ "Peeked: " ++ show rb'
-               exitFailure
+    -- 5. Storable Layout Tests Removed
+    -- RingBufferControl Storable instance was removed to prevent unsafe atomic access.
+    putStrLn "[Info] RingBufferControl Storable tests skipped (Safe by Design)."
 
     putStrLn "Sentinel Checks Complete. All Systems Safe."
     exitSuccess

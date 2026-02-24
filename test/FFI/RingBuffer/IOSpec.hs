@@ -10,24 +10,31 @@ import Foreign.Ptr (Ptr, castPtr)
 import Foreign.ForeignPtr (ForeignPtr, withForeignPtr)
 import System.Posix.IO (createPipe, closeFd, fdWriteBuf)
 import System.Posix.Types (Fd(..))
-import Foreign.Storable (peek, peekByteOff)
+import Foreign.Storable (peekByteOff)
 import Foreign.C.Types (CChar)
 import Control.Concurrent (threadDelay, killThread, forkIO, newEmptyMVar, takeMVar, putMVar)
 import Control.Monad (void)
 import Data.Word (Word8)
 import qualified Data.ByteString as B
 import Data.ByteString (ByteString)
+import Data.Either (isRight, isLeft)
 
 spec :: Spec
 spec = do
   describe "FFI.RingBuffer.IO" $ do
     it "createRingBuffer returns a valid pointer" $ do
-      ptr <- createRingBuffer 1024
-      getWriteOffset ptr `shouldReturn` 0
+      res <- createRingBuffer 1024
+      res `shouldSatisfy` isRight
+      case res of
+          Right ptr -> getWriteOffset ptr `shouldReturn` 0
+          Left _ -> fail "Expected Right"
 
-    it "createRingBuffer throws error for invalid size" $ do
-      createRingBuffer 0 `shouldThrow` anyException
-      createRingBuffer (-1) `shouldThrow` anyException
+    it "createRingBuffer returns error for invalid size" $ do
+      res0 <- createRingBuffer 0
+      res0 `shouldSatisfy` isLeft
+
+      res1 <- createRingBuffer (-1)
+      res1 `shouldSatisfy` isLeft
 
     it "ingestionLoop reads data from pipe into ring buffer" $ do
       (readFd, writeFd) <- createPipe
@@ -108,8 +115,8 @@ spec = do
 
 getBufferStart :: ForeignPtr RingBufferControl -> IO (Ptr CChar)
 getBufferStart fp = withForeignPtr fp $ \p -> do
-    ctrl <- peek p
-    return (bufferStart ctrl)
+    (start, _) <- peekStaticFields p
+    return start
 
 writeBytes :: Fd -> ByteString -> IO ()
 writeBytes fd bs = B.useAsCStringLen bs $ \(ptr, len) -> do

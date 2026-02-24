@@ -13,8 +13,8 @@ languages.
 
 ==== Memory layout
 
-The 'Storable' instance below dynamically calculates the layout to match
-the C++ @struct RingBufferControl@ across 32-bit and 64-bit architectures:
+The `RingBufferControl` layout must match the C++ @struct RingBufferControl@
+across 32-bit and 64-bit architectures:
 
 * Total size: 64 bytes (due to alignas(64))
 * Alignment: 64 bytes
@@ -48,6 +48,10 @@ layout can lead to data corruption and undefined behaviour.
 
 See also: @RingBuffer.h@ for the authoritative C++ definition and
 documentation of the ring buffer control structure and protocol.
+
+WARN: The `Storable` instance has been intentionally removed to prevent
+accidental non-atomic access to `writeOffset` and `readOffset`.
+Use `peekStaticFields` for safe access to immutable fields.
 -}
 module FFI.RingBuffer.Types (RingBufferControl(..), peekStaticFields) where
 
@@ -72,35 +76,6 @@ data RingBufferControl = RingBufferControl
     , bufferStart :: !(Ptr CChar)   -- ^ Start of the data buffer.
     , bufferSize  :: !CSize      -- ^ size_t; buffer capacity in bytes (non-atomic).
     } deriving (Show, Eq)
-
-instance Storable RingBufferControl where
-    sizeOf _ = 64
-    alignment _ = 64
-    -- WARNING: This peek reads atomic fields (writeOffset, readOffset) non-atomically.
-    -- DO NOT USE for concurrent access. Use getWriteOffset/setReadOffset from FFI.RingBuffer.IO.
-    peek ptr = do
-        let sizeT = sizeOf (undefined :: CSize)
-            -- Assumes strict packing which is standard for size_t/ptr
-            readOff = sizeT
-            startOff = readOff + sizeT
-            sizeOff = startOff + sizeOf (undefined :: Ptr CChar)
-
-        woff <- peekByteOff ptr 0
-        roff <- peekByteOff ptr readOff
-        start <- peekByteOff ptr startOff
-        sz <- peekByteOff ptr sizeOff
-        return $ RingBufferControl woff roff start sz
-
-    poke ptr (RingBufferControl woff roff start sz) = do
-        let sizeT = sizeOf (undefined :: CSize)
-            readOff = sizeT
-            startOff = readOff + sizeT
-            sizeOff = startOff + sizeOf (undefined :: Ptr CChar)
-
-        pokeByteOff ptr 0 woff
-        pokeByteOff ptr readOff roff
-        pokeByteOff ptr startOff start
-        pokeByteOff ptr sizeOff sz
 
 -- | Peeks only the static fields (bufferStart and bufferSize) from the control block.
 -- This avoids reading the atomic offsets (0 and 8/4) which are modified concurrently by C++,

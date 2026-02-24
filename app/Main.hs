@@ -68,9 +68,14 @@ main = do
 
     -- 1. Setup Ring Buffer (4MB)
     -- We use the new FFI.RingBuffer.IO directly.
-    -- NOW RETURNS ForeignPtr RingBufferControl.
+    -- NOW RETURNS Either String (ForeignPtr RingBufferControl).
     -- This ensures the buffer is automatically freed when all references (Main thread, consumer thread, ingestion thread) are gone.
-    ringBuffer <- RingBuffer.createRingBuffer (4 * 1024 * 1024)
+    rbResult <- RingBuffer.createRingBuffer (4 * 1024 * 1024)
+    ringBuffer <- case rbResult of
+        Left err -> do
+            putStrLn $ "FATAL: Failed to create Ring Buffer: " ++ err
+            exitFailure
+        Right rb -> return rb
 
     -- Open Serial Port using POSIX for the C++ driver
     -- We need to open it here to pass the Fd to the ingestion loop.

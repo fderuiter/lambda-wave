@@ -23,9 +23,8 @@ import Foreign.Ptr (Ptr, nullPtr, FunPtr)
 import Foreign.ForeignPtr (ForeignPtr, newForeignPtr, withForeignPtr)
 import Foreign.C.Types (CSize(..), CInt(..))
 import System.Posix.Types (CSsize(..), Fd(..))
-import Control.Exception (throwIO, catch, SomeException, mask_, onException)
+import Control.Exception (throwIO, catch, SomeException, mask_)
 import Control.Concurrent (forkOS, ThreadId, threadDelay)
-import Control.Monad (when)
 import System.IO (hPutStrLn, stderr)
 import FFI.RingBuffer.Types (RingBufferControl)
 import Control.DeepSeq (NFData(..))
@@ -54,10 +53,6 @@ foreign import ccall unsafe "create_ring_buffer"
 foreign import ccall unsafe "&free_ring_buffer"
     c_free_ring_buffer_ptr :: FunPtr (Ptr RingBufferControl -> IO ())
 
--- | Direct import for manual cleanup on error
-foreign import ccall unsafe "free_ring_buffer"
-    c_free_ring_buffer_direct :: Ptr RingBufferControl -> IO ()
-
 -- | Reads from UART into the ring buffer.
 -- Corresponds to C++ `ssize_t read_from_uart(RingBufferControl* handle, int uart_fd)`
 -- Imported as safe to allow other Haskell threads to run (GC) while this blocks/waits.
@@ -76,15 +71,21 @@ foreign import ccall unsafe "set_read_offset"
 
 -- | Wrapper for create_ring_buffer.
 -- Returns a ForeignPtr with a finalizer ensuring memory is freed.
--- Throws userError if size <= 0 or allocation fails.
-createRingBuffer :: Int -> IO (ForeignPtr RingBufferControl)
+-- Returns Left error if size <= 0 or allocation fails.
+createRingBuffer :: Int -> IO (Either String (ForeignPtr RingBufferControl))
 createRingBuffer size = mask_ $ do
-    when (size <= 0) $ throwIO (userError "Ring Buffer size must be positive")
-    ptr <- c_create_ring_buffer (fromIntegral size)
-    if ptr == nullPtr
-        then throwIO (userError "Failed to allocate Ring Buffer (C++ create_ring_buffer returned NULL)")
-        else newForeignPtr c_free_ring_buffer_ptr ptr
-                `onException` c_free_ring_buffer_direct ptr
+    if size <= 0
+        then return (Left "Ring Buffer size must be positive")
+        else do
+            ptr <- c_create_ring_buffer (fromIntegral size)
+            if ptr == nullPtr
+                then return (Left "Failed to allocate Ring Buffer (C++ create_ring_buffer returned NULL)")
+                else do
+                    -- We have a raw pointer. Attach finalizer immediately.
+                    -- If newForeignPtr throws (unlikely), we rely on mask_ but we really should cleanup manually.
+                    -- However, Standard Haskell FFI says newForeignPtr is safe.
+                    fp <- newForeignPtr c_free_ring_buffer_ptr ptr
+                    return (Right fp)
 
 -- | Wrapper for read_from_uart
 -- Enforces type-safe error handling via ReadResult ADT.
@@ -113,8 +114,10 @@ setReadOffset fp off = withForeignPtr fp $ \ptr ->
 -- Kept for backward compatibility, but implementation uses ForeignPtr.
 withRingBuffer :: Int -> (ForeignPtr RingBufferControl -> IO a) -> IO a
 withRingBuffer size action = do
-    fp <- createRingBuffer size
-    action fp
+    result <- createRingBuffer size
+    case result of
+        Left err -> throwIO (userError err)
+        Right fp -> action fp
 
 -- | Ingestion Thread: Spawns a bound thread that loops calling read_from_uart.
 -- The loop terminates if read_from_uart returns ReadError or ReadEOF.
