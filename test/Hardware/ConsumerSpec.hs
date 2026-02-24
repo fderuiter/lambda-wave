@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-name-shadowing -Wno-unused-local-binds -Wno-orphans #-}
 {-# LANGUAGE OverloadedStrings #-}
 module Hardware.ConsumerSpec (spec) where
 

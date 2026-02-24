@@ -123,10 +123,10 @@ test-suite sgrt-radar-system-test
       Hardware.ControlSpec
       System.RTSSpec
       SignalProcessing.FMCWSpec
+      Safety.WatchdogSpec
   hs-source-dirs:
       test
   ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
-  buildable: False
   build-depends:
       sgrt-radar-system
     , hspec
@@ -251,7 +251,6 @@ benchmark sgrt-radar-system-bench
   hs-source-dirs:
       bench
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
-  buildable: False
   build-depends:
       sgrt-radar-system
     , criterion
@@ -265,7 +264,6 @@ benchmark kalman-bench
   hs-source-dirs:
       bench
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
-  buildable: False
   build-depends:
       sgrt-radar-system
     , criterion

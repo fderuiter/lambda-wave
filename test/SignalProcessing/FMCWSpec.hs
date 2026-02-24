@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-type-defaults #-}
 module SignalProcessing.FMCWSpec (spec) where
 
 import Test.Hspec

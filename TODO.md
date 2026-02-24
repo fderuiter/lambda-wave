@@ -681,8 +681,8 @@ Required:
 - [x] P1-005: Integration Test with Sensor Replay
 
 Quality Gates:
-- [ ] All unit tests pass
-- [ ] All benchmarks meet latency requirements
+- [x] All unit tests pass
+- [x] All benchmarks meet latency requirements
 - [ ] Traceability matrix populated
 - [ ] SOUP analysis (GHC RTS) documented
 - [ ] Release binary signed

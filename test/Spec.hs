@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-type-defaults #-}
 import Test.Hspec
 import qualified RegressionSpec
 import qualified FFI.RingBuffer.TypesSpec

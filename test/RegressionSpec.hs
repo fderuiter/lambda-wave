@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-type-defaults #-}
 module RegressionSpec (spec) where
 
 import Test.Hspec

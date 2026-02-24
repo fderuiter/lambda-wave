@@ -7,3 +7,8 @@
 **Context:** Environment limitations prevent physical oscilloscope probing of the TTL output pin as required by Roadmap Item 6.2 (FR-GAT-002).
 **Decision:** Implemented a High-Assurance Software-in-the-Loop (SIL) verification script (`test/LatencyVerification.hs`) using nanosecond-precision timers (`CLOCK_MONOTONIC`) to validate the software processing path (Ingestion -> Kalman -> Gating -> Actuation). The measured 99th percentile latency was < 0.1ms, providing a safety margin of > 14ms for physical I/O overhead.
 **Compliance Impact:** Satisfies the intent of FR-GAT-002 via alternative verification method (IEC 62304 Section 5.7.4b - Testing).
+
+## 2026-02-24 - [Test Suite Verification & Enabling]
+**Context:** Release Checklist required "All Unit Tests Pass", but the main test suite `sgrt-radar-system-test` was disabled (`buildable: False`) and contained compilation errors due to strict `-Werror=type-defaults`.
+**Decision:** Enabled the test suite and benchmarks in `sgrt-radar-system.cabal`. Added `Safety.WatchdogSpec` to the suite. Resolved strict compilation errors by explicit type annotation and local warning suppression (`-Wno-type-defaults`, `-Wno-name-shadowing` for legacy tests).
+**Compliance Impact:** Satisfies IEC 62304 Section 5.7 (Software System Testing) and ensures Requirement PR-ACC-01/FR-GAT-002 verification.
