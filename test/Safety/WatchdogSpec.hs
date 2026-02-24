@@ -2,12 +2,7 @@
 module Safety.WatchdogSpec (spec) where
 
 import Test.Hspec
-import Control.Concurrent.STM
-import qualified Data.Map.Strict as Map
-import Data.Types
-import Data.Word (Word64)
-import Safety.Watchdog
-import Data.Time.HighRes (getMonotonicTimeNS)
+-- Removed unused imports
 
 -- We can't easily test 'exitFailure' without forking a process.
 -- Instead, we verify the logic if we could extract it.
@@ -36,4 +31,4 @@ spec = describe "Safety.Watchdog" $ do
         -- This is a placeholder. The real logic triggers exitFailure which kills the test runner.
         -- We cannot verify exitFailure in Hspec easily without a wrapper.
         -- Trusting the implementation for Class C (Manual Verification via Fault Injection).
-        1 `shouldBe` 1
+        (1 :: Int) `shouldBe` 1
