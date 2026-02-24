@@ -144,8 +144,8 @@
 
 ## **Release Checklist (1.0.0 Candidate)**
 
-* \[ \] All Unit Tests Pass.  
-* \[ \] All Benchmarks meet Latency requirements.  
+* [x] All Unit Tests Pass.
+* [x] All Benchmarks meet Latency requirements.
 * \[ \] Traceability Matrix populated.  
 * \[ \] SOUP Analysis (GHC RTS) documented.  
 * \[ \] Release binary signed.
