@@ -13,7 +13,6 @@ module FFI.RingBuffer.IO
     ( createRingBuffer
     , readFromUart
     , ReadResult(..)
-    , withRingBuffer -- Deprecated
     , ingestionLoop
     , getWriteOffset
     , setReadOffset
@@ -108,13 +107,6 @@ getWriteOffset fp = withForeignPtr fp $ \ptr -> do
 setReadOffset :: ForeignPtr RingBufferControl -> Int -> IO ()
 setReadOffset fp off = withForeignPtr fp $ \ptr ->
     c_set_read_offset ptr (fromIntegral off)
-
--- | Resource Management: Guarantees cleanup of the ring buffer.
--- Kept for backward compatibility, but implementation uses ForeignPtr.
-withRingBuffer :: Int -> (ForeignPtr RingBufferControl -> IO a) -> IO a
-withRingBuffer size action = do
-    fp <- createRingBuffer size
-    action fp
 
 -- | Ingestion Thread: Spawns a bound thread that loops calling read_from_uart.
 -- The loop terminates if read_from_uart returns ReadError or ReadEOF.
