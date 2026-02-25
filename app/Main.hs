@@ -6,11 +6,12 @@ import Control.Concurrent (forkOS, setNumCapabilities, threadDelay)
 import Control.Concurrent (forkIO)
 #endif
 import Control.Concurrent.STM
+import Control.Exception (try, IOException)
 import System.Environment (lookupEnv)
 import Data.Maybe (fromMaybe)
 import System.Posix.IO (openFd, OpenMode(..), defaultFileFlags, OpenFileFlags(..))
-import System.Posix.Files (ownerReadMode, ownerWriteMode, unionFileModes)
-import Control.Monad (forever)
+import System.Posix.Files (getFileStatus, isCharacterDevice, FileStatus)
+import Control.Monad (forever, unless)
 import qualified Data.Map.Strict as Map
 import System.Exit (exitFailure)
 
@@ -66,6 +67,21 @@ main = do
 
     putStrLn $ "Configuration: Sensor=" ++ sensorPort ++ ", CLI=" ++ cliPort
 
+    -- Security Validation: Ensure the ports are character devices
+    let validatePort name path = do
+            statusRes <- try (getFileStatus path) :: IO (Either IOException FileStatus)
+            case statusRes of
+                Left err -> do
+                    putStrLn $ "FATAL: Could not access " ++ name ++ " " ++ path ++ ": " ++ show err
+                    exitFailure
+                Right status ->
+                    unless (isCharacterDevice status) $ do
+                        putStrLn $ "FATAL: Security Violation - " ++ path ++ " (" ++ name ++ ") is not a character device."
+                        exitFailure
+
+    validatePort "sensor port" sensorPort
+    validatePort "CLI port" cliPort
+
     -- 1. Setup Ring Buffer (4MB)
     -- We use the new FFI.RingBuffer.IO directly.
     -- NOW RETURNS ForeignPtr RingBufferControl.
@@ -79,10 +95,10 @@ main = do
     -- The port is explicitly configured (baud rate 115200, raw mode) using 'configureRawSerial' below.
 
 #if MIN_VERSION_unix(2,8,0)
-    let flags = defaultFileFlags { nonBlock = False, creat = Just (ownerReadMode `unionFileModes` ownerWriteMode) }
+    let flags = defaultFileFlags { nonBlock = False, creat = Nothing }
     fd <- openFd sensorPort ReadWrite flags
 #else
-    fd <- openFd sensorPort ReadWrite (Just (ownerReadMode `unionFileModes` ownerWriteMode)) defaultFileFlags { nonBlock = False }
+    fd <- openFd sensorPort ReadWrite Nothing defaultFileFlags { nonBlock = False }
 #endif
 
     -- Configure Port (Raw Mode) to prevent data corruption
