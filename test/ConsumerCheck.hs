@@ -7,6 +7,7 @@ import Data.Word (Word32)
 import System.Timeout (timeout)
 import System.Exit (exitFailure, exitSuccess)
 import Hardware.Consumer (parseStream)
+import Data.Maybe (isJust)
 
 -- | Helper to build Word32LE
 word32LE :: Word32 -> BB.Builder
@@ -45,7 +46,7 @@ main = do
 
     putStrLn $ "Parser finished. Consumed: " ++ show consumed ++ ", Corrupted: " ++ show corrupted
 
-    if corrupted
+    if isJust corrupted
         then do
             putStrLn "PASS: Parser detected corruption and exited safely."
             exitSuccess

@@ -21,42 +21,39 @@ kConfig = KalmanConfig
     }
 
 -- | The main logic function called every frame
+-- Refactored to perform state update atomically (Single Transaction)
+-- to prevent Time-of-Check to Time-of-Use (TOCTOU) race conditions.
 processFrame :: TVar SystemState -> [Point3D] -> IO ()
 processFrame stateVar pts = do
     currTime <- getMonotonicTimeNS
 
-    -- 1. Read Previous State
-    oldSystemState <- readTVarIO stateVar
-    let lastTime = lastFrameTime oldSystemState
-        oldKState = kalmanState oldSystemState
-
-    -- 2. Calculate DT (Seconds)
-    let dtNS = if currTime > lastTime then currTime - lastTime else 0
-        dtSec = fromIntegral dtNS / 1_000_000_000.0
-
     -- 3. Measurement (Average Height)
-    -- Optimize: Strict fold
+    -- Optimize: Strict fold (Pure calculation)
     let (!totalHeight, !count) = foldl' (\(!sumH, !cnt) pt -> (sumH + pz pt, cnt + 1)) (0.0, 0 :: Int) pts
-
-    -- 4. Kalman Filter Step
-    -- Predict
-    let predState = predict dtSec kConfig oldKState
-
-    -- Update (only if we have measurements)
-    let newKState = if count > 0
-            then let meas = totalHeight / fromIntegral count
-                 in update meas kConfig predState
-            else predState -- Coasting (Dead Reckoning) if signal lost
 
     -- 6. Update System State & Resolve Final Beam State
     finalBeamState <- atomically $ do
+        -- 1. Read Current State (Atomic Read)
         s <- readTVar stateVar
-        let currentBeam = beamState s
+        let lastTime = lastFrameTime s
+            oldKState = kalmanState s
+            currentBeam = beamState s
+
+        -- 2. Calculate DT (Seconds)
+        let dtNS = if currTime > lastTime then currTime - lastTime else 0
+            dtSec = fromIntegral dtNS / 1_000_000_000.0
+
+        -- 4. Kalman Filter Step (Pure)
+        -- Predict
+        let predState = predict dtSec kConfig oldKState
+
+        -- Update (only if we have measurements)
+        let newKState = if count > 0
+                then let meas = totalHeight / fromIntegral count
+                     in update meas kConfig predState
+                else predState -- Coasting (Dead Reckoning) if signal lost
 
         -- 5. Gating Logic
-        -- Note: We calculate based on 'currentBeam' inside the transaction.
-        -- This ensures that if the UI thread released BeamHold or modified the state concurrently,
-        -- we use the fresh state as the basis for hysteresis and transition logic.
         let proposedBeamState = evaluateGating targetHeight gatingTolerance hysteresisMargin systemLatencyNS newKState currentBeam
 
         -- Safety: If current state is BeamHold, we MUST respect it.
@@ -71,7 +68,7 @@ processFrame stateVar pts = do
              let msg = "Beam State Changed: " ++ show currentBeam ++ " -> " ++ show resolvedBeamState
              writeTBQueue (auditQueue s) (AuditEvent currTime Info "Gating" msg)
 
-        -- Update State
+        -- Update State (Atomic Write)
         writeTVar stateVar $! s
             { currentPoints = pts
             , beamState = resolvedBeamState

@@ -13,9 +13,6 @@ languages.
 
 ==== Memory layout
 
-The 'Storable' instance below dynamically calculates the layout to match
-the C++ @struct RingBufferControl@ across 32-bit and 64-bit architectures:
-
 * Total size: 64 bytes (due to alignas(64))
 * Alignment: 64 bytes
 * Field offsets depend on `size_t` and pointer size:
@@ -51,7 +48,7 @@ documentation of the ring buffer control structure and protocol.
 -}
 module FFI.RingBuffer.Types (RingBufferControl(..), peekStaticFields) where
 
-import Foreign.Storable
+import Foreign.Storable (peekByteOff, sizeOf)
 import Foreign.Ptr
 import Foreign.C.Types
 
@@ -73,34 +70,10 @@ data RingBufferControl = RingBufferControl
     , bufferSize  :: !CSize      -- ^ size_t; buffer capacity in bytes (non-atomic).
     } deriving (Show, Eq)
 
-instance Storable RingBufferControl where
-    sizeOf _ = 64
-    alignment _ = 64
-    -- WARNING: This peek reads atomic fields (writeOffset, readOffset) non-atomically.
-    -- DO NOT USE for concurrent access. Use getWriteOffset/setReadOffset from FFI.RingBuffer.IO.
-    peek ptr = do
-        let sizeT = sizeOf (undefined :: CSize)
-            -- Assumes strict packing which is standard for size_t/ptr
-            readOff = sizeT
-            startOff = readOff + sizeT
-            sizeOff = startOff + sizeOf (undefined :: Ptr CChar)
-
-        woff <- peekByteOff ptr 0
-        roff <- peekByteOff ptr readOff
-        start <- peekByteOff ptr startOff
-        sz <- peekByteOff ptr sizeOff
-        return $ RingBufferControl woff roff start sz
-
-    poke ptr (RingBufferControl woff roff start sz) = do
-        let sizeT = sizeOf (undefined :: CSize)
-            readOff = sizeT
-            startOff = readOff + sizeT
-            sizeOff = startOff + sizeOf (undefined :: Ptr CChar)
-
-        pokeByteOff ptr 0 woff
-        pokeByteOff ptr readOff roff
-        pokeByteOff ptr startOff start
-        pokeByteOff ptr sizeOff sz
+-- NOTE: The 'Storable' instance has been REMOVED to prevent accidental use of 'poke'.
+-- 'poke' on this structure would perform a non-atomic byte-wise overwrite, which
+-- corrupts the internal state of the C++ 'std::atomic' fields (metadata/locks).
+-- Safe access is provided via 'peekStaticFields' and FFI functions in 'FFI.RingBuffer.IO'.
 
 -- | Peeks only the static fields (bufferStart and bufferSize) from the control block.
 -- This avoids reading the atomic offsets (0 and 8/4) which are modified concurrently by C++,
