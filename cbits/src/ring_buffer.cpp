@@ -9,16 +9,25 @@
 extern "C" {
 
 RingBufferControl* create_ring_buffer(size_t size) {
+    size_t page_size = sysconf(_SC_PAGESIZE);
     void* control_mem = nullptr;
-    if (posix_memalign(&control_mem, 64, sizeof(RingBufferControl)) != 0) {
+
+    // Use page_size alignment for control_mem to ensure efficient mlock
+    if (posix_memalign(&control_mem, page_size, sizeof(RingBufferControl)) != 0) {
+        return nullptr;
+    }
+
+    // Pin control memory to prevent paging
+    if (mlock(control_mem, sizeof(RingBufferControl)) != 0) {
+        free(control_mem);
         return nullptr;
     }
 
     void* buffer_mem = nullptr;
-    size_t page_size = sysconf(_SC_PAGESIZE);
 
     // Ensure the buffer memory is aligned to page size for efficient mlock usage
     if (posix_memalign(&buffer_mem, page_size, size) != 0) {
+        munlock(control_mem, sizeof(RingBufferControl));
         free(control_mem);
         return nullptr;
     }
@@ -26,6 +35,7 @@ RingBufferControl* create_ring_buffer(size_t size) {
     // Pin memory to prevent paging (critical for real-time performance)
     if (mlock(buffer_mem, size) != 0) {
         free(buffer_mem);
+        munlock(control_mem, sizeof(RingBufferControl));
         free(control_mem);
         return nullptr;
     }
@@ -46,6 +56,7 @@ void free_ring_buffer(RingBufferControl* handle) {
         munlock(handle->buffer_start, handle->buffer_size);
         free(handle->buffer_start);
         handle->~RingBufferControl();
+        munlock(handle, sizeof(RingBufferControl));
         free(handle);
     }
 }
