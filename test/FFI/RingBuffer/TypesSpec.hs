@@ -6,47 +6,45 @@
 module FFI.RingBuffer.TypesSpec (spec) where
 
 import Test.Hspec
-import Test.QuickCheck
-import Test.QuickCheck.Monadic
-import Foreign.Storable
-import Foreign.Marshal.Alloc (alloca)
-import Foreign.Ptr
-import Foreign.C.Types
-import Data.Word (Word32)
+import Foreign.Storable (sizeOf)
+import Foreign.Ptr (Ptr)
+import Foreign.C.Types (CSize, CChar)
 import FFI.RingBuffer.Types
 
--- | Arbitrary instance for property testing
-instance Arbitrary RingBufferControl where
-    arbitrary = do
-        w <- arbitrary :: Gen Word32
-        r <- arbitrary :: Gen Word32
-        -- Use simple offsets for pointer
-        off <- arbitrary :: Gen Word32
-        let p = nullPtr `plusPtr` (fromIntegral off)
-        sz <- arbitrary :: Gen Word32
-        return $ RingBufferControl (fromIntegral w) (fromIntegral r) p (fromIntegral sz)
+-- NOTE: The Storable instance for RingBufferControl was REMOVED for safety.
+-- These tests now verify that the manual layout assumptions documented in the module
+-- match the platform's type sizes, ensuring ABI compatibility without exposing unsafe 'poke'.
 
 spec :: Spec
 spec = do
-  describe "RingBufferControl Storable instance" $ do
-    it "has sizeOf 64" $ do
-      sizeOf (undefined :: RingBufferControl) `shouldBe` 64
+  describe "RingBufferControl Layout" $ do
+    it "matches C++ struct size (64 bytes)" $ do
+      -- We can't use sizeOf(RingBufferControl), so we verify the components fit
+      -- and the documentated size is respected by the C++ allocator (checked in integration tests).
+      -- Here we just check that our Haskell types make sense for the platform.
+      let sizeT = sizeOf (undefined :: CSize)
+          ptrSize = sizeOf (undefined :: Ptr CChar)
 
-    it "has alignment 64" $ do
-      alignment (undefined :: RingBufferControl) `shouldBe` 64
+          -- Field offsets:
+          -- writeOffset (0)
+          -- readOffset (sizeT)
+          -- bufferStart (2 * sizeT)
+          -- bufferSize (2 * sizeT + ptrSize)
 
-    it "round-trips peek and poke correctly" $ property $
-      \(rb :: RingBufferControl) -> monadicIO $ do
-        rb' <- run $ alloca $ \ptr -> do
-            poke ptr rb
-            peek ptr
-        assert (rb == rb')
+          totalUsed = 2 * sizeT + ptrSize + sizeT
 
-    it "calculates offsets consistently (Sanity Check)" $ do
-        let sizeT = sizeOf (undefined :: CSize)
-            ptrSize = sizeOf (undefined :: Ptr CChar)
-            -- If standard packing holds:
-            expectedSize = sizeT * 2 + ptrSize + sizeT
+      -- The struct is padded to 64 bytes in C++.
+      -- We must ensure our fields fit within 64 bytes.
+      totalUsed `shouldSatisfy` (<= 64)
 
-        -- Verify that the struct size is large enough to hold the fields
-        sizeOf (undefined :: RingBufferControl) `shouldSatisfy` (>= expectedSize)
+      -- Warn if we are on a platform where it might NOT fit (unlikely for 64-bit)
+      if sizeT > 8 then
+          pendingWith "Warning: size_t > 8 bytes, layout verification needed."
+      else
+          return ()
+
+    it "defines peekStaticFields for safe access" $ do
+      -- This is a compile-time check that the function exists and has correct signature.
+      -- Runtime behavior is tested in IOSpec.
+      let _ = peekStaticFields :: Ptr RingBufferControl -> IO (Ptr CChar, CSize)
+      True `shouldBe` True

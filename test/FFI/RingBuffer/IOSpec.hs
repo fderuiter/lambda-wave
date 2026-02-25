@@ -108,8 +108,8 @@ spec = do
 
 getBufferStart :: ForeignPtr RingBufferControl -> IO (Ptr CChar)
 getBufferStart fp = withForeignPtr fp $ \p -> do
-    ctrl <- peek p
-    return (bufferStart ctrl)
+    (start, _) <- peekStaticFields p
+    return start
 
 writeBytes :: Fd -> ByteString -> IO ()
 writeBytes fd bs = B.useAsCStringLen bs $ \(ptr, len) -> do
