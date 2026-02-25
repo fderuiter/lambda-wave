@@ -29,7 +29,67 @@ spec = describe "SignalProcessing.FMCW" $ do
             --   = 533333.33 Hz
             f_fft `shouldSatisfy` (\x -> approxEq x 533333.33 0.1)
 
-    -- CZT Test Removed (Stubbed)
+    describe "Chirp Z-Transform" $ do
+        let params = CZTParams { cztStartFreq = 0
+                               , cztBandwidth = 1000
+                               , cztSteps = 10
+                               , cztSampleRate = 1000
+                               }
+        it "detects a DC signal at the 0Hz bin" $ do
+            let n_samples = 10
+                input = replicate n_samples (1.0 :+ 0.0)
+                output = chirpZTransform params input
+                -- Bin 0 is 0Hz. Magnitude should be n_samples.
+                mag0 = magnitude (head output)
+            mag0 `shouldSatisfy` (\x -> approxEq x (fromIntegral n_samples) 1e-9)
+            -- Other bins should be zero as fs/n_samples = 100Hz, which matches bin spacing.
+            let otherMags = map magnitude (tail output)
+            all (< 1e-9) otherMags `shouldBe` True
+
+        it "detects a single tone at the expected bin" $ do
+            let fs = 1000.0
+                n_samples = 10
+                target_freq = 200.0
+                -- x[n] = exp(i * 2 * pi * target_freq * n / fs)
+                input = [ exp (0 :+ (2 * pi * target_freq * fromIntegral n / fs)) | n <- [0..n_samples-1] ]
+                czt_params = CZTParams { cztStartFreq = 0
+                                       , cztBandwidth = 1000
+                                       , cztSteps = 10
+                                       , cztSampleRate = fs
+                                       }
+                output = chirpZTransform czt_params input
+                mags = map magnitude output
+                -- Bins are at 0, 100, 200, 300...
+                -- target_freq 200 is bin index 2.
+                peakIdx = 2
+            mags !! peakIdx `shouldSatisfy` (\x -> approxEq x (fromIntegral n_samples) 1e-9)
+            -- Other bins should be zero because bins are multiples of fs/n_samples = 100Hz.
+            let others = [ mags !! i | i <- [0..9], i /= peakIdx ]
+            all (< 1e-9) others `shouldBe` True
+
+        it "maintains linearity property" $ do
+            let n_samples = 16
+                x = [ (fromIntegral n :+ (fromIntegral n * 0.5)) | n <- [0..n_samples-1] ]
+                y = [ (sin (fromIntegral n) :+ cos (fromIntegral n)) | n <- [0..n_samples-1] ]
+                a = 2.0 :+ 1.0
+                b = (-0.5) :+ 2.0
+                inputCombined = zipWith (+) (map (a*) x) (map (b*) y)
+
+                czt_params = CZTParams 0 500 8 1000
+                outputX = chirpZTransform czt_params x
+                outputY = chirpZTransform czt_params y
+                outputCombined = chirpZTransform czt_params inputCombined
+
+                expected = zipWith (+) (map (a*) outputX) (map (b*) outputY)
+                diffs = zipWith (-) outputCombined expected
+                maxDiff = maximum (map magnitude diffs)
+            maxDiff `shouldSatisfy` (< 1e-10)
+
+        it "returns zero for zero input" $ do
+            let input = replicate 10 (0.0 :+ 0.0)
+                output = chirpZTransform params input
+                mags = map magnitude output
+            all (== 0.0) mags `shouldBe` True
 
     describe "Phase Unwrapping (Requirement FR-DSP-002)" $ do
         it "correctly unwraps a synthetic wrapping signal" $ do
