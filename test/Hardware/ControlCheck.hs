@@ -3,8 +3,13 @@ module Main (main) where
 
 import Hardware.Control
 import Hardware.Types (HardwareError(..))
+import Data.Types (Severity(..))
 import System.Exit (exitFailure, exitSuccess)
 import Data.List (isInfixOf)
+
+-- | Dummy logger
+dummyLogger :: Severity -> String -> IO ()
+dummyLogger _ _ = return ()
 
 assert :: String -> Bool -> IO ()
 assert msg cond = do
@@ -37,11 +42,11 @@ main = do
 
     -- configureSensor Tests
     let missingConfig = "non_existent_config.cfg"
-    result <- configureSensor missingConfig "/dev/null"
+    result <- configureSensor dummyLogger missingConfig "/dev/null"
     case result of
-        Left (ConfigurationFailed msg) ->
-            assert "returns Left when config file does not exist" $
-                "Failed to read config file" `isInfixOf` msg
+        Left (FileError msg) ->
+            assert "returns Left FileError when config file does not exist" $
+                "does not exist" `isInfixOf` msg
         Left err -> do
             putStrLn $ "FAIL: Unexpected error type: " ++ show err
             exitFailure

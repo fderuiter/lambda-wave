@@ -122,13 +122,9 @@ consumerLoop controlFp stateVar = withForeignPtr controlFp $ \controlPtr -> do
                         Just err -> do
                             -- Construct AuditEvent
                             now <- getMonotonicTimeNS
-                            let (sev, msg) = case err of
-                                    DoSAttackDetected -> (Critical, "Potential DoS: TLV Too Large")
-                                    ParseError m -> (Warning, "Parse Error: " ++ m)
-                                    MagicWordMissing -> (Warning, "Sync Lost: Magic Word Missing")
-                                    InvalidLength -> (Warning, "Corrupt Packet: Invalid Length")
-                                    TlvError m -> (Warning, "TLV Error: " ++ m)
-                                    _ -> (Warning, show err)
+                            -- Use standardized logging from Hardware.Types
+                            let sev = toSeverity err
+                            let msg = logMessage err
 
                             let evt = AuditEvent
                                     { eventTime = now
@@ -142,7 +138,7 @@ consumerLoop controlFp stateVar = withForeignPtr controlFp $ \controlPtr -> do
                                 writeTBQueue (auditQueue st) evt
 
                             -- Also print to stderr for immediate feedback during dev
-                            hPutStrLn stderr $ "[Consumer] Error: " ++ show err
+                            hPutStrLn stderr $ "[Consumer] Error (" ++ show sev ++ "): " ++ msg
 
                     -- 6. Update State
                     -- Link Kalman State & Gating Logic (P1-003)

@@ -3,7 +3,12 @@ module Hardware.ControlSpec (spec) where
 
 import Test.Hspec
 import Hardware.Control
-import Hardware.Types (HardwareError(..))
+import Hardware.Types (HardwareError(..), isTransient)
+import Data.Types (Severity(..))
+
+-- | Dummy logger that does nothing
+dummyLogger :: Severity -> String -> IO ()
+dummyLogger _ _ = return ()
 
 spec :: Spec
 spec = do
@@ -31,10 +36,20 @@ spec = do
             parseConfig input `shouldBe` ["sensorStop", "flushCfg", "channelCfg 15 7 0"]
 
     describe "configureSensor" $ do
-        it "returns Left when config file does not exist" $ do
+        it "returns Left FileError when config file does not exist" $ do
             let missingConfig = "non_existent_config.cfg"
-            result <- configureSensor missingConfig "/dev/null"
+            result <- configureSensor dummyLogger missingConfig "/dev/null"
             case result of
-                Left (ConfigurationFailed msg) -> msg `shouldContain` "Failed to read config file"
+                Left (FileError msg) -> msg `shouldContain` "does not exist"
                 Left err -> expectationFailure $ "Unexpected error type: " ++ show err
                 Right _  -> expectationFailure "Should have failed with missing config file"
+
+    describe "Error Classification" $ do
+        it "identifies DeviceBusy as transient" $ do
+            isTransient DeviceBusy `shouldBe` True
+
+        it "identifies Timeout as transient" $ do
+            isTransient Timeout `shouldBe` True
+
+        it "identifies FileError as permanent" $ do
+            isTransient (FileError "foo") `shouldBe` False

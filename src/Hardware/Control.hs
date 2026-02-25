@@ -21,8 +21,10 @@ import Foreign.Ptr (castPtr)
 import Data.ByteString.Unsafe (unsafeUseAsCStringLen)
 import Foreign.C.Types (CInt(..))
 import Data.Config (uartBaudRate)
+import System.IO.Error (isDoesNotExistError, isPermissionError, isAlreadyInUseError)
 
-import Hardware.Types (HardwareError(..))
+import Hardware.Types (HardwareError(..), isTransient, toSeverity, logMessage)
+import Data.Types (Severity(..))
 
 -- | External C function to configure serial port (supports 921600 baud)
 foreign import ccall safe "configure_serial_port"
@@ -40,26 +42,37 @@ parseConfig = filter (not . null) . map clean . lines
     trim = dropWhileEnd isSpace . dropWhile isSpace
 
 -- | Attempts to configure the sensor with automatic retries on failure.
--- Retries 'attempts' times with a 100ms delay between attempts.
-configureSensorWithRetry :: Int -> FilePath -> FilePath -> IO (Either HardwareError ())
-configureSensorWithRetry attempts configPath portPath = go attempts
+-- Retries 'attempts' times with a 100ms delay between attempts for transient errors.
+--
+-- Complexity: O(N) where N is attempts (due to retries)
+configureSensorWithRetry :: (Severity -> String -> IO ()) -> Int -> FilePath -> FilePath -> IO (Either HardwareError ())
+configureSensorWithRetry logger attempts configPath portPath = go attempts
   where
     go n
-      | n <= 0 = return $ Left $ ConfigurationFailed "Max retries exceeded"
+      | n <= 0 = do
+          logger Critical "Max retries exceeded for sensor configuration"
+          return $ Left $ ConfigurationFailed "Max retries exceeded"
       | otherwise = do
-          res <- configureSensor configPath portPath
+          res <- configureSensor logger configPath portPath
           case res of
             Right () -> return $ Right ()
-            Left _ -> do
-                putStrLn $ "[Control] Retrying configuration (" ++ show (attempts - n + 1) ++ "/" ++ show attempts ++ ")..."
-                threadDelay 100000 -- 100ms wait
-                go (n - 1)
+            Left err -> do
+                if isTransient err
+                   then do
+                       logger Warning $ "[Control] Retrying configuration (" ++ show (attempts - n + 1) ++ "/" ++ show attempts ++ ") due to: " ++ logMessage err
+                       threadDelay 100000 -- 100ms wait
+                       go (n - 1)
+                   else do
+                       logger Critical $ "[Control] Permanent configuration failure: " ++ logMessage err
+                       return $ Left err
 
 -- | Configures the sensor by sending commands from the given config file.
 -- Returns typed 'HardwareError' on failure.
-configureSensor :: FilePath -> FilePath -> IO (Either HardwareError ())
-configureSensor configPath portPath = do
-    putStrLn $ "[Control] Configuring sensor on " ++ portPath ++ " with config " ++ configPath
+--
+-- Complexity: O(L) where L is length of config file (parsing) + O(C) serial overhead
+configureSensor :: (Severity -> String -> IO ()) -> FilePath -> FilePath -> IO (Either HardwareError ())
+configureSensor logger configPath portPath = do
+    logger Info $ "[Control] Configuring sensor on " ++ portPath ++ " with config " ++ configPath
 
     -- Read config file
     -- Use withFile to ensure the handle is closed deterministically.
@@ -69,7 +82,10 @@ configureSensor configPath portPath = do
         return c
 
     case fileContentResult of
-        Left ex -> return $ Left $ ConfigurationFailed $ "Failed to read config file: " ++ show (ex :: IOException)
+        Left ex -> do
+            let err = mapIOException ex
+            logger (toSeverity err) $ logMessage err
+            return $ Left err
         Right content -> do
             let commands = parseConfig content
 
@@ -100,11 +116,11 @@ configureSensor configPath portPath = do
 
             case result of
                 Left ex -> do
-                    let msg = "[Control] Configuration Failed: " ++ show (ex :: IOException)
-                    putStrLn msg
-                    return (Left $ ConfigurationFailed msg)
+                    let err = mapIOException ex
+                    logger (toSeverity err) $ "[Control] Configuration Failed: " ++ logMessage err
+                    return (Left err)
                 Right _ -> do
-                    putStrLn "[Control] Configuration Complete."
+                    logger Info "[Control] Configuration Complete."
                     return (Right ())
 
 configureConfigSerial :: Fd -> IO (Either HardwareError ())
@@ -120,6 +136,16 @@ configureConfigSerial fd = do
     case result of
         Left ex -> return $ Left $ ConfigurationFailed $ "Failed to configure config serial: " ++ show (ex :: IOException)
         Right () -> return $ Right ()
+
+-- | Maps IOExceptions to typed HardwareErrors
+--
+-- Complexity: O(1)
+mapIOException :: IOException -> HardwareError
+mapIOException ex
+    | isDoesNotExistError ex = FileError (show ex)
+    | isPermissionError ex   = DeviceBusy
+    | isAlreadyInUseError ex = DeviceBusy
+    | otherwise              = UnknownError (show ex)
 
 -- | Configures a file descriptor for Raw Serial communication (Data Port).
 -- Disables Canonical Mode (ICANON), Echo, Signals, and sets Baud Rate.
