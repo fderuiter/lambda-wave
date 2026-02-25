@@ -40,10 +40,12 @@ spec = describe "SignalProcessing.FMCW" $ do
                 input = replicate n_samples (1.0 :+ 0.0)
                 output = chirpZTransform params input
                 -- Bin 0 is 0Hz. Magnitude should be n_samples.
-                mag0 = magnitude (head output)
+                mag0 = case output of
+                        (x:_) -> magnitude x
+                        []    -> 0.0
             mag0 `shouldSatisfy` (\x -> approxEq x (fromIntegral n_samples) 1e-9)
             -- Other bins should be zero as fs/n_samples = 100Hz, which matches bin spacing.
-            let otherMags = map magnitude (tail output)
+            let otherMags = map magnitude (drop 1 output)
             all (< 1e-9) otherMags `shouldBe` True
 
         it "detects a single tone at the expected bin" $ do
@@ -61,10 +63,13 @@ spec = describe "SignalProcessing.FMCW" $ do
                 mags = map magnitude output
                 -- Bins are at 0, 100, 200, 300...
                 -- target_freq 200 is bin index 2.
-                peakIdx = 2
-            mags !! peakIdx `shouldSatisfy` (\x -> approxEq x (fromIntegral n_samples) 1e-9)
+                peakIdx = 2 :: Int
+                indexedMags = zip [0..] mags
+            case lookup peakIdx indexedMags of
+                Just m -> m `shouldSatisfy` (\x -> approxEq x (fromIntegral n_samples) 1e-9)
+                Nothing -> expectationFailure "Peak index not found in CZT output"
             -- Other bins should be zero because bins are multiples of fs/n_samples = 100Hz.
-            let others = [ mags !! i | i <- [0..9], i /= peakIdx ]
+            let others = [ m | (i, m) <- indexedMags, i /= peakIdx ]
             all (< 1e-9) others `shouldBe` True
 
         it "maintains linearity property" $ do
