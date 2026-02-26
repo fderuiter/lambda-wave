@@ -10,7 +10,7 @@ import Foreign.Ptr (Ptr, castPtr)
 import Foreign.ForeignPtr (ForeignPtr, withForeignPtr)
 import System.Posix.IO (createPipe, closeFd, fdWriteBuf)
 import System.Posix.Types (Fd(..))
-import Foreign.Storable (peek, peekByteOff)
+import Foreign.Storable (peekByteOff)
 import Foreign.C.Types (CChar)
 import Control.Concurrent (threadDelay, killThread, forkIO, newEmptyMVar, takeMVar, putMVar)
 import Control.Monad (void)
@@ -108,8 +108,8 @@ spec = do
 
 getBufferStart :: ForeignPtr RingBufferControl -> IO (Ptr CChar)
 getBufferStart fp = withForeignPtr fp $ \p -> do
-    ctrl <- peek p
-    return (bufferStart ctrl)
+    (start, _) <- peekStaticFields p
+    return start
 
 writeBytes :: Fd -> ByteString -> IO ()
 writeBytes fd bs = B.useAsCStringLen bs $ \(ptr, len) -> do

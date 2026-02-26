@@ -158,7 +158,9 @@ consumerLoop controlFp stateVar = withForeignPtr controlFp $ \controlPtr -> do
                     -- If we successfully parsed everything, we catch up to writeOff.
                     -- If we have partial data at the end, we should only advance by bytesConsumed.
 
-                    let newReadOff = (readOff + fromIntegral bytesConsumed) `rem` bufSize
+                    -- SENTINEL SAFETY CHECK: Ensure we don't pass negative offset
+                    let safeConsumed = max 0 (fromIntegral bytesConsumed)
+                    let newReadOff = (readOff + safeConsumed) `rem` bufSize
 
                     -- 8. Notify Producer (Release Semantics)
                     -- We must update the shared read offset so the producer can reclaim space
@@ -291,6 +293,10 @@ getRadarFrame = do
     -- We need to parse 'numTLVs'
     points <- parseTLVs (fromIntegral numTLVs)
 
+    -- SENTINEL SAFETY NOTE: We keep 'header' empty or must copy it.
+    -- Holding a ByteString pointing to the Ring Buffer (ForeignPtr) while
+    -- advancing read_offset allows the producer to overwrite the memory,
+    -- leading to race conditions if we read that ByteString later.
     return $ RadarFrame B.empty points -- Storing empty raw header for now to save space
 
 -- | Parse TLVs (Tail Recursive)

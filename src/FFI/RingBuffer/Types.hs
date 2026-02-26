@@ -73,34 +73,10 @@ data RingBufferControl = RingBufferControl
     , bufferSize  :: !CSize      -- ^ size_t; buffer capacity in bytes (non-atomic).
     } deriving (Show, Eq)
 
-instance Storable RingBufferControl where
-    sizeOf _ = 64
-    alignment _ = 64
-    -- WARNING: This peek reads atomic fields (writeOffset, readOffset) non-atomically.
-    -- DO NOT USE for concurrent access. Use getWriteOffset/setReadOffset from FFI.RingBuffer.IO.
-    peek ptr = do
-        let sizeT = sizeOf (undefined :: CSize)
-            -- Assumes strict packing which is standard for size_t/ptr
-            readOff = sizeT
-            startOff = readOff + sizeT
-            sizeOff = startOff + sizeOf (undefined :: Ptr CChar)
-
-        woff <- peekByteOff ptr 0
-        roff <- peekByteOff ptr readOff
-        start <- peekByteOff ptr startOff
-        sz <- peekByteOff ptr sizeOff
-        return $ RingBufferControl woff roff start sz
-
-    poke ptr (RingBufferControl woff roff start sz) = do
-        let sizeT = sizeOf (undefined :: CSize)
-            readOff = sizeT
-            startOff = readOff + sizeT
-            sizeOff = startOff + sizeOf (undefined :: Ptr CChar)
-
-        pokeByteOff ptr 0 woff
-        pokeByteOff ptr readOff roff
-        pokeByteOff ptr startOff start
-        pokeByteOff ptr sizeOff sz
+-- SENTINEL SAFETY EDIT: Storable instance removed to prevent race conditions.
+-- Access to atomic fields (writeOffset, readOffset) via peek/poke is unsafe.
+-- Use peekStaticFields for safe read-only access to constant fields.
+-- Layout verification is performed in test/FFI/RingBuffer/TypesSpec.hs via an orphan instance.
 
 -- | Peeks only the static fields (bufferStart and bufferSize) from the control block.
 -- This avoids reading the atomic offsets (0 and 8/4) which are modified concurrently by C++,

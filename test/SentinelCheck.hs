@@ -1,4 +1,6 @@
 {-# LANGUAGE ForeignFunctionInterface #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# OPTIONS_GHC -Wno-orphans #-}
 module Main (main) where
 
 import Control.Exception (try, SomeException)
@@ -8,8 +10,40 @@ import FFI.RingBuffer.IO (createRingBuffer, getWriteOffset)
 import FFI.RingBuffer.Types (RingBufferControl(..))
 import Foreign.Storable
 import Foreign.Ptr
+import Foreign.C.Types
 import Foreign.Marshal.Alloc (alloca)
 import System.Exit (exitFailure, exitSuccess)
+
+-- | Orphan Storable instance strictly for testing layout.
+-- This ensures that the binary layout matches expectations without exposing
+-- the dangerous Storable instance (which risks atomic race conditions) to production code.
+instance Storable RingBufferControl where
+    sizeOf _ = 64
+    alignment _ = 64
+
+    peek ptr = do
+        let sizeT = sizeOf (undefined :: CSize)
+            -- Assumes strict packing which is standard for size_t/ptr
+            readOff = sizeT
+            startOff = readOff + sizeT
+            sizeOff = startOff + sizeOf (undefined :: Ptr CChar)
+
+        woff <- peekByteOff ptr 0
+        roff <- peekByteOff ptr readOff
+        start <- peekByteOff ptr startOff
+        sz <- peekByteOff ptr sizeOff
+        return $ RingBufferControl woff roff start sz
+
+    poke ptr (RingBufferControl woff roff start sz) = do
+        let sizeT = sizeOf (undefined :: CSize)
+            readOff = sizeT
+            startOff = readOff + sizeT
+            sizeOff = startOff + sizeOf (undefined :: Ptr CChar)
+
+        pokeByteOff ptr 0 woff
+        pokeByteOff ptr readOff roff
+        pokeByteOff ptr startOff start
+        pokeByteOff ptr sizeOff sz
 
 main :: IO ()
 main = do
