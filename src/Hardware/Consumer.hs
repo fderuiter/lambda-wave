@@ -74,18 +74,43 @@ consumerLoop controlFp stateVar = withForeignPtr controlFp $ \controlPtr -> do
 
     putStrLn $ "[Consumer] Started. Buffer Size: " ++ show bufSize
 
+    initialTime <- getMonotonicTimeNS
+
     -- Internal Loop State
-    let loop readOff = do
+    -- readOff: Current read position in ring buffer
+    -- lastDataTime: Timestamp (ns) of last successful data consumption
+    let loop readOff lastDataTime = do
             -- 1. Poll Write Offset (Atomic Acquire)
             -- Pass the ForeignPtr to ensure safety, although we are already inside withForeignPtr,
             -- this double check is fine or we rely on the fact that controlFp is alive.
             writeOff <- getWriteOffset controlFp
 
+            currTime <- getMonotonicTimeNS
+
             if writeOff == readOff
                 then do
-                    -- No new data, sleep briefly to avoid busy wait
-                    threadDelay 1000 -- 1ms
-                    loop readOff
+                    -- No new data
+
+                    -- Check for Sensor Silence (Timeout > 1s)
+                    let diff = currTime - lastDataTime
+                    if diff > 1_000_000_000 then do -- 1 second
+                        atomically $ do
+                            st <- readTVar stateVar
+                            -- Log Warning
+                            writeTBQueue (auditQueue st) (AuditEvent currTime Warning "Consumer" "Sensor Silence Detected (>1s)")
+                            -- Force Beam Hold (Safety)
+                            writeTVar stateVar $ st { beamState = BeamHold }
+
+                        hPutStrLn stderr "[Consumer] WARNING: Sensor Silence Detected! Forcing Beam Hold."
+                        -- Reset timer slightly to avoid spamming logs every 1ms?
+                        -- Or just let it spam? Better to spam or use a flag.
+                        -- We update lastDataTime to now to silence it for another second.
+                        threadDelay 1000 -- 1ms
+                        loop readOff currTime
+                    else do
+                        -- Sleep briefly to avoid busy wait
+                        threadDelay 1000 -- 1ms
+                        loop readOff lastDataTime
                 else do
                     -- 2. Calculate available data
                     -- (available calculation omitted as currently unused, but good for debug)
@@ -167,9 +192,9 @@ consumerLoop controlFp stateVar = withForeignPtr controlFp $ \controlPtr -> do
                     -- (if it implements flow control) or just for monitoring.
                     setReadOffset controlFp newReadOff
 
-                    loop newReadOff
+                    loop newReadOff currTime
 
-    loop 0
+    loop 0 initialTime
 
 -- | Creates a Lazy ByteString from the ring buffer pointers.
 -- Handles the wrap-around case by creating 1 or 2 chunks.

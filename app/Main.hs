@@ -72,30 +72,10 @@ main = do
     -- This ensures the buffer is automatically freed when all references (Main thread, consumer thread, ingestion thread) are gone.
     ringBuffer <- RingBuffer.createRingBuffer (4 * 1024 * 1024)
 
-    -- Open Serial Port using POSIX for the C++ driver
-    -- We need to open it here to pass the Fd to the ingestion loop.
-    -- Ideally, we should use 'SP.openSerial' then get the Fd, but 'serialport' doesn't expose Fd easily.
-    -- So we use 'openFd' from 'unix'.
-    -- The port is explicitly configured (baud rate 115200, raw mode) using 'configureRawSerial' below.
-
-#if MIN_VERSION_unix(2,8,0)
-    let flags = defaultFileFlags { nonBlock = False, creat = Just (ownerReadMode `unionFileModes` ownerWriteMode) }
-    fd <- openFd sensorPort ReadWrite flags
-#else
-    fd <- openFd sensorPort ReadWrite (Just (ownerReadMode `unionFileModes` ownerWriteMode)) defaultFileFlags { nonBlock = False }
-#endif
-
-    -- Configure Port (Raw Mode) to prevent data corruption
-    res <- configureRawSerial fd
-    case res of
-        Left err -> do
-            putStrLn $ "FATAL: Failed to configure serial port: " ++ show err
-            exitFailure
-        Right () -> return ()
-
     -- 2. Hardware Ingestion (Dedicated Thread)
-    -- ingestionLoop accepts ForeignPtr
-    _ <- RingBuffer.ingestionLoop ringBuffer fd
+    -- ingestionLoop accepts ForeignPtr and the port path.
+    -- It manages opening, configuring, and reconnecting to the port.
+    _ <- RingBuffer.ingestionLoop ringBuffer sensorPort
 
     -- 3. Consumer/Parser (Dedicated Thread)
     _ <- forkOS $ consumerLoop ringBuffer systemState

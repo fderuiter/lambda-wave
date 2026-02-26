@@ -77,10 +77,10 @@ cabal haddock
 #### `FFI/` - Foreign Function Interface
 *   **`RingBuffer/`**: Haskell bindings to C++ ring buffer
     *   `Types.hs`: FFI type definitions
-    *   `IO.hs`: **Dragon 🐉**. Handles raw UART data ingestion using Pinned Memory
+    *   `IO.hs`: **Dragon 🐉**. Handles raw UART data ingestion and manages connection lifecycle (reconnection logic).
 
 #### `Hardware/` - Hardware Interaction Layer
-*   **`Consumer.hs`**: TLV packet parser, converts raw bytes into `RadarFrame` structures
+*   **`Consumer.hs`**: TLV packet parser. Detects **Sensor Silence** (>1s without data) and forces `BeamHold`.
 *   **`Control.hs`**: Sensor configuration via serial port
 
 #### `Safety/` - Safety-Critical Monitoring

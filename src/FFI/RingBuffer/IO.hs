@@ -22,12 +22,15 @@ import Foreign.Ptr (Ptr, nullPtr, FunPtr)
 import Foreign.ForeignPtr (ForeignPtr, newForeignPtr, withForeignPtr)
 import Foreign.C.Types (CSize(..), CInt(..))
 import System.Posix.Types (CSsize(..), Fd(..))
-import Control.Exception (throwIO, catch, SomeException, mask_, onException)
+import Control.Exception (throwIO, catch, SomeException, mask_, onException, try, IOException, bracket)
 import Control.Concurrent (forkOS, ThreadId, threadDelay)
 import Control.Monad (when)
 import System.IO (hPutStrLn, stderr)
+import System.Posix.IO (openFd, closeFd, OpenMode(..), defaultFileFlags, OpenFileFlags(..))
+import System.Posix.Files (ownerReadMode, ownerWriteMode, unionFileModes)
 import FFI.RingBuffer.Types (RingBufferControl)
 import Control.DeepSeq (NFData(..))
+import Hardware.Control (configureRawSerial)
 
 -- | Result of a read operation from the Ring Buffer / UART
 data ReadResult
@@ -119,26 +122,58 @@ setReadOffset fp off = do
     withForeignPtr fp $ \ptr ->
         c_set_read_offset ptr (fromIntegral off)
 
--- | Ingestion Thread: Spawns a bound thread that loops calling read_from_uart.
--- The loop terminates if read_from_uart returns ReadError or ReadEOF.
--- If it returns ReadBusy (Full or No Data), we pause briefly and retry.
--- Accepts ForeignPtr to ensure the buffer is not freed while thread is running.
-ingestionLoop :: ForeignPtr RingBufferControl -> Fd -> IO ThreadId
-ingestionLoop fp fd = forkOS loop
+-- | Ingestion Thread: Spawns a bound thread that manages the UART connection lifecycle.
+-- Automatically attempts to reconnect if the device is disconnected.
+ingestionLoop :: ForeignPtr RingBufferControl -> FilePath -> IO ThreadId
+ingestionLoop fp portPath = forkOS reconnectLoop
   where
-    loop = safeLoop `catch` \e -> do
-        hPutStrLn stderr $ "CRITICAL FAILURE in Ingestion Thread: " ++ show (e :: SomeException)
-        -- We terminate the thread, but at least we logged it.
-        return ()
+    reconnectLoop = do
+        putStrLn $ "[Ingestion] Connecting to " ++ portPath ++ "..."
 
-    safeLoop = do
+        -- Attempt to open the port
+        -- We use bracket to ensure FD is closed if an exception occurs during configuration
+        result <- try $ bracket
+#if MIN_VERSION_unix(2,8,0)
+            (openFd portPath ReadWrite defaultFileFlags { nonBlock = False, creat = Nothing })
+#else
+            (openFd portPath ReadWrite Nothing defaultFileFlags { nonBlock = False })
+#endif
+            closeFd
+            (\fd -> do
+                putStrLn "[Ingestion] Port Opened. Configuring..."
+                res <- configureRawSerial fd
+                case res of
+                    Left err -> do
+                        hPutStrLn stderr $ "[Ingestion] Configuration Failed: " ++ show err
+                        throwIO (userError $ show err) -- Trigget cleanup and retry
+                    Right () -> do
+                        putStrLn "[Ingestion] Ready. Starting Read Loop."
+                        readLoop fd
+            )
+
+        case result of
+            Left e -> do
+                hPutStrLn stderr $ "[Ingestion] Connection Failed: " ++ show (e :: IOException)
+                hPutStrLn stderr "[Ingestion] Retrying in 1s..."
+                threadDelay 1_000_000
+                reconnectLoop
+            Right () -> do
+                -- Should not be reached unless readLoop returns normally (which it shouldn't)
+                hPutStrLn stderr "[Ingestion] Read Loop exited unexpectedly. Reconnecting..."
+                threadDelay 1_000_000
+                reconnectLoop
+
+    readLoop fd = do
         result <- readFromUart fp fd
         case result of
-            ReadError -> hPutStrLn stderr "CRITICAL FAILURE: readFromUart returned error. Ingestion thread TERMINATING."
+            ReadError -> do
+                hPutStrLn stderr "[Ingestion] CRITICAL: readFromUart returned error."
+                -- Return to trigger reconnect
+                return ()
             ReadEOF -> do
-                hPutStrLn stderr "Ingestion Thread: Device Disconnected (EOF). Terminating."
+                hPutStrLn stderr "[Ingestion] Device Disconnected (EOF)."
                 return ()
             ReadBusy -> do
-                threadDelay 1000 -- 1ms pause if full or empty
-                loop
-            ReadSuccess _ -> loop
+                threadDelay 1000 -- 1ms pause
+                readLoop fd
+            ReadSuccess _ -> readLoop fd
