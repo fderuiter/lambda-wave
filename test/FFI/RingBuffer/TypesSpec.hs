@@ -15,6 +15,37 @@ import Foreign.C.Types
 import Data.Word (Word32)
 import FFI.RingBuffer.Types
 
+-- | Orphan Storable instance strictly for testing layout.
+-- This ensures that the binary layout matches expectations without exposing
+-- the dangerous Storable instance (which risks atomic race conditions) to production code.
+instance Storable RingBufferControl where
+    sizeOf _ = 64
+    alignment _ = 64
+
+    peek ptr = do
+        let sizeT = sizeOf (undefined :: CSize)
+            -- Assumes strict packing which is standard for size_t/ptr
+            readOff = sizeT
+            startOff = readOff + sizeT
+            sizeOff = startOff + sizeOf (undefined :: Ptr CChar)
+
+        woff <- peekByteOff ptr 0
+        roff <- peekByteOff ptr readOff
+        start <- peekByteOff ptr startOff
+        sz <- peekByteOff ptr sizeOff
+        return $ RingBufferControl woff roff start sz
+
+    poke ptr (RingBufferControl woff roff start sz) = do
+        let sizeT = sizeOf (undefined :: CSize)
+            readOff = sizeT
+            startOff = readOff + sizeT
+            sizeOff = startOff + sizeOf (undefined :: Ptr CChar)
+
+        pokeByteOff ptr 0 woff
+        pokeByteOff ptr readOff roff
+        pokeByteOff ptr startOff start
+        pokeByteOff ptr sizeOff sz
+
 -- | Arbitrary instance for property testing
 instance Arbitrary RingBufferControl where
     arbitrary = do

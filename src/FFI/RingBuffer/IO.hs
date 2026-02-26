@@ -87,12 +87,19 @@ createRingBuffer size = mask_ $ do
 
 -- | Wrapper for read_from_uart
 -- Enforces type-safe error handling via ReadResult ADT.
+--
+-- C++ Return Codes Mapping:
+-- * > 0 : Bytes successfully read
+-- * 0   : Buffer Logic Full (Busy) -> Mapped to ReadBusy
+-- * -2  : EOF (Device Disconnected) -> Mapped to ReadEOF
+-- * -3  : EAGAIN (No Data) -> Mapped to ReadBusy
+-- * -1  : Critical Error -> Mapped to ReadError
 readFromUart :: ForeignPtr RingBufferControl -> Fd -> IO ReadResult
 readFromUart fp (Fd fd) = withForeignPtr fp $ \ptr -> do
     bytesRead <- c_read_from_uart ptr fd
     return $ case bytesRead of
         n | n > 0 -> ReadSuccess (fromIntegral n)
-        0         -> ReadBusy -- Buffer Logic Full
+        0         -> ReadBusy -- Buffer Logic Full (verified in C++)
         -2        -> ReadEOF  -- EOF (Device Disconnected)
         -3        -> ReadBusy -- EAGAIN (No Data)
         _         -> ReadError
@@ -104,9 +111,13 @@ getWriteOffset fp = withForeignPtr fp $ \ptr -> do
     return (fromIntegral off)
 
 -- | Wrapper for set_read_offset
+-- SENTINEL SAFETY CHECK: Enforces non-negative offset to prevent buffer overflow attacks.
+-- A negative Int cast to CSize (unsigned) becomes a huge number, causing C++ logic errors.
 setReadOffset :: ForeignPtr RingBufferControl -> Int -> IO ()
-setReadOffset fp off = withForeignPtr fp $ \ptr ->
-    c_set_read_offset ptr (fromIntegral off)
+setReadOffset fp off = do
+    when (off < 0) $ throwIO (userError "Negative offset provided to setReadOffset")
+    withForeignPtr fp $ \ptr ->
+        c_set_read_offset ptr (fromIntegral off)
 
 -- | Ingestion Thread: Spawns a bound thread that loops calling read_from_uart.
 -- The loop terminates if read_from_uart returns ReadError or ReadEOF.
