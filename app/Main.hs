@@ -8,17 +8,13 @@ import Control.Concurrent (forkIO)
 import Control.Concurrent.STM
 import System.Environment (lookupEnv)
 import Data.Maybe (fromMaybe)
-import System.Posix.IO (openFd, OpenMode(..), defaultFileFlags, OpenFileFlags(..))
-import System.Posix.Files (ownerReadMode, ownerWriteMode, unionFileModes)
 import Control.Monad (forever)
 import qualified Data.Map.Strict as Map
-import System.Exit (exitFailure)
 
 import Data.Types
 import Data.Config (targetHeight)
 import SignalProcessing.Kalman (initKalman, KalmanConfig(..))
 import qualified FFI.RingBuffer.IO as RingBuffer
-import Hardware.Control (configureRawSerial)
 import Hardware.Consumer (consumerLoop)
 import Safety.Watchdog
 import Safety.Audit

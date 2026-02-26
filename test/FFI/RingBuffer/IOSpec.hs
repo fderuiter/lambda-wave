@@ -29,14 +29,14 @@ spec = do
       createRingBuffer 0 `shouldThrow` anyException
       createRingBuffer (-1) `shouldThrow` anyException
 
-    it "ingestionLoop reads data from pipe into ring buffer" $ do
+    it "ingestionWorker reads data from pipe into ring buffer" $ do
       (readFd, writeFd) <- createPipe
 
       ptr <- createRingBuffer 4096
       wOff <- getWriteOffset ptr
       wOff `shouldBe` 0
 
-      tid <- ingestionLoop ptr readFd
+      tid <- forkIO $ ingestionWorker ptr readFd
 
       let dataToWrite = "Hello, RingBuffer! This is a test string to verify ingestion...." :: ByteString
       writeBytes writeFd dataToWrite
@@ -59,7 +59,7 @@ spec = do
       let totalBytes = 1_000_000 :: Int
 
       ptr <- createRingBuffer bufSz
-      tid <- ingestionLoop ptr readFd
+      tid <- forkIO $ ingestionWorker ptr readFd
 
       producerDone <- newEmptyMVar
       _ <- forkIO $ do

@@ -162,17 +162,22 @@ ingestionLoop fp portPath = forkOS reconnectLoop
                 threadDelay 1_000_000
                 reconnectLoop
 
-    readLoop fd = do
-        result <- readFromUart fp fd
-        case result of
-            ReadError -> do
-                hPutStrLn stderr "[Ingestion] CRITICAL: readFromUart returned error."
-                -- Return to trigger reconnect
-                return ()
-            ReadEOF -> do
-                hPutStrLn stderr "[Ingestion] Device Disconnected (EOF)."
-                return ()
-            ReadBusy -> do
-                threadDelay 1000 -- 1ms pause
-                readLoop fd
-            ReadSuccess _ -> readLoop fd
+    readLoop = ingestionWorker fp
+
+-- | Reads from an already open file descriptor (e.g. from a pipe or serial port).
+-- Loops until ReadEOF or ReadError occurs.
+-- Exported for testing purposes.
+ingestionWorker :: ForeignPtr RingBufferControl -> Fd -> IO ()
+ingestionWorker fp fd = do
+    result <- readFromUart fp fd
+    case result of
+        ReadError -> do
+            hPutStrLn stderr "[Ingestion] CRITICAL: readFromUart returned error."
+            return ()
+        ReadEOF -> do
+            hPutStrLn stderr "[Ingestion] Device Disconnected (EOF)."
+            return ()
+        ReadBusy -> do
+            threadDelay 1000 -- 1ms pause
+            ingestionWorker fp fd
+        ReadSuccess _ -> ingestionWorker fp fd
