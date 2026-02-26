@@ -14,6 +14,7 @@ module FFI.RingBuffer.IO
     , readFromUart
     , ReadResult(..)
     , ingestionLoop
+    , ingestionWorker -- Exported for tests
     , getWriteOffset
     , setReadOffset
     ) where
