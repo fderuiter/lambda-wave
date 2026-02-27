@@ -6,7 +6,7 @@ module Main (main) where
 import Control.Exception (try, SomeException)
 import Control.Monad (when)
 import Data.Time.HighRes (getMonotonicTimeNS, getRealTimeNS)
-import FFI.RingBuffer.IO (createRingBuffer, getWriteOffset)
+import FFI.RingBuffer.IO (createRingBuffer, getWriteOffset, setReadOffset)
 import FFI.RingBuffer.Types (RingBufferControl(..))
 import Foreign.Storable
 import Foreign.Ptr
@@ -95,7 +95,35 @@ main = do
            putStrLn $ "FAIL: Initial getWriteOffset is " ++ show offset
            exitFailure
 
-    -- 5. Test RingBufferControl Layout
+    -- 5. Test setReadOffset Safety
+    putStrLn "[Test] setReadOffset Safety..."
+
+    -- Test Negative Offset
+    resNeg <- try $ setReadOffset fp (-1)
+    case resNeg of
+        Left (e :: SomeException) -> putStrLn $ "PASS: setReadOffset(-1) threw exception: " ++ show e
+        Right _ -> do
+             putStrLn "FAIL: setReadOffset(-1) succeeded unexpectedly"
+             exitFailure
+
+    -- Test Out of Bounds Offset (>= 1024)
+    resOOB <- try $ setReadOffset fp 1024
+    case resOOB of
+        Left (e :: SomeException) -> putStrLn $ "PASS: setReadOffset(1024) threw exception: " ++ show e
+        Right _ -> do
+             putStrLn "FAIL: setReadOffset(1024) succeeded unexpectedly"
+             exitFailure
+
+    -- Test Valid Offset
+    resValid <- try $ setReadOffset fp 100
+    case resValid of
+        Left (e :: SomeException) -> do
+             putStrLn $ "FAIL: setReadOffset(100) threw exception: " ++ show e
+             exitFailure
+        Right _ -> putStrLn "PASS: setReadOffset(100) succeeded"
+
+
+    -- 6. Test RingBufferControl Layout
     putStrLn "[Test] RingBufferControl Storable Layout..."
     let actualSize = sizeOf (undefined :: RingBufferControl)
     putStrLn $ "RingBufferControl Size: " ++ show actualSize ++ " (Expected: 64)"
