@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 module Hardware.Control (
     configureSensor,
     configureSensorWithRetry,
@@ -10,10 +11,10 @@ module Hardware.Control (
 import Control.Monad (forM_)
 import Control.Concurrent (threadDelay)
 import qualified Data.ByteString.Char8 as BC
-import Control.Exception (try, IOException, bracket, evaluate)
+import Control.Exception (try, IOException, bracket)
 import Data.Char (isSpace)
 import Data.List (dropWhileEnd)
-import System.IO (withFile, hGetContents, IOMode(ReadMode))
+import System.IO (withFile, IOMode(ReadMode))
 import System.Posix.Terminal
 import System.Posix.IO (openFd, closeFd, fdWriteBuf, OpenMode(ReadWrite), defaultFileFlags)
 import System.Posix.Types (Fd(..))
@@ -21,6 +22,7 @@ import Foreign.Ptr (castPtr)
 import Data.ByteString.Unsafe (unsafeUseAsCStringLen)
 import Foreign.C.Types (CInt(..))
 import Data.Config (uartBaudRate)
+import qualified Data.ByteString as B
 
 import Hardware.Types (HardwareError(..))
 
@@ -57,16 +59,18 @@ configureSensorWithRetry attempts configPath portPath = go attempts
 
 -- | Configures the sensor by sending commands from the given config file.
 -- Returns typed 'HardwareError' on failure.
+-- SENTINEL SAFETY EDIT: Uses bounded strict IO to prevent DoS via massive config files.
 configureSensor :: FilePath -> FilePath -> IO (Either HardwareError ())
 configureSensor configPath portPath = do
     putStrLn $ "[Control] Configuring sensor on " ++ portPath ++ " with config " ++ configPath
 
-    -- Read config file
-    -- Use withFile to ensure the handle is closed deterministically.
+    -- Read config file (Bounded, Strict)
+    -- Limit to 100KB to prevent OOM/DoS
+    let maxConfigSize = 100 * 1024
+
     fileContentResult <- try $ withFile configPath ReadMode $ \h -> do
-        c <- hGetContents h
-        _ <- evaluate (length c) -- Force strictness
-        return c
+        bs <- B.hGet h maxConfigSize
+        return (BC.unpack bs)
 
     case fileContentResult of
         Left ex -> return $ Left $ ConfigurationFailed $ "Failed to read config file: " ++ show (ex :: IOException)
