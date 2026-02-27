@@ -20,13 +20,13 @@ module FFI.RingBuffer.IO
 
 import Foreign.Ptr (Ptr, nullPtr, FunPtr)
 import Foreign.ForeignPtr (ForeignPtr, newForeignPtr, withForeignPtr)
-import Foreign.C.Types (CSize(..), CInt(..))
+import Foreign.C.Types (CSize(..), CInt(..), CChar)
 import System.Posix.Types (CSsize(..), Fd(..))
 import Control.Exception (throwIO, catch, SomeException, mask_, onException)
 import Control.Concurrent (forkOS, ThreadId, threadDelay)
 import Control.Monad (when)
 import System.IO (hPutStrLn, stderr)
-import FFI.RingBuffer.Types (RingBufferControl)
+import FFI.RingBuffer.Types (RingBufferControl, peekStaticFields)
 import Control.DeepSeq (NFData(..))
 
 -- | Result of a read operation from the Ring Buffer / UART
@@ -111,12 +111,17 @@ getWriteOffset fp = withForeignPtr fp $ \ptr -> do
     return (fromIntegral off)
 
 -- | Wrapper for set_read_offset
--- SENTINEL SAFETY CHECK: Enforces non-negative offset to prevent buffer overflow attacks.
--- A negative Int cast to CSize (unsigned) becomes a huge number, causing C++ logic errors.
+-- SENTINEL SAFETY CHECK: Enforces non-negative offset AND bounds check to prevent buffer overflow/corruption.
+-- We peek the bufferSize from the control block to ensure off < bufferSize.
 setReadOffset :: ForeignPtr RingBufferControl -> Int -> IO ()
 setReadOffset fp off = do
     when (off < 0) $ throwIO (userError "Negative offset provided to setReadOffset")
-    withForeignPtr fp $ \ptr ->
+    withForeignPtr fp $ \ptr -> do
+        -- Peek buffer size to enforce bounds
+        (_, bufSize) <- peekStaticFields ptr
+        when (fromIntegral off >= bufSize) $
+            throwIO (userError $ "Offset " ++ show off ++ " exceeds buffer size " ++ show bufSize)
+
         c_set_read_offset ptr (fromIntegral off)
 
 -- | Ingestion Thread: Spawns a bound thread that loops calling read_from_uart.
