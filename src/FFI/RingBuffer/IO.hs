@@ -20,7 +20,7 @@ module FFI.RingBuffer.IO
 
 import Foreign.Ptr (Ptr, nullPtr, FunPtr)
 import Foreign.ForeignPtr (ForeignPtr, newForeignPtr, withForeignPtr)
-import Foreign.C.Types (CSize(..), CInt(..), CChar)
+import Foreign.C.Types (CSize(..), CInt(..))
 import System.Posix.Types (CSsize(..), Fd(..))
 import Control.Exception (throwIO, catch, SomeException, mask_, onException)
 import Control.Concurrent (forkOS, ThreadId, threadDelay)

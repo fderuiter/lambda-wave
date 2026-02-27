@@ -8,7 +8,6 @@ module SignalProcessing.Regression
     ) where
 
 import Numeric.Simple
-import Data.Maybe (fromMaybe)
 
 -- | Standard Bi-Quadratic Polynomial
 -- y = b0 + b1*x + b2*x^2 + b3*x^3 + b4*x^4
