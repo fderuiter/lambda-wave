@@ -9,18 +9,18 @@ import Control.Monad (zipWithM_)
 shouldBeApproxBi :: Maybe BiQuadratic -> [Double] -> Expectation
 shouldBeApproxBi actual expected = case actual of
     Nothing -> expectationFailure "Expected BiQuadratic, got Nothing"
-    Just (BiQuadratic b0 b1 b2 b3 b4) -> do
+    Just (BiQuadratic valB0 valB1 valB2 valB3 valB4) -> do
         length expected `shouldBe` 5
-        let actualList = [b0, b1, b2, b3, b4]
+        let actualList = [valB0, valB1, valB2, valB3, valB4]
         zipWithM_ (\a e -> a `shouldSatisfy` (\x -> abs (x - e) < 1e-6)) actualList expected
 
 -- | Helper to check if a StrictBiQuadratic matches expected coefficients
 shouldBeApproxStrict :: Maybe StrictBiQuadratic -> [Double] -> Expectation
 shouldBeApproxStrict actual expected = case actual of
     Nothing -> expectationFailure "Expected StrictBiQuadratic, got Nothing"
-    Just (StrictBiQuadratic c0 c2 c4) -> do
+    Just (StrictBiQuadratic valC0 valC2 valC4) -> do
         length expected `shouldBe` 3
-        let actualList = [c0, c2, c4]
+        let actualList = [valC0, valC2, valC4]
         zipWithM_ (\a e -> a `shouldSatisfy` (\x -> abs (x - e) < 1e-6)) actualList expected
 
 spec :: Spec
