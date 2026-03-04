@@ -35,6 +35,7 @@ main = do
     testFuzzInvalid
     testUnknownTLVs
     testDoSAttack
+    testInconsistentTLV
 
     putStrLn "ConsumerCheck Passed."
     exitSuccess
@@ -55,7 +56,7 @@ testFindsMagicWord = do
         testPoints = [point, point]
         magic = mapM_ P.putWord8 [1, 2, 3, 4, 5, 6, 7, 8]
         testHeader = do
-            P.putWord32le 0; P.putWord32le 80; P.putWord32le 0; P.putWord32le 1
+            P.putWord32le 0; P.putWord32le 76; P.putWord32le 0; P.putWord32le 1
             P.putWord32le 0; P.putWord32le 1; P.putWord32le 0
         tlv = do
             P.putWord32le 1; P.putWord32le 40; mapM_ putPoint testPoints
@@ -187,4 +188,24 @@ testDoSAttack = do
 
     assert "Detects DoS Attack" $
         err == Just DoSAttackDetected &&
+        length frames == 0
+
+testInconsistentTLV :: IO ()
+testInconsistentTLV = do
+    let magic = mapM_ P.putWord8 [1, 2, 3, 4, 5, 6, 7, 8]
+        hdr = do
+            P.putWord32le 0; P.putWord32le 44; P.putWord32le 0; P.putWord32le 1
+            P.putWord32le 0; P.putWord32le 1; P.putWord32le 0
+        tlv = do
+            P.putWord32le 1; P.putWord32le 100
+        payload = P.runPut (magic >> hdr >> tlv)
+        (frames, _, err) = parseStream payload
+
+    assert "Detects inconsistent TLV" $
+        (case err of
+            Just DoSAttackDetected -> True
+            Just InvalidLength -> True
+            Just (ParseError _) -> True
+            Just (TlvError _) -> True
+            _ -> False) &&
         length frames == 0

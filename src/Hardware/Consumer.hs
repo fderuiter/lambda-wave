@@ -291,7 +291,14 @@ getRadarFrame = do
     -- We already consumed Magic (8). Then 7 words (28). Total 36.
 
     -- We need to parse 'numTLVs'
-    points <- parseTLVs (fromIntegral numTLVs)
+    -- We need to parse 'numTLVs'
+    -- 🛡️ SECURITY FIX: Isolate TLV block to prevent over-reading (P1-002)
+    -- TI Header is 36 bytes. We already consumed Magic (8) + 7 words (28) = 36.
+    -- totalLen includes the Magic Word (8) and Header (28).
+    let tlvBlockLen = fromIntegral totalLen - 36
+    points <- if tlvBlockLen > 0
+              then G.isolate tlvBlockLen $ parseTLVs (fromIntegral numTLVs)
+              else if numTLVs == 0 then return [] else fail "Expected TLVs but TotalLen too small"
 
     -- SENTINEL SAFETY NOTE: We keep 'header' empty or must copy it.
     -- Holding a ByteString pointing to the Ring Buffer (ForeignPtr) while
@@ -317,26 +324,27 @@ parseTLVs count = go count []
                 -- Payload: Array of Point {x,y,z,v} (4 * 4 = 16 bytes)
                 -- TI SDK Standard: tlvLen includes Header (8 bytes).
                 -- So Payload Length = tlvLen - 8.
-                let payloadLen = tlvLen - 8
+                let payloadLen = fromIntegral tlvLen - 8
 
-                -- Num points
-                let numPoints = fromIntegral payloadLen `div` 16
+                -- 🛡️ SECURITY FIX: Isolate individual TLV payload (P1-002)
+                points <- G.isolate payloadLen $ do
+                    -- Num points
+                    let numPoints = payloadLen `div` 16
 
-                -- Read the points
-                points <- getPoints numPoints
+                    -- Read the points
+                    pts <- getPoints numPoints
 
-                -- SAFETY CHECK: Calculate actual bytes read and skip any remaining (padding/header mismatch)
-                let bytesRead = numPoints * 16
-                    padding = fromIntegral payloadLen - bytesRead
-
-                when (padding > 0) $ G.skip padding
+                    -- 🛡️ MANDATORY: Consume ALL bytes within isolate
+                    let bytesToSkip = payloadLen - (numPoints * 16)
+                    when (bytesToSkip > 0) $ G.skip bytesToSkip
+                    return pts
 
                 go (n - 1) (points : acc)
             _ -> do
                 -- Skip unknown TLV
                 -- tlvLen includes Header (8 bytes). We already read header.
-                let skipLen = fromIntegral (tlvLen - 8)
-                G.skip skipLen
+                let skipLen = fromIntegral tlvLen - 8
+                G.isolate skipLen $ G.skip skipLen
                 go (n - 1) acc
 
 getPoints :: Int -> G.Get [Point3D]

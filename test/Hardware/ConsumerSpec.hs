@@ -34,7 +34,7 @@ spec = do
             magic = mapM_ P.putWord8 [1, 2, 3, 4, 5, 6, 7, 8]
             testHeader = do
                 P.putWord32le 0 -- Version
-                P.putWord32le 80 -- Total Len
+                P.putWord32le 76 -- Total Len
                 P.putWord32le 0 -- Platform
                 P.putWord32le 1 -- Frame Num
                 P.putWord32le 0 -- CPU
@@ -197,7 +197,7 @@ spec = do
             -- Header
             header = do
                 P.putWord32le 0 -- Version
-                P.putWord32le 80 -- Total Len
+                P.putWord32le 76 -- Total Len
                 P.putWord32le 0 -- Platform
                 P.putWord32le 1 -- Frame Num
                 P.putWord32le 0 -- CPU
@@ -237,6 +237,36 @@ spec = do
              (frames, consumed, err) = parseStream payload
 
          err `shouldBe` Just DoSAttackDetected
+         length frames `shouldBe` 0
+
+    it "Detects inconsistent TLV length (exceeds TotalPacketLen)" $ do
+         let magic = mapM_ P.putWord8 [1, 2, 3, 4, 5, 6, 7, 8]
+             -- Header: TotalLen = 36 (header) + 8 (tlv hdr) = 44
+             header = do
+                 P.putWord32le 0
+                 P.putWord32le 44
+                 P.putWord32le 0
+                 P.putWord32le 1
+                 P.putWord32le 0
+                 P.putWord32le 1 -- 1 TLV
+                 P.putWord32le 0
+
+             tlv = do
+                 P.putWord32le 1
+                 P.putWord32le 100 -- Inconsistent: 100 > 8 (available space)
+
+             payload = P.runPut (magic >> header >> tlv)
+             (frames, _, err) = parseStream payload
+
+         -- Currently, it might not detect this as an error if it just thinks it's a partial frame
+         -- or it might fail if there's no more data.
+         -- With isolate, it should fail.
+         err `shouldSatisfy` (\e -> case e of
+            Just DoSAttackDetected -> True
+            Just InvalidLength -> True
+            Just (ParseError _) -> True
+            Just (TlvError _) -> True
+            _ -> False)
          length frames `shouldBe` 0
 
 instance Arbitrary Point where
