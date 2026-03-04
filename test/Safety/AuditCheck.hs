@@ -123,9 +123,46 @@ runChildCrash = do
     threadDelay 100_000
     exitImmediately (ExitFailure 99)
 
+testPathTraversal :: IO Bool
+testPathTraversal = do
+    putStr "Test 3: Path Traversal Prevention... "
+    withTestEnv $ \stateVar q _ -> do
+        let maliciousPath = "../malicious.log"
+        let expectedPath = "malicious.log"
+
+        -- Cleanup if exists
+        e <- fileExist expectedPath
+        when e (removeLink expectedPath)
+
+        -- Fork Audit Loop with malicious path
+        tid <- forkIO $ auditLoop stateVar maliciousPath
+
+        -- Send Event
+        now <- getMonotonicTimeNS
+        atomically $ writeTBQueue q (AuditEvent now Info "Test" "Sanitized")
+
+        -- Wait for processing
+        threadDelay 200_000
+
+        killThread tid
+        threadDelay 100_000
+
+        -- Verify that malicious.log exists in CURRENT directory
+        ok <- fileExist expectedPath
+
+        -- Verify that ../malicious.log does NOT exist
+        traversed <- fileExist maliciousPath
+
+        if ok && not traversed
+           then putStrLn "PASS" >> removeLink expectedPath >> return True
+           else do
+               putStrLn "FAIL"
+               when ok (removeLink expectedPath)
+               return False
+
 testCrashRecovery :: IO Bool
 testCrashRecovery = do
-    putStr "Test 3: Crash Recovery (Immediate Flush)... "
+    putStr "Test 4: Crash Recovery (Immediate Flush)... "
     let logPath = "test_audit_crash.log"
     cleanup logPath
 
@@ -169,8 +206,9 @@ main = do
             putStrLn "=== Audit Logging Verification (P1-004) ==="
             p1 <- testBasicLogging
             p2 <- testLogRotation
-            p3 <- testCrashRecovery
+            p3 <- testPathTraversal
+            p4 <- testCrashRecovery
 
-            if p1 && p2 && p3
+            if p1 && p2 && p3 && p4
                then putStrLn "VERIFICATION PASSED"
                else fail "VERIFICATION FAILED"

@@ -5,6 +5,7 @@ import Data.Types
 import Control.Concurrent.STM
 import Control.Concurrent (threadDelay)
 import System.IO
+import System.FilePath (takeFileName)
 import Control.Monad (when)
 import Data.Functor ((<&>))
 import Data.Time.HighRes (getMonotonicTimeNS)
@@ -29,12 +30,16 @@ data LoopResult = RotationNeeded
 --   * Rotates log at 10MB to prevent disk exhaustion.
 --   * Updates 'threadHeartbeats' for Watchdog monitoring.
 auditLoop :: TVar SystemState -> FilePath -> IO ()
-auditLoop stateVar logPath = do
+auditLoop stateVar rawPath = do
     -- Get queue reference once (it's constant in SystemState)
     state <- readTVarIO stateVar
     let queue = auditQueue state
+        logPath = takeFileName rawPath
 
-    runAuditLoop stateVar queue logPath
+    -- Safety check: if takeFileName results in empty string, use default
+    let safePath = if null logPath then "session.log" else logPath
+
+    runAuditLoop stateVar queue safePath
 
 runAuditLoop :: TVar SystemState -> TBQueue AuditEvent -> FilePath -> IO ()
 runAuditLoop stateVar queue logPath = do
