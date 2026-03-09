@@ -25,33 +25,30 @@ processFrame :: TVar SystemState -> [Point3D] -> IO ()
 processFrame stateVar pts = do
     currTime <- getMonotonicTimeNS
 
-    -- 1. Read Previous State
-    oldSystemState <- readTVarIO stateVar
-    let lastTime = lastFrameTime oldSystemState
-        oldKState = kalmanState oldSystemState
-
-    -- 2. Calculate DT (Seconds)
-    let dtNS = if currTime > lastTime then currTime - lastTime else 0
-        dtSec = fromIntegral dtNS / 1_000_000_000.0
-
-    -- 3. Measurement (Average Height)
+    -- 1. Measurement (Average Height)
     -- Optimize: Strict fold
     let (!totalHeight, !count) = foldl' (\(!sumH, !cnt) pt -> (sumH + pz pt, cnt + 1)) (0.0, 0 :: Int) pts
 
-    -- 4. Kalman Filter Step
-    -- Predict
-    let predState = predict dtSec kConfig oldKState
-
-    -- Update (only if we have measurements)
-    let newKState = if count > 0
-            then let meas = totalHeight / fromIntegral count
-                 in update meas kConfig predState
-            else predState -- Coasting (Dead Reckoning) if signal lost
-
-    -- 6. Update System State & Resolve Final Beam State
+    -- 2. Update System State & Resolve Final Beam State
     finalBeamState <- atomically $ do
         s <- readTVar stateVar
         let currentBeam = beamState s
+            lastTime = lastFrameTime s
+            oldKState = kalmanState s
+
+        -- 3. Calculate DT (Seconds)
+        let dtNS = if currTime > lastTime then currTime - lastTime else 0
+            dtSec = fromIntegral dtNS / 1_000_000_000.0
+
+        -- 4. Kalman Filter Step
+        -- Predict
+        let predState = predict dtSec kConfig oldKState
+
+        -- Update (only if we have measurements)
+        let newKState = if count > 0
+                then let meas = totalHeight / fromIntegral count
+                     in update meas kConfig predState
+                else predState -- Coasting (Dead Reckoning) if signal lost
 
         -- 5. Gating Logic
         -- Note: We calculate based on 'currentBeam' inside the transaction.
@@ -82,7 +79,7 @@ processFrame stateVar pts = do
 
         return resolvedBeamState
 
-    -- 7. Hardware Actuation
+    -- 6. Hardware Actuation
     -- Only set beam if state changed to avoid UART spam (optimization)
     -- But safety says "Refresh always"?
     -- Let's set it always for now to ensure fail-safe (if hardware resets).
