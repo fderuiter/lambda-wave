@@ -5,6 +5,7 @@ module Main (main) where
 import SignalProcessing.Kalman
 import Data.List (foldl')
 import Text.Printf (printf)
+import System.Exit (exitFailure)
 
 -- | Phantom Study Parameters
 amplitude :: Double
@@ -58,7 +59,9 @@ main = do
     -- We start with the first noisy measurement
     z0 <- case measurements of
             ((_, val):_) -> return val
-            [] -> error "Measurements list is empty"
+            [] -> do
+                putStrLn "Measurements list is empty"
+                exitFailure
 
     let config = KalmanConfig { procNoise = 2.0, measNoise = 1.0 }
     let startState = initKalman z0 config
@@ -84,4 +87,4 @@ main = do
         then putStrLn "PASS: Correlation > 0.98"
         else do
             putStrLn "FAIL: Correlation <= 0.98"
-            error "Validation Failed"
+            exitFailure

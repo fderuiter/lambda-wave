@@ -23,6 +23,7 @@ import Data.Time.HighRes (getMonotonicTimeNS)
 import Text.Printf (printf)
 import Data.List (sort)
 import Data.Word (Word64)
+import System.Exit (exitFailure)
 
 import Data.Types
 import Data.Config (targetHeight)
@@ -81,13 +82,19 @@ main = do
 
     -- 5. Analysis
     let sortedLatencies = sort results
-        minLat = head sortedLatencies
-        maxLat = last sortedLatencies
+        minLat = case sortedLatencies of
+                    [] -> 0
+                    (x:_) -> x
+        maxLat = case reverse sortedLatencies of
+                    [] -> 0
+                    (x:_) -> x
         totalLat = sum results
         avgLat = fromIntegral totalLat / fromIntegral iterations :: Double
         -- 99th Percentile
         p99Index = floor (0.99 * fromIntegral iterations) :: Int
-        p99Lat = sortedLatencies !! p99Index
+        p99Lat = case drop p99Index sortedLatencies of
+                    [] -> 0
+                    (x:_) -> x
 
     -- Convert to milliseconds
     let toMs ns = fromIntegral ns / 1_000_000.0 :: Double
@@ -111,7 +118,8 @@ main = do
             putStrLn "Note: Physical I/O latency (approx 1-2ms) is excluded."
         else do
             putStrLn "VERIFICATION FAILED: Latency exceeded limit."
-            error "Latency Check Failed"
+            -- Use exitFailure instead of error
+            exitFailure
 
 -- | Measure a single frame processing time
 measureLatency :: TVar SystemState -> [Point3D] -> IO Word64

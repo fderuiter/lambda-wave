@@ -19,7 +19,7 @@ import System.Posix.Terminal
 import System.Posix.IO (openFd, closeFd, fdWriteBuf, OpenMode(ReadWrite), defaultFileFlags)
 import System.Posix.Types (Fd(..))
 import Foreign.Ptr (castPtr)
-import Data.ByteString.Unsafe (unsafeUseAsCStringLen)
+import Data.ByteString (useAsCStringLen)
 import Foreign.C.Types (CInt(..))
 import Data.Config (uartBaudRate)
 import qualified Data.ByteString as B
@@ -93,7 +93,7 @@ configureSensor configPath portPath = do
                         Right () -> do
                             forM_ commands $ \cmd -> do
                                 let packet = BC.pack (cmd ++ "\n")
-                                bytesSent <- unsafeUseAsCStringLen packet $ \(ptr, len) ->
+                                bytesSent <- useAsCStringLen packet $ \(ptr, len) ->
                                     fdWriteBuf fd (castPtr ptr) (fromIntegral len)
 
                                 -- Check if all bytes were written
