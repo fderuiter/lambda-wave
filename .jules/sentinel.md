@@ -11,3 +11,6 @@ The function `setReadOffset` trusted the consumer provided offset without valida
 
 ## 2025-05-18 - [Medium] **Vector:** `Hardware/Control.hs` **Hazard:** Denial of Service via Config File
 The `configureSensor` function used `hGetContents` (lazy IO) on the configuration file. A malicious actor could provide a massive file (e.g. `/dev/zero` or a large generated file), causing the Haskell runtime to exhaust memory (OOM) or hang the thread. Replaced with `B.hGet` and a 100KB limit.
+
+## 2026-03-23 - [High] **Vector:** `Hardware/Consumer.hs` `parseTLVs` **Hazard:** Denial of Service via Malformed TLV
+The TLV parsing logic in `Hardware.Consumer` trusted the length declared in the frame header but did not strictly enforce that the total bytes read for all TLVs matched `totalLen - 36`, nor that an individual TLV payload read strictly `tlvLen - 8` bytes. A malformed packet could specify invalid bounds or trick the parser into out-of-bounds reads or infinite loops, leading to a Denial of Service. Replaced manual bounds-checking and skips with `Data.Binary.Get.isolate` to safely limit byte consumption per TLV and for the entire TLV block, ensuring trailing bytes are explicitly dropped and parse bounds are strictly enforced.
