@@ -34,7 +34,7 @@ spec = do
             magic = mapM_ P.putWord8 [1, 2, 3, 4, 5, 6, 7, 8]
             testHeader = do
                 P.putWord32le 0 -- Version
-                P.putWord32le 80 -- Total Len
+                P.putWord32le 76 -- Total Len
                 P.putWord32le 0 -- Platform
                 P.putWord32le 1 -- Frame Num
                 P.putWord32le 0 -- CPU

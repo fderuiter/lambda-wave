@@ -55,7 +55,7 @@ testFindsMagicWord = do
         testPoints = [point, point]
         magic = mapM_ P.putWord8 [1, 2, 3, 4, 5, 6, 7, 8]
         testHeader = do
-            P.putWord32le 0; P.putWord32le 80; P.putWord32le 0; P.putWord32le 1
+            P.putWord32le 0; P.putWord32le 76; P.putWord32le 0; P.putWord32le 1
             P.putWord32le 0; P.putWord32le 1; P.putWord32le 0
         tlv = do
             P.putWord32le 1; P.putWord32le 40; mapM_ putPoint testPoints
