@@ -34,7 +34,7 @@ spec = do
             magic = mapM_ P.putWord8 [1, 2, 3, 4, 5, 6, 7, 8]
             testHeader = do
                 P.putWord32le 0 -- Version
-                P.putWord32le 80 -- Total Len
+                P.putWord32le 76 -- Total Len
                 P.putWord32le 0 -- Platform
                 P.putWord32le 1 -- Frame Num
                 P.putWord32le 0 -- CPU
@@ -62,10 +62,10 @@ spec = do
             (frames, consumed, err) = parseStream input
 
         length frames `shouldBe` 1
-        let frame = case frames of
-                      (f:_) -> f
-                      [] -> error "Test failed: Expected at least one frame"
-        length (Data.Types.points frame) `shouldBe` 2
+        case frames of
+            [] -> expectationFailure "Test failed: Expected at least one frame"
+            (frame:_) -> do
+                length (Data.Types.points frame) `shouldBe` 2
         -- consumed should be length garbage + length payload
         consumed `shouldBe` (BL.length garbage + BL.length payload)
         err `shouldBe` Nothing
@@ -210,10 +210,10 @@ spec = do
 
         err `shouldBe` Nothing
         length frames `shouldBe` 1
-        let frame = case frames of
-                      (f:_) -> f
-                      [] -> error "Test failed: Expected at least one frame"
-        length (Data.Types.points frame) `shouldBe` 1
+        case frames of
+            [] -> expectationFailure "Test failed: Expected at least one frame"
+            (frame:_) -> do
+                length (Data.Types.points frame) `shouldBe` 1
         consumed `shouldBe` 80
 
     it "Detects DoS Attack (TLV too large)" $ do

@@ -291,7 +291,10 @@ getRadarFrame = do
     -- We already consumed Magic (8). Then 7 words (28). Total 36.
 
     -- We need to parse 'numTLVs'
-    points <- parseTLVs (fromIntegral numTLVs)
+    -- 🛡️ SECURITY FIX: Enforce boundary for the whole TLV block to prevent out-of-bounds reads
+    -- P1-002: TLV Parser DoS
+    let tlvBlockLen = fromIntegral (totalLen - 36)
+    points <- G.isolate tlvBlockLen $ parseTLVs (fromIntegral numTLVs)
 
     -- SENTINEL SAFETY NOTE: We keep 'header' empty or must copy it.
     -- Holding a ByteString pointing to the Ring Buffer (ForeignPtr) while
@@ -317,26 +320,27 @@ parseTLVs count = go count []
                 -- Payload: Array of Point {x,y,z,v} (4 * 4 = 16 bytes)
                 -- TI SDK Standard: tlvLen includes Header (8 bytes).
                 -- So Payload Length = tlvLen - 8.
-                let payloadLen = tlvLen - 8
+                let payloadLen = fromIntegral (tlvLen - 8)
 
-                -- Num points
-                let numPoints = fromIntegral payloadLen `div` 16
+                points <- G.isolate payloadLen $ do
+                    -- Num points
+                    let numPoints = payloadLen `div` 16
 
-                -- Read the points
-                points <- getPoints numPoints
+                    -- Read the points
+                    pts <- getPoints numPoints
 
-                -- SAFETY CHECK: Calculate actual bytes read and skip any remaining (padding/header mismatch)
-                let bytesRead = numPoints * 16
-                    padding = fromIntegral payloadLen - bytesRead
-
-                when (padding > 0) $ G.skip padding
+                    -- Explicitly consume any remaining bytes to satisfy G.isolate strictness
+                    _padding <- G.getRemainingLazyByteString
+                    return pts
 
                 go (n - 1) (points : acc)
             _ -> do
                 -- Skip unknown TLV
                 -- tlvLen includes Header (8 bytes). We already read header.
-                let skipLen = fromIntegral (tlvLen - 8)
-                G.skip skipLen
+                let payloadLen = fromIntegral (tlvLen - 8)
+                G.isolate payloadLen $ do
+                    _padding <- G.getRemainingLazyByteString
+                    return ()
                 go (n - 1) acc
 
 getPoints :: Int -> G.Get [Point3D]
