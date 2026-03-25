@@ -13,8 +13,8 @@
     </style>
 </head>
 <body>
-    <div id="beam-status" class="BeamOff">BEAM OFF</div>
-    <canvas id="plot" width="800" height="400"></canvas>
+    <div id="beam-status" class="BeamOff" role="status" aria-live="polite">BEAM OFF</div>
+    <canvas id="plot" width="800" height="400" role="img" aria-label="Real-time trace and point cloud visualization"></canvas>
     <div id="stats">
         Frame Time: <span id="ts">0</span> | Points: <span id="pt-count">0</span>
     </div>
