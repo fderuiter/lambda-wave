@@ -82,19 +82,20 @@ calculatePhase = phase
 -- | Requirement FR-DSP-002: Phase Unwrapping
 -- Corrects phase jumps greater than pi by adding/subtracting 2*pi.
 -- Implemented using standard list operations.
+--
+-- ⚡ Bolt Optimization: Replaced O(N) multi-pass operations (drop, zipWith, map, scanl)
+-- with a single-pass tail-recursive algorithm. Avoids intermediate allocations and
+-- improves performance in hot signal processing paths.
 unwrapPhase :: [Double] -> [Double]
 unwrapPhase [] = []
-unwrapPhase inputPhase = zipWith (-) inputPhase corrections
+unwrapPhase (x:xs) = x : go x 0.0 xs
   where
-    -- Calculate differences between consecutive phases: p[i] - p[i-1]
-    -- Safe alternative to tail/init using zipWith and drop
-    diffs = zipWith (-) (drop 1 inputPhase) inputPhase
-
-    -- Calculate required jumps (multiples of 2*pi)
-    jumps = map (\d -> fromIntegral (round (d / (2 * pi)) :: Int) * (2 * pi)) diffs
-
-    -- Cumulative correction
-    corrections = scanl (+) 0.0 jumps
+    go _ _ [] = []
+    go prevPhase currentCorrection (p:ps) =
+        let diff = p - prevPhase
+            jump = fromIntegral (round (diff / (2 * pi)) :: Int) * (2 * pi)
+            newCorrection = currentCorrection + jump
+        in (p - newCorrection) : go p newCorrection ps
 
 -- | Equation (5): Verified
 -- Calculate displacement from phase change.
