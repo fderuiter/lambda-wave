@@ -1,21 +1,28 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <title>Lambda-Wave Monitor</title>
     <style>
         body { font-family: monospace; background: #111; color: #eee; margin: 0; padding: 20px; }
-        #beam-status { font-size: 2em; text-align: center; padding: 20px; border-radius: 10px; margin-bottom: 20px; }
+        #beam-status { font-size: 2em; text-align: center; padding: 20px; border-radius: 10px; margin-bottom: 20px; transition: background-color 0.3s ease; }
         .BeamOn { background: #0f0; color: #000; }
         .BeamOff { background: #f00; color: #fff; }
         .BeamHold { background: #ff0; color: #000; }
+        .Offline { background: #555; color: #ccc; }
         canvas { border: 1px solid #333; background: #000; display: block; margin: 0 auto; }
         #stats { text-align: center; margin-top: 10px; }
+        .status-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; }
+        .dot-live { background-color: #0f0; box-shadow: 0 0 5px #0f0; }
+        .dot-offline { background-color: #f00; box-shadow: 0 0 5px #f00; }
+        .dot-connecting { background-color: #ff0; animation: pulse 1s infinite; }
+        @keyframes pulse { 0% { opacity: 0.5; } 50% { opacity: 1; } 100% { opacity: 0.5; } }
     </style>
 </head>
 <body>
     <div id="beam-status" class="BeamOff" role="status" aria-live="polite">BEAM OFF</div>
     <canvas id="plot" width="800" height="400" role="img" aria-label="Real-time trace and point cloud visualization"></canvas>
     <div id="stats">
+        <span aria-live="polite"><span id="conn-dot" class="status-dot dot-connecting"></span><span id="conn-text">Connecting...</span></span> |
         Frame Time: <span id="ts">0</span> | Points: <span id="pt-count">0</span>
     </div>
 
@@ -25,6 +32,8 @@
         const tsEl = document.getElementById('ts');
         const ptCountEl = document.getElementById('pt-count');
         const canvas = document.getElementById('plot');
+        const connDot = document.getElementById('conn-dot');
+        const connText = document.getElementById('conn-text');
         const ctx = canvas.getContext('2d');
         const width = canvas.width;
         const height = canvas.height;
@@ -32,6 +41,27 @@
         // Trace history for plot (Y-axis: Position Z, X-axis: Time)
         const trace = [];
         const maxTrace = 300; // 10 seconds at 30Hz
+
+        ws.onopen = () => {
+            connDot.className = 'status-dot dot-live';
+            connText.innerText = 'Live';
+        };
+
+        ws.onclose = () => {
+            connDot.className = 'status-dot dot-offline';
+            connText.innerText = 'Disconnected';
+            statusEl.innerText = 'OFFLINE';
+            statusEl.className = 'Offline';
+            tsEl.innerText = 'N/A';
+            ptCountEl.innerText = 'N/A';
+        };
+
+        ws.onerror = () => {
+            connDot.className = 'status-dot dot-offline';
+            connText.innerText = 'Connection Error';
+            statusEl.innerText = 'OFFLINE';
+            statusEl.className = 'Offline';
+        };
 
         ws.onmessage = (event) => {
             const state = JSON.parse(event.data);
