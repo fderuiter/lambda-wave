@@ -97,7 +97,8 @@ unwrapPhase (x:xs) = x : go x 0.0 xs
         let diff = p - prevPhase
             jump = fromIntegral (round (diff / (2 * pi)) :: Int) * (2 * pi)
             newCorrection = currentCorrection + jump
-        in (p - newCorrection) : go p newCorrection ps
+            !val = p - newCorrection
+        in val : go p newCorrection ps
 
 -- | Equation (5): Verified
 -- Calculate displacement from phase change.
