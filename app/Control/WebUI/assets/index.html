@@ -20,7 +20,9 @@
 </head>
 <body>
     <div id="beam-status" class="BeamOff" role="status" aria-live="polite">BEAM OFF</div>
-    <canvas id="plot" width="800" height="400" role="img" aria-label="Real-time trace and point cloud visualization"></canvas>
+    <canvas id="plot" width="800" height="400" role="img" aria-label="Real-time trace and point cloud visualization">
+        Your browser does not support the canvas element or the stream is currently unavailable.
+    </canvas>
     <div id="stats">
         <span aria-live="polite"><span id="conn-dot" class="status-dot dot-connecting"></span><span id="conn-text">Connecting...</span></span> |
         Frame Time: <span id="ts">0</span> | Points: <span id="pt-count">0</span>
@@ -42,9 +44,22 @@
         const trace = [];
         const maxTrace = 300; // 10 seconds at 30Hz
 
+        function drawMessage(msg) {
+            ctx.clearRect(0, 0, width, height);
+            ctx.fillStyle = '#888';
+            ctx.font = '20px monospace';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(msg, width / 2, height / 2);
+        }
+
+        // Show initial loading state
+        drawMessage('Connecting to sensor stream...');
+
         ws.onopen = () => {
             connDot.className = 'status-dot dot-live';
             connText.innerText = 'Live';
+            drawMessage('Waiting for sensor data...');
         };
 
         ws.onclose = () => {
@@ -54,6 +69,7 @@
             statusEl.className = 'Offline';
             tsEl.innerText = 'N/A';
             ptCountEl.innerText = 'N/A';
+            drawMessage('Disconnected');
         };
 
         ws.onerror = () => {
@@ -61,6 +77,7 @@
             connText.innerText = 'Connection Error';
             statusEl.innerText = 'OFFLINE';
             statusEl.className = 'Offline';
+            drawMessage('Connection Error');
         };
 
         ws.onmessage = (event) => {
