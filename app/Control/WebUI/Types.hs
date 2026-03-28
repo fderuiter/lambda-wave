@@ -2,12 +2,11 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 
-module Control.WebUI.Types where
+module Control.WebUI.Types () where
 
 import Data.Aeson
 import Data.Types
 import SignalProcessing.Kalman (KalmanState(..), V3(..))
-import qualified Data.Map.Strict as Map
 
 instance ToJSON BeamState where
     toJSON BeamOn   = "BeamOn"

@@ -29,7 +29,14 @@ runWebUI stateVar = do
 
 httpApp :: Application
 httpApp _ respond = respond $
-    responseLBS status200 [("Content-Type", "text/html")] (fromStrict indexHtml)
+    responseLBS status200
+        [ ("Content-Type", "text/html")
+        , ("X-Frame-Options", "DENY")
+        , ("X-Content-Type-Options", "nosniff")
+        , ("Content-Security-Policy", "default-src 'self'; connect-src 'self' ws: wss:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'")
+        , ("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+        ]
+        (fromStrict indexHtml)
 
 wsApp :: TVar SystemState -> ServerApp
 wsApp stateVar pending = do
