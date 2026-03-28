@@ -1,4 +1,5 @@
 {-# LANGUAGE StrictData #-}
+{-# LANGUAGE BangPatterns #-}
 module SignalProcessing.FMCW
     ( -- * Core Radar Principles
       calculateBeatFreq
@@ -66,10 +67,11 @@ chirpZTransform params x_n = map calculateBin [0 .. cztSteps params - 1]
             theta_step = ((-2) * pi * freq_k) / fs
 
             -- Summation: sum(x[n] * exp(i * theta_step * n))
-            summation acc _ [] = acc
-            summation acc n (val:rest) =
-                let phaseTerm = theta_step * fromIntegral n
-                    term = cis phaseTerm
+            -- ⚡ Bolt Optimization: Added bang patterns to prevent O(N) thunk buildup
+            summation !acc _ [] = acc
+            summation !acc !n (val:rest) =
+                let !phaseTerm = theta_step * fromIntegral n
+                    !term = cis phaseTerm
                 in summation (acc + val * term) (n + 1) rest
         in
             summation (0 :+ 0) (0 :: Int) x_n
@@ -113,16 +115,26 @@ applyStaticClutterRemoval :: Double                  -- ^ Alpha (Learning Rate, 
                           -> [Complex Double]        -- ^ Previous Mean (State)
                           -> [Complex Double]        -- ^ Current Frame Input
                           -> ([Complex Double], [Complex Double]) -- ^ (New Mean, Output Frame)
-applyStaticClutterRemoval alpha prevMean input = (newMean, output)
+-- ⚡ Bolt Optimization: Replaced O(N) multi-pass `zipWith` chain with single-pass
+-- guarded recursion to prevent intermediate thunk allocations and improve stream fusion.
+applyStaticClutterRemoval alpha prevMean input =
+    if null prevMean
+    then goInit input
+    else go prevMean input
   where
-    -- Weighted sum: (1-alpha)*prev + alpha*input
-    -- If prevMean is empty (first frame), assume 0 or input.
-    -- Assuming lengths match.
+    !alphaC = alpha :+ 0
+    !oneMinusAlphaC = (1.0 - alpha) :+ 0
 
-    calcMean p i = ((1.0 - alpha) :+ 0) * p + (alpha :+ 0) * i
+    goInit [] = ([], [])
+    goInit (i:is) =
+        let !(m, o) = (i, 0 :+ 0)
+            (ms, os) = goInit is
+        in (m : ms, o : os)
 
-    newMean = if null prevMean
-              then input -- Initialize with first frame
-              else zipWith calcMean prevMean input
-
-    output = zipWith (-) input newMean
+    go [] _ = ([], [])
+    go _ [] = ([], [])
+    go (p:ps) (i:is) =
+        let !m = oneMinusAlphaC * p + alphaC * i
+            !o = i - m
+            (ms, os) = go ps is
+        in (m : ms, o : os)
