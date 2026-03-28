@@ -14,3 +14,6 @@ The `configureSensor` function used `hGetContents` (lazy IO) on the configuratio
 
 ## 2026-03-23 - [High] **Vector:** `Hardware/Consumer.hs` `parseTLVs` **Hazard:** Denial of Service via Malformed TLV
 The TLV parsing logic in `Hardware.Consumer` trusted the length declared in the frame header but did not strictly enforce that the total bytes read for all TLVs matched `totalLen - 36`, nor that an individual TLV payload read strictly `tlvLen - 8` bytes. A malformed packet could specify invalid bounds or trick the parser into out-of-bounds reads or infinite loops, leading to a Denial of Service. Replaced manual bounds-checking and skips with `Data.Binary.Get.isolate` to safely limit byte consumption per TLV and for the entire TLV block, ensuring trailing bytes are explicitly dropped and parse bounds are strictly enforced.
+
+## 2026-03-28 - [Medium] **Vector:** `app/Control/WebUI.hs` `httpApp` **Hazard:** Missing Security Headers
+The HTTP application serving the Web UI `index.html` file lacked essential security headers such as `Content-Security-Policy`, `X-Frame-Options`, and `X-Content-Type-Options`. This omission exposed the client application to various client-side risks like Cross-Site Scripting (XSS), Clickjacking, and MIME-sniffing attacks. Mitigated by applying the necessary restrictive security headers in the `httpApp` response.
