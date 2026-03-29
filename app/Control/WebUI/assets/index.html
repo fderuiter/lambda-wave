@@ -23,7 +23,7 @@
     <canvas id="plot" width="800" height="400" role="img" aria-label="Real-time trace and point cloud visualization"></canvas>
     <div id="stats">
         <span aria-live="polite"><span id="conn-dot" class="status-dot dot-connecting"></span><span id="conn-text">Connecting...</span></span> |
-        Frame Time: <span id="ts">0</span> | Points: <span id="pt-count">0</span>
+        <abbr title="Time elapsed for the current radar frame" style="cursor: help; text-decoration: underline dotted; text-decoration-skip-ink: none;">Frame Time</abbr>: <span id="ts">0</span> | <abbr title="Number of points in the current point cloud" style="cursor: help; text-decoration: underline dotted; text-decoration-skip-ink: none;">Points</abbr>: <span id="pt-count">0</span>
     </div>
 
     <script>
@@ -42,17 +42,23 @@
         const trace = [];
         const maxTrace = 300; // 10 seconds at 30Hz
 
-        function drawEmptyState(message, color) {
+        function drawEmptyState(message, color, guidance) {
             ctx.clearRect(0, 0, width, height);
             ctx.fillStyle = color || '#aaa';
             ctx.font = '24px monospace';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillText(message, width / 2, height / 2);
+            ctx.fillText(message, width / 2, height / 2 - 15);
+
+            if (guidance) {
+                ctx.fillStyle = '#888';
+                ctx.font = '14px monospace';
+                ctx.fillText(guidance, width / 2, height / 2 + 15);
+            }
         }
 
         // Initial state
-        drawEmptyState('Connecting...', '#ff0');
+        drawEmptyState('Connecting...', '#ff0', 'Waiting for radar WebSocket stream...');
 
         ws.onopen = () => {
             connDot.className = 'status-dot dot-live';
@@ -66,7 +72,7 @@
             statusEl.className = 'Offline';
             tsEl.innerText = 'N/A';
             ptCountEl.innerText = 'N/A';
-            drawEmptyState('Disconnected', '#f00');
+            drawEmptyState('Disconnected', '#f00', 'Check hardware connection or restart service.');
         };
 
         ws.onerror = () => {
@@ -74,7 +80,7 @@
             connText.innerText = 'Connection Error';
             statusEl.innerText = 'OFFLINE';
             statusEl.className = 'Offline';
-            drawEmptyState('Connection Error', '#f00');
+            drawEmptyState('Connection Error', '#f00', 'Check hardware connection or restart service.');
         };
 
         ws.onmessage = (event) => {
