@@ -109,19 +109,23 @@ leastSquares a b = do
 at :: [a] -> Int -> Maybe a
 at xs i
     | i < 0 = Nothing
-    | otherwise = go xs i
-  where
-    go [] _ = Nothing
-    go (x:_) 0 = Just x
-    go (_:ys) n = go ys (n - 1)
+    | otherwise = case drop i xs of
+        [] -> Nothing
+        (x:_) -> Just x
 
 -- | Helper: Check Rectangularity
 isRectangular :: Matrix -> Int -> Int -> Bool
 isRectangular m rows cols = length m == rows && all (\r -> length r == cols) m
 
--- | Helper: Update list at index
+-- | Helper: Update list at index using splitAt (O(N) without intermediate lists)
 updateAt :: Int -> (a -> a) -> [a] -> [a]
-updateAt idx f = zipWith (\i x -> if i == idx then f x else x) [0..]
+updateAt idx f xs
+    | idx < 0   = xs
+    | otherwise =
+        let (before, rest) = splitAt idx xs
+        in case rest of
+            [] -> xs
+            (target:after) -> before ++ (f target : after)
 
 -- | Gauss-Jordan Elimination with Safe Indexing
 gaussJordan :: Matrix -> Int -> Maybe Matrix
