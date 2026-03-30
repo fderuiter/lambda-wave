@@ -10,7 +10,7 @@ import Data.Aeson (encode)
 import Data.FileEmbed (embedFile)
 import Network.HTTP.Types (status200)
 import Network.Wai
-import Network.Wai.Handler.Warp (run)
+import Network.Wai.Handler.Warp (runSettings, defaultSettings, setPort, setHost)
 import Network.Wai.Handler.WebSockets (websocketsOr)
 import Network.WebSockets (ServerApp, acceptRequest, sendTextData, defaultConnectionOptions)
 import Data.ByteString.Lazy (fromStrict)
@@ -24,8 +24,9 @@ indexHtml = $(embedFile "app/Control/WebUI/assets/index.html")
 
 runWebUI :: TVar SystemState -> IO ()
 runWebUI stateVar = do
-    putStrLn "Starting Web UI on http://localhost:8080"
-    run 8080 $ websocketsOr defaultConnectionOptions (wsApp stateVar) httpApp
+    putStrLn "Starting Web UI on http://127.0.0.1:8080"
+    let settings = setPort 8080 $ setHost "127.0.0.1" defaultSettings
+    runSettings settings $ websocketsOr defaultConnectionOptions (wsApp stateVar) httpApp
 
 httpApp :: Application
 httpApp _ respond = respond $
