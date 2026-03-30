@@ -1,3 +1,4 @@
+{-# LANGUAGE BangPatterns #-}
 {-|
 Module      : Numeric.Simple
 Description : Pure Haskell Linear Algebra (No Dependencies)
@@ -64,7 +65,15 @@ matVecMult :: Matrix -> Vector -> Vector
 matVecMult m v = [ dot row v | row <- m ]
 
 dot :: Vector -> Vector -> Double
-dot a b = sum $ zipWith (*) a b
+-- ⚡ Bolt Optimization: Replaced O(N) multi-pass operations (sum $ zipWith (*))
+-- with a single-pass tail-recursive algorithm using strict accumulators to
+-- prevent intermediate list allocations and deeply nested thunks in hot
+-- dot-product calculations.
+dot = go 0.0
+  where
+    go !acc [] _ = acc
+    go !acc _ [] = acc
+    go !acc (x:xs) (y:ys) = go (acc + x * y) xs ys
 
 -- | Identity Matrix of size N
 identity :: Int -> Matrix
