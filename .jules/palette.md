@@ -4,3 +4,7 @@
 ## 2024-03-29 - [Actionable Canvas Empty States]
 **Learning:** Pure status messages in canvas visualizations ("Disconnected") create a dead-end UX, whereas pairing them with actionable sub-text ("Check hardware connection") significantly reduces user frustration during complex stream interruptions.
 **Action:** Always provide secondary actionable guidance alongside primary status alerts in empty states, especially for hardware/connection intensive views.
+
+## 2024-03-29 - [Human-Readable Metrics in Monitoring UIs]
+**Learning:** Exposing raw machine data (like nanosecond timestamps) in real-time monitoring interfaces increases cognitive load and hides important performance context (like actual frame processing time/latency). Users don't care about the absolute timestamp, they care about the *interval* or *latency*.
+**Action:** Always compute and display derived, human-readable metrics (like "33.3 ms" frame times) instead of raw system counters.

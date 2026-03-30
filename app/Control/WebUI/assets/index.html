@@ -83,15 +83,25 @@
             drawEmptyState('Connection Error', '#f00', 'Check hardware connection or restart service.');
         };
 
+        let lastTs = 0;
+
         ws.onmessage = (event) => {
             const state = JSON.parse(event.data);
 
             // 1. Update Beam Status
-            statusEl.innerText = state.beamState.toUpperCase();
+            // Insert space before capital letters (e.g., "BeamOn" -> "BEAM ON")
+            statusEl.innerText = state.beamState.replace(/([A-Z])/g, ' $1').trim().toUpperCase();
             statusEl.className = state.beamState;
 
             // 2. Update Stats
-            tsEl.innerText = state.timestamp;
+            // Calculate delta in milliseconds from raw nanoseconds
+            if (lastTs > 0 && state.timestamp > lastTs) {
+                const deltaMs = (state.timestamp - lastTs) / 1000000;
+                tsEl.innerText = deltaMs.toFixed(1) + " ms";
+            } else if (lastTs === 0) {
+                tsEl.innerText = "0.0 ms";
+            }
+            lastTs = state.timestamp;
             ptCountEl.innerText = state.pointCloud.length;
 
             // 3. Update Trace
