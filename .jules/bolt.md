@@ -13,3 +13,7 @@
 ## 2024-05-25 - Strict Evaluation in Hot Loops
 **Learning:** Even with single-pass tail-recursion, accumulating variables in hot mathematical loops (like CZT summation or EMA calculation) can build up deeply nested thunks if not evaluated strictly, causing space leaks and performance degradation.
 **Action:** Use `BangPatterns` (`!`) on accumulating variables and intermediate calculation terms inside hot loops (e.g., `let !m = ...`) to force strict evaluation and prevent thunk buildup.
+
+## 2024-10-25 - Floating Point Exponentiation Overhead
+**Learning:** Using `**` for floating point exponentiation (like `latencySec ** 2`) in Haskell evaluates to `exp(y * log(x))`, which carries significant unnecessary computational overhead when the power is a small integer, creating a bottleneck inside hot calculation loops (like `evaluateGating`).
+**Action:** Replace `x ** 2` with `x * x` or `x ^ (2::Int)` in performance-critical signal processing loops for faster execution without type coercion.
