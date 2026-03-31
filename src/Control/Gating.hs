@@ -110,7 +110,7 @@ evaluateGating target tol hyst latencyNS kState oldBeam =
         -- Check for NaN/Inf
         invalid = isNaN pos || isNaN vel || isInfinite pos || isInfinite vel
 
-        predPos = pos + (vel * latencySec) + (0.5 * acc * (latencySec ** 2))
+        predPos = pos + (vel * latencySec) + (0.5 * acc * (latencySec * latencySec)) -- ⚡ Bolt Optimization: Replace ** with * for performance
 
         err = abs (predPos - target)
 
