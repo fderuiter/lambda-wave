@@ -8,3 +8,7 @@
 ## 2024-03-29 - [Human-Readable Metrics in Monitoring UIs]
 **Learning:** Exposing raw machine data (like nanosecond timestamps) in real-time monitoring interfaces increases cognitive load and hides important performance context (like actual frame processing time/latency). Users don't care about the absolute timestamp, they care about the *interval* or *latency*.
 **Action:** Always compute and display derived, human-readable metrics (like "33.3 ms" frame times) instead of raw system counters.
+
+## 2024-03-31 - [Keyboard Accessible Tooltips]
+**Learning:** `<abbr>` elements with `title` attributes provide helpful tooltips for mouse users but are completely invisible to keyboard users by default, breaking accessibility for technical abbreviations.
+**Action:** Always add `tabindex="0"` to `<abbr>` tags or custom tooltips to ensure keyboard-only users can discover and access the definitions.
