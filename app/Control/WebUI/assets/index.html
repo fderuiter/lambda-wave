@@ -63,6 +63,7 @@
         ws.onopen = () => {
             connDot.className = 'status-dot dot-live';
             connText.innerText = 'Live';
+            document.title = 'Live - Lambda-Wave Monitor';
         };
 
         ws.onclose = () => {
@@ -72,6 +73,7 @@
             statusEl.className = 'Offline';
             tsEl.innerText = 'N/A';
             ptCountEl.innerText = 'N/A';
+            document.title = 'Disconnected - Lambda-Wave Monitor';
             drawEmptyState('Disconnected', '#f00', 'Check hardware connection or restart service.');
         };
 
@@ -80,6 +82,7 @@
             connText.innerText = 'Connection Error';
             statusEl.innerText = 'OFFLINE';
             statusEl.className = 'Offline';
+            document.title = 'Error - Lambda-Wave Monitor';
             drawEmptyState('Connection Error', '#f00', 'Check hardware connection or restart service.');
         };
 
@@ -92,6 +95,7 @@
             // Insert space before capital letters (e.g., "BeamOn" -> "BEAM ON")
             statusEl.innerText = state.beamState.replace(/([A-Z])/g, ' $1').trim().toUpperCase();
             statusEl.className = state.beamState;
+            document.title = statusEl.innerText + ' - Lambda-Wave Monitor';
 
             // 2. Update Stats
             // Calculate delta in milliseconds from raw nanoseconds
