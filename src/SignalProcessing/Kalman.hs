@@ -154,7 +154,8 @@ predict dt config state
     -- | 1  dt  0.5*dt^2 |
     -- | 0  1   dt       |
     -- | 0  0   1        |
-    fMat = M33 (V3 1 dt (0.5 * dt**2))
+    -- ⚡ Bolt Optimization: Replace ** with * for performance
+    fMat = M33 (V3 1 dt (0.5 * dt * dt))
                (V3 0 1  dt)
                (V3 0 0  1)
 
@@ -162,7 +163,8 @@ predict dt config state
     -- G = [0.5*dt^2, dt, 1]^T
     -- Q = q * G * G^T
     qScalar = procNoise config
-    gVec = V3 (0.5 * dt**2) dt 1
+    -- ⚡ Bolt Optimization: Replace ** with * for performance
+    gVec = V3 (0.5 * dt * dt) dt 1
     qMat = scaleM qScalar (outerV gVec gVec)
 
     -- Predict
