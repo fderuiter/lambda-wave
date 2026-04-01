@@ -23,6 +23,7 @@ import Data.ByteString (useAsCStringLen)
 import Foreign.C.Types (CInt(..))
 import Data.Config (uartBaudRate)
 import qualified Data.ByteString as B
+import System.FilePath (isAbsolute, splitDirectories)
 
 import Hardware.Types (HardwareError(..))
 
@@ -57,59 +58,67 @@ configureSensorWithRetry attempts configPath portPath = go attempts
                 threadDelay 100000 -- 100ms wait
                 go (n - 1)
 
+-- | Helper to prevent path traversal
+isPathSafe :: FilePath -> Bool
+isPathSafe path = not (isAbsolute path) && ".." `notElem` splitDirectories path
+
 -- | Configures the sensor by sending commands from the given config file.
 -- Returns typed 'HardwareError' on failure.
 -- SENTINEL SAFETY EDIT: Uses bounded strict IO to prevent DoS via massive config files.
+-- SENTINEL SAFETY EDIT: Added path traversal protection for config file.
 configureSensor :: FilePath -> FilePath -> IO (Either HardwareError ())
 configureSensor configPath portPath = do
-    putStrLn $ "[Control] Configuring sensor on " ++ portPath ++ " with config " ++ configPath
+    if not (isPathSafe configPath)
+        then return $ Left $ ConfigurationFailed "Unsafe configuration path detected"
+        else do
+            putStrLn $ "[Control] Configuring sensor on " ++ portPath ++ " with config " ++ configPath
 
-    -- Read config file (Bounded, Strict)
-    -- Limit to 100KB to prevent OOM/DoS
-    let maxConfigSize = 100 * 1024
+            -- Read config file (Bounded, Strict)
+            -- Limit to 100KB to prevent OOM/DoS
+            let maxConfigSize = 100 * 1024
 
-    fileContentResult <- try $ withFile configPath ReadMode $ \h -> do
-        bs <- B.hGet h maxConfigSize
-        return (BC.unpack bs)
+            fileContentResult <- try $ withFile configPath ReadMode $ \h -> do
+                bs <- B.hGet h maxConfigSize
+                return (BC.unpack bs)
 
-    case fileContentResult of
-        Left ex -> return $ Left $ ConfigurationFailed $ "Failed to read config file: " ++ show (ex :: IOException)
-        Right content -> do
-            let commands = parseConfig content
+            case fileContentResult of
+                Left ex -> return $ Left $ ConfigurationFailed $ "Failed to read config file: " ++ show (ex :: IOException)
+                Right content -> do
+                    let commands = parseConfig content
 
-            -- Wrap the whole operation in try to catch IOExceptions (e.g. port not found)
-            result <- try $ bracket
+                    -- Wrap the whole operation in try to catch IOExceptions (e.g. port not found)
+                    result <- try $ bracket
 #if MIN_VERSION_unix(2,8,0)
-                (openFd portPath ReadWrite defaultFileFlags)
+                        (openFd portPath ReadWrite defaultFileFlags)
 #else
-                (openFd portPath ReadWrite Nothing defaultFileFlags)
+                        (openFd portPath ReadWrite Nothing defaultFileFlags)
 #endif
-                closeFd
-                (\fd -> do
-                    res <- configureConfigSerial fd -- Set 115200
-                    case res of
-                        Left (ConfigurationFailed err) -> ioError (userError err)
-                        Left err -> ioError (userError $ show err)
-                        Right () -> do
-                            forM_ commands $ \cmd -> do
-                                let packet = BC.pack (cmd ++ "\n")
-                                bytesSent <- useAsCStringLen packet $ \(ptr, len) ->
-                                    fdWriteBuf fd (castPtr ptr) (fromIntegral len)
+                        closeFd
+                        (\fd -> do
+                            res <- configureConfigSerial fd -- Set 115200
+                            case res of
+                                Left (ConfigurationFailed err) -> ioError (userError err)
+                                Left err -> ioError (userError $ show err)
+                                Right () -> do
+                                    forM_ commands $ \cmd -> do
+                                        let packet = BC.pack (cmd ++ "\n")
+                                        bytesSent <- useAsCStringLen packet $ \(ptr, len) ->
+                                            fdWriteBuf fd (castPtr ptr) (fromIntegral len)
 
-                                -- Check if all bytes were written
-                                if fromIntegral bytesSent < BC.length packet
-                                    then ioError (userError $ "Failed to send complete command: " ++ cmd)
-                                    else threadDelay 100000 -- 100ms delay between commands
-                )
+                                        -- Check if all bytes were written
+                                        if fromIntegral bytesSent < BC.length packet
+                                            then ioError (userError $ "Failed to send complete command: " ++ cmd)
+                                            else threadDelay 100000 -- 100ms delay between commands
+                        )
 
-            case result of
-                Left ex -> do
-                    let msg = "[Control] Configuration Failed: " ++ show (ex :: IOException)
-                    putStrLn msg
-                    return (Left $ ConfigurationFailed msg)
-                Right _ -> do
-                    putStrLn "[Control] Configuration Complete."
-                    return (Right ())
+                    case result of
+                        Left ex -> do
+                            let msg = "[Control] Configuration Failed: " ++ show (ex :: IOException)
+                            putStrLn msg
+                            return (Left $ ConfigurationFailed msg)
+                        Right _ -> do
+                            putStrLn "[Control] Configuration Complete."
+                            return (Right ())
 
 configureConfigSerial :: Fd -> IO (Either HardwareError ())
 configureConfigSerial fd = do

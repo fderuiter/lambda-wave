@@ -6,3 +6,7 @@
 **Vulnerability:** The Content-Security-Policy (CSP) allowed 'unsafe-inline' for both scripts and styles, which makes the UI vulnerable to Cross-Site Scripting (XSS) attacks.
 **Learning:** Even internal or local UIs should employ strict CSPs to adhere to defense-in-depth principles. Using 'unsafe-inline' completely bypasses the protections CSP is designed to provide against malicious code injection.
 **Prevention:** Always calculate SHA256 hashes of inline scripts and styles and include them in the CSP header instead of using 'unsafe-inline'. For static assets embedded at compile time (like `indexHtml`), these hashes can be pre-calculated and hardcoded safely.
+## 2024-04-01 - [CRITICAL] **Vector:** [src/Hardware/Control.hs] **Hazard:** [Path Traversal in configPath]
+**Vulnerability:** The `configureSensor` function accepted arbitrary configuration paths without checking for absolute paths or directory traversal sequences (`..`).
+**Learning:** Functions dealing with raw `FilePath` arguments representing file locations can be manipulated into reading sensitive files from the system if `..` traversal or absolute paths are used by an attacker.
+**Prevention:** Implement an `isPathSafe` check before performing any file operations. Ensure the path is not absolute and does not contain `..` to effectively restrict access to specific, allowed files/directories.
