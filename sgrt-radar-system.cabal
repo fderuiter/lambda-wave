@@ -28,6 +28,7 @@ common common-options
     , unix
     , deepseq
     , containers
+    , filepath
   default-language: Haskell2010
 
 flag enable-ui
