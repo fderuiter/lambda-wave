@@ -17,6 +17,9 @@
 **Learning:** Users in a clinical/monitoring environment often have multiple tabs or applications open. If critical status changes (like "BEAM OFF" or "Disconnected") only occur visually within the webpage content, they are missed when the tab is in the background.
 **Action:** Always reflect critical system state changes in the `document.title` so the user can monitor the system's status directly from the browser tab bar without needing the window to be actively focused.
 
+## 2024-06-15 - [Screen Reader Accessibility for Canvas Rendered Text]
+**Learning:** Text rendered visually on `<canvas>` elements using `fillText` is completely invisible to screen readers, creating a major accessibility gap for users relying on assistive technologies to understand state changes or guidance displayed on the canvas.
+**Action:** Always mirror critical text drawn on `<canvas>` elements to the canvas's `aria-label` attribute dynamically to ensure screen reader users receive the same information as sighted users.
 ## 2024-10-24 - Screen Reader Spam from High-Frequency WebSocket Updates
 **Learning:** Updating `aria-live` elements (or `document.title`) on every frame from a 30Hz WebSocket stream causes screen readers to constantly announce the status, completely overwhelming the user and rendering the interface unusable.
 **Action:** Always diff against previous states (`lastState !== currentState`) before applying DOM updates to `aria-live` elements or the document title in high-frequency event loops.
