@@ -12,7 +12,8 @@ import Network.HTTP.Types (status200)
 import Network.Wai
 import Network.Wai.Handler.Warp (runSettings, defaultSettings, setPort, setHost)
 import Network.Wai.Handler.WebSockets (websocketsOr)
-import Network.WebSockets (ServerApp, acceptRequest, sendTextData, defaultConnectionOptions)
+import qualified Network.WebSockets as WS
+import Network.WebSockets (ServerApp, acceptRequest, rejectRequest, sendTextData, defaultConnectionOptions, pendingRequest)
 import Data.ByteString.Lazy (fromStrict)
 import qualified Data.ByteString as B
 
@@ -41,9 +42,14 @@ httpApp _ respond = respond $
 
 wsApp :: TVar SystemState -> ServerApp
 wsApp stateVar pending = do
-    conn <- acceptRequest pending
-    -- Simple loop: push state every 33ms
-    forever $ do
-        state <- readTVarIO stateVar
-        sendTextData conn (encode state)
-        threadDelay 33000 -- ~30Hz
+    let headers = WS.requestHeaders (pendingRequest pending)
+        origin = lookup "Origin" headers
+    if origin == Just "http://127.0.0.1:8080" || origin == Just "http://localhost:8080"
+        then do
+            conn <- acceptRequest pending
+            -- Simple loop: push state every 33ms
+            forever $ do
+                state <- readTVarIO stateVar
+                sendTextData conn (encode state)
+                threadDelay 33000 -- ~30Hz
+        else rejectRequest pending "Untrusted Origin"
