@@ -17,7 +17,7 @@ import Data.Maybe (fromMaybe)
 -- Complexity: O(N * M^2) where N is points, M is 6 terms.
 fitPolynomialSurface :: [Point3D] -> [Double]
 fitPolynomialSurface pts
-    | length pts < 6 = replicate 6 0.0 -- Not enough points
+    | null (drop 5 pts) = replicate 6 0.0 -- Not enough points
     | otherwise = fromMaybe (replicate 6 0.0) (leastSquares a b)
   where
     -- Design Matrix A

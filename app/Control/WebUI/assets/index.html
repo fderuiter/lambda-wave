@@ -16,6 +16,7 @@
         .dot-offline { background-color: #f00; box-shadow: 0 0 5px #f00; }
         .dot-connecting { background-color: #ff0; animation: pulse 1s infinite; }
         @keyframes pulse { 0% { opacity: 0.5; } 50% { opacity: 1; } 100% { opacity: 0.5; } }
+        abbr:focus-visible { outline: 2px solid #0ff; outline-offset: 2px; }
     </style>
 </head>
 <body>
@@ -89,15 +90,20 @@
         };
 
         let lastTs = 0;
+        let lastBeamState = null;
 
         ws.onmessage = (event) => {
             const state = JSON.parse(event.data);
 
             // 1. Update Beam Status
-            // Insert space before capital letters (e.g., "BeamOn" -> "BEAM ON")
-            statusEl.innerText = state.beamState.replace(/([A-Z])/g, ' $1').trim().toUpperCase();
-            statusEl.className = state.beamState;
-            document.title = statusEl.innerText + ' - Lambda-Wave Monitor';
+            // Only update DOM if state changed to prevent aria-live screen reader spam at 30Hz
+            if (state.beamState !== lastBeamState) {
+                // Insert space before capital letters (e.g., "BeamOn" -> "BEAM ON")
+                statusEl.innerText = state.beamState.replace(/([A-Z])/g, ' $1').trim().toUpperCase();
+                statusEl.className = state.beamState;
+                document.title = statusEl.innerText + ' - Lambda-Wave Monitor';
+                lastBeamState = state.beamState;
+            }
 
             // 2. Update Stats
             // Calculate delta in milliseconds from raw nanoseconds
