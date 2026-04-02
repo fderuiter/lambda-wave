@@ -16,3 +16,7 @@
 ## 2024-05-18 - [Critical System State Visibility in Background Tabs]
 **Learning:** Users in a clinical/monitoring environment often have multiple tabs or applications open. If critical status changes (like "BEAM OFF" or "Disconnected") only occur visually within the webpage content, they are missed when the tab is in the background.
 **Action:** Always reflect critical system state changes in the `document.title` so the user can monitor the system's status directly from the browser tab bar without needing the window to be actively focused.
+
+## 2024-10-24 - Screen Reader Spam from High-Frequency WebSocket Updates
+**Learning:** Updating `aria-live` elements (or `document.title`) on every frame from a 30Hz WebSocket stream causes screen readers to constantly announce the status, completely overwhelming the user and rendering the interface unusable.
+**Action:** Always diff against previous states (`lastState !== currentState`) before applying DOM updates to `aria-live` elements or the document title in high-frequency event loops.
