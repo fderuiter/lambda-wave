@@ -44,6 +44,7 @@
         const maxTrace = 300; // 10 seconds at 30Hz
 
         function drawEmptyState(message, color, guidance) {
+            canvas.setAttribute('aria-label', message + (guidance ? ': ' + guidance : ''));
             ctx.clearRect(0, 0, width, height);
             ctx.fillStyle = color || '#aaa';
             ctx.font = '24px monospace';
@@ -62,6 +63,7 @@
         drawEmptyState('Connecting...', '#ff0', 'Waiting for radar WebSocket stream...');
 
         ws.onopen = () => {
+            canvas.setAttribute('aria-label', 'Real-time trace and point cloud visualization');
             connDot.className = 'status-dot dot-live';
             connText.innerText = 'Live';
             document.title = 'Live - Lambda-Wave Monitor';
