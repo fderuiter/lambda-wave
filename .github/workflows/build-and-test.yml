@@ -12,7 +12,7 @@ jobs:
     container:
       image: haskell:9.8
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Install system dependencies
         run: scripts/setup_env.sh
