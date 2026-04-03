@@ -22,7 +22,11 @@ fitPolynomialSurface pts
   where
     -- Design Matrix A
     -- Rows are points, Columns are terms [1, x, y, x^2, xy, y^2]
-    a = map (\p -> [1, px p, py p, px p ^ (2::Int), px p * py p, py p ^ (2::Int)]) pts
+    a = map (\p ->
+        let x = px p
+            y = py p
+        -- ⚡ Bolt Optimization: Replace ^ with simple multiplication for performance
+        in [1, x, y, x * x, x * y, y * y]) pts
 
     -- Vector b (z coordinates)
     b = map pz pts
