@@ -14,3 +14,7 @@
 **Vulnerability:** The `wsApp` function allowed any website to establish a WebSocket connection via the browser and read sensitive radar data because it lacked an `Origin` header check.
 **Learning:** `acceptRequest` accepts any incoming connection by default. This makes the system susceptible to Cross-Site WebSocket Hijacking, a form of CSRF where an attacker can interact with the local loopback WebSocket server from an untrusted site to exfiltrate safety-critical data.
 **Prevention:** Always validate the `Origin` header using `Network.WebSockets.requestHeaders` and `pendingRequest` before calling `acceptRequest`. Connections from untrusted origins must be actively rejected with `rejectRequest`.
+## 2024-04-03 - [MEDIUM] **Vector:** [src/Safety/Audit.hs] **Hazard:** [Log Injection / CRLF Injection]
+**Vulnerability:** Untrusted string fields in `AuditEvent` (`component` and `message`) were written directly to the log file via `printf` without sanitization. If an attacker controls these fields and injects newline characters, they can forge fake log entries (e.g. Critical severity events) leading to log spoofing and obfuscation.
+**Learning:** Append-only log files that rely on single-line formats must explicitly strip or escape control characters (like `\n` and `\r`) from any variable input before writing.
+**Prevention:** Always sanitize strings before logging them, for example by mapping over the characters and replacing those matching `isControl` with spaces.

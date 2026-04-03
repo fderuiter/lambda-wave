@@ -12,6 +12,7 @@ import qualified Data.Map.Strict as Map
 import Control.Exception (try, IOException)
 import System.Posix.Files (rename)
 import Text.Printf (printf)
+import Data.Char (isControl)
 
 -- | Signals why the inner loop exited
 data LoopResult = RotationNeeded
@@ -83,11 +84,12 @@ processEvents stateVar queue h = go
                 -- 3. Write Event
                 -- Format: [TIMESTAMP] [SEVERITY] [COMPONENT] MESSAGE
                 -- using show for severity
+                let sanitize = map (\c -> if isControl c then ' ' else c)
                 let entry = printf "[%d] [%s] [%s] %s"
                                 (eventTime evt)
                                 (show (severity evt))
-                                (component evt)
-                                (message evt)
+                                (sanitize $ component evt)
+                                (sanitize $ message evt)
                 hPutStrLn h entry
 
                 -- 4. Critical Flush (Safety)
