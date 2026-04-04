@@ -17,3 +17,7 @@
 ## 2024-10-25 - Floating Point Exponentiation Overhead
 **Learning:** Using `**` for floating point exponentiation (like `latencySec ** 2`) in Haskell evaluates to `exp(y * log(x))`, which carries significant unnecessary computational overhead when the power is a small integer, creating a bottleneck inside hot calculation loops (like `evaluateGating`).
 **Action:** Replace `x ** 2` with `x * x` or `x ^ (2::Int)` in performance-critical signal processing loops for faster execution without type coercion.
+
+## 2024-10-24 - [Avoid apt-get for Haskell Tools in Docker Containers]
+**Learning:** Installing `ghc` and `cabal-install` via `apt-get` inside a modern Haskell Docker container (e.g., `haskell:9.8`) overwrites the container's up-to-date toolchain with severely outdated Debian packages (like GHC 8.8.4). This causes massive dependency bloat (pulling in packages like `python3.9`), drastically increases build times, and leads to network timeouts during CI/CD package fetching.
+**Action:** Always rely on the base Docker image's provided Haskell toolchain and avoid including `ghc` or `cabal-install` in OS-level package installation scripts (`setup_env.sh`) when executing inside Haskell-specific containers.
