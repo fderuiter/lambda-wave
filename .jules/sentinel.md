@@ -18,3 +18,7 @@
 **Vulnerability:** Untrusted string fields in `AuditEvent` (`component` and `message`) were written directly to the log file via `printf` without sanitization. If an attacker controls these fields and injects newline characters, they can forge fake log entries (e.g. Critical severity events) leading to log spoofing and obfuscation.
 **Learning:** Append-only log files that rely on single-line formats must explicitly strip or escape control characters (like `\n` and `\r`) from any variable input before writing.
 **Prevention:** Always sanitize strings before logging them, for example by mapping over the characters and replacing those matching `isControl` with spaces.
+## 2024-04-04 - [MEDIUM] Add Cache-Control headers to prevent UI state caching
+**Vulnerability:** The WebUI response lacked `Cache-Control` headers, allowing browsers to potentially cache the sensitive medical UI.
+**Learning:** Even for local single-page apps, browsers may cache the HTML, which could lead to stale or sensitive state being exposed via the browser cache or back button.
+**Prevention:** Always include `Cache-Control: no-store, no-cache, must-revalidate, max-age=0` and `Pragma: no-cache` for UIs displaying sensitive, real-time data to ensure no disk or memory caching occurs.
