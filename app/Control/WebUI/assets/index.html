@@ -4,7 +4,7 @@
     <title>Lambda-Wave Monitor</title>
     <style>
         body { font-family: monospace; background: #111; color: #eee; margin: 0; padding: 20px; }
-        #beam-status { font-size: 2em; text-align: center; padding: 20px; border-radius: 10px; margin-bottom: 20px; transition: background-color 0.3s ease; }
+        #beam-status { font-size: 2em; text-align: center; padding: 20px; border-radius: 10px; margin-bottom: 20px; transition: background-color 0.3s ease, color 0.3s ease; }
         .BeamOn { background: #0f0; color: #000; }
         .BeamOff { background: #f00; color: #fff; }
         .BeamHold { background: #ff0; color: #000; }
@@ -24,8 +24,8 @@
         <div id="beam-status" class="BeamOff" role="status" aria-live="polite">BEAM OFF</div>
         <canvas id="plot" width="800" height="400" role="img" aria-label="Real-time trace and point cloud visualization"></canvas>
         <div id="stats">
-            <span aria-live="polite" aria-atomic="true"><span id="conn-dot" class="status-dot dot-connecting" aria-hidden="true"></span><span id="conn-text">Connecting...</span></span> |
-            <abbr tabindex="0" title="Time elapsed for the current radar frame" style="cursor: help; text-decoration: underline dotted; text-decoration-skip-ink: none;">Frame Time</abbr>: <span id="ts">0</span> | <abbr tabindex="0" title="Number of points in the current point cloud" style="cursor: help; text-decoration: underline dotted; text-decoration-skip-ink: none;">Points</abbr>: <span id="pt-count">0</span>
+            <span aria-live="polite" aria-atomic="true"><span id="conn-dot" class="status-dot dot-connecting" aria-hidden="true"></span><span id="conn-text">Connecting...</span></span> <span aria-hidden="true">|</span>
+            <abbr tabindex="0" title="Time elapsed for the current radar frame" style="cursor: help; text-decoration: underline dotted; text-decoration-skip-ink: none;">Frame Time</abbr>: <span id="ts">0</span> <span aria-hidden="true">|</span> <abbr tabindex="0" title="Number of points in the current point cloud" style="cursor: help; text-decoration: underline dotted; text-decoration-skip-ink: none;">Points</abbr>: <span id="pt-count">0</span>
         </div>
     </main>
 
@@ -63,6 +63,7 @@
 
         // Initial state
         drawEmptyState('Connecting...', '#ff0', 'Waiting for radar WebSocket stream...');
+        document.title = 'Connecting... - Lambda-Wave Monitor';
 
         ws.onopen = () => {
             canvas.setAttribute('aria-label', 'Real-time trace and point cloud visualization');

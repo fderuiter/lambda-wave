@@ -27,3 +27,11 @@
 ## 2024-10-24 - [Semantic Landmarks and Clean Live Regions]
 **Learning:** Decorative elements inside `aria-live` regions (like animated status dots) can cause confusing noise for screen reader users, and missing semantic landmarks (like `<main>`) force users to navigate through all DOM nodes sequentially.
 **Action:** Wrap the core application content in a `<main>` tag to establish clear document structure, add `aria-hidden="true"` to decorative elements within status announcements, and use `aria-atomic="true"` on live regions to ensure cohesive readings.
+
+## 2024-11-20 - [Silencing Decorative Separators]
+**Learning:** Text characters used strictly for visual layout or separation (like `|` or `/`) are read aloud by screen readers ("vertical line", "slash"), causing unnecessary cognitive noise and slowing down navigation for visually impaired users.
+**Action:** Always wrap non-semantic, purely visual separator text in a `<span aria-hidden="true">` to hide it from assistive technologies while preserving its visual appearance.
+
+## 2024-11-20 - [Synchronizing Contrast Transitions]
+**Learning:** When animating a component's state (like an alert or status pill) where both the background and text color change, animating only one property (e.g., `background-color`) causes the other to snap instantly. This creates a brief moment of harsh or unreadable contrast mid-transition.
+**Action:** Always synchronize transitions for both `background-color` and `color` (`transition: background-color 0.3s ease, color 0.3s ease;`) to maintain readable contrast throughout the animation lifecycle.
