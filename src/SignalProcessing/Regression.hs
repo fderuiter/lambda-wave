@@ -37,7 +37,9 @@ solveBiQuadratic x y
             [p0, p1, p2, p3, p4] -> Just $ BiQuadratic p0 p1 p2 p3 p4
             _ -> Nothing
   where
-    designM = map (\val -> [1, val, val^(2::Int), val^(3::Int), val^(4::Int)]) x
+    -- ⚡ Bolt: Using explicit multiplication (v2 * v2) instead of (val^4)
+    -- avoids the function overhead of `^` for small integer powers.
+    designM = map (\val -> let v2 = val * val in [1, val, v2, v2 * val, v2 * v2]) x
 
 -- | Perform the Regression for "Strict" Bi-Quadratic
 -- y = a*x^4 + b*x^2 + c
@@ -51,7 +53,8 @@ solveStrictBiQuadratic x y
             [k0, k2, k4] -> Just $ StrictBiQuadratic k0 k2 k4
             _ -> Nothing
   where
-    designM = map (\val -> [1, val^(2::Int), val^(4::Int)]) x
+    -- ⚡ Bolt: Using explicit multiplication instead of ^
+    designM = map (\val -> let v2 = val * val in [1, v2, v2 * v2]) x
 
 -- | Prediction Function via TypeClass or Overloading would be nice,
 -- but for simplicity/safety we can just have specific functions or a Sum Type.
@@ -60,8 +63,12 @@ class Predictable a where
 
 instance Predictable BiQuadratic where
     predict (BiQuadratic p0 p1 p2 p3 p4) x =
-        p0 + (p1 * x) + (p2 * x^(2::Int)) + (p3 * x^(3::Int)) + (p4 * x^(4::Int))
+        -- ⚡ Bolt: Caching x^2 and using explicit multiplication for x^3 and x^4
+        let x2 = x * x
+        in p0 + (p1 * x) + (p2 * x2) + (p3 * x2 * x) + (p4 * x2 * x2)
 
 instance Predictable StrictBiQuadratic where
     predict (StrictBiQuadratic k0 k2 k4) x =
-        k0 + (k2 * x^(2::Int)) + (k4 * x^(4::Int))
+        -- ⚡ Bolt: Caching x^2 and using explicit multiplication
+        let x2 = x * x
+        in k0 + (k2 * x2) + (k4 * x2 * x2)
