@@ -52,14 +52,16 @@ main() {
                 export DEBIAN_FRONTEND=noninteractive
 
                 log_info "Updating package lists..."
-                $sudo_cmd apt-get update
+                $sudo_cmd apt-get update --fix-missing
 
                 log_info "Installing dependencies..."
                 # build-essential: Compiler tools
                 # liblapack-dev, libblas-dev: Linear algebra (hmatrix)
                 # freeglut3-dev, libgl1-mesa-dev, libglu1-mesa-dev: OpenGL/GLUT
                 # clang-format: C/C++ Linting
-                $sudo_cmd apt-get install -y --no-install-recommends \
+                # Note: ghc, cabal-install, hlint, and ormolu are removed here
+                # because they overwrite modern container versions with old Debian packages.
+                $sudo_cmd apt-get install -y --fix-missing --no-install-recommends \
                     build-essential \
                     liblapack-dev \
                     libblas-dev \
@@ -73,12 +75,8 @@ main() {
                     libxi-dev \
                     pkg-config \
                     clang-format \
-                    cabal-install \
-                    ghc \
                     curl \
-                    git \
-                    hlint \
-                    ormolu
+                    git
 
                 # Clean up apt cache to keep images small (only if running as root/docker context usually, but good practice)
                 if [ -n "${DOCKER_CONTAINER:-}" ] || [ -f /.dockerenv ]; then

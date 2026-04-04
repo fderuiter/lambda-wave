@@ -23,3 +23,7 @@
 ## 2024-10-24 - Screen Reader Spam from High-Frequency WebSocket Updates
 **Learning:** Updating `aria-live` elements (or `document.title`) on every frame from a 30Hz WebSocket stream causes screen readers to constantly announce the status, completely overwhelming the user and rendering the interface unusable.
 **Action:** Always diff against previous states (`lastState !== currentState`) before applying DOM updates to `aria-live` elements or the document title in high-frequency event loops.
+
+## 2024-10-24 - [Semantic Landmarks and Clean Live Regions]
+**Learning:** Decorative elements inside `aria-live` regions (like animated status dots) can cause confusing noise for screen reader users, and missing semantic landmarks (like `<main>`) force users to navigate through all DOM nodes sequentially.
+**Action:** Wrap the core application content in a `<main>` tag to establish clear document structure, add `aria-hidden="true"` to decorative elements within status announcements, and use `aria-atomic="true"` on live regions to ensure cohesive readings.
