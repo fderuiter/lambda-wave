@@ -45,12 +45,11 @@ toLists = id
 multiply :: Matrix -> Matrix -> Maybe Matrix
 multiply a b
     | null a = Just []
-    | not (isRectangular a rowsA colsA) = Nothing
-    | not (isRectangular b rowsB colsB) = Nothing
+    | not (isRectangular a colsA) = Nothing
+    | not (isRectangular b colsB) = Nothing
     | colsA /= rowsB = Nothing
     | otherwise = Just [ [ dot row col | col <- bt ] | row <- a ]
   where
-    rowsA = length a
     colsA = case a of
         (r:_) -> length r
         []    -> 0
@@ -85,7 +84,7 @@ inverse :: Matrix -> Maybe Matrix
 inverse m
     | null m = Nothing
     | rows /= cols = Nothing
-    | not (isRectangular m rows cols) = Nothing
+    | not (isRectangular m cols) = Nothing
     | otherwise = do
         let augmented = zipWith (++) m (identity rows)
         rref <- gaussJordan augmented rows
@@ -105,7 +104,7 @@ leastSquares a b = do
             (r:_) -> length r
             []    -> 0
 
-    if not (isRectangular a rowsA colsA) || length b /= rowsA
+    if not (isRectangular a colsA) || length b /= rowsA
        then Nothing
        else do
            let matT = transpose a
@@ -123,8 +122,10 @@ at xs i
         (x:_) -> Just x
 
 -- | Helper: Check Rectangularity
-isRectangular :: Matrix -> Int -> Int -> Bool
-isRectangular m rows cols = length m == rows && all (\r -> length r == cols) m
+isRectangular :: Matrix -> Int -> Bool
+-- ⚡ Bolt Optimization: Removed redundant O(N) `length m == rows` check
+-- since `rows` is always cleanly calculated via `length m` at the call-site.
+isRectangular m cols = all (\r -> length r == cols) m
 
 -- | Helper: Update list at index using splitAt (O(N) without intermediate lists)
 updateAt :: Int -> (a -> a) -> [a] -> [a]

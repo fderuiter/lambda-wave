@@ -24,3 +24,7 @@
 ## 2026-04-04 - [Optimize Power Operations in Haskell]
 **Learning:** In performance-critical Haskell code, using the `^` or `**` operator for small integer powers (like squaring or cubing) introduces significant function overhead. Explicit multiplication is preferred.
 **Action:** Always replace small integer exponentiation (e.g., `x^2`, `x^(4::Int)`) with explicit multiplication (`x * x`) or cached variables (`let x2 = x * x`) to allow the compiler to utilize fast hardware multiply operations.
+
+## 2026-04-06 - [Avoid Redundant List Traversals in Wrappers]
+**Learning:** When passing Haskell lists or matrices down a call chain, outer wrapper functions often redundantly evaluate `length x /= length y` or `length m == rows` even when the inner functions (like `leastSquares`) inherently and safely validate those exact dimensions. Because lists do not store their length, every `length` check forces a full O(N) traversal.
+**Action:** Always verify if downstream functions already handle dimension or length validation. If so, remove redundant `length` checks from the caller to save unnecessary O(N) traversals.
