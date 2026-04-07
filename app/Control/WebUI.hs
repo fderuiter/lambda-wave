@@ -35,7 +35,7 @@ httpApp _ respond = respond $
         [ ("Content-Type", "text/html")
         , ("X-Frame-Options", "DENY")
         , ("X-Content-Type-Options", "nosniff")
-        , ("Content-Security-Policy", "default-src 'self'; connect-src 'self' ws: wss:; script-src 'self' 'sha256-GUYznWupE5ohSMN7U8nkzx+PLxw2mKz4g7z5VcHzG+4='; style-src 'self' 'sha256-LPHpnrOc3gyP2FMotaw0TE+lqhJ6bxdrpOeCIS4ty1o='")
+        , ("Content-Security-Policy", "default-src 'self'; connect-src 'self' ws: wss:; script-src 'self' 'sha256-GUYznWupE5ohSMN7U8nkzx+PLxw2mKz4g7z5VcHzG+4='; style-src 'self' 'sha256-2m8iwBnJLOqlqV6JkqY7KnQSQKpyjXb6x0oqx/s9IeE='")
         , ("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
         , ("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
         , ("Pragma", "no-cache")
