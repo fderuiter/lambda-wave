@@ -39,13 +39,14 @@ correlation xs ys =
     let n = fromIntegral (length xs)
         sumX = sum xs
         sumY = sum ys
-        sumX2 = sum (map (^ (2::Int)) xs)
-        sumY2 = sum (map (^ (2::Int)) ys)
+        -- ⚡ Bolt Optimization: Replace ^ with * for performance
+        sumX2 = sum (map (\valX -> valX * valX) xs)
+        sumY2 = sum (map (\valY -> valY * valY) ys)
         sumXY = sum (zipWith (*) xs ys)
 
         numerator = n * sumXY - sumX * sumY
-        denomX = sqrt (n * sumX2 - sumX ^ (2::Int))
-        denomY = sqrt (n * sumY2 - sumY ^ (2::Int))
+        denomX = sqrt (n * sumX2 - sumX * sumX)
+        denomY = sqrt (n * sumY2 - sumY * sumY)
     in numerator / (denomX * denomY)
 
 main :: IO ()
