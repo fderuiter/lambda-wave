@@ -30,7 +30,9 @@ data StrictBiQuadratic = StrictBiQuadratic
 -- | Perform the Regression
 solveBiQuadratic :: [Double] -> [Double] -> Maybe BiQuadratic
 solveBiQuadratic x y
-    | length x /= length y || null x = Nothing
+    | null x = Nothing
+    -- ⚡ Bolt Optimization: Removed redundant O(N) `length x /= length y` check
+    -- `leastSquares` inherently validates dimension equality.
     | otherwise = do
         coeffs <- leastSquares designM y
         case coeffs of
@@ -46,7 +48,9 @@ solveBiQuadratic x y
 -- Cols: [1, x^2, x^4]
 solveStrictBiQuadratic :: [Double] -> [Double] -> Maybe StrictBiQuadratic
 solveStrictBiQuadratic x y
-    | length x /= length y || null x = Nothing
+    | null x = Nothing
+    -- ⚡ Bolt Optimization: Removed redundant O(N) `length x /= length y` check
+    -- `leastSquares` inherently validates dimension equality.
     | otherwise = do
         coeffs <- leastSquares designM y
         case coeffs of
