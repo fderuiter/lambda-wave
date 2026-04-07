@@ -39,3 +39,7 @@
 ## 2024-11-21 - [Prevent False Security in Initial States]
 **Learning:** For real-time UI components (like WebSocket status monitors), hardcoding an initial "safe" state (e.g., "BEAM OFF") in the static HTML before the connection is established creates a false sense of security. If the connection fails to establish, the user might assume the system is safe when its actual state is unknown.
 **Action:** Always default to a neutral, informative state like "CONNECTING..." (with an offline or pending visual indicator) until actual telemetry is confirmed from the backend.
+
+## 2024-11-21 - [Responsive Fixed-Dimension Canvases & Graceful Degradation]
+**Learning:** Fixed dimension canvases break layouts on mobile devices if they exceed screen width, and missing graceful degradation leaves users with JS disabled stranded on confusing initial states.
+**Action:** Always apply `max-width: 100%; height: auto;` to fixed canvases for responsiveness, and include a `<noscript>` tag for SPAs to warn users instead of displaying broken "Loading..." interfaces.
