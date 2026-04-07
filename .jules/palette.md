@@ -35,3 +35,7 @@
 ## 2024-11-20 - [Synchronizing Contrast Transitions]
 **Learning:** When animating a component's state (like an alert or status pill) where both the background and text color change, animating only one property (e.g., `background-color`) causes the other to snap instantly. This creates a brief moment of harsh or unreadable contrast mid-transition.
 **Action:** Always synchronize transitions for both `background-color` and `color` (`transition: background-color 0.3s ease, color 0.3s ease;`) to maintain readable contrast throughout the animation lifecycle.
+
+## 2024-11-21 - [Prevent False Security in Initial States]
+**Learning:** For real-time UI components (like WebSocket status monitors), hardcoding an initial "safe" state (e.g., "BEAM OFF") in the static HTML before the connection is established creates a false sense of security. If the connection fails to establish, the user might assume the system is safe when its actual state is unknown.
+**Action:** Always default to a neutral, informative state like "CONNECTING..." (with an offline or pending visual indicator) until actual telemetry is confirmed from the backend.
