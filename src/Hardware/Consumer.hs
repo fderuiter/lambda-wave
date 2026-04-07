@@ -34,7 +34,6 @@ import qualified Data.ByteString.Lazy as BL
 import qualified Data.Binary.Get as G
 import System.IO (hPutStrLn, stderr)
 import Data.Time.HighRes (getMonotonicTimeNS)
-import GHC.Float (float2Double)
 
 import FFI.RingBuffer.Types (RingBufferControl(..), peekStaticFields)
 import FFI.RingBuffer.IO (getWriteOffset, setReadOffset)
@@ -367,3 +366,6 @@ toPoint3D Point{..} = Point3D
     , v  = float2Double v'
     , snr = 0.0 -- Not in Type 1
     }
+
+float2Double :: Float -> Double
+float2Double = realToFrac
