@@ -22,3 +22,7 @@
 **Vulnerability:** The WebUI response lacked `Cache-Control` headers, allowing browsers to potentially cache the sensitive medical UI.
 **Learning:** Even for local single-page apps, browsers may cache the HTML, which could lead to stale or sensitive state being exposed via the browser cache or back button.
 **Prevention:** Always include `Cache-Control: no-store, no-cache, must-revalidate, max-age=0` and `Pragma: no-cache` for UIs displaying sensitive, real-time data to ensure no disk or memory caching occurs.
+## 2024-04-05 - [MEDIUM] **Vector:** [app/Control/WebUI.hs] **Hazard:** [WebSocket Thread Leak / DoS]
+**Vulnerability:** The WebSocket loop `forever $ sendTextData ...` sent continuous data without verifying if the client connection remained alive (e.g., if a client drops ungracefully resulting in a half-open TCP connection). This can lead to indefinite blocking and thread leaks when the kernel buffer fills, eventually causing Denial of Service.
+**Learning:** Raw WebSocket `forever` send loops in Haskell will leak threads if the connection drops silently, because `sendTextData` may eventually block forever waiting for the client to acknowledge.
+**Prevention:** Always use `Network.WebSockets.withPingThread` to actively ping clients and automatically tear down the connection and the associated thread if the client stops responding.

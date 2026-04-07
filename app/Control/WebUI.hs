@@ -10,10 +10,10 @@ import Data.Aeson (encode)
 import Data.FileEmbed (embedFile)
 import Network.HTTP.Types (status200)
 import Network.Wai
-import Network.Wai.Handler.Warp (runSettings, defaultSettings, setPort, setHost)
+import Network.Wai.Handler.Warp (runSettings, defaultSettings, setPort, setHost, setServerName)
 import Network.Wai.Handler.WebSockets (websocketsOr)
 import qualified Network.WebSockets as WS
-import Network.WebSockets (ServerApp, acceptRequest, rejectRequest, sendTextData, defaultConnectionOptions, pendingRequest)
+import Network.WebSockets (ServerApp, acceptRequest, rejectRequest, sendTextData, defaultConnectionOptions, pendingRequest, withPingThread)
 import Data.ByteString.Lazy (fromStrict)
 import qualified Data.ByteString as B
 
@@ -26,7 +26,7 @@ indexHtml = $(embedFile "app/Control/WebUI/assets/index.html")
 runWebUI :: TVar SystemState -> IO ()
 runWebUI stateVar = do
     putStrLn "Starting Web UI on http://127.0.0.1:8080"
-    let settings = setPort 8080 $ setHost "127.0.0.1" defaultSettings
+    let settings = setServerName "" $ setPort 8080 $ setHost "127.0.0.1" defaultSettings
     runSettings settings $ websocketsOr defaultConnectionOptions (wsApp stateVar) httpApp
 
 httpApp :: Application
@@ -39,6 +39,7 @@ httpApp _ respond = respond $
         , ("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
         , ("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
         , ("Pragma", "no-cache")
+        , ("Referrer-Policy", "no-referrer")
         ]
         (fromStrict indexHtml)
 
@@ -49,9 +50,11 @@ wsApp stateVar pending = do
     if origin == Just "http://127.0.0.1:8080" || origin == Just "http://localhost:8080"
         then do
             conn <- acceptRequest pending
-            -- Simple loop: push state every 33ms
-            forever $ do
-                state <- readTVarIO stateVar
-                sendTextData conn (encode state)
-                threadDelay 33000 -- ~30Hz
+            -- Use a ping thread to detect dead connections and prevent socket leaks
+            withPingThread conn 10 (return ()) $ do
+                -- Simple loop: push state every 33ms
+                forever $ do
+                    state <- readTVarIO stateVar
+                    sendTextData conn (encode state)
+                    threadDelay 33000 -- ~30Hz
         else rejectRequest pending "Untrusted Origin"
