@@ -28,7 +28,3 @@
 ## 2026-04-06 - [Avoid Redundant List Traversals in Wrappers]
 **Learning:** When passing Haskell lists or matrices down a call chain, outer wrapper functions often redundantly evaluate `length x /= length y` or `length m == rows` even when the inner functions (like `leastSquares`) inherently and safely validate those exact dimensions. Because lists do not store their length, every `length` check forces a full O(N) traversal.
 **Action:** Always verify if downstream functions already handle dimension or length validation. If so, remove redundant `length` checks from the caller to save unnecessary O(N) traversals.
-
-## 2026-04-07 - [Optimize Float to Double Coercion in Hot Paths]
-**Learning:** `realToFrac` handles type class dictionary lookup and coercions for a wide variety of types. In GHC, converting `Float` to `Double` via `realToFrac` carries significant overhead compared to using the specialized, native function `float2Double` from `GHC.Float` which is directly backed by a fast primitive operation (`float2Double#`). In data-intensive parsing loops, this introduces measurable latency.
-**Action:** Always use `GHC.Float.float2Double` instead of `realToFrac` when explicitly coercing `Float` to `Double` in high-throughput data processing to ensure maximum throughput and reduce intermediate allocations.
