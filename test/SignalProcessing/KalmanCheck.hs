@@ -55,7 +55,8 @@ testRMSE = do
             let predSt = predict dt config st
                 updSt  = update meas config predSt
                 (V3 estimPos _ _) = x updSt
-                errSq = (estimPos - trueSignal t) ** 2
+                err = estimPos - trueSignal t
+                errSq = err * err -- ⚡ Bolt Optimization: Replace ** with * for performance
             in (updSt, accSqErr + errSq)
             ) (startState, 0.0) measurements
 
