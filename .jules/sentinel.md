@@ -26,3 +26,7 @@
 **Vulnerability:** The WebSocket loop `forever $ sendTextData ...` sent continuous data without verifying if the client connection remained alive (e.g., if a client drops ungracefully resulting in a half-open TCP connection). This can lead to indefinite blocking and thread leaks when the kernel buffer fills, eventually causing Denial of Service.
 **Learning:** Raw WebSocket `forever` send loops in Haskell will leak threads if the connection drops silently, because `sendTextData` may eventually block forever waiting for the client to acknowledge.
 **Prevention:** Always use `Network.WebSockets.withPingThread` to actively ping clients and automatically tear down the connection and the associated thread if the client stops responding.
+## 2024-04-06 - [CRITICAL] **Vector:** [app/Control/WebUI.hs] **Hazard:** [Incomplete WebSocket Authentication]
+**Vulnerability:** The WebSocket endpoint relied solely on checking the `Origin` header for authentication. This alone is insufficient and bypassable by certain clients.
+**Learning:** `Origin` headers can be spoofed outside the browser context, and while necessary, they are not enough for secure session management. Cryptographically secure token-based authentication must be used alongside origin validation.
+**Prevention:** Generate a random token on server start (using `/dev/urandom`), pass it to the client via an `HttpOnly`, `SameSite=Strict` cookie, and explicitly verify this cookie on the incoming WebSocket request headers before calling `acceptRequest`.
