@@ -16,6 +16,9 @@ import qualified Network.WebSockets as WS
 import Network.WebSockets (ServerApp, acceptRequest, rejectRequest, sendTextData, defaultConnectionOptions, pendingRequest, withPingThread)
 import Data.ByteString.Lazy (fromStrict)
 import qualified Data.ByteString as B
+import qualified Data.ByteString.Char8 as BC
+import System.IO (withBinaryFile, IOMode(ReadMode))
+import Text.Printf (printf)
 
 import Control.WebUI.Types () -- Import instances
 import Data.Types (SystemState)
@@ -25,12 +28,14 @@ indexHtml = $(embedFile "app/Control/WebUI/assets/index.html")
 
 runWebUI :: TVar SystemState -> IO ()
 runWebUI stateVar = do
+    tokenBytes <- withBinaryFile "/dev/urandom" ReadMode (`B.hGet` 16)
+    let token = BC.pack (concatMap (printf "%02x") (B.unpack tokenBytes))
     putStrLn "Starting Web UI on http://127.0.0.1:8080"
     let settings = setServerName "" $ setPort 8080 $ setHost "127.0.0.1" defaultSettings
-    runSettings settings $ websocketsOr defaultConnectionOptions (wsApp stateVar) httpApp
+    runSettings settings $ websocketsOr defaultConnectionOptions (wsApp token stateVar) (httpApp token)
 
-httpApp :: Application
-httpApp _ respond = respond $
+httpApp :: B.ByteString -> Application
+httpApp token _ respond = respond $
     responseLBS status200
         [ ("Content-Type", "text/html")
         , ("X-Frame-Options", "DENY")
@@ -40,14 +45,18 @@ httpApp _ respond = respond $
         , ("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
         , ("Pragma", "no-cache")
         , ("Referrer-Policy", "no-referrer")
+        , ("Set-Cookie", "session=" <> token <> "; HttpOnly; SameSite=Strict; Path=/")
         ]
         (fromStrict indexHtml)
 
-wsApp :: TVar SystemState -> ServerApp
-wsApp stateVar pending = do
+wsApp :: B.ByteString -> TVar SystemState -> ServerApp
+wsApp token stateVar pending = do
     let headers = WS.requestHeaders (pendingRequest pending)
         origin = lookup "Origin" headers
-    if origin == Just "http://127.0.0.1:8080" || origin == Just "http://localhost:8080"
+        cookie = lookup "Cookie" headers
+        expectedCookie = "session=" <> token
+    if (origin == Just "http://127.0.0.1:8080" || origin == Just "http://localhost:8080")
+       && maybe False (expectedCookie `BC.isInfixOf`) cookie
         then do
             conn <- acceptRequest pending
             -- Use a ping thread to detect dead connections and prevent socket leaks
@@ -57,4 +66,4 @@ wsApp stateVar pending = do
                     state <- readTVarIO stateVar
                     sendTextData conn (encode state)
                     threadDelay 33000 -- ~30Hz
-        else rejectRequest pending "Untrusted Origin"
+        else rejectRequest pending "Untrusted Origin or Invalid Token"
