@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lambda-Wave Monitor</title>
+    <link id="favicon" rel="icon" type="image/svg+xml" href="">
     <style>
         body { font-family: monospace; background: #111; color: #eee; margin: 0; padding: 20px; }
         #beam-status { font-size: 2em; text-align: center; padding: 20px; border-radius: 10px; margin-bottom: 20px; transition: background-color 0.3s ease, color 0.3s ease; }
@@ -53,6 +54,11 @@
         const trace = [];
         const maxTrace = 300; // 10 seconds at 30Hz
 
+        function updateFavicon(color) {
+            const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="50" fill="${color}"/></svg>`;
+            document.getElementById('favicon').href = 'data:image/svg+xml,' + encodeURIComponent(svg);
+        }
+
         function drawEmptyState(message, color, guidance) {
             canvas.setAttribute('aria-label', message + (guidance ? ': ' + guidance : ''));
             ctx.clearRect(0, 0, width, height);
@@ -72,12 +78,14 @@
         // Initial state
         drawEmptyState('Connecting...', '#ff0', 'Waiting for radar WebSocket stream...');
         document.title = 'Connecting... - Lambda-Wave Monitor';
+        updateFavicon('#ff0');
 
         ws.onopen = () => {
             canvas.setAttribute('aria-label', 'Real-time trace and point cloud visualization');
             connDot.className = 'status-dot dot-live';
             connText.innerText = 'Live';
             document.title = 'Live - Lambda-Wave Monitor';
+            updateFavicon('#0f0');
         };
 
         ws.onclose = () => {
@@ -88,6 +96,7 @@
             tsEl.innerText = 'N/A';
             ptCountEl.innerText = 'N/A';
             document.title = 'Disconnected - Lambda-Wave Monitor';
+            updateFavicon('#f00');
             drawEmptyState('Disconnected', '#f00', 'Check hardware connection or restart service.');
         };
 
@@ -97,6 +106,7 @@
             statusEl.innerText = 'OFFLINE';
             statusEl.className = 'Offline';
             document.title = 'Error - Lambda-Wave Monitor';
+            updateFavicon('#f00');
             drawEmptyState('Connection Error', '#f00', 'Check hardware connection or restart service.');
         };
 
@@ -113,6 +123,13 @@
                 statusEl.innerText = state.beamState.replace(/([A-Z])/g, ' $1').trim().toUpperCase();
                 statusEl.className = state.beamState;
                 document.title = statusEl.innerText + ' - Lambda-Wave Monitor';
+
+                let faviconColor = '#555';
+                if (state.beamState === 'BeamOn') faviconColor = '#0f0';
+                else if (state.beamState === 'BeamOff') faviconColor = '#f00';
+                else if (state.beamState === 'BeamHold') faviconColor = '#ff0';
+                updateFavicon(faviconColor);
+
                 lastBeamState = state.beamState;
             }
 
