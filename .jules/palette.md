@@ -43,3 +43,7 @@
 ## 2024-11-21 - [Responsive Fixed-Dimension Canvases & Graceful Degradation]
 **Learning:** Fixed dimension canvases break layouts on mobile devices if they exceed screen width, and missing graceful degradation leaves users with JS disabled stranded on confusing initial states.
 **Action:** Always apply `max-width: 100%; height: auto;` to fixed canvases for responsiveness, and include a `<noscript>` tag for SPAs to warn users instead of displaying broken "Loading..." interfaces.
+
+## 2024-11-25 - [Dynamic Favicons for Background State Visibility]
+**Learning:** While updating `document.title` helps users monitor real-time background tabs, titles get truncated when users open many tabs or pin them, completely hiding text-based status updates (like "BEAM OFF").
+**Action:** Always combine title changes with a dynamic SVG favicon that updates its color (e.g., green, red, yellow) based on critical system states. Colors are instantly recognizable even when the tab is pinned and the title is fully hidden.
