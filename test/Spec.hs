@@ -8,9 +8,11 @@ import qualified Hardware.ControlSpec
 import qualified SignalProcessing.FMCWSpec
 import qualified System.RTSSpec
 import qualified Safety.WatchdogSpec
+import qualified Numeric.SimpleSpec
 
 main :: IO ()
 main = hspec $ do
+  Numeric.SimpleSpec.spec
   RegressionSpec.spec
   SignalProcessing.FMCWSpec.spec
   FFI.RingBuffer.TypesSpec.spec
