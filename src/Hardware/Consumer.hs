@@ -33,6 +33,7 @@ import qualified Data.ByteString.Internal as BI
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.Binary.Get as G
 import System.IO (hPutStrLn, stderr)
+import qualified GHC.Float
 import Data.Time.HighRes (getMonotonicTimeNS)
 
 import FFI.RingBuffer.Types (RingBufferControl(..), peekStaticFields)
@@ -367,5 +368,8 @@ toPoint3D Point{..} = Point3D
     , snr = 0.0 -- Not in Type 1
     }
 
+-- ⚡ Bolt Optimization: Use specialized native GHC.Float.float2Double
+-- instead of realToFrac to avoid type class dictionary lookups,
+-- minimizing overhead and intermediate allocations during parsing.
 float2Double :: Float -> Double
-float2Double = realToFrac
+float2Double = GHC.Float.float2Double
