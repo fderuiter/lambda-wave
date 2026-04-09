@@ -47,3 +47,7 @@
 ## 2024-11-25 - [Dynamic Favicons for Background State Visibility]
 **Learning:** While updating `document.title` helps users monitor real-time background tabs, titles get truncated when users open many tabs or pin them, completely hiding text-based status updates (like "BEAM OFF").
 **Action:** Always combine title changes with a dynamic SVG favicon that updates its color (e.g., green, red, yellow) based on critical system states. Colors are instantly recognizable even when the tab is pinned and the title is fully hidden.
+
+## 2024-11-26 - [Prevent Visual Jitter in Real-Time Metrics]
+**Learning:** In real-time monitoring UIs updating at high frequencies (e.g., 30Hz), right-aligned or center-aligned strings containing numbers of varying character lengths cause the entire layout to rapidly shift horizontally (visual jitter). This makes reading values impossible and significantly increases cognitive load.
+**Action:** Always extract static text units (like "ms") outside the dynamic container, and set the numeric container to `display: inline-block; text-align: right; font-variant-numeric: tabular-nums;` with a fixed `width` (e.g., `width: 5ch;`) to guarantee the layout remains perfectly stable regardless of value changes.
