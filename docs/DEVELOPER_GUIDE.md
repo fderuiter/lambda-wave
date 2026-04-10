@@ -295,6 +295,35 @@ public:
 
 ---
 
+## 🛡️ Error Handling
+
+### Hardware Layer Error Propagation
+
+Error handling in the hardware abstraction layer relies on explicit, typed errors defined in `Hardware.Types.HardwareError`. We avoid runtime exceptions (`error`, `undefined`) to comply with IEC 62304 Class C requirements for fail-safe operations.
+
+#### Detailed Error Types (`HardwareError`)
+- `ConnectionLost`: Serial port connection lost or unreadable.
+- `ConfigurationFailed String`: Failed to apply sensor configuration.
+- `ParseError String`: General parsing failure (e.g., invalid header).
+- `Timeout`: Operation timed out (e.g., no response to command).
+- `UnknownError String`: Catch-all for unexpected IO errors.
+- `MagicWordMissing`: Failed to find the magic word syncing pattern in the stream.
+- `InvalidLength`: Packet length is outside the valid range.
+- `TlvError String`: TLV block parsing error.
+- `DoSAttackDetected`: Potential denial of service (e.g., massive TLV blocks).
+
+#### Retry and Recovery Logic
+Transient hardware and connection failures are handled gracefully to ensure the application does not crash.
+- Use `configureSensorWithRetry` when communicating with hardware endpoints. It implements automatic retries with a fixed delay (e.g., 100ms) to handle transient serial port errors.
+- Parse errors skip corrupted packets rather than crashing the consumer thread. Resyncing happens automatically via `skipToMagicWord`.
+
+#### Error Logging
+Critical events are logged to the immutable `auditQueue` ensuring an exact audit trail is maintained for tracking hardware-related anomalies.
+- Security-critical events (e.g., `DoSAttackDetected`) are logged with `Critical` severity.
+- Recoverable synchronization and parsing errors are logged as `Warning`.
+
+---
+
 ## 🧪 Testing Strategy
 
 ### Test Organization
