@@ -35,6 +35,7 @@ import qualified Data.Binary.Get as G
 import System.IO (hPutStrLn, stderr)
 import qualified GHC.Float
 import Data.Time.HighRes (getMonotonicTimeNS)
+import Data.Maybe (isJust)
 
 import FFI.RingBuffer.Types (RingBufferControl(..), peekStaticFields)
 import FFI.RingBuffer.IO (getWriteOffset, setReadOffset)
@@ -108,7 +109,7 @@ consumerLoop controlFp stateVar = withForeignPtr controlFp $ \controlPtr -> do
                     -- If we consumed 0 bytes and have no error, it means we are stuck
                     -- (likely due to a partial magic word at the end of the buffer).
                     -- We MUST sleep to allow the producer to add more data.
-                    unless (bytesConsumed > 0 || maybeErr /= Nothing) $
+                    unless (bytesConsumed > 0 || isJust maybeErr) $
                         threadDelay 1000 -- 1ms
 
                     -- 5. Force Evaluation (Critical for FFI Safety)
