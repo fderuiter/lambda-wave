@@ -51,3 +51,7 @@
 ## 2024-11-26 - [Prevent Visual Jitter in Real-Time Metrics]
 **Learning:** In real-time monitoring UIs updating at high frequencies (e.g., 30Hz), right-aligned or center-aligned strings containing numbers of varying character lengths cause the entire layout to rapidly shift horizontally (visual jitter). This makes reading values impossible and significantly increases cognitive load.
 **Action:** Always extract static text units (like "ms") outside the dynamic container, and set the numeric container to `display: inline-block; text-align: right; font-variant-numeric: tabular-nums;` with a fixed `width` (e.g., `width: 5ch;`) to guarantee the layout remains perfectly stable regardless of value changes.
+
+## 2024-11-28 - [Respect User Motion Preferences in Live Indicators]
+**Learning:** Infinite CSS animations (like pulsing status dots) can trigger vestibular disorders or discomfort for users who have requested reduced motion at the OS level.
+**Action:** Always provide a `@media (prefers-reduced-motion: reduce)` fallback to disable continuous decorative animations (e.g., setting `animation: none;`) to respect system-level accessibility preferences.
