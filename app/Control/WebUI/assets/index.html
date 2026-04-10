@@ -19,6 +19,9 @@
         .dot-offline { background-color: #f00; box-shadow: 0 0 5px #f00; }
         .dot-connecting { background-color: #ff0; animation: pulse 1s infinite; }
         @keyframes pulse { 0% { opacity: 0.5; } 50% { opacity: 1; } 100% { opacity: 0.5; } }
+        @media (prefers-reduced-motion: reduce) {
+            .dot-connecting { animation: none; opacity: 0.8; }
+        }
         abbr:focus-visible { outline: 2px solid #0ff; outline-offset: 2px; }
         .noscript-alert { background: #f00; color: #fff; padding: 10px; margin-bottom: 20px; border-radius: 10px; text-align: center; }
         #ts, #pt-count { display: inline-block; text-align: right; font-variant-numeric: tabular-nums; }
@@ -37,7 +40,7 @@
         <canvas id="plot" width="800" height="400" role="img" aria-label="Real-time trace and point cloud visualization"></canvas>
         <div id="stats">
             <span aria-live="polite" aria-atomic="true"><span id="conn-dot" class="status-dot dot-connecting" aria-hidden="true"></span><span id="conn-text">Connecting...</span></span> <span aria-hidden="true">|</span>
-            <abbr tabindex="0" title="Time elapsed for the current radar frame" style="cursor: help; text-decoration: underline dotted; text-decoration-skip-ink: none;">Frame Time</abbr>: <span id="ts">0.0</span> ms <span aria-hidden="true">|</span> <abbr tabindex="0" title="Number of points in the current point cloud" style="cursor: help; text-decoration: underline dotted; text-decoration-skip-ink: none;">Points</abbr>: <span id="pt-count">0</span>
+            <abbr tabindex="0" title="Time elapsed for the current radar frame" style="cursor: help; text-decoration: underline dotted; text-decoration-skip-ink: none;">Frame Time</abbr><span aria-hidden="true">:</span> <span id="ts">0.0</span> ms <span aria-hidden="true">|</span> <abbr tabindex="0" title="Number of points in the current point cloud" style="cursor: help; text-decoration: underline dotted; text-decoration-skip-ink: none;">Points</abbr><span aria-hidden="true">:</span> <span id="pt-count">0</span>
         </div>
     </main>
 
