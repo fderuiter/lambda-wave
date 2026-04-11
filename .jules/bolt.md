@@ -28,3 +28,7 @@
 ## 2026-04-06 - [Avoid Redundant List Traversals in Wrappers]
 **Learning:** When passing Haskell lists or matrices down a call chain, outer wrapper functions often redundantly evaluate `length x /= length y` or `length m == rows` even when the inner functions (like `leastSquares`) inherently and safely validate those exact dimensions. Because lists do not store their length, every `length` check forces a full O(N) traversal.
 **Action:** Always verify if downstream functions already handle dimension or length validation. If so, remove redundant `length` checks from the caller to save unnecessary O(N) traversals.
+
+## 2026-04-10 - [Avoid Native float2Double API Breakage]
+**Learning:** Using `GHC.Float.double2Float` instead of `realToFrac` in OpenGL bindings breaks typeclass resolution (`No instance for (Vertex (Vertex3 Float))`) because `realToFrac` handles coercion to exact newtypes like `GLfloat` implicitly.
+**Action:** Retain `realToFrac` in type-strict FFI bindings (like OpenGL vertices) where exact numeric type matching to C-level type aliases is required.
