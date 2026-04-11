@@ -20,7 +20,6 @@ module Control.UI.Renderer (
 
 import Control.Concurrent.STM
 import Graphics.UI.GLUT
-import GHC.Float (double2Float)
 import Data.Types (SystemState(..), Point3D(..), BeamState(..))
 
 -- | Main Render Loop
@@ -86,7 +85,7 @@ display stateVar = do
 drawPoint :: Point3D -> IO ()
 drawPoint p = do
     -- Scale: 1 unit = 1 meter. Points are in mm.
-    let x = double2Float (px p) / 1000.0
-    let y = double2Float (py p) / 1000.0
-    let z = double2Float (pz p) / 1000.0
+    let x = realToFrac (px p) / 1000.0
+    let y = realToFrac (py p) / 1000.0
+    let z = realToFrac (pz p) / 1000.0
     vertex $ Vertex3 x y z
