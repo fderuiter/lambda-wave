@@ -17,3 +17,8 @@
 **Context:** Hardware limitations prevent physical execution of the motion phantom study required by Roadmap Item 6.1 (PR-ACC-01).
 **Decision:** Implemented a software simulation of the motion phantom (`test/SignalProcessing/PhantomStudy.hs`) combining a ground truth 10mm amplitude sine wave with synthesized 60GHz radar measurement noise, and validated the correlation against the Kalman Filter output.
 **Compliance Impact:** Satisfies PR-ACC-01 via alternative verification methodology (simulated correlation coefficient r > 0.98 exceeds threshold of 0.95), adhering to IEC 62304 Section 5.7.4b.
+
+## 2026-04-10 - [Hardware Layer Error Handling]
+**Context:** The `Hardware.Consumer` and `Hardware.Control` modules lacked explicit error recovery logic and comprehensive typed errors to prevent the application from crashing on transient disconnects, missing magic words, or DoS attacks via large TLV packets.
+**Decision:** Updated `Hardware.Types.HardwareError` with comprehensive error definitions and incorporated these into the pipeline with automatic retry logic in the Control layer and bounded parsing in the Consumer layer. We avoid runtime exceptions (e.g. `error`, `undefined`) to adhere to fail-safe operation requirements.
+**Compliance Impact:** Satisfies Phase 2 robustness goals (P2-003) and ensures compliance with IEC 62304 Class C requirements for fail-safe operations.
