@@ -55,3 +55,7 @@
 ## 2024-11-28 - [Respect User Motion Preferences in Live Indicators]
 **Learning:** Infinite CSS animations (like pulsing status dots) can trigger vestibular disorders or discomfort for users who have requested reduced motion at the OS level.
 **Action:** Always provide a `@media (prefers-reduced-motion: reduce)` fallback to disable continuous decorative animations (e.g., setting `animation: none;`) to respect system-level accessibility preferences.
+
+## 2024-11-28 - [Accessible Status Indication for Color-Blind Users]
+**Learning:** Using only color changes (e.g., green/red/yellow) in a dynamic SVG favicon to indicate critical system states (like "Live" or "Disconnected") makes the states indistinguishable for color-blind users, especially when the tab is pinned and the title is hidden.
+**Action:** Always combine color indicators with distinct shape changes (e.g., circle for active, square for disconnected, triangle for warning/hold) in dynamic favicons to ensure the state is visually distinct regardless of color perception.
