@@ -3,6 +3,7 @@ module Control.UIMathSpec (spec) where
 
 import Test.Hspec
 -- Removed unused Control.Monad (unless)
+import GHC.Float (double2Float)
 
 -- | Mock types for verification
 -- Removed unused fields 'v' and 'snr' to satisfy -Wunused-top-binds
@@ -13,9 +14,9 @@ data Vertex3 a = Vertex3 a a a deriving (Show, Eq)
 -- Transforms a radar point (mm) to OpenGL coordinates (meters)
 transformPoint :: Point3D -> Vertex3 Float
 transformPoint p =
-    let x = realToFrac (px p) / 1000.0
-        y = realToFrac (py p) / 1000.0
-        z = realToFrac (pz p) / 1000.0
+    let x = double2Float (px p) / 1000.0
+        y = double2Float (py p) / 1000.0
+        z = double2Float (pz p) / 1000.0
     in Vertex3 x y z
 
 type Vector3 = (Double, Double, Double)
