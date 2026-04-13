@@ -59,3 +59,11 @@
 ## 2024-11-28 - [Accessible Status Indication for Color-Blind Users]
 **Learning:** Using only color changes (e.g., green/red/yellow) in a dynamic SVG favicon to indicate critical system states (like "Live" or "Disconnected") makes the states indistinguishable for color-blind users, especially when the tab is pinned and the title is hidden.
 **Action:** Always combine color indicators with distinct shape changes (e.g., circle for active, square for disconnected, triangle for warning/hold) in dynamic favicons to ensure the state is visually distinct regardless of color perception.
+
+## 2024-11-29 - [Smooth State Transitions for Status Indicators]
+**Learning:** Real-time status indicators (like connection dots) that snap instantly between states (e.g., green to red) can feel jarring or glitchy, reducing the perceived quality of the interface.
+**Action:** Always apply smooth CSS transitions (e.g., `transition: background-color 0.3s ease, box-shadow 0.3s ease;`) to interactive or dynamic state indicators to maintain a fluid, polished real-time UI.
+
+## 2024-11-29 - [Discoverable Tooltip Hover States]
+**Learning:** Even if `<abbr>` tags are keyboard accessible, sighted mouse users may not realize they are interactive tooltips if they lack a clear hover state, especially when the default styling only uses a subtle dotted underline.
+**Action:** Always provide a clear visual hover state for tooltips and abbreviations (e.g., `abbr { transition: color 0.3s ease; } abbr:hover { color: [accent_color]; }`) so users can easily discover the interaction.
