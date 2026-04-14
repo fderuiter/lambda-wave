@@ -14,7 +14,7 @@
         .Offline { background: #555; color: #ccc; }
         canvas { border: 1px solid #333; background: #000; display: block; margin: 0 auto; max-width: 100%; height: auto; }
         #stats { text-align: center; margin-top: 10px; }
-        .status-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; }
+        .status-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; transition: background-color 0.3s ease, box-shadow 0.3s ease; }
         .dot-live { background-color: #0f0; box-shadow: 0 0 5px #0f0; }
         .dot-offline { background-color: #f00; box-shadow: 0 0 5px #f00; }
         .dot-connecting { background-color: #ff0; animation: pulse 1s infinite; }
@@ -22,6 +22,8 @@
         @media (prefers-reduced-motion: reduce) {
             .dot-connecting { animation: none; opacity: 0.8; }
         }
+        abbr { transition: color 0.3s ease; }
+        abbr:hover { color: #0ff; }
         abbr:focus-visible { outline: 2px solid #0ff; outline-offset: 2px; }
         .noscript-alert { background: #f00; color: #fff; padding: 10px; margin-bottom: 20px; border-radius: 10px; text-align: center; }
         #ts, #pt-count { display: inline-block; text-align: right; font-variant-numeric: tabular-nums; }
