@@ -67,3 +67,10 @@
 ## 2024-11-29 - [Discoverable Tooltip Hover States]
 **Learning:** Even if `<abbr>` tags are keyboard accessible, sighted mouse users may not realize they are interactive tooltips if they lack a clear hover state, especially when the default styling only uses a subtle dotted underline.
 **Action:** Always provide a clear visual hover state for tooltips and abbreviations (e.g., `abbr { transition: color 0.3s ease; } abbr:hover { color: [accent_color]; }`) so users can easily discover the interaction.
+## 2024-04-14 - Smooth State Transitions
+**Learning:** Status indicators that snap instantly between colors (e.g., live vs offline) can feel jarring and break the fluid feel of real-time monitoring.
+**Action:** Always apply smooth CSS transitions (`transition: background-color 0.3s ease, box-shadow 0.3s ease;`) to interactive state dots.
+
+## 2024-04-14 - Discoverable Tooltips
+**Learning:** Abbreviations with tooltips aren't easily discoverable without a clear visual hover state.
+**Action:** Add clear hover states (`color: [accent]`) with smooth color transitions to `abbr` tags to indicate interactivity.
