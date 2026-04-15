@@ -29,6 +29,7 @@
         #ts, #pt-count { display: inline-block; text-align: right; font-variant-numeric: tabular-nums; }
         #ts { width: 5ch; }
         #pt-count { width: 4ch; }
+        .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
     </style>
 </head>
 <body>
@@ -38,6 +39,7 @@
         </div>
     </noscript>
     <main>
+        <h1 class="sr-only">Lambda-Wave Real-time Monitor</h1>
         <div id="beam-status" class="Offline" role="status" aria-live="polite">CONNECTING...</div>
         <canvas id="plot" width="800" height="400" role="img" aria-label="Real-time trace and point cloud visualization"></canvas>
         <div id="stats">
@@ -179,11 +181,22 @@
             // Draw Trace (Line Graph)
             // Map position (mm) to Y pixels. Assume breathing range is e.g. -20mm to +20mm around 0.
             // Let's use fixed scale: +/- 100mm range.
+            const scaleY = height / 200; // 200mm range (-100 to +100)
+            const midY = height / 2;
+
+            // Draw center reference line
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([5, 5]);
+            ctx.beginPath();
+            ctx.moveTo(0, midY);
+            ctx.lineTo(width, midY);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
             ctx.strokeStyle = '#0ff';
             ctx.lineWidth = 2;
             ctx.beginPath();
-            const scaleY = height / 200; // 200mm range (-100 to +100)
-            const midY = height / 2;
 
             trace.forEach((val, i) => {
                 const x = (i / maxTrace) * width;
