@@ -74,3 +74,11 @@
 ## 2024-04-14 - Discoverable Tooltips
 **Learning:** Abbreviations with tooltips aren't easily discoverable without a clear visual hover state.
 **Action:** Add clear hover states (`color: [accent]`) with smooth color transitions to `abbr` tags to indicate interactivity.
+
+## 2024-12-05 - [Semantic Headings for Self-Evident Monitors]
+**Learning:** In visually self-evident web apps (like full-screen dashboards or monitoring tools), sighted users inherently understand the context from the visual layout alone. However, screen reader users rely on a semantic heading structure (starting with an `<h1>`) to understand the purpose of the page when they first land on it. Missing this top-level heading leaves them disoriented.
+**Action:** Always include an `<h1>` element, even if it must be visually hidden using a `.sr-only` utility class, to provide essential context for assistive technology users.
+
+## 2024-12-05 - [Visual Baseline for Real-Time Traces]
+**Learning:** Real-time line graphs (like breathing traces) plotted without a center or zero-reference line make it difficult for users to cognitively anchor the data. They struggle to quickly assess whether values are positive/negative or increasing/decreasing relative to the baseline.
+**Action:** Always render a subtle visual baseline or reference grid (e.g., a dashed center line) in real-time graphs to reduce cognitive load and improve data interpretability.
