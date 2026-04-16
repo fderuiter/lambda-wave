@@ -66,15 +66,17 @@ chirpZTransform params x_n = map calculateBin [0 .. cztSteps params - 1]
             -- Phase term per sample: -i * 2 * pi * (freq_k / f_s)
             theta_step = ((-2) * pi * freq_k) / fs
 
+            -- ⚡ Bolt Optimization: Calculate constant phase multiplier w outside the loop
+            -- to replace O(N) expensive `cis` (cos/sin) calls with fast complex multiplication.
+            !w = cis theta_step
+
             -- Summation: sum(x[n] * exp(i * theta_step * n))
             -- ⚡ Bolt Optimization: Added bang patterns to prevent O(N) thunk buildup
             summation !acc _ [] = acc
-            summation !acc !n (val:rest) =
-                let !phaseTerm = theta_step * fromIntegral n
-                    !term = cis phaseTerm
-                in summation (acc + val * term) (n + 1) rest
+            summation !acc !term (val:rest) =
+                summation (acc + val * term) (term * w) rest
         in
-            summation (0 :+ 0) (0 :: Int) x_n
+            summation (0 :+ 0) (1 :+ 0) x_n
 
 -- | Equation (4): Verified
 -- Extract the phase from the complex value at the peak index.
