@@ -62,6 +62,7 @@ main = do
             , threadHeartbeats = Map.empty
             , kalmanState = kState
             , auditQueue = q
+            , audioAlertEnabled = False
             }
 
     var <- newTVarIO s
