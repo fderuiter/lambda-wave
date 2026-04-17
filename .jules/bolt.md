@@ -35,3 +35,7 @@
 ## 2026-04-16 - [Optimize CZT Inner Loop Trigonometry]
 **Learning:** In the Chirp Z-Transform (CZT) summation loop, computing the phase term explicitly via `cis (theta_step * n)` inside the hot loop requires expensive `cos` and `sin` evaluations for every sample, leading to $O(K \cdot N)$ trigonometric operations.
 **Action:** Exploit the properties of complex exponentials by calculating a constant phase multiplier W ($e^{i \cdot \theta}$) outside the loop and updating the current term via a simple complex multiplication (`term * w`) at each step. This reduces trigonometry to $O(K)$ and replaces the rest with fast multiplications.
+
+## 2024-10-25 - [Optimize Chirp Z-Transform (CZT) Inner Loop]
+**Learning:** Evaluating trigonometric functions (`cos`, `sin` via `cis`) inside a hot accumulation loop for Chirp Z-Transform scales $O(N)$, causing high overhead per sample.
+**Action:** Replace repeated $O(N)$ trigonometric evaluations (`cis (theta_step * n)`) inside hot loops with a constant phase multiplier (`let !w = cis theta_step`) calculated outside the loop. Update the accumulator via simple complex multiplication (`term * w`) at each step to avoid expensive `cos`/`sin` calls.
