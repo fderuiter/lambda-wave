@@ -4,6 +4,8 @@ module Control.UIMathSpec (spec) where
 import Test.Hspec
 -- Removed unused Control.Monad (unless)
 import GHC.Float (double2Float)
+import Control.UI.Renderer (shouldBeep)
+import Data.Types (BeamState(..))
 
 -- | Mock types for verification
 -- Removed unused fields 'v' and 'snr' to satisfy -Wunused-top-binds
@@ -88,3 +90,20 @@ spec = describe "Control.UI.Math" $ do
             -- Assuming Horizontal FOV > 50 degrees (half > 25), it is visible.
             -- 24.1 < 25.
             angle `shouldSatisfy` (< 35.0) -- Safe margin
+
+    describe "Audio Alert Logic (shouldBeep)" $ do
+        it "beeps when transitioning from BeamHold to BeamOff with alerts enabled" $ do
+            shouldBeep True BeamHold BeamOff `shouldBe` True
+
+        it "beeps when transitioning from BeamOn to BeamOff with alerts enabled" $ do
+            shouldBeep True BeamOn BeamOff `shouldBe` True
+
+        it "does not beep when remaining in BeamOff (startup/steady state)" $ do
+            shouldBeep True BeamOff BeamOff `shouldBe` False
+
+        it "does not beep when transitioning from BeamOff to BeamOn" $ do
+            shouldBeep True BeamOff BeamOn `shouldBe` False
+
+        it "does not beep on any transition if alerts are disabled" $ do
+            shouldBeep False BeamHold BeamOff `shouldBe` False
+            shouldBeep False BeamOn BeamOff `shouldBe` False
