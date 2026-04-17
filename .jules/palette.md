@@ -82,3 +82,11 @@
 ## 2024-12-05 - [Visual Baseline for Real-Time Traces]
 **Learning:** Real-time line graphs (like breathing traces) plotted without a center or zero-reference line make it difficult for users to cognitively anchor the data. They struggle to quickly assess whether values are positive/negative or increasing/decreasing relative to the baseline.
 **Action:** Always render a subtle visual baseline or reference grid (e.g., a dashed center line) in real-time graphs to reduce cognitive load and improve data interpretability.
+
+## 2024-12-06 - [Assertive Live Regions for Safety-Critical States]
+**Learning:** For medical or safety-critical monitoring systems, setting `aria-live="polite"` on status updates (like "BEAM ON" or "BEAM OFF") is insufficient. Screen readers will wait for the current task to finish before reading it, causing potentially dangerous delays in conveying critical state changes to visually impaired users.
+**Action:** Always use `role="alert"` and `aria-live="assertive"` for safety-critical state changes to guarantee that assistive technologies interrupt current announcements and immediately alert the user.
+
+## 2024-12-06 - [Shape Indication for UI Status Dots]
+**Learning:** Relying solely on colors (green, red, yellow) for small UI elements like connection status dots (`.status-dot`) makes these states indistinguishable for color-blind users directly within the interface (even if favicons handle background states).
+**Action:** Always combine shape changes (e.g., border-radius: 50% for circle, border-radius: 0 for square, and transform rotations for diamond) alongside color changes on UI status dots to ensure accessibility for users with color vision deficiencies.
