@@ -15,19 +15,34 @@ Safety:
   - Runs in the main UI thread (GLUT requirement).
 -}
 module Control.UI.Renderer (
-    renderLoop
+    renderLoop,
+    shouldBeep
 ) where
 
 import Control.Concurrent.STM
 import Graphics.UI.GLUT
 import GHC.Float (double2Float)
 import Data.Types (SystemState(..), Point3D(..), BeamState(..))
+import Data.IORef
+import System.IO (hFlush, stdout)
+import Control.Monad (when)
+
+-- | Determines if an audio alert should be triggered (P2-002).
+-- O(1) complexity. Pure function for testability.
+shouldBeep :: Bool -> BeamState -> BeamState -> Bool
+shouldBeep audioEnabled prevState currentState =
+    audioEnabled && prevState /= BeamOff && currentState == BeamOff
 
 -- | Main Render Loop
 -- Initializes callbacks and enters the GLUT event processing loop.
+-- Creates an IORef (O(1) space) to track the previous BeamState for
+-- triggering optional audio alerts (P2-002) when transitioning to BeamOff.
 renderLoop :: TVar SystemState -> IO ()
 renderLoop stateVar = do
-    displayCallback $= display stateVar
+    -- Initialize to BeamOff to prevent false positive beep on startup
+    -- when the system defaults to BeamOff.
+    prevStateRef <- newIORef BeamOff
+    displayCallback $= display stateVar prevStateRef
     reshapeCallback $= Just reshape
     idleCallback $= Just (postRedisplay Nothing)
     mainLoop
@@ -43,7 +58,7 @@ reshape size@(Size w h) = do
     -- Prevent division by zero
     let h' = if h == 0 then 1 else h
     perspective 45 (fromIntegral w / fromIntegral h') 0.1 100.0
-    matrixMode $= Modelview
+    matrixMode $= Modelview 0
     loadIdentity
 
 -- | Display Callback
@@ -51,13 +66,22 @@ reshape size@(Size w h) = do
 -- 1. Sets background color based on Beam State (Visual Alert).
 -- 2. Sets up Camera (LookAt).
 -- 3. Draws Point Cloud.
-display :: TVar SystemState -> IO ()
-display stateVar = do
+-- 4. Triggers an audio alert (beep) on transition to BeamOff (O(1) complexity).
+display :: TVar SystemState -> IORef BeamState -> IO ()
+display stateVar prevStateRef = do
     state <- readTVarIO stateVar
+    prevState <- readIORef prevStateRef
 
     -- Visual Alerts (P2-002)
     -- Green = BeamOn, Red = BeamOff, Yellow = BeamHold
-    let (bgR, bgG, bgB) = case beamState state of
+    let currentState = beamState state
+
+    when (shouldBeep (audioAlertEnabled state) prevState currentState) $
+        putStr "\a" >> hFlush stdout
+
+    writeIORef prevStateRef currentState
+
+    let (bgR, bgG, bgB) = case currentState of
             BeamOn   -> (0.0::GLfloat, 0.2, 0.0)
             BeamOff  -> (0.2, 0.0, 0.0)
             BeamHold -> (0.2, 0.2, 0.0)

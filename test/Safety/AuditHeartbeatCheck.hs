@@ -30,6 +30,7 @@ mkState = do
             , threadHeartbeats = Map.empty
             , kalmanState = kState
             , auditQueue = q
+            , audioAlertEnabled = False
             }
     newTVarIO s0
 
