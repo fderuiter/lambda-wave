@@ -1,4 +1,10 @@
 {-# LANGUAGE ScopedTypeVariables #-}
+-- |
+-- Module      : Safety.Audit
+-- Description : Audit logging functionality
+--
+-- Provides secure, immutable audit logging to disk with immediate
+-- flush semantics for critical events.
 module Safety.Audit (auditLoop) where
 
 import Data.Types
