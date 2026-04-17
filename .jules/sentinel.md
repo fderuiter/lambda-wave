@@ -30,3 +30,7 @@
 **Vulnerability:** The WebSocket endpoint relied solely on checking the `Origin` header for authentication. This alone is insufficient and bypassable by certain clients.
 **Learning:** `Origin` headers can be spoofed outside the browser context, and while necessary, they are not enough for secure session management. Cryptographically secure token-based authentication must be used alongside origin validation.
 **Prevention:** Generate a random token on server start (using `/dev/urandom`), pass it to the client via an `HttpOnly`, `SameSite=Strict` cookie, and explicitly verify this cookie on the incoming WebSocket request headers before calling `acceptRequest`.
+## 2024-04-07 - [HIGH] **Vector:** [app/Control/WebUI.hs] **Hazard:** [Insecure Session Management]
+**Vulnerability:** The session cookie generated for WebSocket authentication lacked the `Secure` flag.
+**Learning:** Cookies without the `Secure` flag can be transmitted over unencrypted HTTP connections, making them susceptible to interception via Man-in-the-Middle (MitM) attacks. While the system operates on localhost, omitting this flag violates defense-in-depth principles and poses a risk if network configurations change.
+**Prevention:** Always include the `Secure` flag in `Set-Cookie` headers for sensitive tokens, in addition to `HttpOnly` and `SameSite=Strict`.

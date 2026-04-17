@@ -92,7 +92,15 @@ data SystemState = SystemState
   }
 
 instance NFData SystemState where
-  rnf (SystemState pts bs t iso hb ks aq ae) = rnf pts `seq` rnf bs `seq` rnf t `seq` rnf iso `seq` rnf hb `seq` rnf ks `seq` aq `seq` rnf ae
+  rnf (SystemState pts bs t iso hb ks aq) =
+    rnf pts `seq`
+    rnf bs `seq`
+    rnf t `seq`
+    rnf iso `seq`
+    rnf hb `seq`
+    rnf ks `seq`
+    aq `seq`
+    ()
 
 -- | Raw parsed structure from the sensor
 data RadarFrame = RadarFrame
