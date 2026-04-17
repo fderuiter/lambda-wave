@@ -1,5 +1,11 @@
 {-# LANGUAGE StrictData #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
+-- |
+-- Module      : Data.Types
+-- Description : Core system types
+--
+-- Defines the primary data structures used throughout the Lambda-Wave
+-- system, including points, frames, state, and audit events.
 module Data.Types (
     Point3D(..),
     Point(..),

@@ -22,3 +22,8 @@
 **Context:** The `Hardware.Consumer` and `Hardware.Control` modules lacked explicit error recovery logic and comprehensive typed errors to prevent the application from crashing on transient disconnects, missing magic words, or DoS attacks via large TLV packets.
 **Decision:** Updated `Hardware.Types.HardwareError` with comprehensive error definitions and incorporated these into the pipeline with automatic retry logic in the Control layer and bounded parsing in the Consumer layer. We avoid runtime exceptions (e.g. `error`, `undefined`) to adhere to fail-safe operation requirements.
 **Compliance Impact:** Satisfies Phase 2 robustness goals (P2-003) and ensures compliance with IEC 62304 Class C requirements for fail-safe operations.
+
+## 2024-04-17 - [API Documentation Updates]
+**Context:** P2-004 required comprehensive API documentation. The previous reviewer highlighted that while documentation headers were added, the critical Class C requirement of specifying complexity guarantees ($O(1)$, $O(N)$) and safety guarantees in Haddock comments was missed.
+**Decision:** Updated the Haddock comments for `configureConfigSerial` in `Hardware.Control` and `predict` in `SignalProcessing.Regression` to explicitly state `Complexity: O(1) runtime` and detail their safety guarantees.
+**Compliance Impact:** These specific annotations adhere to the IEC 62304 Class C requirements for rigorous API documentation tracking time complexity and safety properties.

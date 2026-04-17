@@ -1,3 +1,8 @@
+-- |
+-- Module      : Data.Config
+-- Description : System configuration constants
+--
+-- This module defines the static configuration parameters for the Lambda-Wave system.
 module Data.Config (
     radarMountOffset,
     gantryAngle,
@@ -15,6 +20,8 @@ module Data.Config (
 radarMountOffset :: Double
 radarMountOffset = 0.0 -- mm
 
+-- | The angle of the gantry
+-- Fixed angle for setup (degrees)
 gantryAngle :: Double
 gantryAngle = 0.0 -- degrees
 
@@ -22,12 +29,18 @@ gantryAngle = 0.0 -- degrees
 gatingTolerance :: Double
 gatingTolerance = 3.0 -- mm
 
+-- | The tolerance threshold for gating
+-- Hysteresis margin allows smooth transition and prevents flickering.
 hysteresisMargin :: Double
 hysteresisMargin = 0.5 -- mm
 
+-- | The target height for gating decision
+-- Defines the ideal height in mm for gating triggers.
 targetHeight :: Double
 targetHeight = 10.0 -- mm (Example target)
 
+-- | The estimated latency of the system in nanoseconds
+-- System latency compensation value (50ms).
 systemLatencyNS :: Double
 systemLatencyNS = 50_000_000 -- 50ms in nanoseconds
 

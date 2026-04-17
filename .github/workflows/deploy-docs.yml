@@ -1,0 +1,54 @@
+name: Deploy Haddock Docs to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: haskell:9.8
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: scripts/setup_env.sh
+
+      - name: Update Cabal
+        run: cabal update
+
+      - name: Generate Haddock Documentation
+        run: cabal haddock --haddock-html --haddock-options="--odir=docs_output/"
+
+      - name: Copy to Docs Directory
+        run: |
+          mkdir -p docs_site
+          cp -r ./dist-newstyle/build/x86_64-linux/ghc-9.6.7/sgrt-radar-system-0.1.0.0/doc/html/sgrt-radar-system/* docs_site/
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: './docs_site'
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

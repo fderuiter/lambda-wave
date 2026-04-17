@@ -436,7 +436,7 @@ Enhance error propagation and recovery in hardware communication layer.
 ---
 
 ### P2-004: API Documentation (Haddock)
-**Status:** ⏳ Planned  
+**Status:** ✅ Complete
 **Phase:** Documentation  
 **Priority:** P2 (Developer experience)
 
@@ -444,12 +444,12 @@ Enhance error propagation and recovery in hardware communication layer.
 Generate and publish comprehensive API documentation using Haddock.
 
 **Tasks:**
-- [ ] Add Haddock comments to all exported functions
-- [ ] Add module-level documentation
-- [ ] Include usage examples in comments
-- [ ] Generate Haddock HTML
-- [ ] Publish to project website or docs/
-- [ ] Add API docs to BUILD_GUIDE.md
+- [x] Add Haddock comments to all exported functions
+- [x] Add module-level documentation
+- [x] Include usage examples in comments
+- [x] Generate Haddock HTML
+- [x] Publish to project website or docs/
+- [x] Add API docs to BUILD_GUIDE.md
 
 **Acceptance Criteria:**
 - All public functions have Haddock comments
