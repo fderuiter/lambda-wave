@@ -32,3 +32,7 @@
 ## 2026-04-10 - [Avoid Native float2Double API Breakage]
 **Learning:** Using `GHC.Float.double2Float` instead of `realToFrac` in OpenGL bindings breaks typeclass resolution (`No instance for (Vertex (Vertex3 Float))`) because `realToFrac` handles coercion to exact newtypes like `GLfloat` implicitly.
 **Action:** Retain `realToFrac` in type-strict FFI bindings (like OpenGL vertices) where exact numeric type matching to C-level type aliases is required.
+
+## 2024-10-25 - [Optimize Chirp Z-Transform (CZT) Inner Loop]
+**Learning:** Evaluating trigonometric functions (`cos`, `sin` via `cis`) inside a hot accumulation loop for Chirp Z-Transform scales $O(N)$, causing high overhead per sample.
+**Action:** Replace repeated $O(N)$ trigonometric evaluations (`cis (theta_step * n)`) inside hot loops with a constant phase multiplier (`let !w = cis theta_step`) calculated outside the loop. Update the accumulator via simple complex multiplication (`term * w`) at each step to avoid expensive `cos`/`sin` calls.
