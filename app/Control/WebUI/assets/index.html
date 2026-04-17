@@ -15,9 +15,9 @@
         canvas { border: 1px solid #333; background: #000; display: block; margin: 0 auto; max-width: 100%; height: auto; }
         #stats { text-align: center; margin-top: 10px; }
         .status-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; transition: background-color 0.3s ease, box-shadow 0.3s ease; }
-        .dot-live { background-color: #0f0; box-shadow: 0 0 5px #0f0; }
-        .dot-offline { background-color: #f00; box-shadow: 0 0 5px #f00; }
-        .dot-connecting { background-color: #ff0; animation: pulse 1s infinite; }
+        .dot-live { background-color: #0f0; box-shadow: 0 0 5px #0f0; border-radius: 50%; }
+        .dot-offline { background-color: #f00; box-shadow: 0 0 5px #f00; border-radius: 0; }
+        .dot-connecting { background-color: #ff0; animation: pulse 1s infinite; border-radius: 0; transform: rotate(45deg); }
         @keyframes pulse { 0% { opacity: 0.5; } 50% { opacity: 1; } 100% { opacity: 0.5; } }
         @media (prefers-reduced-motion: reduce) {
             .dot-connecting { animation: none; opacity: 0.8; }
@@ -40,7 +40,7 @@
     </noscript>
     <main>
         <h1 class="sr-only">Lambda-Wave Real-time Monitor</h1>
-        <div id="beam-status" class="Offline" role="status" aria-live="polite">CONNECTING...</div>
+        <div id="beam-status" class="Offline" role="alert" aria-live="assertive" aria-atomic="true">CONNECTING...</div>
         <canvas id="plot" width="800" height="400" role="img" aria-label="Real-time trace and point cloud visualization"></canvas>
         <div id="stats">
             <span aria-live="polite" aria-atomic="true"><span id="conn-dot" class="status-dot dot-connecting" aria-hidden="true"></span><span id="conn-text">Connecting...</span></span> <span aria-hidden="true">|</span>
