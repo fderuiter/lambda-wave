@@ -49,6 +49,9 @@ main = do
     -- Initialize High-Performance Audit Queue
     auditQ <- newTBQueueIO 1000
 
+    audioAlertsStr <- fromMaybe "True" <$> lookupEnv "SGRT_AUDIO_ALERTS"
+    let audioAlerts = audioAlertsStr == "True" || audioAlertsStr == "true" || audioAlertsStr == "1"
+
     let initialState = SystemState
           { currentPoints = []
           , beamState = BeamOff
@@ -57,6 +60,7 @@ main = do
           , threadHeartbeats = Map.empty
           , kalmanState = initialKState
           , auditQueue = auditQ
+          , audioAlertEnabled = audioAlerts
           }
 
     systemState <- newTVarIO initialState
