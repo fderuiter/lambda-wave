@@ -386,12 +386,13 @@ Implement color-coded background (Green/Red) based on gating decision.
 - [x] Add color transitions (smooth fade recommended)
 - [x] Test with simulated motion events
 - [x] Ensure visibility in clinical lighting conditions
-- [ ] Add optional audio alerts (beep on beam-off)
+- [x] Add optional audio alerts (beep on beam-off)
 
 **Acceptance Criteria:**
 - Background changes instantly (<50ms) on gating decision
 - Colors clearly distinguishable (accessibility)
 - No performance impact on processing
+- Audio alert triggers on BeamOff
 
 **Dependencies:**
 - P1-003 (Gating logic) required

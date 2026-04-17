@@ -22,12 +22,20 @@ import Control.Concurrent.STM
 import Graphics.UI.GLUT
 import GHC.Float (double2Float)
 import Data.Types (SystemState(..), Point3D(..), BeamState(..))
+import Data.IORef
+import Control.Monad (when)
+import System.IO (hFlush, stdout)
 
 -- | Main Render Loop
 -- Initializes callbacks and enters the GLUT event processing loop.
+--
+-- Complexity: O(1) initialization, spawns O(N) event loop.
+-- Safety: Initializes IORef for state tracking and enters GLUT loop in main thread.
 renderLoop :: TVar SystemState -> IO ()
 renderLoop stateVar = do
-    displayCallback $= display stateVar
+    initialState <- readTVarIO stateVar
+    prevStateRef <- newIORef (beamState initialState)
+    displayCallback $= display stateVar prevStateRef
     reshapeCallback $= Just reshape
     idleCallback $= Just (postRedisplay Nothing)
     mainLoop
@@ -48,16 +56,28 @@ reshape size@(Size w h) = do
 
 -- | Display Callback
 -- Renders the current scene:
--- 1. Sets background color based on Beam State (Visual Alert).
--- 2. Sets up Camera (LookAt).
--- 3. Draws Point Cloud.
-display :: TVar SystemState -> IO ()
-display stateVar = do
+-- 1. Triggers audio alert (beep) on transition to BeamOff.
+-- 2. Sets background color based on Beam State (Visual Alert).
+-- 3. Sets up Camera (LookAt).
+-- 4. Draws Point Cloud.
+--
+-- Complexity: O(N) where N is the number of points in the current frame.
+-- Safety: Total function, handles all inputs gracefully. Uses IORef and STM safely.
+display :: TVar SystemState -> IORef BeamState -> IO ()
+display stateVar prevStateRef = do
     state <- readTVarIO stateVar
+
+    let currentBeam = beamState state
+    prevBeam <- readIORef prevStateRef
+
+    when (currentBeam == BeamOff && prevBeam /= BeamOff) $ do
+        putStr "\a"
+        hFlush stdout
+    writeIORef prevStateRef currentBeam
 
     -- Visual Alerts (P2-002)
     -- Green = BeamOn, Red = BeamOff, Yellow = BeamHold
-    let (bgR, bgG, bgB) = case beamState state of
+    let (bgR, bgG, bgB) = case currentBeam of
             BeamOn   -> (0.0::GLfloat, 0.2, 0.0)
             BeamOff  -> (0.2, 0.0, 0.0)
             BeamHold -> (0.2, 0.2, 0.0)
