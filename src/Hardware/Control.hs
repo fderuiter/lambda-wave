@@ -1,4 +1,10 @@
 {-# LANGUAGE CPP #-}
+-- |
+-- Module      : Hardware.Control
+-- Description : Hardware Control Layer
+--
+-- Provides utilities for configuring the radar sensor, serial port management,
+-- and setting beam control GPIO states.
 module Hardware.Control (
     configureSensor,
     configureSensorWithRetry,
@@ -120,6 +126,10 @@ configureSensor configPath portPath = do
                             putStrLn "[Control] Configuration Complete."
                             return (Right ())
 
+-- | Configures a file descriptor for Configuration Serial communication (115200 baud).
+--
+-- Complexity: O(1) runtime.
+-- Safety: Catches and safely wraps IOExceptions within a 'HardwareError'. Does not throw runtime errors.
 configureConfigSerial :: Fd -> IO (Either HardwareError ())
 configureConfigSerial fd = do
     result <- try $ do

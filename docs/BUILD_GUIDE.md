@@ -884,3 +884,19 @@ sha256sum dist-newstyle/.../sgrt-radar-system-exe
 **Last Updated:** January 2026  
 **Maintainer:** Frederick de Ruiter ([@fderuiter](https://github.com/fderuiter))  
 **Email:** fpderuiter@gmail.com
+
+## API Documentation
+
+The Lambda-Wave project uses Haddock to generate comprehensive API documentation directly from the source code. The Haddock documentation includes descriptions of modules, functions, parameters, and return types, providing an essential resource for developers.
+
+### Generating Haddock Documentation
+
+To generate the HTML documentation, run the following command using Cabal:
+
+```bash
+cabal haddock
+```
+
+### Viewing Documentation
+
+Once generated, the HTML documentation will be placed in `docs/` and can be viewed by opening the `index.html` file in a web browser.

@@ -1,4 +1,10 @@
 {-# LANGUAGE BangPatterns #-}
+-- |
+-- Module      : Control.Gating
+-- Description : Beam gating logic
+--
+-- Evaluates real-time motion states and determines whether the therapeutic
+-- beam should be active, utilizing hysteresis and latency compensation.
 module Control.Gating (processFrame, evaluateGating) where
 
 import Data.Types

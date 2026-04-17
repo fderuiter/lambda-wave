@@ -1,4 +1,10 @@
 {-# LANGUAGE StrictData #-}
+-- |
+-- Module      : SignalProcessing.Regression
+-- Description : Regression fitting for signal smoothing
+--
+-- Provides functionality to fit bi-quadratic polynomials to
+-- sensor data arrays for filtering and trend prediction.
 module SignalProcessing.Regression
     ( solveBiQuadratic
     , solveStrictBiQuadratic
@@ -60,9 +66,12 @@ solveStrictBiQuadratic x y
     -- ⚡ Bolt: Using explicit multiplication instead of ^
     designM = map (\val -> let v2 = val * val in [1, v2, v2 * v2]) x
 
--- | Prediction Function via TypeClass or Overloading would be nice,
--- but for simplicity/safety we can just have specific functions or a Sum Type.
+-- | Predictable TypeClass for polynomials
 class Predictable a where
+    -- | Predicts the y value for a given x using the polynomial model.
+    --
+    -- Complexity: O(1) runtime.
+    -- Safety: Total function, handles all inputs gracefully.
     predict :: a -> Double -> Double
 
 instance Predictable BiQuadratic where

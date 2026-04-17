@@ -1,5 +1,11 @@
 {-# LANGUAGE StrictData #-}
 {-# LANGUAGE BangPatterns #-}
+-- |
+-- Module      : SignalProcessing.FMCW
+-- Description : Frequency-Modulated Continuous Wave processing core
+--
+-- Implements chirp Z-transform, static clutter removal, and phase-based
+-- motion tracking algorithms for the radar signal processing pipeline.
 module SignalProcessing.FMCW
     ( -- * Core Radar Principles
       calculateBeatFreq
