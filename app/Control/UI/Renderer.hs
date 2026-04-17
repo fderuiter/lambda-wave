@@ -15,7 +15,8 @@ Safety:
   - Runs in the main UI thread (GLUT requirement).
 -}
 module Control.UI.Renderer (
-    renderLoop
+    renderLoop,
+    shouldBeep
 ) where
 
 import Control.Concurrent.STM
@@ -24,6 +25,13 @@ import GHC.Float (double2Float)
 import Data.Types (SystemState(..), Point3D(..), BeamState(..))
 import Data.IORef
 import System.IO (hFlush, stdout)
+import Control.Monad (when)
+
+-- | Determines if an audio alert should be triggered (P2-002).
+-- O(1) complexity. Pure function for testability.
+shouldBeep :: Bool -> BeamState -> BeamState -> Bool
+shouldBeep audioEnabled prevState currentState =
+    audioEnabled && prevState /= BeamOff && currentState == BeamOff
 
 -- | Main Render Loop
 -- Initializes callbacks and enters the GLUT event processing loop.
@@ -31,7 +39,9 @@ import System.IO (hFlush, stdout)
 -- triggering optional audio alerts (P2-002) when transitioning to BeamOff.
 renderLoop :: TVar SystemState -> IO ()
 renderLoop stateVar = do
-    prevStateRef <- newIORef BeamHold
+    -- Initialize to BeamOff to prevent false positive beep on startup
+    -- when the system defaults to BeamOff.
+    prevStateRef <- newIORef BeamOff
     displayCallback $= display stateVar prevStateRef
     reshapeCallback $= Just reshape
     idleCallback $= Just (postRedisplay Nothing)
@@ -48,7 +58,7 @@ reshape size@(Size w h) = do
     -- Prevent division by zero
     let h' = if h == 0 then 1 else h
     perspective 45 (fromIntegral w / fromIntegral h') 0.1 100.0
-    matrixMode $= Modelview
+    matrixMode $= Modelview 0
     loadIdentity
 
 -- | Display Callback
@@ -66,9 +76,8 @@ display stateVar prevStateRef = do
     -- Green = BeamOn, Red = BeamOff, Yellow = BeamHold
     let currentState = beamState state
 
-    if audioAlertEnabled state && prevState /= BeamOff && currentState == BeamOff
-        then putStr "\a" >> hFlush stdout
-        else return ()
+    when (shouldBeep (audioAlertEnabled state) prevState currentState) $
+        putStr "\a" >> hFlush stdout
 
     writeIORef prevStateRef currentState
 
