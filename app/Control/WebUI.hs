@@ -45,7 +45,7 @@ httpApp token _ respond = respond $
         , ("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
         , ("Pragma", "no-cache")
         , ("Referrer-Policy", "no-referrer")
-        , ("Set-Cookie", "session=" <> token <> "; HttpOnly; SameSite=Strict; Path=/")
+        , ("Set-Cookie", "session=" <> token <> "; HttpOnly; Secure; SameSite=Strict; Path=/")
         ]
         (fromStrict indexHtml)
 
