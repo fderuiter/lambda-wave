@@ -20,7 +20,7 @@ main = do
     let kConfig = KalmanConfig 10.0 2.0
     let kState = initKalman targetHeight kConfig
     q <- newTBQueueIO 100
-    let s = SystemState [] BeamOff t (Point3D 0 0 0 0 0) Map.empty kState q
+    let s = SystemState [] BeamOff t (Point3D 0 0 0 0 0) Map.empty kState q False
     var <- newTVarIO s
 
     let pts = [Point3D (fromIntegral i) 0.0 10.0 0.0 10.0 | i <- [0..(100 :: Int)]]

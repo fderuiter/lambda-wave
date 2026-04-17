@@ -37,4 +37,5 @@ instance ToJSON SystemState where
         , "respiratoryTrace" .= kalmanState
         , "timestamp" .= lastFrameTime
         , "heartbeats" .= threadHeartbeats
+        , "audioAlertEnabled" .= audioAlertEnabled
         ]

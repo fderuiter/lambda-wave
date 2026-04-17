@@ -27,6 +27,7 @@ mkState bs = do
         , threadHeartbeats = Map.empty
         , kalmanState = kState
         , auditQueue = q
+        , audioAlertEnabled = False
         }
 
 main :: IO ()
