@@ -1,6 +1,7 @@
 {-# OPTIONS_GHC -Wno-type-defaults #-}
 import Test.Hspec
 import qualified RegressionSpec
+import qualified Control.MesherSpec
 import qualified FFI.RingBuffer.TypesSpec
 import qualified FFI.RingBuffer.IOSpec
 import qualified Hardware.ConsumerSpec
@@ -12,6 +13,7 @@ import qualified Safety.WatchdogSpec
 main :: IO ()
 main = hspec $ do
   RegressionSpec.spec
+  Control.MesherSpec.spec
   SignalProcessing.FMCWSpec.spec
   FFI.RingBuffer.TypesSpec.spec
   FFI.RingBuffer.IOSpec.spec

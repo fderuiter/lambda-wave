@@ -120,6 +120,7 @@ test-suite sgrt-radar-system-test
       FFI.RingBuffer.TypesSpec
       FFI.RingBuffer.IOSpec
       RegressionSpec
+      Control.MesherSpec
       Hardware.ConsumerSpec
       Hardware.ControlSpec
       System.RTSSpec
