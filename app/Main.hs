@@ -10,7 +10,7 @@ import Control.Exception (try, IOException)
 import System.Environment (lookupEnv)
 import Data.Maybe (fromMaybe)
 import System.Posix.IO (openFd, OpenMode(..), defaultFileFlags, OpenFileFlags(..))
-import System.Posix.Files (getFileStatus, isCharacterDevice, FileStatus)
+import System.Posix.Files (getFileStatus, getFdStatus, isCharacterDevice, FileStatus)
 import Control.Monad (forever, unless)
 import qualified Data.Map.Strict as Map
 import System.Exit (exitFailure)
@@ -104,6 +104,12 @@ main = do
 #else
     fd <- openFd sensorPort ReadWrite Nothing defaultFileFlags { nonBlock = False }
 #endif
+
+    -- Post-open TOCTOU Security Check
+    fdStatus <- getFdStatus fd
+    unless (isCharacterDevice fdStatus) $ do
+        putStrLn "FATAL: Security Violation - TOCTOU detected on sensor port."
+        exitFailure
 
     -- Configure Port (Raw Mode) to prevent data corruption
     res <- configureRawSerial fd
