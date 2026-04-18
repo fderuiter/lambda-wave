@@ -90,3 +90,7 @@
 ## 2024-12-06 - [Shape Indication for UI Status Dots]
 **Learning:** Relying solely on colors (green, red, yellow) for small UI elements like connection status dots (`.status-dot`) makes these states indistinguishable for color-blind users directly within the interface (even if favicons handle background states).
 **Action:** Always combine shape changes (e.g., border-radius: 50% for circle, border-radius: 0 for square, and transform rotations for diamond) alongside color changes on UI status dots to ensure accessibility for users with color vision deficiencies.
+
+## 2024-12-06 - [Synchronizing Shape Transitions for Status Indicators]
+**Learning:** Adding shape changes (like `border-radius` or `transform`) alongside color changes for dynamic UI status dots helps accessibility for color-blind users. However, if transitions are only applied to the color (e.g., `background-color`, `box-shadow`), the shape changes snap instantly, creating a jarring, unpolished real-time UI feel.
+**Action:** Always apply smooth CSS transitions to all visual state properties, including shape changes (e.g., `transition: background-color 0.3s ease, box-shadow 0.3s ease, border-radius 0.3s ease, transform 0.3s ease;`), to maintain a fluid, high-quality real-time UI.
