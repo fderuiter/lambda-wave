@@ -36,3 +36,6 @@
 ## 2024-10-25 - [Optimize Chirp Z-Transform (CZT) Inner Loop]
 **Learning:** Evaluating trigonometric functions (`cos`, `sin` via `cis`) inside a hot accumulation loop for Chirp Z-Transform scales $O(N)$, causing high overhead per sample.
 **Action:** Replace repeated $O(N)$ trigonometric evaluations (`cis (theta_step * n)`) inside hot loops with a constant phase multiplier (`let !w = cis theta_step`) calculated outside the loop. Update the accumulator via simple complex multiplication (`term * w`) at each step to avoid expensive `cos`/`sin` calls.
+## 2024-04-19 - Lazy ByteString Length Evaluation
+**Learning:** Using `BL.length` on a lazy ByteString forces an O(N) evaluation of the entire chunk chain. This is a common performance bottleneck when checking if a ByteString has fewer than N bytes.
+**Action:** When checking if a lazy ByteString has fewer than N bytes (e.g., `BL.length bs < 8`), use `BL.length (BL.take N bs) < N` to limit the check to at most N bytes, restoring O(1) streaming performance.
