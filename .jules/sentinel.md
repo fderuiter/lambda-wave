@@ -34,3 +34,7 @@
 **Vulnerability:** The session cookie generated for WebSocket authentication lacked the `Secure` flag.
 **Learning:** Cookies without the `Secure` flag can be transmitted over unencrypted HTTP connections, making them susceptible to interception via Man-in-the-Middle (MitM) attacks. While the system operates on localhost, omitting this flag violates defense-in-depth principles and poses a risk if network configurations change.
 **Prevention:** Always include the `Secure` flag in `Set-Cookie` headers for sensitive tokens, in addition to `HttpOnly` and `SameSite=Strict`.
+## 2024-04-20 - [CRITICAL] **Vector:** [app/Main.hs] **Hazard:** [TOCTOU in Device Port Validation]
+**Vulnerability:** The system checked if the sensor and CLI ports were character devices using their paths (`getFileStatus`) before opening them with `openFd`. This created a Time-of-Check to Time-of-Use race condition where the underlying file could be replaced between validation and use.
+**Learning:** Checking a file path's status and then opening it separately is fundamentally unsafe in POSIX environments, as the filesystem mapping can change between the operations.
+**Prevention:** To prevent TOCTOU vulnerabilities when accessing device files or performing security checks, always open the file descriptor first (`openFd`), and then validate its status using `System.Posix.Files.getFdStatus`.
