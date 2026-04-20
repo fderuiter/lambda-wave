@@ -206,7 +206,8 @@ skipToMagicWord = go 0
             Nothing -> (acc + BL.length bs, BL.empty) -- No magic word start found, consume all
             Just idx ->
                 let candidate = BL.drop idx bs
-                in if BL.isPrefixOf magicPattern candidate || BL.length candidate < 8
+                -- ⚡ Bolt Optimization: Replace O(N) BL.length evaluation on lazy ByteString with O(1) BL.take check
+                in if BL.isPrefixOf magicPattern candidate || BL.length (BL.take 8 candidate) < 8
                    then (acc + idx, candidate) -- Found match or keep partial match
                    else
                        -- Found 0x01 but not followed by correct sequence (Garbage)
