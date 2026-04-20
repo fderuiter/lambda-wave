@@ -34,3 +34,7 @@
 **Vulnerability:** The session cookie generated for WebSocket authentication lacked the `Secure` flag.
 **Learning:** Cookies without the `Secure` flag can be transmitted over unencrypted HTTP connections, making them susceptible to interception via Man-in-the-Middle (MitM) attacks. While the system operates on localhost, omitting this flag violates defense-in-depth principles and poses a risk if network configurations change.
 **Prevention:** Always include the `Secure` flag in `Set-Cookie` headers for sensitive tokens, in addition to `HttpOnly` and `SameSite=Strict`.
+## 2024-04-18 - [HIGH] **Vector:** [app/Main.hs] **Hazard:** [Time-of-Check to Time-of-Use (TOCTOU) on Sensor Port]
+**Vulnerability:** The `validatePort` check on `sensorPort` used `getFileStatus` to verify if the path was a character device, but subsequently `openFd` was called. An attacker could replace the character device with a regular file in the window between the check and the open.
+**Learning:** Using path-based validation functions (like `getFileStatus`) before opening the file creates a TOCTOU race condition.
+**Prevention:** Always validate the file type or status using the file descriptor itself (e.g., `getFdStatus`) after it has been opened.
