@@ -39,3 +39,7 @@
 ## 2024-04-19 - Lazy ByteString Length Evaluation
 **Learning:** Using `BL.length` on a lazy ByteString forces an O(N) evaluation of the entire chunk chain. This is a common performance bottleneck when checking if a ByteString has fewer than N bytes.
 **Action:** When checking if a lazy ByteString has fewer than N bytes (e.g., `BL.length bs < 8`), use `BL.length (BL.take N bs) < N` to limit the check to at most N bytes, restoring O(1) streaming performance.
+
+## 2026-01-29 - Inefficient File Size Check in Event Loop
+**Learning:** Querying the filesystem using `hFileSize` (which performs a `fstat` syscall) in every iteration of a high-frequency event loop introduces unnecessary I/O overhead and context switching. Tracking the file size in memory using simple arithmetic is significantly more efficient.
+**Action:** Replace `hFileSize` calls inside the loop with an in-memory accumulator that is initialized once when the file handle is opened.
