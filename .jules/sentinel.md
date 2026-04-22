@@ -38,3 +38,7 @@
 **Vulnerability:** The `validatePort` check on `sensorPort` used `getFileStatus` to verify if the path was a character device, but subsequently `openFd` was called. An attacker could replace the character device with a regular file in the window between the check and the open.
 **Learning:** Using path-based validation functions (like `getFileStatus`) before opening the file creates a TOCTOU race condition.
 **Prevention:** Always validate the file type or status using the file descriptor itself (e.g., `getFdStatus`) after it has been opened.
+## 2024-04-19 - [LOW] **Vector:** [src/FFI/RingBuffer/Types.hs] **Hazard:** [Use of 'undefined' as type proxy in FFI]
+**Vulnerability:** Using `undefined` as a proxy value for `sizeOf` or `alignment` calls in FFI-related modules.
+**Learning:** While `sizeOf` and `alignment` conceptually operate on types, Haskell's `Storable` class requires them to take a value as an argument. Using `undefined` is a common idiom but creates a "partial" code path that can crash if the argument is ever evaluated by an implementation.
+**Prevention:** Always use safe, fully defined proxy values like `0` for numeric types or `nullPtr` for pointers when calling `sizeOf` or `alignment`.
