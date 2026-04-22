@@ -1,4 +1,5 @@
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE BangPatterns #-}
 -- |
 -- Module      : Safety.Audit
 -- Description : Audit logging functionality
@@ -48,7 +49,8 @@ runAuditLoop stateVar queue logPath = do
     -- Open file in Append Mode
     result <- try $ withFile logPath AppendMode $ \h -> do
         hSetBuffering h LineBuffering
-        processEvents stateVar queue h
+        initialSize <- hFileSize h
+        processEvents stateVar queue h initialSize
 
     case result of
         Left (e :: IOException) -> do
@@ -64,10 +66,10 @@ runAuditLoop stateVar queue logPath = do
             _ <- try $ rename logPath (logPath ++ ".bak") :: IO (Either IOException ())
             runAuditLoop stateVar queue logPath
 
-processEvents :: TVar SystemState -> TBQueue AuditEvent -> Handle -> IO LoopResult
-processEvents stateVar queue h = go
+processEvents :: TVar SystemState -> TBQueue AuditEvent -> Handle -> Integer -> IO LoopResult
+processEvents stateVar queue h initialSize = go initialSize
   where
-    go = do
+    go currentSize = do
         -- 1. Update Heartbeat (Safety)
         now <- getMonotonicTimeNS
         atomically $ modifyTVar' stateVar $ \s ->
@@ -85,7 +87,7 @@ processEvents stateVar queue h = go
                 if expired then return Nothing else retry
 
         case mEvt of
-            Nothing -> go -- Timeout, loop back to update heartbeat
+            Nothing -> go currentSize -- Timeout, loop back to update heartbeat
             Just evt -> do
                 -- 3. Write Event
                 -- Format: [TIMESTAMP] [SEVERITY] [COMPONENT] MESSAGE
@@ -102,7 +104,10 @@ processEvents stateVar queue h = go
                 when (severity evt == Critical) $ hFlush h
 
                 -- 5. Rotation Check
-                size <- hFileSize h
-                if size > 10 * 1024 * 1024 -- 10MB limit
+                -- Track size in memory to avoid hFileSize syscall
+                -- Note: entry is formatted string. hPutStrLn adds newline.
+                -- We assume ASCII for logging components as per sanitize logic.
+                let !newSize = currentSize + fromIntegral (length entry + 1) -- +1 for newline
+                if newSize > 10 * 1024 * 1024 -- 10MB limit
                     then return RotationNeeded
-                    else go
+                    else go newSize
