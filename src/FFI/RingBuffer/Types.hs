@@ -84,10 +84,10 @@ data RingBufferControl = RingBufferControl
 -- from the consumer thread.
 peekStaticFields :: Ptr RingBufferControl -> IO (Ptr CChar, CSize)
 peekStaticFields ptr = do
-    let sizeT = sizeOf (undefined :: CSize)
+    let sizeT = sizeOf (0 :: CSize)
         readOff = sizeT
         startOff = readOff + sizeT
-        sizeOff = startOff + sizeOf (undefined :: Ptr CChar)
+        sizeOff = startOff + sizeOf (nullPtr :: Ptr CChar)
 
     start <- peekByteOff ptr startOff
     sz    <- peekByteOff ptr sizeOff

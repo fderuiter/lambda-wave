@@ -22,11 +22,11 @@ instance Storable RingBufferControl where
     alignment _ = 64
 
     peek ptr = do
-        let sizeT = sizeOf (undefined :: CSize)
+        let sizeT = sizeOf (0 :: CSize)
             -- Assumes strict packing which is standard for size_t/ptr
             readOff = sizeT
             startOff = readOff + sizeT
-            sizeOff = startOff + sizeOf (undefined :: Ptr CChar)
+            sizeOff = startOff + sizeOf (nullPtr :: Ptr CChar)
 
         woff <- peekByteOff ptr 0
         roff <- peekByteOff ptr readOff
@@ -35,10 +35,10 @@ instance Storable RingBufferControl where
         return $ RingBufferControl woff roff start sz
 
     poke ptr (RingBufferControl woff roff start sz) = do
-        let sizeT = sizeOf (undefined :: CSize)
+        let sizeT = sizeOf (0 :: CSize)
             readOff = sizeT
             startOff = readOff + sizeT
-            sizeOff = startOff + sizeOf (undefined :: Ptr CChar)
+            sizeOff = startOff + sizeOf (nullPtr :: Ptr CChar)
 
         pokeByteOff ptr 0 woff
         pokeByteOff ptr readOff roff

@@ -32,20 +32,20 @@ data TimeSpec = TimeSpec
 
 
 instance Storable TimeSpec where
-    alignment _ = max (alignment (undefined :: CTime)) (alignment (undefined :: CLong))
+    alignment _ = max (alignment (0 :: CTime)) (alignment (0 :: CLong))
     sizeOf _ =
-        let s = sizeOf (undefined :: CTime)
-            n = sizeOf (undefined :: CLong)
-            a = alignment (undefined :: TimeSpec)
-            n_align = alignment (undefined :: CLong)
+        let s = sizeOf (0 :: CTime)
+            n = sizeOf (0 :: CLong)
+            a = alignment (TimeSpec 0 0)
+            n_align = alignment (0 :: CLong)
             padding_s = (n_align - (s `rem` n_align)) `rem` n_align
             total = s + padding_s + n
             tail_padding = (a - (total `rem` a)) `rem` a
         in total + tail_padding
 
     peek ptr = do
-        let s_size = sizeOf (undefined :: CTime)
-            n_align = alignment (undefined :: CLong)
+        let s_size = sizeOf (0 :: CTime)
+            n_align = alignment (0 :: CLong)
             padding = (n_align - (s_size `rem` n_align)) `rem` n_align
             n_offset = s_size + padding
         s <- peekByteOff ptr 0
@@ -53,8 +53,8 @@ instance Storable TimeSpec where
         return (TimeSpec s n)
 
     poke ptr (TimeSpec s n) = do
-        let s_size = sizeOf (undefined :: CTime)
-            n_align = alignment (undefined :: CLong)
+        let s_size = sizeOf (0 :: CTime)
+            n_align = alignment (0 :: CLong)
             padding = (n_align - (s_size `rem` n_align)) `rem` n_align
             n_offset = s_size + padding
         pokeByteOff ptr 0 s
