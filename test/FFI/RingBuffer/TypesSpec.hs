@@ -61,10 +61,10 @@ spec :: Spec
 spec = do
   describe "RingBufferControl Storable instance" $ do
     it "has sizeOf 64" $ do
-      sizeOf (undefined :: RingBufferControl) `shouldBe` 64
+      sizeOf (RingBufferControl 0 0 nullPtr 0) `shouldBe` 64
 
     it "has alignment 64" $ do
-      alignment (undefined :: RingBufferControl) `shouldBe` 64
+      alignment (RingBufferControl 0 0 nullPtr 0) `shouldBe` 64
 
     it "round-trips peek and poke correctly" $ property $
       \(rb :: RingBufferControl) -> monadicIO $ do
@@ -80,4 +80,4 @@ spec = do
             expectedSize = sizeT * 2 + ptrSize + sizeT
 
         -- Verify that the struct size is large enough to hold the fields
-        sizeOf (undefined :: RingBufferControl) `shouldSatisfy` (>= expectedSize)
+        sizeOf (RingBufferControl 0 0 nullPtr 0) `shouldSatisfy` (>= expectedSize)

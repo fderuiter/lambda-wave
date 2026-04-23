@@ -125,7 +125,7 @@ main = do
 
     -- 6. Test RingBufferControl Layout
     putStrLn "[Test] RingBufferControl Storable Layout..."
-    let actualSize = sizeOf (undefined :: RingBufferControl)
+    let actualSize = sizeOf (RingBufferControl 0 0 nullPtr 0)
     putStrLn $ "RingBufferControl Size: " ++ show actualSize ++ " (Expected: 64)"
     when (actualSize /= 64) $ do
         putStrLn "FAIL: Incorrect RingBufferControl size"
