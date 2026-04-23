@@ -67,7 +67,7 @@ runAuditLoop stateVar queue logPath = do
             runAuditLoop stateVar queue logPath
 
 processEvents :: TVar SystemState -> TBQueue AuditEvent -> Handle -> Integer -> IO LoopResult
-processEvents stateVar queue h initialSize = go initialSize
+processEvents stateVar queue h = go
   where
     go currentSize = do
         -- 1. Update Heartbeat (Safety)
