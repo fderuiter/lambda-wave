@@ -9,7 +9,7 @@ import Control.Concurrent.STM
 import Control.Exception (try, IOException)
 import System.Environment (lookupEnv)
 import Data.Maybe (fromMaybe)
-import System.Posix.IO (openFd, closeFd, OpenMode(..), defaultFileFlags, OpenFileFlags(..))
+import System.Posix.IO (openFd, OpenMode(..), defaultFileFlags, OpenFileFlags(..))
 import System.Posix.Files (getFdStatus, isCharacterDevice)
 import System.Posix.Types (Fd)
 import Control.Monad (forever, unless)
