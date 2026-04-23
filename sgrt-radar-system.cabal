@@ -313,3 +313,18 @@ test-suite phantom-study
   build-depends:
       sgrt-radar-system
     , base
+
+
+benchmark fmcw-bench
+  import: common-options
+  type: exitcode-stdio-1.0
+  main-is: FMCWBench.hs
+  other-modules:
+      Paths_sgrt_radar_system
+  hs-source-dirs:
+      bench
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      sgrt-radar-system
+    , criterion
+    , base
