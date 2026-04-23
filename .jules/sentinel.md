@@ -42,3 +42,7 @@
 **Vulnerability:** Using `undefined` as a proxy value for `sizeOf` or `alignment` calls in FFI-related modules.
 **Learning:** While `sizeOf` and `alignment` conceptually operate on types, Haskell's `Storable` class requires them to take a value as an argument. Using `undefined` is a common idiom but creates a "partial" code path that can crash if the argument is ever evaluated by an implementation.
 **Prevention:** Always use safe, fully defined proxy values like `0` for numeric types or `nullPtr` for pointers when calling `sizeOf` or `alignment`.
+## 2024-04-20 - [HIGH] **Vector:** [app/Main.hs] **Hazard:** [Incomplete TOCTOU Fix]
+**Vulnerability:** Mitigating a Time-of-Check to Time-of-Use (TOCTOU) vulnerability by replacing a path-based validation with an `openFd` + `getFdStatus` check, but immediately closing the `Fd` and later reopening the file by path.
+**Learning:** If you immediately close the validated `Fd` and rely on opening the path again later, the race window is reopened, rendering the TOCTOU fix completely ineffective. Opening and immediately closing character devices may also cause unintended side effects (like buffer flushes).
+**Prevention:** When resolving TOCTOU issues with file-descriptor validation, always retain the opened `Fd` and pass it directly to the consuming functions, rather than closing and reopening it by path.
