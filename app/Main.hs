@@ -9,8 +9,9 @@ import Control.Concurrent.STM
 import Control.Exception (try, IOException)
 import System.Environment (lookupEnv)
 import Data.Maybe (fromMaybe)
-import System.Posix.IO (openFd, OpenMode(..), defaultFileFlags, OpenFileFlags(..))
-import System.Posix.Files (getFileStatus, getFdStatus, isCharacterDevice, FileStatus)
+import System.Posix.IO (openFd, closeFd, OpenMode(..), defaultFileFlags, OpenFileFlags(..))
+import System.Posix.Files (getFdStatus, isCharacterDevice)
+import System.Posix.Types (Fd)
 import Control.Monad (forever, unless)
 import qualified Data.Map.Strict as Map
 import System.Exit (exitFailure)
@@ -72,44 +73,33 @@ main = do
     putStrLn $ "Configuration: Sensor=" ++ sensorPort ++ ", CLI=" ++ cliPort
 
     -- Security Validation: Ensure the ports are character devices
-    let validatePort name path = do
-            statusRes <- try (getFileStatus path) :: IO (Either IOException FileStatus)
-            case statusRes of
+    let openAndValidatePort name path = do
+            let flags = defaultFileFlags { nonBlock = False }
+#if MIN_VERSION_unix(2,8,0)
+            let flags' = flags { creat = Nothing }
+            fdRes <- try (openFd path ReadWrite flags') :: IO (Either IOException Fd)
+#else
+            fdRes <- try (openFd path ReadWrite Nothing flags) :: IO (Either IOException Fd)
+#endif
+            case fdRes of
                 Left err -> do
                     putStrLn $ "FATAL: Could not access " ++ name ++ " " ++ path ++ ": " ++ show err
                     exitFailure
-                Right status ->
-                    unless (isCharacterDevice status) $ do
+                Right f -> do
+                    fStatus <- getFdStatus f
+                    unless (isCharacterDevice fStatus) $ do
                         putStrLn $ "FATAL: Security Violation - " ++ path ++ " (" ++ name ++ ") is not a character device."
                         exitFailure
+                    return f
 
-    validatePort "sensor port" sensorPort
-    validatePort "CLI port" cliPort
+    fd <- openAndValidatePort "sensor port" sensorPort
+    _cliFd <- openAndValidatePort "CLI port" cliPort
 
     -- 1. Setup Ring Buffer (4MB)
     -- We use the new FFI.RingBuffer.IO directly.
     -- NOW RETURNS ForeignPtr RingBufferControl.
     -- This ensures the buffer is automatically freed when all references (Main thread, consumer thread, ingestion thread) are gone.
     ringBuffer <- RingBuffer.createRingBuffer (4 * 1024 * 1024)
-
-    -- Open Serial Port using POSIX for the C++ driver
-    -- We need to open it here to pass the Fd to the ingestion loop.
-    -- Ideally, we should use 'SP.openSerial' then get the Fd, but 'serialport' doesn't expose Fd easily.
-    -- So we use 'openFd' from 'unix'.
-    -- The port is explicitly configured (baud rate 115200, raw mode) using 'configureRawSerial' below.
-
-#if MIN_VERSION_unix(2,8,0)
-    let flags = defaultFileFlags { nonBlock = False, creat = Nothing }
-    fd <- openFd sensorPort ReadWrite flags
-#else
-    fd <- openFd sensorPort ReadWrite Nothing defaultFileFlags { nonBlock = False }
-#endif
-
-    -- Post-open TOCTOU Security Check
-    fdStatus <- getFdStatus fd
-    unless (isCharacterDevice fdStatus) $ do
-        putStrLn "FATAL: Security Violation - TOCTOU detected on sensor port."
-        exitFailure
 
     -- Configure Port (Raw Mode) to prevent data corruption
     res <- configureRawSerial fd
