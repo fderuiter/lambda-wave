@@ -223,27 +223,28 @@ skipToMagicWord = go 0
 parseStream :: BL.ByteString -> ([RadarFrame], Int64, Maybe HardwareError)
 parseStream input =
     let (skipped, cleanInput) = skipToMagicWord input
-        (frames, consumed, err) = parseLoop (G.runGetIncremental getRadarFrame) (BL.toChunks cleanInput) 0 []
+        (frames, consumed, err) = parseLoop (G.runGetIncremental getRadarFrame) (BL.toChunks cleanInput) 0
     in (frames, skipped + consumed, err)
   where
-    parseLoop decoder chunks totalConsumed acc =
+    parseLoop decoder chunks !totalConsumed =
         case decoder of
-            G.Done unused consumed frame ->
+            G.Done unused consumed !frame ->
                 -- Frame parsed!
                 -- 'consumed' is bytes consumed by THIS decoder instance since start.
                 -- 'unused' is the part of the LAST chunk that wasn't used.
                 -- We need to proceed with 'unused' + remaining 'chunks'.
-                let newTotal = totalConsumed + consumed
+                let !newTotal = totalConsumed + consumed
                     nextDecoder = G.runGetIncremental getRadarFrame
                     -- We need to construct the input for the next step.
                     -- 'unused' is a ByteString.
-                in if B.null unused
-                   then parseLoop nextDecoder chunks newTotal (frame : acc)
-                   else parseLoop (G.pushChunk nextDecoder unused) chunks newTotal (frame : acc)
+                    (frames, finalConsumed, err) = if B.null unused
+                       then parseLoop nextDecoder chunks newTotal
+                       else parseLoop (G.pushChunk nextDecoder unused) chunks newTotal
+                in (frame : frames, finalConsumed, err)
 
             G.Fail _ consumed msg ->
                 -- Map failure message to HardwareError
-                let advanced = if consumed == 0 then 1 else consumed
+                let !advanced = if consumed == 0 then 1 else consumed
                     hwError = case msg of
                         "TLV Too Large" -> DoSAttackDetected
                         "Invalid TLV Length (Partial Header)" -> InvalidLength -- Or TlvError
@@ -251,7 +252,7 @@ parseStream input =
                         "Too many TLVs" -> TlvError "Too many TLVs"
                         "Invalid Magic Word" -> MagicWordMissing
                         _ -> ParseError msg
-                in (reverse acc, totalConsumed + advanced, Just hwError)
+                in ([], totalConsumed + advanced, Just hwError)
 
             G.Partial k ->
                 case chunks of
@@ -259,10 +260,10 @@ parseStream input =
                         -- No more chunks. We are partial.
                         -- Do NOT consume the partial bytes.
                         -- Return only what was fully consumed.
-                        (reverse acc, totalConsumed, Nothing)
+                        ([], totalConsumed, Nothing)
                     (c:cs) ->
                         -- Feed next chunk
-                        parseLoop (k (Just c)) cs totalConsumed acc
+                        parseLoop (k (Just c)) cs totalConsumed
 
 -- | Parser for a single Radar Frame
 getRadarFrame :: G.Get RadarFrame
