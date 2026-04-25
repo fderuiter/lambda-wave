@@ -130,6 +130,7 @@
 
         let lastTs = 0;
         let lastBeamState = null;
+        let lastStatsUpdate = 0;
 
         ws.onmessage = (event) => {
             const state = JSON.parse(event.data);
@@ -154,14 +155,18 @@
 
             // 2. Update Stats
             // Calculate delta in milliseconds from raw nanoseconds
+            let deltaMs = 0;
             if (lastTs > 0 && state.timestamp > lastTs) {
-                const deltaMs = (state.timestamp - lastTs) / 1000000;
-                tsEl.innerText = deltaMs.toFixed(1);
-            } else if (lastTs === 0) {
-                tsEl.innerText = "0.0";
+                deltaMs = (state.timestamp - lastTs) / 1000000;
             }
             lastTs = state.timestamp;
-            ptCountEl.innerText = state.pointCloud.length;
+
+            const now = Date.now();
+            if (now - lastStatsUpdate > 250) {
+                tsEl.innerText = deltaMs > 0 ? deltaMs.toFixed(1) : "0.0";
+                ptCountEl.innerText = state.pointCloud.length.toLocaleString();
+                lastStatsUpdate = now;
+            }
 
             // 3. Update Trace
             // Kalman State vector x is [Pos, Vel, Accel].
