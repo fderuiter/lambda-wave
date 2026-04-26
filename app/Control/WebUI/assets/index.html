@@ -130,9 +130,11 @@
 
         let lastTs = 0;
         let lastBeamState = null;
+        let lastTextUpdate = 0;
 
         ws.onmessage = (event) => {
             const state = JSON.parse(event.data);
+            const now = performance.now();
 
             // 1. Update Beam Status
             // Only update DOM if state changed to prevent aria-live screen reader spam at 30Hz
@@ -153,15 +155,19 @@
             }
 
             // 2. Update Stats
-            // Calculate delta in milliseconds from raw nanoseconds
-            if (lastTs > 0 && state.timestamp > lastTs) {
-                const deltaMs = (state.timestamp - lastTs) / 1000000;
-                tsEl.innerText = deltaMs.toFixed(1);
-            } else if (lastTs === 0) {
-                tsEl.innerText = "0.0";
+            // Throttle text updates to ~4Hz (every 250ms) to prevent visual flickering and cognitive overload
+            if (now - lastTextUpdate > 250) {
+                // Calculate delta in milliseconds from raw nanoseconds
+                if (lastTs > 0 && state.timestamp > lastTs) {
+                    const deltaMs = (state.timestamp - lastTs) / 1000000;
+                    tsEl.innerText = deltaMs.toFixed(1);
+                } else if (lastTs === 0) {
+                    tsEl.innerText = "0.0";
+                }
+                ptCountEl.innerText = state.pointCloud.length.toLocaleString();
+                lastTextUpdate = now;
             }
             lastTs = state.timestamp;
-            ptCountEl.innerText = state.pointCloud.length;
 
             // 3. Update Trace
             // Kalman State vector x is [Pos, Vel, Accel].
