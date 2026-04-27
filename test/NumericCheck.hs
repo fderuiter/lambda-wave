@@ -51,5 +51,45 @@ main = do
         Left e -> putStrLn $ "CAUGHT EXCEPTION: " ++ show (e :: SomeException)
         Right _ -> putStrLn "PASS: Least Squares mismatch handled"
 
+    -- 6. Test dot
+    let d = dot [1, 2, 3] [4, 5, 6]
+    if d == 32 then putStrLn "PASS: dot product" else putStrLn $ "FAIL: dot product, got " ++ show d
+    let dShort = dot [1, 2] [4, 5, 6]
+    if dShort == 14 then putStrLn "PASS: dot product shortest vector" else putStrLn $ "FAIL: dot product shortest vector, got " ++ show dShort
+
+    -- 7. Test at
+    let a1 = at ([1, 2, 3] :: [Int]) 1
+    if a1 == Just (2 :: Int) then putStrLn "PASS: at function valid index" else putStrLn "FAIL: at function valid index"
+    let a2 = at ([1, 2, 3] :: [Int]) 5
+    case a2 of
+        Nothing -> putStrLn "PASS: at function out of bounds"
+        Just _ -> putStrLn "FAIL: at function out of bounds"
+    let a3 = at ([1, 2, 3] :: [Int]) (-1)
+    case a3 of
+        Nothing -> putStrLn "PASS: at function negative index"
+        Just _ -> putStrLn "FAIL: at function negative index"
+
+    -- 8. Test isRectangular
+    let rect1 = isRectangular [[1, 2], [3, 4]] 2
+    if rect1 then putStrLn "PASS: isRectangular true" else putStrLn "FAIL: isRectangular true"
+    let rect2 = isRectangular [[1, 2], [3]] 2
+    if not rect2 then putStrLn "PASS: isRectangular false" else putStrLn "FAIL: isRectangular false"
+
+    -- 9. Test updateAt
+    let upd1 = updateAt 1 (const (5 :: Int)) ([1, 2, 3] :: [Int])
+    if upd1 == ([1, 5, 3] :: [Int]) then putStrLn "PASS: updateAt valid index" else putStrLn "FAIL: updateAt valid index"
+    let upd2 = updateAt 5 (const (5 :: Int)) ([1, 2, 3] :: [Int])
+    if upd2 == ([1, 2, 3] :: [Int]) then putStrLn "PASS: updateAt out of bounds" else putStrLn "FAIL: updateAt out of bounds"
+
+    -- 10. Test gaussJordan
+    let gj1 = gaussJordan [[2, 1, -1, 8], [-3, -1, 2, -11], [-2, 1, 2, -3]] 3
+    case gj1 of
+        Just _ -> putStrLn "PASS: gaussJordan valid matrix"
+        Nothing -> putStrLn "FAIL: gaussJordan valid matrix"
+    let gj2 = gaussJordan [[1, 2], [2, 4]] 2
+    case gj2 of
+        Nothing -> putStrLn "PASS: gaussJordan singular matrix"
+        Just _ -> putStrLn "FAIL: gaussJordan singular matrix"
+
     putStrLn "Numeric Check Complete."
     exitSuccess
