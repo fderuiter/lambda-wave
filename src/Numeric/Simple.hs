@@ -21,6 +21,11 @@ module Numeric.Simple
     , inverse
     , leastSquares
     , identity
+    , dot
+    , at
+    , isRectangular
+    , updateAt
+    , gaussJordan
     ) where
 
 import Data.List (transpose)
@@ -63,6 +68,10 @@ multiply a b
 matVecMult :: Matrix -> Vector -> Vector
 matVecMult m v = [ dot row v | row <- m ]
 
+-- | Calculate the dot product of two vectors.
+--
+-- Complexity: O(N) runtime where N is the length of the shortest vector.
+-- Safety: Total function, handles all inputs gracefully. Truncates to the shortest vector.
 dot :: Vector -> Vector -> Double
 -- ⚡ Bolt Optimization: Replaced O(N) multi-pass operations (sum $ zipWith (*))
 -- with a single-pass tail-recursive algorithm using strict accumulators to
@@ -114,6 +123,9 @@ leastSquares a b = do
            return $ matVecMult invATA atb
 
 -- | Helper: Safe Indexing
+--
+-- Complexity: O(N) runtime where N is the index.
+-- Safety: Total function, handles out-of-bounds indices by returning Nothing.
 at :: [a] -> Int -> Maybe a
 at xs i
     | i < 0 = Nothing
@@ -122,12 +134,18 @@ at xs i
         (x:_) -> Just x
 
 -- | Helper: Check Rectangularity
+--
+-- Complexity: O(R * C) runtime where R is number of rows and C is number of columns.
+-- Safety: Total function, handles all inputs gracefully.
 isRectangular :: Matrix -> Int -> Bool
 -- ⚡ Bolt Optimization: Removed redundant O(N) `length m == rows` check
 -- since `rows` is always cleanly calculated via `length m` at the call-site.
 isRectangular m cols = all (\r -> length r == cols) m
 
--- | Helper: Update list at index using splitAt (O(N) without intermediate lists)
+-- | Helper: Update list at index using splitAt
+--
+-- Complexity: O(N) runtime where N is the index to update, without intermediate lists.
+-- Safety: Total function, handles out-of-bounds indices by returning the original list.
 updateAt :: Int -> (a -> a) -> [a] -> [a]
 updateAt idx f xs
     | idx < 0   = xs
@@ -138,6 +156,9 @@ updateAt idx f xs
             (target:after) -> before ++ (f target : after)
 
 -- | Gauss-Jordan Elimination with Safe Indexing
+--
+-- Complexity: O(N^3) runtime where N is the number of rows.
+-- Safety: Total function, handles singular matrices gracefully by returning Nothing.
 gaussJordan :: Matrix -> Int -> Maybe Matrix
 gaussJordan mInitial rows = foldM pivot mInitial [0 .. rows - 1]
   where
