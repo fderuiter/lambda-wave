@@ -109,7 +109,7 @@
         ws.onclose = () => {
             connDot.className = 'status-dot dot-offline';
             connText.innerText = 'Disconnected';
-            statusEl.innerText = 'OFFLINE';
+            statusEl.innerHTML = '<span aria-hidden="true">■ </span>OFFLINE';
             statusEl.className = 'Offline';
             tsEl.innerText = 'N/A';
             ptCountEl.innerText = 'N/A';
@@ -121,7 +121,7 @@
         ws.onerror = () => {
             connDot.className = 'status-dot dot-offline';
             connText.innerText = 'Connection Error';
-            statusEl.innerText = 'OFFLINE';
+            statusEl.innerHTML = '<span aria-hidden="true">■ </span>OFFLINE';
             statusEl.className = 'Offline';
             document.title = 'Error - Lambda-Wave Monitor';
             updateFavicon('#f00', 'square');
@@ -140,15 +140,27 @@
             // Only update DOM if state changed to prevent aria-live screen reader spam at 30Hz
             if (state.beamState !== lastBeamState) {
                 // Insert space before capital letters (e.g., "BeamOn" -> "BEAM ON")
-                statusEl.innerText = state.beamState.replace(/([A-Z])/g, ' $1').trim().toUpperCase();
-                statusEl.className = state.beamState;
-                document.title = statusEl.innerText + ' - Lambda-Wave Monitor';
-
+                const textLabel = state.beamState.replace(/([A-Z])/g, ' $1').trim().toUpperCase();
+                let iconHtml = '';
                 let faviconColor = '#555';
                 let faviconShape = 'circle';
-                if (state.beamState === 'BeamOn') { faviconColor = '#0f0'; faviconShape = 'circle'; }
-                else if (state.beamState === 'BeamOff') { faviconColor = '#f00'; faviconShape = 'square'; }
-                else if (state.beamState === 'BeamHold') { faviconColor = '#ff0'; faviconShape = 'triangle'; }
+
+                if (state.beamState === 'BeamOn') {
+                    faviconColor = '#0f0'; faviconShape = 'circle';
+                    iconHtml = '<span aria-hidden="true">● </span>';
+                }
+                else if (state.beamState === 'BeamOff') {
+                    faviconColor = '#f00'; faviconShape = 'square';
+                    iconHtml = '<span aria-hidden="true">■ </span>';
+                }
+                else if (state.beamState === 'BeamHold') {
+                    faviconColor = '#ff0'; faviconShape = 'triangle';
+                    iconHtml = '<span aria-hidden="true">▲ </span>';
+                }
+
+                statusEl.innerHTML = iconHtml + textLabel;
+                statusEl.className = state.beamState;
+                document.title = textLabel + ' - Lambda-Wave Monitor';
                 updateFavicon(faviconColor, faviconShape);
 
                 lastBeamState = state.beamState;
@@ -190,7 +202,7 @@
             const midY = height / 2;
 
             // Draw center reference line
-            ctx.strokeStyle = '#333';
+            ctx.strokeStyle = '#555'; // Improved contrast for baseline
             ctx.lineWidth = 1;
             ctx.setLineDash([5, 5]);
             ctx.beginPath();
@@ -198,6 +210,17 @@
             ctx.lineTo(width, midY);
             ctx.stroke();
             ctx.setLineDash([]);
+
+            // Add Y-axis scale labels for context
+            ctx.fillStyle = '#888';
+            ctx.font = '12px monospace';
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'bottom';
+            ctx.fillText(' 0mm', 5, midY - 4);
+            ctx.textBaseline = 'top';
+            ctx.fillText('+100mm', 5, 5);
+            ctx.textBaseline = 'bottom';
+            ctx.fillText('-100mm', 5, height - 5);
 
             ctx.strokeStyle = '#0ff';
             ctx.lineWidth = 2;
