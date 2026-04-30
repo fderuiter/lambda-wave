@@ -4,3 +4,6 @@
 ## 2024-05-15 - Context Labels on Real-time Graphs
 **Learning:** Real-time data visualization lines (like `<canvas>` traces) lack magnitude context by themselves, forcing users to guess the scale.
 **Action:** Always add visual axis labels (e.g. `+100mm`, `-100mm`, `0mm`) and baselines directly to the graph rendering to reduce cognitive load and allow instant interpretation of data scale.
+## 2024-05-16 - Canvas Text Accessibility
+**Learning:** Text rendered visually on `<canvas>` elements using `fillText` is invisible to screen readers, meaning critical context (like graph scales or empty state messages) is lost to visually impaired users.
+**Action:** Dynamically mirror any text drawn on the canvas to the element's `aria-label` attribute, and ensure the canvas has `tabindex="0"` with clear `:focus-visible` styling so it is discoverable via keyboard navigation.
