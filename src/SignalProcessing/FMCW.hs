@@ -84,11 +84,18 @@ chirpZTransform params x_n = map calculateBin [0 .. cztSteps params - 1]
 
             -- Summation: sum(x[n] * exp(i * theta_step * n))
             -- ⚡ Bolt Optimization: Avoid O(N) trigonometric evaluations by using a constant phase multiplier
-            summation !acc _ [] = acc
-            summation !acc !term (val:rest) =
-                summation (acc + val * term) (term * w) rest
+            -- ⚡ Bolt Optimization: Unpack Complex into strict Double arguments to avoid O(N) intermediate allocations
+            !wR = realPart w
+            !wI = imagPart w
+            summation !accR !accI _ _ [] = accR :+ accI
+            summation !accR !accI !termR !termI ((vR :+ vI):rest) =
+                let !newAccR  = accR + (vR * termR - vI * termI)
+                    !newAccI  = accI + (vR * termI + vI * termR)
+                    !newTermR = termR * wR - termI * wI
+                    !newTermI = termR * wI + termI * wR
+                in summation newAccR newAccI newTermR newTermI rest
         in
-            summation (0 :+ 0) (1 :+ 0) x_n
+            summation 0.0 0.0 1.0 0.0 x_n
 
 -- | Equation (4): Verified
 -- Extract the phase from the complex value at the peak index.
