@@ -7,3 +7,7 @@
 ## 2024-05-16 - Canvas Text Accessibility
 **Learning:** Text rendered visually on `<canvas>` elements using `fillText` is invisible to screen readers, meaning critical context (like graph scales or empty state messages) is lost to visually impaired users.
 **Action:** Dynamically mirror any text drawn on the canvas to the element's `aria-label` attribute, and ensure the canvas has `tabindex="0"` with clear `:focus-visible` styling so it is discoverable via keyboard navigation.
+
+## 2026-05-01 - Keyboard Accessibility for Abbr Tooltips
+**Learning:** Native `title` attributes on `<abbr>` elements are visually displayed as tooltips on mouse hover, but they are not accessible to keyboard-only users who navigate via Tab, leading to missing context.
+**Action:** Always add a CSS rule (e.g., `abbr:focus-visible::after`) to visually expose the `title` attribute as a tooltip when the `abbr` element receives keyboard focus, ensuring feature parity for keyboard users.
