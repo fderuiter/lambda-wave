@@ -22,9 +22,26 @@
         @media (prefers-reduced-motion: reduce) {
             .dot-connecting { animation: none; opacity: 0.8; }
         }
-        abbr { transition: color 0.3s ease; }
+        abbr { transition: color 0.3s ease; position: relative; }
         abbr:hover { color: #0ff; }
         abbr:focus-visible { outline: 2px solid #0ff; outline-offset: 2px; }
+        abbr:focus-visible::after {
+            content: attr(title);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #222;
+            color: #fff;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            white-space: nowrap;
+            z-index: 10;
+            pointer-events: none;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+            margin-bottom: 5px;
+        }
         .noscript-alert { background: #cc0000; color: #fff; padding: 10px; margin-bottom: 20px; border-radius: 10px; text-align: center; }
         #ts, #pt-count { display: inline-block; text-align: right; font-variant-numeric: tabular-nums; }
         #ts { width: 5ch; }
