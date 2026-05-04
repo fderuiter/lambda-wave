@@ -23,6 +23,7 @@ import Data.List (dropWhileEnd)
 import System.IO (withFile, IOMode(ReadMode))
 import System.Posix.Terminal
 import System.Posix.IO (openFd, closeFd, fdWriteBuf, OpenMode(ReadWrite), defaultFileFlags)
+import System.Posix.Files (getFdStatus, isCharacterDevice)
 import System.Posix.Types (Fd(..))
 import Foreign.Ptr (castPtr)
 import Data.ByteString (useAsCStringLen)
@@ -101,20 +102,24 @@ configureSensor configPath portPath = do
 #endif
                         closeFd
                         (\fd -> do
-                            res <- configureConfigSerial fd -- Set 115200
-                            case res of
-                                Left (ConfigurationFailed err) -> ioError (userError err)
-                                Left err -> ioError (userError $ show err)
-                                Right () -> do
-                                    forM_ commands $ \cmd -> do
-                                        let packet = BC.pack (cmd ++ "\n")
-                                        bytesSent <- useAsCStringLen packet $ \(ptr, len) ->
-                                            fdWriteBuf fd (castPtr ptr) (fromIntegral len)
+                            fStatus <- getFdStatus fd
+                            if not (isCharacterDevice fStatus)
+                                then ioError (userError "Security Violation - Port is not a character device")
+                                else do
+                                    res <- configureConfigSerial fd -- Set 115200
+                                    case res of
+                                        Left (ConfigurationFailed err) -> ioError (userError err)
+                                        Left err -> ioError (userError $ show err)
+                                        Right () -> do
+                                            forM_ commands $ \cmd -> do
+                                                let packet = BC.pack (cmd ++ "\n")
+                                                bytesSent <- useAsCStringLen packet $ \(ptr, len) ->
+                                                    fdWriteBuf fd (castPtr ptr) (fromIntegral len)
 
-                                        -- Check if all bytes were written
-                                        if fromIntegral bytesSent < BC.length packet
-                                            then ioError (userError $ "Failed to send complete command: " ++ cmd)
-                                            else threadDelay 100000 -- 100ms delay between commands
+                                                -- Check if all bytes were written
+                                                if fromIntegral bytesSent < BC.length packet
+                                                    then ioError (userError $ "Failed to send complete command: " ++ cmd)
+                                                    else threadDelay 100000 -- 100ms delay between commands
                         )
 
                     case result of
