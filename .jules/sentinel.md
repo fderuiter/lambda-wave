@@ -1,0 +1,4 @@
+## 2024-05-04 - TOCTOU Device File Vulnerability
+**Vulnerability:** `src/Hardware/Control.hs` was using `openFd` to open device files without checking if the file actually was a character device *after* opening it, making it vulnerable to a Time-of-Check to Time-of-Use (TOCTOU) file swap attack.
+**Learning:** Checking file status before opening the file allows an attacker to replace the device file with a regular file between the check and the use. This happens because the file system state can change concurrently.
+**Prevention:** To prevent TOCTOU vulnerabilities when accessing device files, always open the file descriptor first (`openFd`) and then validate its status using `System.Posix.Files.getFdStatus` along with `isCharacterDevice fdStatus`, rather than checking the path string beforehand. Keep using the opened file descriptor in the subsequent logic.
