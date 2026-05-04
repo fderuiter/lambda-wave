@@ -11,3 +11,6 @@
 ## 2026-05-01 - Keyboard Accessibility for Abbr Tooltips
 **Learning:** Native `title` attributes on `<abbr>` elements are visually displayed as tooltips on mouse hover, but they are not accessible to keyboard-only users who navigate via Tab, leading to missing context.
 **Action:** Always add a CSS rule (e.g., `abbr:focus-visible::after`) to visually expose the `title` attribute as a tooltip when the `abbr` element receives keyboard focus, ensuring feature parity for keyboard users.
+## 2024-05-20 - Pausing Real-time Interfaces
+**Learning:** Users with cognitive or vestibular conditions can struggle with rapidly updating real-time animations (like a 30Hz trace), violating WCAG 2.2.2 (Pause, Stop, Hide).
+**Action:** Always provide an accessible mechanism (like a keyboard-navigable pause button) to freeze live animations while maintaining data context in the background.
