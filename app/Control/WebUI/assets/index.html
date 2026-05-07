@@ -92,12 +92,15 @@
             pauseBtn.innerText = isPaused ? 'Resume Trace' : 'Pause Trace';
 
             if (isPaused) {
+                canvas.setAttribute('aria-label', 'PAUSED: Real-time trace and point cloud visualization. Y-axis scale: +100mm to -100mm.');
                 ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
                 ctx.fillRect(0, 0, width, height);
                 ctx.fillStyle = '#ff0';
                 ctx.font = '32px monospace';
                 ctx.textAlign = 'center';
                 ctx.fillText('PAUSED', width / 2, height / 2);
+            } else {
+                canvas.setAttribute('aria-label', 'Real-time trace and point cloud visualization. Y-axis scale: +100mm to -100mm.');
             }
         });
 
