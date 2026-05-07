@@ -14,3 +14,7 @@
 ## 2024-05-20 - Pausing Real-time Interfaces
 **Learning:** Users with cognitive or vestibular conditions can struggle with rapidly updating real-time animations (like a 30Hz trace), violating WCAG 2.2.2 (Pause, Stop, Hide).
 **Action:** Always provide an accessible mechanism (like a keyboard-navigable pause button) to freeze live animations while maintaining data context in the background.
+
+## 2026-05-07 - Dynamic ARIA Labeling for Canvas States
+**Learning:** While static `aria-label`s on canvases provide initial context, dynamic state changes rendered via `fillText` (like "PAUSED") remain inaccessible to screen readers unless the `aria-label` is synchronously updated.
+**Action:** When a `<canvas>` element's visual state changes dynamically (e.g., displaying a "PAUSED" overlay), mirror the new context to the `aria-label` attribute and restore the original label when the state reverts.
