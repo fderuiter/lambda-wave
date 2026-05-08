@@ -51,6 +51,19 @@
         #pause-btn { background: #333; color: #fff; border: 1px solid #555; padding: 5px 10px; cursor: pointer; border-radius: 4px; font-family: monospace; display: inline-block; margin-top: 10px; }
         #pause-btn:focus-visible { outline: 2px solid #0ff; outline-offset: 2px; }
         #pause-btn:hover { background: #444; }
+        kbd {
+            background-color: #222;
+            border: 1px solid #555;
+            border-radius: 3px;
+            box-shadow: 0 1px 1px rgba(0,0,0,0.2), 0 2px 0 0 rgba(255,255,255,0.1) inset;
+            color: #ccc;
+            display: inline-block;
+            font-size: 0.85em;
+            line-height: 1;
+            padding: 2px 4px;
+            white-space: nowrap;
+            margin-left: 5px;
+        }
     </style>
 </head>
 <body>
@@ -68,7 +81,7 @@
             <abbr tabindex="0" title="Time elapsed for the current radar frame" style="cursor: help; text-decoration: underline dotted; text-decoration-skip-ink: none;">Frame Time</abbr><span aria-hidden="true">:</span> <span id="ts">0.0</span> ms <span aria-hidden="true">|</span> <abbr tabindex="0" title="Number of points in the current point cloud" style="cursor: help; text-decoration: underline dotted; text-decoration-skip-ink: none;">Points</abbr><span aria-hidden="true">:</span> <span id="pt-count">0</span>
         </div>
         <div style="text-align: center;">
-            <button id="pause-btn" aria-pressed="false">Pause Trace</button>
+            <button id="pause-btn" aria-pressed="false">Pause Trace <kbd>Space</kbd></button>
         </div>
     </main>
 
@@ -86,10 +99,10 @@
         let isPaused = false;
         const pauseBtn = document.getElementById('pause-btn');
 
-        pauseBtn.addEventListener('click', () => {
+        function togglePause() {
             isPaused = !isPaused;
             pauseBtn.setAttribute('aria-pressed', isPaused.toString());
-            pauseBtn.innerText = isPaused ? 'Resume Trace' : 'Pause Trace';
+            pauseBtn.innerHTML = (isPaused ? 'Resume Trace' : 'Pause Trace') + ' <kbd>Space</kbd>';
 
             if (isPaused) {
                 canvas.setAttribute('aria-label', 'PAUSED: Real-time trace and point cloud visualization. Y-axis scale: +100mm to -100mm.');
@@ -101,6 +114,15 @@
                 ctx.fillText('PAUSED', width / 2, height / 2);
             } else {
                 canvas.setAttribute('aria-label', 'Real-time trace and point cloud visualization. Y-axis scale: +100mm to -100mm.');
+            }
+        }
+
+        pauseBtn.addEventListener('click', togglePause);
+
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' && document.activeElement !== pauseBtn) {
+                e.preventDefault(); // Prevent scrolling when pressing Space
+                togglePause();
             }
         });
 
