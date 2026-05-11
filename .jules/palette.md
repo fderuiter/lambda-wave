@@ -21,3 +21,10 @@
 ## 2024-05-24 - Accessible Keyboard Shortcut Hints
 **Learning:** Adding a `<kbd>` element for visual hints is great for sighted users, but screen readers may announce the key names out of context or redundantly if the element is nested within a button label. The `aria-keyshortcuts` attribute should be added to the button itself for semantic accessibility.
 **Action:** When adding keyboard shortcut hints, add `aria-keyshortcuts` to the interactive element, and use `aria-hidden="true"` on the visual `<kbd>` hint nested within it to prevent redundant screen reader announcements while providing semantic shortcut info.
+
+## 2024-05-24 - Semantic Keyboard Shortcuts
+**Learning:** When adding visual keyboard shortcut hints (like `<kbd>Space</kbd>`) inside interactive UI elements (such as buttons), screen readers often read the nested key name out of context (e.g., "Pause Trace Space"), which is confusing.
+**Action:** Set `aria-keyshortcuts` on the parent interactive element to programmatically associate the shortcut, and apply `aria-hidden="true"` to the nested visual hint to prevent redundant or confusing screen reader announcements.
+## 2026-05-11 - Keyboard Shortcut Hints Accessibility
+**Learning:** When adding keyboard shortcut hints (like `<kbd>`) inside interactive UI elements (such as buttons), the nested visual hint is redundantly announced out of context by screen readers.
+**Action:** Set `aria-keyshortcuts` on the parent interactive element and apply `aria-hidden="true"` to the nested visual hint to prevent screen readers from redundantly announcing the key name out of context.
