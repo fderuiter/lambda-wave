@@ -18,3 +18,7 @@
 ## 2026-05-07 - Dynamic ARIA Labeling for Canvas States
 **Learning:** While static `aria-label`s on canvases provide initial context, dynamic state changes rendered via `fillText` (like "PAUSED") remain inaccessible to screen readers unless the `aria-label` is synchronously updated.
 **Action:** When a `<canvas>` element's visual state changes dynamically (e.g., displaying a "PAUSED" overlay), mirror the new context to the `aria-label` attribute and restore the original label when the state reverts.
+
+## 2026-05-11 - Keyboard Shortcut Hints Accessibility
+**Learning:** When adding keyboard shortcut hints (like `<kbd>`) inside interactive UI elements (such as buttons), the nested visual hint is redundantly announced out of context by screen readers.
+**Action:** Set `aria-keyshortcuts` on the parent interactive element and apply `aria-hidden="true"` to the nested visual hint to prevent screen readers from redundantly announcing the key name out of context.

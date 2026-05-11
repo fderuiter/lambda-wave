@@ -81,7 +81,7 @@
             <abbr tabindex="0" title="Time elapsed for the current radar frame" style="cursor: help; text-decoration: underline dotted; text-decoration-skip-ink: none;">Frame Time</abbr><span aria-hidden="true">:</span> <span id="ts">0.0</span> ms <span aria-hidden="true">|</span> <abbr tabindex="0" title="Number of points in the current point cloud" style="cursor: help; text-decoration: underline dotted; text-decoration-skip-ink: none;">Points</abbr><span aria-hidden="true">:</span> <span id="pt-count">0</span>
         </div>
         <div style="text-align: center;">
-            <button id="pause-btn" aria-pressed="false">Pause Trace <kbd>Space</kbd></button>
+            <button id="pause-btn" aria-pressed="false" aria-keyshortcuts="Space">Pause Trace <kbd aria-hidden="true">Space</kbd></button>
         </div>
     </main>
 
@@ -102,7 +102,7 @@
         function togglePause() {
             isPaused = !isPaused;
             pauseBtn.setAttribute('aria-pressed', isPaused.toString());
-            pauseBtn.innerHTML = (isPaused ? 'Resume Trace' : 'Pause Trace') + ' <kbd>Space</kbd>';
+            pauseBtn.innerHTML = (isPaused ? 'Resume Trace' : 'Pause Trace') + ' <kbd aria-hidden="true">Space</kbd>';
 
             if (isPaused) {
                 canvas.setAttribute('aria-label', 'PAUSED: Real-time trace and point cloud visualization. Y-axis scale: +100mm to -100mm.');
