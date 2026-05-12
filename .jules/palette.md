@@ -1,3 +1,0 @@
-## 2024-05-12 - Screen Reader Feedback for Global Shortcuts
-**Learning:** Global keyboard shortcuts (like Spacebar to pause a graph) or alternative interactions (like clicking a canvas) that trigger functionality outside a button's focus lack inherent screen reader feedback. Modifying `aria-pressed` on a button does not announce if focus is elsewhere.
-**Action:** When adding global shortcuts or alternative interaction methods that modify state, always use a visually hidden `aria-live="polite"` region to explicitly announce the state change (e.g., "Trace paused") to ensure screen reader users receive immediate feedback regardless of where their focus is.
