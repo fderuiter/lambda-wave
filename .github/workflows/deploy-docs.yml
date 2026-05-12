@@ -35,7 +35,8 @@ jobs:
       - name: Copy to Docs Directory
         run: |
           mkdir -p docs_site
-          cp -r ./dist-newstyle/build/x86_64-linux/ghc-9.6.7/sgrt-radar-system-0.1.0.0/doc/html/sgrt-radar-system/* docs_site/
+          test -d docs_output || { echo "docs_output not found"; exit 1; }
+          cp -r docs_output/* docs_site/
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
