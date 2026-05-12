@@ -12,7 +12,7 @@
         .BeamOff { background: #cc0000; color: #fff; }
         .BeamHold { background: #ff0; color: #000; }
         .Offline { background: #555; color: #ccc; }
-        canvas { border: 1px solid #333; background: #000; display: block; margin: 0 auto; max-width: 100%; height: auto; }
+        canvas { border: 1px solid #333; background: #000; display: block; margin: 0 auto; max-width: 100%; height: auto; cursor: pointer; }
         #stats { text-align: center; margin-top: 10px; }
         .status-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; transition: background-color 0.3s ease, box-shadow 0.3s ease, border-radius 0.3s ease, transform 0.3s ease; }
         .dot-live { background-color: #0f0; box-shadow: 0 0 5px #0f0; border-radius: 50%; }
@@ -74,6 +74,7 @@
     </noscript>
     <main>
         <h1 class="sr-only">Lambda-Wave Real-time Monitor</h1>
+        <div id="sr-announcer" class="sr-only" aria-live="polite" aria-atomic="true"></div>
         <div id="beam-status" class="Offline" role="alert" aria-live="assertive" aria-atomic="true">CONNECTING...</div>
         <canvas id="plot" width="800" height="400" tabindex="0" role="img" aria-label="Real-time trace and point cloud visualization. Y-axis scale: +100mm to -100mm."></canvas>
         <div id="stats">
@@ -98,11 +99,13 @@
         const height = canvas.height;
         let isPaused = false;
         const pauseBtn = document.getElementById('pause-btn');
+        const srAnnouncer = document.getElementById('sr-announcer');
 
         function togglePause() {
             isPaused = !isPaused;
             pauseBtn.setAttribute('aria-pressed', isPaused.toString());
             pauseBtn.innerHTML = (isPaused ? 'Resume Trace' : 'Pause Trace') + ' <kbd aria-hidden="true">Space</kbd>';
+            srAnnouncer.textContent = isPaused ? 'Trace paused' : 'Trace resumed';
 
             if (isPaused) {
                 canvas.setAttribute('aria-label', 'PAUSED: Real-time trace and point cloud visualization. Y-axis scale: +100mm to -100mm.');
@@ -118,6 +121,7 @@
         }
 
         pauseBtn.addEventListener('click', togglePause);
+        canvas.addEventListener('click', togglePause);
 
         document.addEventListener('keydown', (e) => {
             if (e.code === 'Space' && document.activeElement !== pauseBtn) {
