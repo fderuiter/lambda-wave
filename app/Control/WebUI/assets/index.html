@@ -12,7 +12,8 @@
         .BeamOff { background: #cc0000; color: #fff; }
         .BeamHold { background: #ff0; color: #000; }
         .Offline { background: #555; color: #ccc; }
-        canvas { border: 1px solid #333; background: #000; display: block; margin: 0 auto; max-width: 100%; height: auto; cursor: pointer; }
+        canvas { border: 1px solid #333; background: #000; display: block; margin: 0 auto; max-width: 100%; height: auto; cursor: default; }
+        canvas.live { cursor: pointer; }
         #stats { text-align: center; margin-top: 10px; }
         .status-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; transition: background-color 0.3s ease, box-shadow 0.3s ease, border-radius 0.3s ease, transform 0.3s ease; }
         .dot-live { background-color: #0f0; box-shadow: 0 0 5px #0f0; border-radius: 50%; }
@@ -50,7 +51,9 @@
         canvas:focus-visible { outline: 2px solid #0ff; outline-offset: 2px; }
         #pause-btn { background: #333; color: #fff; border: 1px solid #555; padding: 5px 10px; cursor: pointer; border-radius: 4px; font-family: monospace; display: inline-block; margin-top: 10px; }
         #pause-btn:focus-visible { outline: 2px solid #0ff; outline-offset: 2px; }
-        #pause-btn:hover { background: #444; }
+        #pause-btn:hover:not(:disabled) { background: #444; }
+        #pause-btn:disabled { background: #222; color: #555; cursor: not-allowed; border-color: #333; }
+        #pause-btn:disabled kbd { background: #111; color: #444; border-color: #333; box-shadow: none; }
         kbd {
             background-color: #222;
             border: 1px solid #555;
@@ -82,7 +85,7 @@
             <abbr tabindex="0" title="Time elapsed for the current radar frame" style="cursor: help; text-decoration: underline dotted; text-decoration-skip-ink: none;">Frame Time</abbr><span aria-hidden="true">:</span> <span id="ts">0.0</span> ms <span aria-hidden="true">|</span> <abbr tabindex="0" title="Number of points in the current point cloud" style="cursor: help; text-decoration: underline dotted; text-decoration-skip-ink: none;">Points</abbr><span aria-hidden="true">:</span> <span id="pt-count">0</span>
         </div>
         <div style="text-align: center;">
-            <button id="pause-btn" aria-pressed="false" aria-keyshortcuts="Space">Pause Trace <kbd aria-hidden="true">Space</kbd></button>
+            <button id="pause-btn" aria-pressed="false" aria-keyshortcuts="Space" disabled>Pause Trace <kbd aria-hidden="true">Space</kbd></button>
         </div>
     </main>
 
@@ -102,6 +105,7 @@
         const srAnnouncer = document.getElementById('sr-announcer');
 
         function togglePause() {
+            if (pauseBtn.disabled) return;
             isPaused = !isPaused;
             pauseBtn.setAttribute('aria-pressed', isPaused.toString());
             pauseBtn.innerHTML = (isPaused ? 'Resume Trace' : 'Pause Trace') + ' <kbd aria-hidden="true">Space</kbd>';
@@ -169,6 +173,8 @@
         updateFavicon('#ff0', 'triangle');
 
         ws.onopen = () => {
+            pauseBtn.disabled = false;
+            canvas.classList.add('live');
             canvas.setAttribute('aria-label', 'Real-time trace and point cloud visualization. Y-axis scale: +100mm to -100mm.');
             connDot.className = 'status-dot dot-live';
             connText.innerText = 'Live';
@@ -177,6 +183,8 @@
         };
 
         ws.onclose = () => {
+            pauseBtn.disabled = true;
+            canvas.classList.remove('live');
             connDot.className = 'status-dot dot-offline';
             connText.innerText = 'Disconnected';
             statusEl.innerHTML = '<span aria-hidden="true">■ </span>OFFLINE';
@@ -189,6 +197,8 @@
         };
 
         ws.onerror = () => {
+            pauseBtn.disabled = true;
+            canvas.classList.remove('live');
             connDot.className = 'status-dot dot-offline';
             connText.innerText = 'Connection Error';
             statusEl.innerHTML = '<span aria-hidden="true">■ </span>OFFLINE';
