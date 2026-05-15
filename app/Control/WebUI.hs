@@ -40,7 +40,7 @@ httpApp token _ respond = respond $
         [ ("Content-Type", "text/html")
         , ("X-Frame-Options", "DENY")
         , ("X-Content-Type-Options", "nosniff")
-        , ("Content-Security-Policy", "default-src 'self'; connect-src 'self' ws: wss:; script-src 'self' 'sha256-h3jEIRzFoa4vUsdzG9y6gLZRUPKR7MWfOLGqCO3N7ds='; style-src 'self' 'sha256-PWjc4jazyEom12j4kX3sPcfGLXkj6XohY3GKdlslXf4='")
+        , ("Content-Security-Policy", "default-src 'self'; connect-src 'self' ws: wss:; script-src 'self' 'sha256-UCADHjj6jVUU+9Ffijp2BTk3bhfEqYXAKR2mkz987n4='; style-src 'self' 'sha256-hO21B28lmcyq55XuPNLkOjhQdIfctRJvI5LazHn+5Ws='")
         , ("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
         , ("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
         , ("Pragma", "no-cache")
