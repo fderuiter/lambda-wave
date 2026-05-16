@@ -49,7 +49,7 @@
         #pt-count { width: 4ch; }
         .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
         canvas:focus-visible { outline: 2px solid #0ff; outline-offset: 2px; }
-        #pause-btn { background: #333; color: #fff; border: 1px solid #555; padding: 5px 10px; cursor: pointer; border-radius: 4px; font-family: monospace; display: inline-block; margin-top: 10px; }
+        #pause-btn { background: #333; color: #fff; border: 1px solid #555; padding: 5px 10px; cursor: pointer; border-radius: 4px; font-family: monospace; display: inline-block; margin-top: 10px; transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease; }
         #pause-btn:focus-visible { outline: 2px solid #0ff; outline-offset: 2px; }
         #pause-btn:hover:not([aria-disabled="true"]) { background: #444; }
         #pause-btn[aria-disabled="true"] { background: #222; color: #555; cursor: not-allowed; border-color: #333; }
@@ -113,14 +113,19 @@
 
             if (isPaused) {
                 canvas.setAttribute('aria-label', 'PAUSED: Real-time trace and point cloud visualization. Y-axis scale: +100mm to -100mm.');
+                canvas.setAttribute('title', 'Click to resume trace');
                 ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
                 ctx.fillRect(0, 0, width, height);
                 ctx.fillStyle = '#ff0';
                 ctx.font = '32px monospace';
                 ctx.textAlign = 'center';
                 ctx.fillText('PAUSED', width / 2, height / 2);
+                ctx.fillStyle = '#ccc';
+                ctx.font = '16px monospace';
+                ctx.fillText('Click or press Space to resume', width / 2, height / 2 + 30);
             } else {
                 canvas.setAttribute('aria-label', 'Real-time trace and point cloud visualization. Y-axis scale: +100mm to -100mm.');
+                canvas.setAttribute('title', 'Click to pause trace');
             }
         }
 
@@ -177,6 +182,7 @@
             pauseBtn.removeAttribute('title');
             canvas.classList.add('live');
             canvas.setAttribute('aria-label', 'Real-time trace and point cloud visualization. Y-axis scale: +100mm to -100mm.');
+            canvas.setAttribute('title', 'Click to pause trace');
             connDot.className = 'status-dot dot-live';
             connText.innerText = 'Live';
             document.title = 'Live - Lambda-Wave Monitor';
@@ -187,6 +193,7 @@
             pauseBtn.setAttribute('aria-disabled', 'true');
             pauseBtn.setAttribute('title', 'Controls unavailable while disconnected');
             canvas.classList.remove('live');
+            canvas.removeAttribute('title');
             connDot.className = 'status-dot dot-offline';
             connText.innerText = 'Disconnected';
             statusEl.innerHTML = '<span aria-hidden="true">■ </span>OFFLINE';
@@ -202,6 +209,7 @@
             pauseBtn.setAttribute('aria-disabled', 'true');
             pauseBtn.setAttribute('title', 'Controls unavailable while disconnected');
             canvas.classList.remove('live');
+            canvas.removeAttribute('title');
             connDot.className = 'status-dot dot-offline';
             connText.innerText = 'Connection Error';
             statusEl.innerHTML = '<span aria-hidden="true">■ </span>OFFLINE';
