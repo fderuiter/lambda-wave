@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
 
@@ -17,7 +18,10 @@ import Network.WebSockets (ServerApp, acceptRequest, rejectRequest, sendTextData
 import Data.ByteString.Lazy (fromStrict)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as BC
-import System.IO (withBinaryFile, IOMode(ReadMode))
+import System.Posix.IO.ByteString (fdRead)
+import System.Posix.IO (openFd, closeFd, OpenMode(ReadOnly), defaultFileFlags, OpenFileFlags(..))
+import System.Posix.Files (getFdStatus, isCharacterDevice)
+import Control.Exception (bracket)
 import Text.Printf (printf)
 
 import Control.WebUI.Types () -- Import instances
@@ -28,7 +32,17 @@ indexHtml = $(embedFile "app/Control/WebUI/assets/index.html")
 
 runWebUI :: TVar SystemState -> IO ()
 runWebUI stateVar = do
-    tokenBytes <- withBinaryFile "/dev/urandom" ReadMode (`B.hGet` 16)
+    tokenBytes <- bracket
+#if MIN_VERSION_unix(2,8,0)
+                    (openFd "/dev/urandom" ReadOnly defaultFileFlags{creat=Nothing})
+#else
+                    (openFd "/dev/urandom" ReadOnly Nothing defaultFileFlags)
+#endif
+                    closeFd $ \fd -> do
+                        stat <- getFdStatus fd
+                        if not (isCharacterDevice stat)
+                            then error "Security Violation - /dev/urandom is not a character device"
+                            else fdRead fd 16
     let token = BC.pack (concatMap (printf "%02x") (B.unpack tokenBytes))
     putStrLn "Starting Web UI on http://127.0.0.1:8080"
     let settings = setServerName "" $ setPort 8080 $ setHost "127.0.0.1" defaultSettings
