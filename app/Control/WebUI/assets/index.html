@@ -113,14 +113,20 @@
 
             if (isPaused) {
                 canvas.setAttribute('aria-label', 'PAUSED: Real-time trace and point cloud visualization. Y-axis scale: +100mm to -100mm.');
+                canvas.setAttribute('title', 'Click to resume trace');
                 ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
                 ctx.fillRect(0, 0, width, height);
                 ctx.fillStyle = '#ff0';
                 ctx.font = '32px monospace';
                 ctx.textAlign = 'center';
-                ctx.fillText('PAUSED', width / 2, height / 2);
+                ctx.textBaseline = 'middle';
+                ctx.fillText('PAUSED', width / 2, height / 2 - 15);
+                ctx.fillStyle = '#ccc';
+                ctx.font = '16px monospace';
+                ctx.fillText('Click or press Space to resume', width / 2, height / 2 + 20);
             } else {
                 canvas.setAttribute('aria-label', 'Real-time trace and point cloud visualization. Y-axis scale: +100mm to -100mm.');
+                canvas.setAttribute('title', 'Click to pause trace');
             }
         }
 
@@ -176,6 +182,7 @@
             pauseBtn.setAttribute('aria-disabled', 'false');
             pauseBtn.removeAttribute('title');
             canvas.classList.add('live');
+            canvas.setAttribute('title', 'Click to pause trace');
             canvas.setAttribute('aria-label', 'Real-time trace and point cloud visualization. Y-axis scale: +100mm to -100mm.');
             connDot.className = 'status-dot dot-live';
             connText.innerText = 'Live';
@@ -187,6 +194,7 @@
             pauseBtn.setAttribute('aria-disabled', 'true');
             pauseBtn.setAttribute('title', 'Controls unavailable while disconnected');
             canvas.classList.remove('live');
+            canvas.removeAttribute('title');
             connDot.className = 'status-dot dot-offline';
             connText.innerText = 'Disconnected';
             statusEl.innerHTML = '<span aria-hidden="true">■ </span>OFFLINE';
@@ -202,6 +210,7 @@
             pauseBtn.setAttribute('aria-disabled', 'true');
             pauseBtn.setAttribute('title', 'Controls unavailable while disconnected');
             canvas.classList.remove('live');
+            canvas.removeAttribute('title');
             connDot.className = 'status-dot dot-offline';
             connText.innerText = 'Connection Error';
             statusEl.innerHTML = '<span aria-hidden="true">■ </span>OFFLINE';
