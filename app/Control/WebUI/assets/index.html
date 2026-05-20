@@ -186,6 +186,14 @@
             pauseBtn.setAttribute('aria-disabled', 'false');
             pauseBtn.removeAttribute('title');
             canvas.classList.add('live');
+
+            if (isPaused) {
+                isPaused = false;
+                pauseBtn.setAttribute('aria-pressed', 'false');
+                pauseBtn.innerHTML = 'Pause Trace <kbd aria-hidden="true">Space</kbd>';
+                srAnnouncer.textContent = 'Connection restored. Trace resumed.';
+            }
+
             canvas.setAttribute('title', 'Click to pause trace');
             canvas.setAttribute('aria-label', 'Real-time trace and point cloud visualization. Y-axis scale: +100mm to -100mm.');
             connDot.className = 'status-dot dot-live';
