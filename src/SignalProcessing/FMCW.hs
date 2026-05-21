@@ -160,9 +160,6 @@ applyStaticClutterRemoval alpha prevMean input =
     then goInit input
     else go prevMean input
   where
-    !alphaC = alpha :+ 0
-    !oneMinusAlphaC = (1.0 - alpha) :+ 0
-
     goInit [] = ([], [])
     goInit (i:is) =
         let !(m, o) = (i, 0 :+ 0)
@@ -171,8 +168,12 @@ applyStaticClutterRemoval alpha prevMean input =
 
     go [] _ = ([], [])
     go _ [] = ([], [])
-    go (p:ps) (i:is) =
-        let !m = oneMinusAlphaC * p + alphaC * i
-            !o = i - m
+    go ((pR :+ pI):ps) ((iR :+ iI):is) =
+        -- ⚡ Bolt Optimization: Unpacked Complex Double math prevents O(N) heap allocations
+        -- of intermediate Complex objects per frame, restoring unboxed performance.
+        let !mR = (1.0 - alpha) * pR + alpha * iR
+            !mI = (1.0 - alpha) * pI + alpha * iI
+            !m = mR :+ mI
+            !o = (iR - mR) :+ (iI - mI)
             (ms, os) = go ps is
         in (m : ms, o : os)
