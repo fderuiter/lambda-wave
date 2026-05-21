@@ -26,7 +26,7 @@
         abbr { transition: color 0.3s ease; position: relative; }
         abbr:hover { color: #0ff; }
         abbr:focus-visible { outline: 2px solid #0ff; outline-offset: 2px; }
-        abbr:focus-visible::after {
+        abbr:focus-visible::after, [aria-disabled="true"][title]:focus-visible::after {
             content: attr(title);
             position: absolute;
             bottom: 100%;
@@ -49,7 +49,7 @@
         #pt-count { width: 4ch; }
         .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
         canvas:focus-visible { outline: 2px solid #0ff; outline-offset: 2px; }
-        #pause-btn { background: #333; color: #fff; border: 1px solid #555; padding: 5px 10px; cursor: pointer; border-radius: 4px; font-family: monospace; display: inline-block; margin-top: 10px; transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease; }
+        #pause-btn { position: relative; background: #333; color: #fff; border: 1px solid #555; padding: 5px 10px; cursor: pointer; border-radius: 4px; font-family: monospace; display: inline-block; margin-top: 10px; transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease; }
         #pause-btn:focus-visible { outline: 2px solid #0ff; outline-offset: 2px; }
         #pause-btn:hover:not([aria-disabled="true"]) { background: #444; }
         #pause-btn[aria-disabled="true"] { background: #222; color: #555; cursor: not-allowed; border-color: #333; }
