@@ -1,12 +1,5 @@
-1. **Update `src/Hardware/Control.hs`**
-   - Use `replace_with_git_merge_diff` to add `import System.Posix.Files (getFdStatus, isCharacterDevice)` to the imports.
-   - Use `replace_with_git_merge_diff` to modify the lambda `(\fd -> do ...)` in `configureSensor`. Add `fStatus <- getFdStatus fd`, and an `if not (isCharacterDevice fStatus)` check that throws an `ioError` if the check fails.
-2. **Verify `src/Hardware/Control.hs`**
-   - Run `cat src/Hardware/Control.hs` to verify the edit.
-3. **Create `.jules/sentinel.md`**
-   - Document the TOCTOU vulnerability and the fix of opening the file descriptor first and validating it using `getFdStatus`.
-4. **Verify `.jules/sentinel.md`**
-   - Verify the file creation and content using `cat`.
-5. **Run tests**
-   - Run `source /home/jules/.ghcup/env && cabal test` to verify changes.
-6. **Complete pre-commit steps to ensure proper testing, verification, review, and reflection are done.**
+1. Read `src/SignalProcessing/FMCW.hs` and update `chirpZTransform`.
+2. Cache the floating-point divisions `b_zoom / k_max` and `(-2) * pi / fs` outside of `calculateBin`.
+3. Add a journal entry to `.jules/bolt.md`.
+4. Pre-commit tests.
+5. Submit PR.
