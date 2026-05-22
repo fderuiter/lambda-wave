@@ -79,13 +79,13 @@
         <h1 class="sr-only">Lambda-Wave Real-time Monitor</h1>
         <div id="sr-announcer" class="sr-only" aria-live="polite" aria-atomic="true"></div>
         <div id="beam-status" class="Offline" role="alert" aria-live="assertive" aria-atomic="true">CONNECTING...</div>
-        <canvas id="plot" width="800" height="400" tabindex="0" role="img" aria-label="Real-time trace and point cloud visualization. Y-axis scale: +100mm to -100mm."></canvas>
+        <canvas id="plot" width="800" height="400" tabindex="0" role="img" aria-label="Real-time trace and point cloud visualization. Y-axis scale: +100mm to -100mm. Press Enter or Space to pause." aria-keyshortcuts="Enter Space"></canvas>
         <div id="stats">
             <span aria-live="polite" aria-atomic="true"><span id="conn-dot" class="status-dot dot-connecting" aria-hidden="true"></span><span id="conn-text">Connecting...</span></span> <span aria-hidden="true">|</span>
             <abbr tabindex="0" title="Time elapsed for the current radar frame" style="cursor: help; text-decoration: underline dotted; text-decoration-skip-ink: none;">Frame Time</abbr><span aria-hidden="true">:</span> <span id="ts">0.0</span> ms <span aria-hidden="true">|</span> <abbr tabindex="0" title="Number of points in the current point cloud" style="cursor: help; text-decoration: underline dotted; text-decoration-skip-ink: none;">Points</abbr><span aria-hidden="true">:</span> <span id="pt-count">0</span>
         </div>
         <div style="text-align: center;">
-            <button id="pause-btn" aria-pressed="false" aria-keyshortcuts="Space" aria-disabled="true" title="Controls unavailable while disconnected">Pause Trace <kbd aria-hidden="true">Space</kbd></button>
+            <button id="pause-btn" aria-keyshortcuts="Space" aria-disabled="true" title="Controls unavailable while disconnected">Pause Trace <kbd aria-hidden="true">Space</kbd></button>
         </div>
     </main>
 
@@ -107,12 +107,11 @@
         function togglePause() {
             if (pauseBtn.getAttribute('aria-disabled') === 'true') return;
             isPaused = !isPaused;
-            pauseBtn.setAttribute('aria-pressed', isPaused.toString());
             pauseBtn.innerHTML = (isPaused ? 'Resume Trace' : 'Pause Trace') + ' <kbd aria-hidden="true">Space</kbd>';
             srAnnouncer.textContent = isPaused ? 'Trace paused' : 'Trace resumed';
 
             if (isPaused) {
-                canvas.setAttribute('aria-label', 'PAUSED: Real-time trace and point cloud visualization. Y-axis scale: +100mm to -100mm.');
+                canvas.setAttribute('aria-label', 'PAUSED: Real-time trace and point cloud visualization. Y-axis scale: +100mm to -100mm. Press Enter or Space to resume.');
                 canvas.setAttribute('title', 'Click to resume trace');
                 ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
                 ctx.fillRect(0, 0, width, height);
@@ -125,7 +124,7 @@
                 ctx.font = '16px monospace';
                 ctx.fillText('Click or press Space to resume', width / 2, height / 2 + 20);
             } else {
-                canvas.setAttribute('aria-label', 'Real-time trace and point cloud visualization. Y-axis scale: +100mm to -100mm.');
+                canvas.setAttribute('aria-label', 'Real-time trace and point cloud visualization. Y-axis scale: +100mm to -100mm. Press Enter or Space to pause.');
                 canvas.setAttribute('title', 'Click to pause trace');
             }
         }
@@ -189,13 +188,12 @@
 
             if (isPaused) {
                 isPaused = false;
-                pauseBtn.setAttribute('aria-pressed', 'false');
                 pauseBtn.innerHTML = 'Pause Trace <kbd aria-hidden="true">Space</kbd>';
                 srAnnouncer.textContent = 'Connection restored. Trace resumed.';
             }
 
             canvas.setAttribute('title', 'Click to pause trace');
-            canvas.setAttribute('aria-label', 'Real-time trace and point cloud visualization. Y-axis scale: +100mm to -100mm.');
+            canvas.setAttribute('aria-label', 'Real-time trace and point cloud visualization. Y-axis scale: +100mm to -100mm. Press Enter or Space to pause.');
             connDot.className = 'status-dot dot-live';
             connText.innerText = 'Live';
             document.title = 'Live - Lambda-Wave Monitor';
