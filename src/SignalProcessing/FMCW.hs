@@ -69,17 +69,19 @@ chirpZTransform params x_n = map calculateBin [0 .. cztSteps params - 1]
     f0 = cztStartFreq params
     b_zoom = cztBandwidth params
     fs = cztSampleRate params
-    k_max = fromIntegral (cztSteps params)
+    -- ⚡ Bolt Optimization: Pre-calculate divisions outside the hot loop to reduce per-frame latency
+    !b_zoom_over_k_max = b_zoom / fromIntegral (cztSteps params)
+    !theta_mult = (-2) * pi / fs
 
     calculateBin :: Int -> Complex Double
     calculateBin k =
         let
             k_idx = fromIntegral k :: Double
             -- f_k = f_0 + B_zoom * (k / K)
-            freq_k = f0 + b_zoom * (k_idx / k_max)
+            freq_k = f0 + k_idx * b_zoom_over_k_max
 
             -- Phase term per sample: -i * 2 * pi * (freq_k / f_s)
-            theta_step = ((-2) * pi * freq_k) / fs
+            theta_step = theta_mult * freq_k
             !w = cis theta_step
 
             -- Summation: sum(x[n] * exp(i * theta_step * n))
