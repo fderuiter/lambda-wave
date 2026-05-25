@@ -73,6 +73,7 @@ main() {
                     libxinerama-dev \
                     libxcursor-dev \
                     libxi-dev \
+                    libbsd-dev \
                     pkg-config \
                     clang-format \
                     curl \
