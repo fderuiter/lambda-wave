@@ -1,12 +1,5 @@
-1. **Update `src/Hardware/Control.hs`**
-   - Use `replace_with_git_merge_diff` to add `import System.Posix.Files (getFdStatus, isCharacterDevice)` to the imports.
-   - Use `replace_with_git_merge_diff` to modify the lambda `(\fd -> do ...)` in `configureSensor`. Add `fStatus <- getFdStatus fd`, and an `if not (isCharacterDevice fStatus)` check that throws an `ioError` if the check fails.
-2. **Verify `src/Hardware/Control.hs`**
-   - Run `cat src/Hardware/Control.hs` to verify the edit.
-3. **Create `.jules/sentinel.md`**
-   - Document the TOCTOU vulnerability and the fix of opening the file descriptor first and validating it using `getFdStatus`.
-4. **Verify `.jules/sentinel.md`**
-   - Verify the file creation and content using `cat`.
-5. **Run tests**
-   - Run `source /home/jules/.ghcup/env && cabal test` to verify changes.
-6. **Complete pre-commit steps to ensure proper testing, verification, review, and reflection are done.**
+1. Read `.jules/bolt.md` to see if it exists, create if missing, and append a learning about extracting loop invariant divisions in Haskell's map closures.
+2. Modify `src/SignalProcessing/FMCW.hs` using `replace_with_git_merge_diff` to hoist `b_zoom / k_max` and `(-2) * pi / fs` outside of `calculateBin` closure in `chirpZTransform`.
+3. Verify file changes by running tests.
+4. Complete pre commit steps to ensure proper testing, verification, review, and reflection are done.
+5. Submit PR with the "⚡ Bolt: [performance improvement]" format.
