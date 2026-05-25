@@ -246,8 +246,8 @@ Lambda-Wave (formerly SGRT Radar System) is a safety-critical Surface Guided Rad
 - [ ] All Phase 6 items complete
 - [ ] All unit tests pass (100%)
 - [ ] All benchmarks meet latency requirements
-- [ ] Traceability matrix populated
-- [ ] SOUP analysis (GHC RTS) documented
+- [x] Traceability matrix populated
+- [x] SOUP analysis (GHC RTS) documented
 - [ ] Release binary signed
 - [ ] IEC 62304 documentation complete
 - [ ] Hardware validation complete
