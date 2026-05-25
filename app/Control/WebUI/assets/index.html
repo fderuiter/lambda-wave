@@ -85,7 +85,7 @@
             <abbr tabindex="0" title="Time elapsed for the current radar frame" style="cursor: help; text-decoration: underline dotted; text-decoration-skip-ink: none;">Frame Time</abbr><span aria-hidden="true">:</span> <span id="ts">0.0</span> ms <span aria-hidden="true">|</span> <abbr tabindex="0" title="Number of points in the current point cloud" style="cursor: help; text-decoration: underline dotted; text-decoration-skip-ink: none;">Points</abbr><span aria-hidden="true">:</span> <span id="pt-count">0</span>
         </div>
         <div style="text-align: center;">
-            <button id="pause-btn" aria-pressed="false" aria-keyshortcuts="Space" aria-disabled="true" title="Controls unavailable while disconnected">Pause Trace <kbd aria-hidden="true">Space</kbd></button>
+            <button id="pause-btn" aria-keyshortcuts="Space" aria-disabled="true" title="Controls unavailable while disconnected">Pause Trace <kbd aria-hidden="true">Space</kbd></button>
         </div>
     </main>
 
@@ -107,7 +107,6 @@
         function togglePause() {
             if (pauseBtn.getAttribute('aria-disabled') === 'true') return;
             isPaused = !isPaused;
-            pauseBtn.setAttribute('aria-pressed', isPaused.toString());
             pauseBtn.innerHTML = (isPaused ? 'Resume Trace' : 'Pause Trace') + ' <kbd aria-hidden="true">Space</kbd>';
             srAnnouncer.textContent = isPaused ? 'Trace paused' : 'Trace resumed';
 
@@ -189,7 +188,6 @@
 
             if (isPaused) {
                 isPaused = false;
-                pauseBtn.setAttribute('aria-pressed', 'false');
                 pauseBtn.innerHTML = 'Pause Trace <kbd aria-hidden="true">Space</kbd>';
                 srAnnouncer.textContent = 'Connection restored. Trace resumed.';
             }
