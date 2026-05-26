@@ -56,7 +56,7 @@ httpApp token _ respond = respond $
         [ ("Content-Type", "text/html")
         , ("X-Frame-Options", "DENY")
         , ("X-Content-Type-Options", "nosniff")
-        , ("Content-Security-Policy", "default-src 'self'; connect-src 'self' ws: wss:; script-src 'self' 'sha256-fPK828jbCu+8gSi8i1gnsLSL4pd0DvA3oRtREhL2Jb4='; style-src 'self' 'sha256-RJHz5Q7XKDXilTNfl4pYdCEeEYzMrEmDDuYMlzPr4cA='")
+        , ("Content-Security-Policy", "default-src 'self'; connect-src 'self' ws: wss:; script-src 'self' 'sha256-Yx2ngBSshvkQwqGI5RgkcOB/07Zs/XeH15RZ0L+thHg='; style-src 'self' 'sha256-FcoJ8qmZ8gDC3Xt3m7E1qw2i4QirXs2wG1cbnwmFSyM='")
         , ("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
         , ("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
         , ("Pragma", "no-cache")
