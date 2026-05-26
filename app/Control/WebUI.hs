@@ -19,6 +19,8 @@ import Data.ByteString.Lazy (fromStrict)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as BC
 import System.Posix.IO.ByteString (fdRead)
+import Data.Bits (xor, (.|.))
+import Data.List (foldl')
 import System.Posix.IO (openFd, closeFd, OpenMode(ReadOnly), defaultFileFlags, OpenFileFlags(..))
 import System.Posix.Files (getFdStatus, isCharacterDevice)
 import Control.Exception (bracket)
@@ -63,14 +65,33 @@ httpApp token _ respond = respond $
         ]
         (fromStrict indexHtml)
 
+constantTimeEq :: B.ByteString -> B.ByteString -> Bool
+constantTimeEq a b
+    | B.length a /= B.length b = False
+    | otherwise = foldl' (\acc (x, y) -> acc .|. (x `xor` y)) 0 (B.zip a b) == 0
+
+extractSessionCookie :: B.ByteString -> Maybe B.ByteString
+extractSessionCookie cookieHeader =
+    let cookies = BC.split ';' cookieHeader
+        sessionCookies = filter ("session=" `BC.isPrefixOf`) (map (BC.dropWhile (== ' ')) cookies)
+    in case sessionCookies of
+        (c:_) -> Just (B.drop 8 c)
+        _     -> Nothing
+
 wsApp :: B.ByteString -> TVar SystemState -> ServerApp
 wsApp token stateVar pending = do
     let headers = WS.requestHeaders (pendingRequest pending)
         origin = lookup "Origin" headers
         cookie = lookup "Cookie" headers
-        expectedCookie = "session=" <> token
+
+        isTokenValid = case cookie of
+            Nothing -> False
+            Just cookieHdr -> case extractSessionCookie cookieHdr of
+                Nothing -> False
+                Just val -> constantTimeEq val token
+
     if (origin == Just "http://127.0.0.1:8080" || origin == Just "http://localhost:8080")
-       && maybe False (expectedCookie `BC.isInfixOf`) cookie
+       && isTokenValid
         then do
             conn <- acceptRequest pending
             -- Use a ping thread to detect dead connections and prevent socket leaks
