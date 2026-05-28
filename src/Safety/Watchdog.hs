@@ -1,70 +1,111 @@
-{-|
-Module      : Safety.Watchdog
-Description : The "Dead Man's Switch" for Beam Safety
-Copyright   : (c) 2024
-License     : AGPL-3.0-only
-Maintainer  : atlas@code-cartographer.com
-
-= The Watchdog 🐉
-
-This module implements a high-priority thread that monitors the system's "heartbeat".
-In a real-time safety-critical system (Class II/III), we cannot assume the software will always work.
-We must assume it *will* fail, and ensure that when it does, it fails safely (Beam Off).
-
-== Mechanism
-1. The Gating Loop updates a 'lastFrameTime' timestamp in STM every time it completes a cycle.
-2. This Watchdog thread wakes up every 10ms.
-3. If 'lastFrameTime' is older than 'watchdogTimeoutNS' (e.g. 100ms), the Watchdog kills the process.
-
-== Dragon 🐉
-*   **Debugging:** If you pause the program with a debugger, this Watchdog WILL trip and kill your session.
-    Disable it or increase the timeout when debugging.
--}
-module Safety.Watchdog (watchdogLoop) where
+module Safety.Watchdog (watchdogLoop, runSafetyDaemon) where
 
 import Data.Types
 import Data.Config (watchdogTimeoutNS)
 import Control.Concurrent.STM
-import Control.Concurrent (threadDelay)
+import Control.Concurrent (threadDelay, forkIO)
 import System.IO (hFlush, stdout)
 import Data.Time.HighRes (getMonotonicTimeNS)
 import Control.Monad (forever, when, unless, forM_)
 import System.Exit (ExitCode(..))
 import System.Posix.Process (exitImmediately)
+import System.Posix.Types (ProcessID)
+import System.Posix.Signals (signalProcess, sigKILL)
 import qualified Data.Map.Strict as Map
+import Network.Socket
+import Network.Socket.ByteString (sendTo, recvFrom)
+import qualified Data.ByteString.Char8 as BC
+import Control.Exception (try, IOException, catch)
+import System.Timeout (timeout)
+import System.Posix.Files (removeLink)
 
--- | The Watchdog Loop
--- Kills the process if any critical thread has not reported progress within the timeout.
+import Hardware.Control (setBeamChannel, GpioChannel(..))
+
+udsPath :: String
+udsPath = "/tmp/sgrt_heartbeat.sock"
+
+-- | The Watchdog Heartbeat Sender Loop (Runs in Main Process)
+-- Evaluates thread heartbeats. If everything is fine, it sends a heartbeat to the Daemon.
+-- If any thread is frozen, it stops sending heartbeats, causing the Daemon to trip.
 watchdogLoop :: TVar SystemState -> IO ()
-watchdogLoop stateVar = forever $ do
+watchdogLoop stateVar = do
+    sock <- socket AF_UNIX Datagram 0
+    let addr = SockAddrUnix udsPath
+    forever $ do
+        now <- getMonotonicTimeNS
+        state <- readTVarIO stateVar
+        let heartbeats = threadHeartbeats state
+
+        -- Check all monitored threads
+        let isHealthy = all (\(_, lastTime) -> (now - lastTime) <= fromIntegral watchdogTimeoutNS) (Map.toList heartbeats)
+
+        if isHealthy && not (Map.null heartbeats)
+            then do
+                -- Send heartbeat
+                _ <- try (sendTo sock (BC.pack "HB") addr) :: IO (Either IOException Int)
+                return ()
+            else do
+                -- Find frozen threads for logging
+                forM_ (Map.toList heartbeats) $ \(threadName, lastTime) -> do
+                    let diff = now - lastTime
+                    when (diff > fromIntegral watchdogTimeoutNS) $ do
+                        let msg = "Thread '" ++ threadName ++ "' FROZEN (Age: " ++ show diff ++ "ns)."
+                        atomically $ do
+                            let q = auditQueue state
+                            full <- isFullTBQueue q
+                            unless full $
+                                writeTBQueue q (AuditEvent now Critical "Watchdog" msg)
+                        putStrLn $ "!!! MAIN WATCHDOG: " ++ msg
+                        hFlush stdout
+                
+        threadDelay 10000 -- Check every 10ms
+
+-- | Runs the independent Safety Daemon process
+runSafetyDaemon :: ProcessID -> IO ()
+runSafetyDaemon parentPid = do
+    putStrLn "[Safety Daemon] Started and monitoring parent process."
+    
+    -- Ensure clean socket
+    _ <- try (removeLink udsPath) :: IO (Either IOException ())
+    
+    sock <- socket AF_UNIX Datagram 0
+    bind sock (SockAddrUnix udsPath)
+    
+    -- Ensure Beam is ON for Watchdog Channel initially
+    setBeamChannel WatchdogChannel True
+
+    -- Loop waiting for heartbeats
+    let loop = do
+            -- Receive with timeout
+            -- watchdogTimeoutNS is in nanoseconds. timeout takes microseconds.
+            let timeoutUS = fromIntegral (watchdogTimeoutNS `div` 1000)
+            res <- try (timeout timeoutUS $ recvFrom sock 16) :: IO (Either IOException (Maybe (BC.ByteString, SockAddr)))
+            
+            case res of
+                Right (Just (msg, _)) | msg == BC.pack "HB" -> do
+                    loop
+                _ -> do
+                    -- Timeout, IO error, or invalid message -> TRIP!
+                    tripDaemon parentPid
+    
+    loop
+
+tripDaemon :: ProcessID -> IO ()
+tripDaemon parentPid = do
+    let msg = "!!! SAFETY DAEMON TRIP: Lost Heartbeat. FORCING BEAM OFF."
+    putStrLn msg
+    -- Dual-Channel Safety: Force Watchdog channel off
+    setBeamChannel WatchdogChannel False
+    
+    -- Independent Audit Log recording
     now <- getMonotonicTimeNS
-    state <- readTVarIO stateVar
-    let heartbeats = threadHeartbeats state
+    let auditMsg = show now ++ " [CRITICAL] [SafetyDaemon] " ++ msg ++ "\n"
+    _ <- try (appendFile "session.log" auditMsg) :: IO (Either IOException ())
+    
+    -- Terminate main application process
+    putStrLn $ "!!! SAFETY DAEMON: Terminating Parent PID " ++ show parentPid
+    _ <- try (signalProcess sigKILL parentPid) :: IO (Either IOException ())
+    
+    hFlush stdout
+    exitImmediately (ExitFailure 1)
 
-    -- Iterate over all monitored threads
-    forM_ (Map.toList heartbeats) $ \(threadName, lastTime) -> do
-        let diff = now - lastTime
-
-        -- Check if difference exceeds timeout (cast Integer to Word64 safely for comparison)
-        -- watchdogTimeoutNS is Integer (100ms = 100_000_000). Word64 max is huge.
-        when (diff > fromIntegral watchdogTimeoutNS) $ do
-            let msg = "Thread '" ++ threadName ++ "' FROZEN (Age: " ++ show diff ++ "ns). FORCING BEAM OFF."
-
-            -- Attempt to log Critical Event (Non-blocking)
-            -- We don't want the watchdog to hang on a full queue.
-            atomically $ do
-                let q = auditQueue state
-                full <- isFullTBQueue q
-                unless full $
-                    writeTBQueue q (AuditEvent now Critical "Watchdog" msg)
-
-            putStrLn $ "!!! WATCHDOG TRIP: " ++ msg
-            hFlush stdout
-            -- In real HW, this would toggle a GPIO pin immediately
-            exitImmediately (ExitFailure 1)
-
-    threadDelay 10000 -- Check every 10ms
-
--- Requirement SR-WD-001
-
--- Requirement SR-WD-002

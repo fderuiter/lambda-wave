@@ -6,10 +6,22 @@ import qualified Data.Map.Strict as Map
 import Data.Types
 import Data.Time.HighRes (getMonotonicTimeNS)
 import SignalProcessing.Kalman (initKalman, KalmanConfig(..))
-import Safety.Watchdog (watchdogLoop)
+import Safety.Watchdog (watchdogLoop, runSafetyDaemon)
+import System.Environment (getArgs, getExecutablePath)
+import System.Posix.Process (forkProcess, executeFile, getProcessID)
+import System.Posix.Types (ProcessID)
 
 main :: IO ()
 main = do
+    args <- getArgs
+    case args of
+        ["--safety-daemon", parentPidStr] -> do
+            let parentPid = read parentPidStr :: ProcessID
+            runSafetyDaemon parentPid
+        _ -> runMain
+
+runMain :: IO ()
+runMain = do
     putStrLn "=== Watchdog Fault Injection Test ==="
 
     -- 1. Setup State
@@ -22,13 +34,22 @@ main = do
     let initialState = SystemState [] BeamOff now (Point3D 0 0 0 0 0) heartbeats kState q False
     stateVar <- newTVarIO initialState
 
-    -- 2. Fork Watchdog
+    -- 2. Spawn Safety Daemon
+    exePath <- getExecutablePath
+    myPid <- getProcessID
+    _daemonPid <- forkProcess $ executeFile exePath False ["--safety-daemon", show myPid] Nothing
+    
+    -- Small delay to let Daemon bind socket
+    threadDelay 50000
+
+    -- 3. Fork Watchdog Loop (Heartbeat Sender)
     _ <- forkIO $ watchdogLoop stateVar
 
-    -- 3. Sleep for 200ms (Watchdog timeout is 100ms)
+    -- 4. Sleep for 250ms (Watchdog timeout is 100ms)
     -- This simulates the "TestThread" being frozen (not updating heartbeat)
-    -- Watchdog should kill the process during this sleep.
-    threadDelay 200000
+    -- Watchdog should stop sending heartbeats.
+    -- Safety Daemon should trip and kill us!
+    threadDelay 250000
 
-    -- 4. If we are here, Watchdog FAILED to kill us
+    -- 5. If we are here, Watchdog FAILED to kill us
     putStrLn "SURVIVED"
