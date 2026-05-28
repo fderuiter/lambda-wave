@@ -64,3 +64,7 @@ watchdogLoop stateVar = forever $ do
             exitImmediately (ExitFailure 1)
 
     threadDelay 10000 -- Check every 10ms
+
+-- Requirement SR-WD-001
+
+-- Requirement SR-WD-002

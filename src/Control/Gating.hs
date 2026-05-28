@@ -132,3 +132,7 @@ evaluateGating target tol hyst latencyNS kState oldBeam =
             BeamOff -> if err < onLimit then BeamOn else BeamOff
             BeamOn  -> if err < offLimit then BeamOn else BeamOff
             BeamHold -> BeamHold -- Manual override persists
+
+-- Requirement FR-GAT-001
+
+-- Requirement FR-GAT-002

@@ -136,3 +136,5 @@ verifyGeneric frames = do
     putStrLn $ "Min Points/Frame: " ++ show (minimum pointCounts)
     putStrLn $ "Max Points/Frame: " ++ show (maximum pointCounts)
     putStrLn "PASS: Generic validation complete."
+
+-- Requirement FR-DAQ-003

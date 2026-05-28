@@ -120,3 +120,5 @@ catMaybes :: [Maybe a] -> [a]
 catMaybes [] = []
 catMaybes (Nothing:xs) = catMaybes xs
 catMaybes (Just val:xs) = val : catMaybes xs
+
+-- Requirement FR-GAT-001

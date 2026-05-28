@@ -33,3 +33,5 @@ main = do
                then putStrLn "PASS: Gating updated heartbeat."
                else putStrLn $ "FAIL: Heartbeat timestamp is old. (Now: " ++ show now ++ ", HB: " ++ show t ++ ")"
         Nothing -> putStrLn "FAIL: No heartbeat for 'Gating'."
+
+-- Requirement SR-WD-002

@@ -114,3 +114,7 @@ drawPoint p = do
     let y = double2Float (py p) / 1000.0
     let z = double2Float (pz p) / 1000.0
     vertex $ Vertex3 x y z
+
+-- Requirement FR-UI-001
+
+-- Requirement FR-UI-002
