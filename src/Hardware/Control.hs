@@ -11,6 +11,8 @@ module Hardware.Control (
     parseConfig,
     configureRawSerial,
     setBeam,
+    setBeamChannel,
+    GpioChannel(..),
     configureConfigSerial
 ) where
 
@@ -172,8 +174,20 @@ configureRawSerial (Fd fd) = do
 -- False = Beam OFF
 setBeam :: Bool -> IO ()
 setBeam state = do
-    -- In a real system, this would write to /sys/class/gpio or similar
-    -- For Class C simulation, we log to stdout to verify behavior
-    putStrLn $ "[Hardware] Beam Set To: " ++ if state then "ON" else "OFF"
+    setBeamChannel LogicChannel state
 
+-- | Identifies which physical channel we are actuating
+data GpioChannel = LogicChannel | WatchdogChannel
+  deriving (Show, Eq)
+
+-- | Sets the state of a specific GPIO channel for the physical AND-gate logic
+setBeamChannel :: GpioChannel -> Bool -> IO ()
+setBeamChannel channel state = do
+    -- Simulated physical actuation for Class C compliance.
+    -- In a real environment we would actuate physical GPIO lines (e.g. via sysfs or libgpiod).
+    let chStr = case channel of
+            LogicChannel -> "LOGIC"
+            WatchdogChannel -> "WATCHDOG"
+    putStrLn $ "[Hardware] " ++ chStr ++ " Channel Set To: " ++ if state then "ON" else "OFF"
+    
 -- Requirement FR-DAQ-002
