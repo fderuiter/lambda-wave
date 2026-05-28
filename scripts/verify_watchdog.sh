@@ -2,7 +2,7 @@
 set -e
 
 # Compile (use -threaded just in case, though for single core it matters less)
-ghc -threaded -isrc test/Safety/WatchdogFault.hs -o test/watchdog_fault
+ghc -threaded -isrc -Icbits/include test/Safety/WatchdogFault.hs cbits/src/safety_sidecar.cpp -lstdc++ -o test/watchdog_fault
 
 # Run and capture output
 # We expect failure (exit code 1), so we temporarily disable set -e

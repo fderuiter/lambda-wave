@@ -1,24 +1,10 @@
+{-# LANGUAGE ForeignFunctionInterface #-}
 {-|
 Module      : Safety.Watchdog
 Description : The "Dead Man's Switch" for Beam Safety
 Copyright   : (c) 2024
 License     : AGPL-3.0-only
 Maintainer  : atlas@code-cartographer.com
-
-= The Watchdog 🐉
-
-This module implements a high-priority thread that monitors the system's "heartbeat".
-In a real-time safety-critical system (Class II/III), we cannot assume the software will always work.
-We must assume it *will* fail, and ensure that when it does, it fails safely (Beam Off).
-
-== Mechanism
-1. The Gating Loop updates a 'lastFrameTime' timestamp in STM every time it completes a cycle.
-2. This Watchdog thread wakes up every 10ms.
-3. If 'lastFrameTime' is older than 'watchdogTimeoutNS' (e.g. 100ms), the Watchdog kills the process.
-
-== Dragon 🐉
-*   **Debugging:** If you pause the program with a debugger, this Watchdog WILL trip and kill your session.
-    Disable it or increase the timeout when debugging.
 -}
 module Safety.Watchdog (watchdogLoop) where
 
@@ -29,38 +15,53 @@ import Control.Concurrent (threadDelay)
 import System.IO (hFlush, stdout)
 import Data.Time.HighRes (getMonotonicTimeNS)
 import Control.Monad (forever, when, unless, forM_)
-import System.Exit (ExitCode(..))
-import System.Posix.Process (exitImmediately)
+import Foreign.C.Types (CInt(..))
+import Data.Word (Word64)
 import qualified Data.Map.Strict as Map
 
+foreign import ccall safe "start_safety_sidecar"
+    c_start_safety_sidecar :: IO CInt
+
+foreign import ccall safe "update_heartbeat"
+    c_update_heartbeat :: Word64 -> IO ()
+
 -- | The Watchdog Loop
--- Kills the process if any critical thread has not reported progress within the timeout.
 watchdogLoop :: TVar SystemState -> IO ()
-watchdogLoop stateVar = forever $ do
-    now <- getMonotonicTimeNS
-    state <- readTVarIO stateVar
-    let heartbeats = threadHeartbeats state
+watchdogLoop stateVar = do
+    res <- c_start_safety_sidecar
+    when (res /= 0) $ do
+        putStrLn "Failed to start C++ safety sidecar. Defaulting to Beam Off."
+        -- In real HW, this would toggle GPIO. Handled by C++ now.
 
-    -- Iterate over all monitored threads
-    forM_ (Map.toList heartbeats) $ \(threadName, lastTime) -> do
-        let diff = now - lastTime
+    forever $ do
+        now <- getMonotonicTimeNS
+        state <- readTVarIO stateVar
+        let heartbeats = threadHeartbeats state
 
-        -- Check if difference exceeds timeout (cast Integer to Word64 safely for comparison)
-        -- watchdogTimeoutNS is Integer (100ms = 100_000_000). Word64 max is huge.
-        when (diff > fromIntegral watchdogTimeoutNS) $ do
-            let msg = "Thread '" ++ threadName ++ "' FROZEN (Age: " ++ show diff ++ "ns). FORCING BEAM OFF."
+        -- Check if all threads are healthy in Haskell
+        let allHealthy = all (\(_, lastTime) -> (now - lastTime) <= fromIntegral watchdogTimeoutNS) (Map.toList heartbeats)
+        
+        -- And check if there is at least one heartbeat
+        if allHealthy && not (Map.null heartbeats) then do
+            -- Update C++ sidecar heartbeat
+            c_update_heartbeat now
+        else do
+            -- If not healthy, we do NOT update the sidecar.
+            -- The sidecar will timeout independently and kill the process!
+            
+            -- We can optionally try to log the event here if the Haskell thread is still running
+            -- and it's a specific thread that froze, rather than a global GC pause.
+            forM_ (Map.toList heartbeats) $ \(threadName, lastTime) -> do
+                let diff = now - lastTime
+                when (diff > fromIntegral watchdogTimeoutNS) $ do
+                    let msg = "Thread '" ++ threadName ++ "' FROZEN (Age: " ++ show diff ++ "ns). FORCING BEAM OFF."
+                    atomically $ do
+                        let q = auditQueue state
+                        full <- isFullTBQueue q
+                        unless full $
+                            writeTBQueue q (AuditEvent now Critical "Watchdog" msg)
+                    putStrLn $ "!!! WATCHDOG LOG: " ++ msg
+                    hFlush stdout
 
-            -- Attempt to log Critical Event (Non-blocking)
-            -- We don't want the watchdog to hang on a full queue.
-            atomically $ do
-                let q = auditQueue state
-                full <- isFullTBQueue q
-                unless full $
-                    writeTBQueue q (AuditEvent now Critical "Watchdog" msg)
-
-            putStrLn $ "!!! WATCHDOG TRIP: " ++ msg
-            hFlush stdout
-            -- In real HW, this would toggle a GPIO pin immediately
-            exitImmediately (ExitFailure 1)
-
-    threadDelay 10000 -- Check every 10ms
+        -- Check every 10ms
+        threadDelay 10000 

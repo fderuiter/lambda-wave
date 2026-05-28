@@ -71,6 +71,7 @@ library
       cbits/src/RingBufferCheck.cpp
       cbits/src/ring_buffer.cpp
       cbits/src/serial_config.cpp
+      cbits/src/safety_sidecar.cpp
   cc-options: -Wall -O2
   cxx-options: -std=c++11 -Wall -O2
   extra-libraries: stdc++
