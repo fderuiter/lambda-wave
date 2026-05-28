@@ -22,7 +22,7 @@ jobs:
         run: cabal install hlint
 
       - name: Run HLint
-        run: hlint src/
+        run: hlint src/ tools/
 
       - name: Install clang-format
         run: sudo apt-get install -y clang-format
