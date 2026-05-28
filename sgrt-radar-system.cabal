@@ -313,19 +313,63 @@ test-suite ui-math-check
     , hspec
     , GLUT
 
-test-suite phantom-study
+executable phantom-study
   import: common-options
-  type: exitcode-stdio-1.0
   main-is: PhantomStudy.hs
-  other-modules:
-      Paths_sgrt_radar_system
   hs-source-dirs:
-      test/SignalProcessing
+      tools/data-generation
   ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
   build-depends:
       sgrt-radar-system
     , base
 
+executable update-csp
+  import: common-options
+  main-is: UpdateCSP.hs
+  hs-source-dirs:
+      tools/system-maintenance
+  build-depends:
+      base
+    , bytestring
+    , process
+
+executable check-baud
+  import: common-options
+  main-is: CheckBaud.hs
+  hs-source-dirs:
+      tools/hardware-simulation
+  build-depends:
+      base
+    , unix
+
+executable check-pty
+  import: common-options
+  main-is: CheckPty.hs
+  hs-source-dirs:
+      tools/hardware-simulation
+  build-depends:
+      base
+    , unix
+
+executable check-unix
+  import: common-options
+  main-is: CheckUnix.hs
+  hs-source-dirs:
+      tools/hardware-simulation
+  build-depends:
+      base
+    , unix
+
+executable test-parse-errors
+  import: common-options
+  main-is: TestParseError.hs
+  hs-source-dirs:
+      tools/qa
+  build-depends:
+      sgrt-radar-system
+    , base
+    , bytestring
+    , binary
 
 benchmark fmcw-bench
   import: common-options
