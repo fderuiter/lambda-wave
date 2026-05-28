@@ -4,11 +4,12 @@ module Main (main) where
 import Control.Concurrent (forkOS, setNumCapabilities, threadDelay, forkIO)
 import Control.Concurrent.STM
 import Control.Exception (try, IOException)
-import System.Environment (lookupEnv)
+import System.Environment (lookupEnv, getArgs, getExecutablePath)
 import Data.Maybe (fromMaybe)
 import System.Posix.IO (openFd, OpenMode(..), defaultFileFlags, OpenFileFlags(..), fdWriteBuf, closeFd)
 import System.Posix.Files (getFdStatus, isCharacterDevice, createNamedPipe, unionFileModes, ownerReadMode, ownerWriteMode)
-import System.Posix.Types (Fd)
+import System.Posix.Types (Fd, ProcessID)
+import System.Posix.Process (forkProcess, executeFile, getProcessID)
 import Control.Monad (forever, unless, void)
 import qualified Data.Map.Strict as Map
 import System.Exit (exitFailure)
@@ -25,7 +26,7 @@ import SignalProcessing.Kalman (initKalman, KalmanConfig(..))
 import qualified FFI.RingBuffer.IO as RingBuffer
 import Hardware.Control (configureRawSerial)
 import Hardware.Consumer (consumerLoop)
-import Safety.Watchdog
+import Safety.Watchdog (watchdogLoop, runSafetyDaemon)
 import Safety.Audit
 import Data.Time.HighRes (getMonotonicTimeNS)
 
@@ -41,6 +42,15 @@ import Control.WebUI (runWebUI)
 
 main :: IO ()
 main = do
+    args <- getArgs
+    case args of
+        ["--safety-daemon", parentPidStr] -> do
+            let parentPid = read parentPidStr :: ProcessID
+            runSafetyDaemon parentPid
+        _ -> runMain
+
+runMain :: IO ()
+runMain = do
     -- lock capabilities to specific cores
     setNumCapabilities 2
     putStrLn "Initializing Lambda-Wave System..."
@@ -116,10 +126,15 @@ main = do
     -- ingestionLoop accepts ForeignPtr
     _ <- RingBuffer.ingestionLoop ringBuffer fd
 
+    -- Spawn Safety Daemon
+    exePath <- getExecutablePath
+    myPid <- getProcessID
+    _daemonPid <- forkProcess $ executeFile exePath False ["--safety-daemon", show myPid] Nothing
+
     -- 3. Consumer/Parser (Dedicated Thread)
     _ <- forkOS $ consumerLoop ringBuffer systemState
 
-    -- 3. Safety Watchdog (High Priority Thread)
+    -- 3. Safety Watchdog Heartbeat Sender (High Priority Thread)
     _ <- forkOS $ watchdogLoop systemState
 
     -- 4. Audit Logging
