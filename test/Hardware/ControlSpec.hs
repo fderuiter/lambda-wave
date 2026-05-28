@@ -38,3 +38,5 @@ spec = do
                 Left (ConfigurationFailed msg) -> msg `shouldContain` "Failed to read config file"
                 Left err -> expectationFailure $ "Unexpected error type: " ++ show err
                 Right _  -> expectationFailure "Should have failed with missing config file"
+
+-- Requirement FR-DAQ-002

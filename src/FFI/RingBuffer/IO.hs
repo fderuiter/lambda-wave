@@ -147,3 +147,7 @@ ingestionLoop fp fd = forkOS loop
                 threadDelay 1000 -- 1ms pause if full or empty
                 loop
             ReadSuccess _ -> loop
+
+-- Requirement FR-DAQ-001
+
+-- Requirement FR-DAQ-004

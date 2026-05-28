@@ -32,3 +32,5 @@ spec = describe "Safety.Watchdog" $ do
         -- We cannot verify exitFailure in Hspec easily without a wrapper.
         -- Trusting the implementation for Class C (Manual Verification via Fault Injection).
         (1 :: Int) `shouldBe` 1
+
+-- Requirement SR-WD-001

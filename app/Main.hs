@@ -192,3 +192,7 @@ writeBsToFd fd bs = unsafeUseAsCStringLen bs $ \(ptr, len) -> do
                 then loop (remain - wroteInt) (curPtr `plusPtr` wroteInt)
                 else return ()
     loop len ptr
+
+-- Requirement SR-SOUP-001
+
+-- Requirement FR-GAT-002

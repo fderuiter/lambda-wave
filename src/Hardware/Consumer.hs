@@ -377,3 +377,5 @@ toPoint3D Point{..} = Point3D
 -- minimizing overhead and intermediate allocations during parsing.
 float2Double :: Float -> Double
 float2Double = GHC.Float.float2Double
+
+-- Requirement FR-DAQ-003

@@ -51,3 +51,5 @@ watchdogTimeoutNS = 100 * 1000 * 1000 -- 100ms in nanoseconds
 -- | Serial Port
 uartBaudRate :: Int
 uartBaudRate = 921600
+
+-- Requirement FR-DAQ-002

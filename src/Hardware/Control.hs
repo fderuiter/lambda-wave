@@ -175,3 +175,5 @@ setBeam state = do
     -- In a real system, this would write to /sys/class/gpio or similar
     -- For Class C simulation, we log to stdout to verify behavior
     putStrLn $ "[Hardware] Beam Set To: " ++ if state then "ON" else "OFF"
+
+-- Requirement FR-DAQ-002
