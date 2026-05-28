@@ -143,3 +143,7 @@ void set_read_offset(RingBufferControl* handle, size_t offset) {
 }
 
 }
+
+// Requirement FR-DAQ-001
+
+// Requirement FR-DAQ-004

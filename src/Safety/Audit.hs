@@ -111,3 +111,5 @@ processEvents stateVar queue h = go
                 if newSize > 10 * 1024 * 1024 -- 10MB limit
                     then return RotationNeeded
                     else go newSize
+
+-- Requirement SR-AUDIT-001

@@ -9,3 +9,5 @@ spec = do
     it "runs with 2 capabilities" $ do
       caps <- getNumCapabilities
       caps `shouldBe` 2
+
+-- Requirement SR-SOUP-001

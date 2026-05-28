@@ -158,3 +158,5 @@ spec = describe "SignalProcessing.FMCW" $ do
                 mag = sum (map magnitude output)
 
             mag `shouldSatisfy` (< 1.0e-1) -- Relaxed check for list impl
+
+-- Requirement FR-DSP-004

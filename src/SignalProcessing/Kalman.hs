@@ -239,3 +239,7 @@ update measurement config state
 
     pNew = addM term1 term2
 
+
+-- Requirement FR-DSP-003
+
+-- Requirement PR-ACC-01

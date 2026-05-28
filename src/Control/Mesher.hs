@@ -30,3 +30,5 @@ fitPolynomialSurface pts
 
     -- Vector b (z coordinates)
     b = map pz pts
+
+-- Requirement FR-UI-001

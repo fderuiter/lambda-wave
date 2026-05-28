@@ -114,3 +114,7 @@ getBufferStart fp = withForeignPtr fp $ \p -> do
 writeBytes :: Fd -> ByteString -> IO ()
 writeBytes fd bs = B.useAsCStringLen bs $ \(ptr, len) -> do
     void $ fdWriteBuf fd (castPtr ptr) (fromIntegral len)
+
+-- Requirement FR-DAQ-001
+
+-- Requirement FR-DAQ-004

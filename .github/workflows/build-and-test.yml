@@ -27,4 +27,14 @@ jobs:
         run: cabal build
 
       - name: Run Tests
-        run: cabal test
+        run: cabal test | tee test.log
+
+      - name: Compliance Gate
+        run: python3 scripts/compliance_gate.py test.log
+
+      - name: Archive Compliance Report
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: compliance-report
+          path: compliance_report.txt

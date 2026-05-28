@@ -180,3 +180,7 @@ applyStaticClutterRemoval alpha prevMean input =
             !o = i - m
             (ms, os) = go ps is
         in (m : ms, o : os)
+
+-- Requirement FR-DSP-004
+
+-- Requirement PR-ACC-01

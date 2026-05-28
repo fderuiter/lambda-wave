@@ -241,3 +241,5 @@ spec = do
 
 instance Arbitrary Point where
     arbitrary = Point <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary
+
+-- Requirement FR-DAQ-003

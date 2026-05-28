@@ -107,3 +107,5 @@ spec = describe "Control.UI.Math" $ do
         it "does not beep on any transition if alerts are disabled" $ do
             shouldBeep False BeamHold BeamOff `shouldBe` False
             shouldBeep False BeamOn BeamOff `shouldBe` False
+
+-- Requirement FR-UI-001
