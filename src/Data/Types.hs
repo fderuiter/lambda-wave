@@ -1,4 +1,6 @@
 {-# LANGUAGE StrictData #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveAnyClass #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 -- |
 -- Module      : Data.Types
@@ -13,7 +15,8 @@ module Data.Types (
     SystemState(..),
     RadarFrame(..),
     Severity(..),
-    AuditEvent(..)
+    AuditEvent(..),
+    TelemetryPacket(..)
 ) where
 
 import Data.Word (Word64)
@@ -22,6 +25,8 @@ import qualified Data.ByteString as B
 import Foreign.Storable
 import Control.DeepSeq (NFData(..))
 import Control.Concurrent.STM (TBQueue)
+import GHC.Generics (Generic)
+import Data.Binary (Binary)
 
 import SignalProcessing.Kalman (KalmanState(..))
 
@@ -50,7 +55,7 @@ data Point3D = Point3D
   , pz :: Double
   , v  :: Double -- Velocity from Doppler
   , snr :: Double
-  } deriving (Show, Eq)
+  } deriving (Show, Eq, Generic, Binary)
 
 instance NFData Point3D where
   rnf (Point3D xVal yVal zVal vel sVal) = rnf xVal `seq` rnf yVal `seq` rnf zVal `seq` rnf vel `seq` rnf sVal
@@ -61,7 +66,7 @@ data Point = Point
   , py' :: Float
   , pz' :: Float
   , v'  :: Float
-  } deriving (Show, Eq)
+  } deriving (Show, Eq, Generic, Binary)
 
 instance Storable Point where
   sizeOf _ = 16
@@ -80,7 +85,7 @@ instance Storable Point where
 
 -- | The critical decision state
 data BeamState = BeamOn | BeamOff | BeamHold -- Hold is manual override
-  deriving (Show, Eq)
+  deriving (Show, Eq, Generic, Binary)
 
 instance NFData BeamState where
   rnf bs = bs `seq` ()
@@ -104,7 +109,18 @@ instance NFData SystemState where
 data RadarFrame = RadarFrame
   { header :: B.ByteString
   , points :: [Point3D]
-  } deriving (Show, Eq)
+  } deriving (Show, Eq, Generic, Binary)
 
 instance NFData RadarFrame where
   rnf (RadarFrame h pts) = rnf h `seq` rnf pts
+
+-- | Packet for sending telemetry over IPC
+data TelemetryPacket = TelemetryPacket
+  { tpPoints :: [Point3D]
+  , tpBeamState :: BeamState
+  , tpLastFrameTime :: Word64
+  , tpIsocenter :: Point3D
+  , tpThreadHeartbeats :: Map String Word64
+  , tpKalmanState :: KalmanState
+  , tpAudioAlertEnabled :: Bool
+  } deriving (Show, Generic, Binary)
