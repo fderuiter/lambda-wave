@@ -1,20 +1,23 @@
 {-# LANGUAGE CPP #-}
 module Main (main) where
 
-import Control.Concurrent (forkOS, setNumCapabilities, threadDelay)
-#ifdef ENABLE_WEB_UI
-import Control.Concurrent (forkIO)
-#endif
+import Control.Concurrent (forkOS, setNumCapabilities, threadDelay, forkIO)
 import Control.Concurrent.STM
 import Control.Exception (try, IOException)
 import System.Environment (lookupEnv)
 import Data.Maybe (fromMaybe)
-import System.Posix.IO (openFd, OpenMode(..), defaultFileFlags, OpenFileFlags(..))
-import System.Posix.Files (getFdStatus, isCharacterDevice)
+import System.Posix.IO (openFd, OpenMode(..), defaultFileFlags, OpenFileFlags(..), fdWriteBuf, closeFd)
+import System.Posix.Files (getFdStatus, isCharacterDevice, createNamedPipe, unionFileModes, ownerReadMode, ownerWriteMode)
 import System.Posix.Types (Fd)
-import Control.Monad (forever, unless)
+import Control.Monad (forever, unless, void)
 import qualified Data.Map.Strict as Map
 import System.Exit (exitFailure)
+import Data.Binary (encode)
+import qualified Data.ByteString.Lazy as BL
+import qualified Data.ByteString as B
+import Data.ByteString.Unsafe (unsafeUseAsCStringLen)
+import Foreign.Ptr (castPtr, plusPtr)
+import Data.Word (Word32)
 
 import Data.Types
 import Data.Config (targetHeight)
@@ -122,20 +125,70 @@ main = do
     -- 4. Audit Logging
     _ <- forkOS $ auditLoop systemState "session.log"
 
-    -- 5. Web UI (Optional)
-#ifdef ENABLE_WEB_UI
-    putStrLn "Starting Web UI..."
-    _ <- forkIO $ runWebUI systemState
-#endif
+    -- 5. IPC Sender to Visualizer
+    putStrLn "Starting IPC Telemetry Stream..."
+    _ <- forkIO $ ipcSenderLoop systemState
 
-    -- 6. OpenGL UI (Optional, must be Main Thread if used)
-#ifdef ENABLE_UI
-    putStrLn "Starting OpenGL UI..."
-    initWindow
-    handleInput systemState
-    renderLoop systemState
-#else
-    putStrLn "System Armed. Headless Mode."
+    putStrLn "System Armed. SafetyCore is running."
     -- Keep Main Alive
     forever $ threadDelay 1000000
+
+-- | IPC Sender Loop using a POSIX FIFO with O_NONBLOCK
+ipcSenderLoop :: TVar SystemState -> IO ()
+ipcSenderLoop stateVar = do
+    let pipePath = "/tmp/sgrt_telemetry.fifo"
+    _ <- try (createNamedPipe pipePath (unionFileModes ownerReadMode ownerWriteMode)) :: IO (Either IOException ())
+    
+    let flags = defaultFileFlags { nonBlock = False }
+#if MIN_VERSION_unix(2,8,0)
+    let flags' = flags { creat = Nothing }
 #endif
+
+    forever $ do
+#if MIN_VERSION_unix(2,8,0)
+        fdRes <- try (openFd pipePath WriteOnly flags') :: IO (Either IOException Fd)
+#else
+        fdRes <- try (openFd pipePath WriteOnly Nothing flags) :: IO (Either IOException Fd)
+#endif
+        case fdRes of
+            Left _ -> threadDelay 1000000 -- Wait for reader
+            Right fd -> do
+                streamData fd stateVar
+                _ <- try (closeFd fd) :: IO (Either IOException ())
+                return ()
+
+streamData :: Fd -> TVar SystemState -> IO ()
+streamData fd stateVar = do
+    let loop = do
+            state <- readTVarIO stateVar
+            let packet = TelemetryPacket
+                  { tpPoints = currentPoints state
+                  , tpBeamState = beamState state
+                  , tpLastFrameTime = lastFrameTime state
+                  , tpIsocenter = isocenter state
+                  , tpThreadHeartbeats = threadHeartbeats state
+                  , tpKalmanState = kalmanState state
+                  , tpAudioAlertEnabled = audioAlertEnabled state
+                  }
+            let payload = BL.toStrict (encode packet)
+            let len = fromIntegral (B.length payload) :: Word32
+            let lenPayload = BL.toStrict (encode len)
+            let frame = B.append lenPayload payload
+            
+            res <- try (writeBsToFd fd frame) :: IO (Either IOException ())
+            case res of
+                Left _ -> return () -- Reader disconnected or buffer full, break loop
+                Right _ -> do
+                    threadDelay 33000 -- ~30Hz
+                    loop
+    loop
+
+writeBsToFd :: Fd -> B.ByteString -> IO ()
+writeBsToFd fd bs = unsafeUseAsCStringLen bs $ \(ptr, len) -> do
+    let loop remain curPtr = do
+            wrote <- fdWriteBuf fd (castPtr curPtr) (fromIntegral remain)
+            let wroteInt = fromIntegral wrote
+            if wroteInt < remain
+                then loop (remain - wroteInt) (curPtr `plusPtr` wroteInt)
+                else return ()
+    loop len ptr
