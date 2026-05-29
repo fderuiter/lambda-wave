@@ -12,48 +12,48 @@
 
 **Status:** Phase 1 (In Progress)
 
-## **Phase 1: Infrastructure & High-Assurance Setup**
+## **Milestone Phase 1: Infrastructure & High-Assurance Setup**
 
 **Goal:** Establish a deterministic runtime environment and rigid CI/CD pipeline capable of supporting Class C safety claims.
 
-* [x] **1.1. Toolchain & RTS Locking**
+* [x] **MS-1.1 Toolchain & RTS Locking**
   * [x] **Task:** Configure GHC Runtime System (RTS) flags in cabal.project and Main.hs to lock capabilities to specific cores.
   * [x] **Requirement:** SR-SOUP-001
   * [x] **Implementation:** Use \-N2 (min) and \-qa (affinity). Implement Control.Concurrent.setNumCapabilities.
   * [x] **Validation:**
     * [x] Run threadscope on the binary.
     * [x] Verify GC pause times are \< 5ms under load using \+RTS \-s.
-* [x] **1.2. CI/CD Strictness**
+* [x] **MS-1.2 CI/CD Strictness**
   * [x] **Task:** Update .github/workflows/build-and-test.yml to fail on *any* compiler warning (-Werror).
   * [x] **Requirement:** IEC 62304 (Code Standards)
   * [x] **Implementation:** Add ghc-options: -Wall -Werror to all stanza in .cabal.
   * [x] **Validation:**
     * [x] Submit a PR with an unused variable; verify CI fails.
-* [x] **1.3. Docker Determinism**
+* [x] **MS-1.3 Docker Determinism**
   * [x] **Task:** Finalize Dockerfile to use a specific SHA-256 digest for the GHC base image (reproducible builds).
   * [x] **Implementation:** Lock haskell:9.4.7 (or similar) digest.
   * [x] **Validation:**
     * [x] Build image on two different machines; verify binary checksums match (if possible) or environment variables are identical.
 
-## **Phase 2: Hardware Abstraction Layer (Ingestion)**
+## **Milestone Phase 2: Hardware Abstraction Layer (Ingestion)**
 
 **Goal:** Achieve reliable, zero-copy data ingestion from the TI IWR6843ISK.
 
-* [x] **2.1. C++ Ring Buffer Completion**
+* [x] **MS-2.1 C++ Ring Buffer Completion**
   * [x] **Task:** Complete the implementation of cbits/src/ring_buffer.cpp to handle atomic write pointers.
   * [x] **Requirement:** FR-DAQ-001, FR-DAQ-004
   * [x] **Implementation:** Ensure std::atomic<size_t> is used for head/tail.
   * [x] **Validation:**
     * [x] **Unit Test:** test/FFI/RingBuffer/IOSpec.hs - Write 1M items, read 1M items, ensure 0 drops.
     * [x] **Memcheck:** Run valgrind to ensure no leaks in C++ layer.
-* [x] **2.2. UDP Packet Parser**
+* [x] **MS-2.2 UDP Packet Parser**
   * [x] **Task:** Implement the packet parser in src/Hardware/Consumer.hs to handle TI TLV (Type-Length-Value) formats.
   * [x] **Requirement:** FR-DAQ-003
   * [x] **Implementation:** Parse "Magic Word" 0x0102030405060708 and TLV headers.
   * [x] **Validation:**
     * [x] **Fuzz Testing:** Feed random ByteStrings; ensure system does not crash but logs "Corrupt Packet".
     * [x] **Integration:** Replay a synthetic capture file (simulating TI mmWave) and verify frame count matches.
-* [x] **2.3. Sensor Configuration**
+* [x] **MS-2.3 Sensor Configuration**
   * [x] **Task:** Implement serial port writer to send .cfg to the sensor.
   * [x] **Requirement:** FR-DAQ-002
   * [x] **Implementation:** Use System.Hardware.Serialport (or equivalent) in src/Hardware/Control.hs.
@@ -61,72 +61,72 @@
     * [x] **Unit Test:** Verified `parseConfig` and `configureSensor` logic in `test/Hardware/ControlSpec.hs`.
     * \[ \] Connect sensor, run init; verify console output from sensor says "Done".
 
-## **Phase 3: Signal Processing Core (Physics Engine)**
+## **Milestone Phase 3: Signal Processing Core (Physics Engine)**
 
 **Goal:** Convert raw radar ADC data/Point Clouds into sub-millimeter respiratory signals.
 
-* [x] **3.1. Background Subtraction**
+* [x] **MS-3.1 Background Subtraction**
   * [x] **Task:** Implement static clutter removal in src/SignalProcessing/FMCW.hs.
   * [x] **Requirement:** FR-DSP-001
   * [x] **Implementation:** ![][image1].
   * [x] **Validation:**
     * [x] **Scenario:** Place static metal object (trihedral reflector). Run algorithm. Resulting signal amplitude should be ~0.
-* [x] **3.2. Phase Extraction & Unwrapping**
+* [x] **MS-3.2 Phase Extraction & Unwrapping**
   * [x] **Task:** Implement atan2(Q, I) and the unwrap logic to handle jumps ![][image2].
   * [x] **Requirement:** FR-DSP-002, FR-DSP-004
   * [x] **Implementation:** SignalProcessing.FMCW.unwrapPhase.
   * [x] **Validation:**
     * [x] **Math Test:** Feed synthetic sine wave with phase wrap; verify output is a smooth continuous sine wave.
-* [x] **3.3. Kalman Filter Integration**
+* [x] **MS-3.3 Kalman Filter Integration**
   * [x] **Task:** Implement the State Estimation vector ![][image3] in src/SignalProcessing/Regression.hs.
   * [x] **Requirement:** FR-DSP-003
   * [x] **Implementation:** Standard linear Kalman filter (Matrix operations).
   * [x] **Validation:**
     * [x] **Simulation:** Generate noisy sine wave (SNR 10dB). Compare Filter output vs. Ground Truth. RMSE must be ![][image4]mm.
 
-## **Phase 4: Safety & Control (The "Class C" Core)**
+## **Milestone Phase 4: Safety & Control (The "Class C" Core)**
 
 **Goal:** Guarantee fail-safe operation and deterministic beam control.
 
-* [x] **4.1. Watchdog Thread**
+* [x] **MS-4.1 Watchdog Thread**
   * [x] **Task:** Implement the "Heartbeat" monitor in src/Safety/Watchdog.hs.
   * [x] **Requirement:** SR-WD-001, SR-WD-002
   * [x] **Implementation:** TVarying map of thread timestamps. If now - last_seen > 100ms, kill.
   * [x] **Validation:**
     * [x] **Fault Injection:** Manually insert threadDelay 200000 (200ms) in the processing loop. Verify Watchdog kills app and logs error.
-* [x] **4.2. Gating Logic & Latency**
+* [x] **MS-4.2 Gating Logic & Latency**
   * [x] **Task:** Link Kalman State to IO Triggers (GPIO/TTL).
   * [x] **Requirement:** FR-GAT-001, FR-GAT-002
   * [x] **Implementation:** Control.Gating.evaluateGating -> Hardware.Control.setBeam.
   * [x] **Validation:**
     * [x] **Latency Bench:** Run bench/LatencyBench.hs. Mean processing time must be ![][image5]ms. 99th percentile ![][image6]ms.
-* [x] **4.3. Audit Logging**
+* [x] **MS-4.3 Audit Logging**
   * [x] **Task:** Finalize immutable logging to disk.
   * [x] **Requirement:** SR-AUDIT-001
   * [x] **Implementation:** Ensure logs flush to disk immediately on "Beam Hold" events.
   * [x] **Validation:**
     * [x] Pull power plug (simulated crash). Check log file on reboot. Last event must be recorded.
 
-## **Phase 5: User Interface & Visualization**
+## **Milestone Phase 5: User Interface & Visualization**
 
 **Goal:** Provide clinical situational awareness (Non-Critical, Class A/B).
 
-* [x] **5.1. Real-Time Plotting**
+* [x] **MS-5.1 Real-Time Plotting**
   * [x] **Task:** Connect Gloss or OpenGL renderer to the Data Stream.
   * [x] **Requirement:** FR-UI-001
   * [x] **Validation:**
     * [x] Visual check: Confirmed math logic via Unit Test `test/Control/UIMathSpec.hs` and smooth rendering capability via `reshape`/`lookAt` integration.
-* [x] **5.2. Visual Alerts**
+* [x] **MS-5.2 Visual Alerts**
   * [x] **Task:** Implement Green/Red background state based on Gating Decision.
   * [x] **Requirement:** FR-UI-002
   * [x] **Validation:**
     * [x] Visual check: Verified logic in `Control.UI.Renderer` changes background color based on `BeamState` (Red/Green/Yellow).
 
-## **Phase 6: System Validation (Verification)**
+## **Milestone Phase 6: System Validation (Verification)**
 
 **Goal:** Final "Black Box" testing against physical reality.
 
-* [x] **6.1. Phantom Study (The "Gold Standard")**
+* [x] **MS-6.1 Phantom Study (The "Gold Standard")**
   * [x] **Task:** Setup QUASAR/CIRS motion phantom (Simulated).
   * [x] **Requirement:** PR-ACC-01
   * [x] **Protocol:**
@@ -134,7 +134,7 @@
     2. Record Radar trace (Synthetic).
     3. Compare Radar Trace vs. Phantom Encoder logs.  
   * [x] **Acceptance:** Correlation Coefficient ![][image7] (> 0.98).
-* [x] **6.2. Latency Verification (Software-in-the-Loop)**
+* [x] **MS-6.2 Latency Verification (Software-in-the-Loop)**
   * [x] **Task:** Measure software processing latency (Ingestion -> Actuation).
   * [x] **Requirement:** FR-GAT-002 (intent)
   * [x] **Protocol:**

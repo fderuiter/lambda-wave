@@ -46,7 +46,7 @@ This TODO document consolidates all actionable development items from the roadma
 
 ### P0-001: Complete Kalman Filter Implementation
 **Status:** ✅ Complete
-**Phase:** 3.3 - Signal Processing Core  
+**Phase:** MS-3.3 - Signal Processing Core  
 **Priority:** P0 (Critical for gating accuracy)
 
 **Description:**  
@@ -79,7 +79,7 @@ Implement linear Kalman filter for state estimation to reduce noise in respirato
 
 ### P0-002: Implement Full Watchdog Functionality
 **Status:** ✅ Complete
-**Phase:** 4.1 - Safety & Control  
+**Phase:** MS-4.1 - Safety & Control  
 **Priority:** P0 (Critical for safety compliance)
 
 **Description:**  
@@ -117,7 +117,7 @@ Complete the watchdog thread implementation to detect system hangs, thread deadl
 
 ### P0-003: Hardware Validation with Motion Phantom
 **Status:** ✅ Complete
-**Phase:** 6.1 - System Validation  
+**Phase:** MS-6.1 - System Validation  
 **Priority:** P0 (Required for IEC 62304 validation)
 
 **Description:**  
@@ -156,7 +156,7 @@ Validate system accuracy using QUASAR or CIRS motion phantom with known displace
 
 ### P1-001: CI/CD Strictness (-Werror)
 **Status:** ✅ Complete
-**Phase:** 1.2 - Infrastructure  
+**Phase:** MS-1.2 - Infrastructure  
 **Priority:** P1 (Code quality gate)
 
 **Description:**  
@@ -190,7 +190,7 @@ Update CI pipeline to fail on any compiler warning, enforcing zero-warning polic
 
 ### P1-002: Docker Image Determinism
 **Status:** ✅ Complete
-**Phase:** 1.3 - Infrastructure  
+**Phase:** MS-1.3 - Infrastructure  
 **Priority:** P1 (Reproducible builds)
 
 **Description:**  
@@ -224,7 +224,7 @@ Pin Docker base image to specific SHA-256 digest for reproducible builds across 
 
 ### P1-003: Gating Logic & Latency Optimization
 **Status:** ✅ Complete
-**Phase:** 4.2 - Safety & Control  
+**Phase:** MS-4.2 - Safety & Control  
 **Priority:** P1 (Core functionality)
 
 **Description:**  
@@ -261,7 +261,7 @@ Link Kalman state to beam control triggers (GPIO/TTL) with latency compensation.
 
 ### P1-004: Audit Logging Completion
 **Status:** ✅ Complete
-**Phase:** 4.3 - Safety & Control  
+**Phase:** MS-4.3 - Safety & Control  
 **Priority:** P1 (Compliance requirement)
 
 **Description:**  
@@ -296,7 +296,7 @@ Finalize immutable audit logging with immediate disk flush on critical events.
 
 ### P1-005: Integration Test with Sensor Replay
 **Status:** ✅ Complete
-**Phase:** 2.2 - Hardware Abstraction Layer  
+**Phase:** MS-2.2 - Hardware Abstraction Layer  
 **Priority:** P1 (Validation)
 
 **Description:**  
@@ -334,7 +334,7 @@ Replay captured .bin file from TI mmWave Studio and verify frame count and parsi
 
 ### P2-001: Real-Time Plotting Enhancement
 **Status:** ✅ Complete
-**Phase:** 5.1 - User Interface  
+**Phase:** MS-5.1 - User Interface  
 **Priority:** P2 (Usability)
 
 **Description:**  
@@ -370,7 +370,7 @@ Connect OpenGL renderer to live data stream with smooth animation (>30Hz).
 
 ### P2-002: Visual Alerts Implementation
 **Status:** ✅ Complete
-**Phase:** 5.2 - User Interface  
+**Phase:** MS-5.2 - User Interface  
 **Priority:** P2 (Usability)
 
 **Description:**  
@@ -620,7 +620,7 @@ Investigate web-based UI as alternative to OpenGL for cross-platform deployment.
 
 ### ✅ Phase 1: Infrastructure & High-Assurance Setup
 
-#### ✅ 1.1: Toolchain & RTS Locking
+#### ✅ MS-1.1: Toolchain & RTS Locking
 - Configured GHC RTS flags (-N2, -qa)
 - Implemented Control.Concurrent.setNumCapabilities
 - Validated GC pause times < 5ms
@@ -628,21 +628,21 @@ Investigate web-based UI as alternative to OpenGL for cross-platform deployment.
 
 #### ✅ Phase 2: Hardware Abstraction Layer
 
-#### ✅ 2.1: C++ Ring Buffer Implementation
+#### ✅ MS-2.1: C++ Ring Buffer Implementation
 - Implemented atomic head/tail pointers with std::atomic
 - Zero-copy data ingestion working
 - Unit tests passing (1M items read/write)
 - Memory leak testing with Valgrind passed
 - **Completed:** Phase 2
 
-#### ✅ 2.2: TLV Packet Parser
+#### ✅ MS-2.2: TLV Packet Parser
 - TLV parser implemented in Hardware.Consumer
 - Magic word detection (0x0102030405060708)
 - Robust error handling for corrupt packets
 - Fuzz testing passed
 - **Completed:** Phase 2
 
-#### ✅ 2.3: Sensor Configuration
+#### ✅ MS-2.3: Sensor Configuration
 - Serial port configuration implemented
 - .cfg file parsing working
 - Unit tests for parseConfig/configureSensor
@@ -650,12 +650,12 @@ Investigate web-based UI as alternative to OpenGL for cross-platform deployment.
 
 ### ✅ Phase 3: Signal Processing Core (Partial)
 
-#### ✅ 3.1: Background Subtraction
+#### ✅ MS-3.1: Background Subtraction
 - Static clutter removal implemented
 - Testing with static objects verified
 - **Completed:** Phase 3
 
-#### ✅ 3.2: Phase Extraction & Unwrapping
+#### ✅ MS-3.2: Phase Extraction & Unwrapping
 - atan2(Q,I) phase extraction implemented
 - Phase unwrapping handles ±π jumps
 - Math tests with synthetic data passed
