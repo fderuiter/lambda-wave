@@ -26,6 +26,7 @@ udsPath :: String
 udsPath = "/tmp/sgrt_heartbeat.sock"
 
 -- | The Watchdog Heartbeat Sender Loop (Runs in Main Process)
+-- Requirement SR-WD-001
 -- Evaluates thread heartbeats. If everything is fine, it sends a heartbeat to the Daemon.
 -- If any thread is frozen, it stops sending heartbeats, causing the Daemon to trip.
 watchdogLoop :: TVar SystemState -> IO ()
@@ -97,6 +98,7 @@ runSafetyDaemon parentPid = do
     
     loop
 
+-- Requirement SR-WD-002
 tripDaemon :: ProcessID -> IO ()
 tripDaemon parentPid = do
     let msg = "!!! SAFETY DAEMON TRIP: Lost Heartbeat. FORCING BEAM OFF."
