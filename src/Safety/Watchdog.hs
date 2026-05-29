@@ -25,8 +25,6 @@ udsPath :: String
 udsPath = "/tmp/sgrt_heartbeat.sock"
 
 -- | The Watchdog Heartbeat Sender Loop (Runs in Main Process)
--- Evaluates thread heartbeats. If everything is fine, it sends a heartbeat to the Daemon.
--- If any thread is frozen, it stops sending heartbeats, causing the Daemon to trip.
 watchdogLoop :: TVar SystemState -> IO ()
 watchdogLoop stateVar = do
     sock <- socket AF_UNIX Datagram 0
@@ -36,16 +34,13 @@ watchdogLoop stateVar = do
         state <- readTVarIO stateVar
         let heartbeats = threadHeartbeats state
 
-        -- Check all monitored threads
         let isHealthy = all (\(_, lastTime) -> (now - lastTime) <= fromIntegral watchdogTimeoutNS) (Map.toList heartbeats)
 
         if isHealthy && not (Map.null heartbeats)
             then do
-                -- Send heartbeat
                 _ <- try (sendTo sock (BC.pack "HB") addr) :: IO (Either IOException Int)
                 return ()
             else do
-                -- Find frozen threads for logging
                 forM_ (Map.toList heartbeats) $ \(threadName, lastTime) -> do
                     let diff = now - lastTime
                     when (diff > fromIntegral watchdogTimeoutNS) $ do
@@ -63,30 +58,59 @@ watchdogLoop stateVar = do
 -- | Runs the independent Safety Daemon process
 runSafetyDaemon :: ProcessID -> IO ()
 runSafetyDaemon parentPid = do
-    putStrLn "[Safety Daemon] Started and monitoring parent process."
+    putStrLn "[Safety Daemon] Started and monitoring parent process and UI."
     
-    -- Ensure clean socket
     _ <- try (removeLink udsPath) :: IO (Either IOException ())
     
     sock <- socket AF_UNIX Datagram 0
     bind sock (SockAddrUnix udsPath)
     
-    -- Ensure Beam is ON for Watchdog Channel initially
     setBeamChannel WatchdogChannel True
 
-    -- Loop waiting for heartbeats
+    now <- getMonotonicTimeNS
+    coreHBRef <- newTVarIO now
+    uiHBRef <- newTVarIO now
+    uiLoggedDeadRef <- newTVarIO False
+
+    -- Receiver thread
+    _ <- forkIO $ forever $ do
+        res <- try (recvFrom sock 16) :: IO (Either IOException (BC.ByteString, SockAddr))
+        case res of
+            Right (msg, _) -> do
+                t <- getMonotonicTimeNS
+                if msg == BC.pack "HB" then
+                    atomically $ writeTVar coreHBRef t
+                else if msg == BC.pack "UI_HB" then
+                    atomically $ do
+                        writeTVar uiHBRef t
+                        writeTVar uiLoggedDeadRef False
+                else return ()
+            Left _ -> return ()
+
+    -- Monitor loop
     let loop = do
-            -- Receive with timeout
-            -- watchdogTimeoutNS is in nanoseconds. timeout takes microseconds.
-            let timeoutUS = fromIntegral (watchdogTimeoutNS `div` 1000)
-            res <- try (timeout timeoutUS $ recvFrom sock 16) :: IO (Either IOException (Maybe (BC.ByteString, SockAddr)))
+            threadDelay 10000 -- 10ms
+            t <- getMonotonicTimeNS
+            (lastCore, lastUI, uiLoggedDead) <- atomically $ do
+                c <- readTVar coreHBRef
+                u <- readTVar uiHBRef
+                l <- readTVar uiLoggedDeadRef
+                return (c, u, l)
             
-            case res of
-                Right (Just (msg, _)) | msg == BC.pack "HB" -> do
-                    loop
-                _ -> do
-                    -- Timeout, IO error, or invalid message -> TRIP!
-                    tripDaemon parentPid
+            let coreDiff = t - lastCore
+            let uiDiff = t - lastUI
+            
+            -- UI tracking (Status Monitor) - does NOT trip Safety Core
+            when (uiDiff > fromIntegral watchdogTimeoutNS && not uiLoggedDead) $ do
+                -- UI is dead/frozen
+                putStrLn $ "[STATUS MONITOR] UI Process is unresponsive! (Age: " ++ show (uiDiff `div` 1000000) ++ "ms)"
+                hFlush stdout
+                atomically $ writeTVar uiLoggedDeadRef True
+
+            -- Safety Core tracking
+            if coreDiff > fromIntegral watchdogTimeoutNS
+                then tripDaemon parentPid
+                else loop
     
     loop
 
@@ -94,15 +118,12 @@ tripDaemon :: ProcessID -> IO ()
 tripDaemon parentPid = do
     let msg = "!!! SAFETY DAEMON TRIP: Lost Heartbeat. FORCING BEAM OFF."
     putStrLn msg
-    -- Dual-Channel Safety: Force Watchdog channel off
     setBeamChannel WatchdogChannel False
     
-    -- Independent Audit Log recording
     now <- getMonotonicTimeNS
     let auditMsg = show now ++ " [CRITICAL] [SafetyDaemon] " ++ msg ++ "\n"
     _ <- try (appendFile "session.log" auditMsg) :: IO (Either IOException ())
     
-    -- Terminate main application process
     putStrLn $ "!!! SAFETY DAEMON: Terminating Parent PID " ++ show parentPid
     _ <- try (signalProcess sigKILL parentPid) :: IO (Either IOException ())
     

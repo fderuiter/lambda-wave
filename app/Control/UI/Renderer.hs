@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-|
 Module      : Control.UI.Renderer
 Description : OpenGL Renderer for Radar Point Cloud
@@ -26,6 +27,10 @@ import Data.Types (SystemState(..), Point3D(..), BeamState(..))
 import Data.IORef
 import System.IO (hFlush, stdout)
 import Control.Monad (when)
+import Foreign.Storable (sizeOf, pokeElemOff)
+import Foreign.Ptr (nullPtr, Ptr)
+import Foreign.Marshal.Alloc (allocaBytes)
+import Data.Time.HighRes (getMonotonicTimeNS)
 
 -- | Determines if an audio alert should be triggered (P2-002).
 -- O(1) complexity. Pure function for testability.
@@ -42,7 +47,10 @@ renderLoop stateVar = do
     -- Initialize to BeamOff to prevent false positive beep on startup
     -- when the system defaults to BeamOff.
     prevStateRef <- newIORef BeamOff
-    displayCallback $= display stateVar prevStateRef
+    
+    [vbo] <- genObjectNames 1
+    
+    displayCallback $= display stateVar prevStateRef vbo
     reshapeCallback $= Just reshape
     idleCallback $= Just (postRedisplay Nothing)
     mainLoop
@@ -65,10 +73,10 @@ reshape size@(Size w h) = do
 -- Renders the current scene:
 -- 1. Sets background color based on Beam State (Visual Alert).
 -- 2. Sets up Camera (LookAt).
--- 3. Draws Point Cloud.
+-- 3. Draws Point Cloud using VBOs to reduce GC overhead.
 -- 4. Triggers an audio alert (beep) on transition to BeamOff (O(1) complexity).
-display :: TVar SystemState -> IORef BeamState -> IO ()
-display stateVar prevStateRef = do
+display :: TVar SystemState -> IORef BeamState -> BufferObject -> IO ()
+display stateVar prevStateRef vbo = do
     state <- readTVarIO stateVar
     prevState <- readIORef prevStateRef
 
@@ -81,10 +89,15 @@ display stateVar prevStateRef = do
 
     writeIORef prevStateRef currentState
 
-    let (bgR, bgG, bgB) = case currentState of
-            BeamOn   -> (0.0::GLfloat, 0.2, 0.0)
-            BeamOff  -> (0.2, 0.0, 0.0)
-            BeamHold -> (0.2, 0.2, 0.0)
+    now <- getMonotonicTimeNS
+    let desync = (now - lastFrameTime state) > 100_000_000 -- 100ms
+    
+    let (bgR, bgG, bgB) = if desync
+            then (0.5::GLfloat, 0.0, 0.5) -- Purple/Magenta for Desync
+            else case currentState of
+                BeamOn   -> (0.0::GLfloat, 0.2, 0.0)
+                BeamOff  -> (0.2, 0.0, 0.0)
+                BeamHold -> (0.2, 0.2, 0.0)
 
     clearColor $= Color4 bgR bgG bgB 1.0
     clear [ColorBuffer]
@@ -97,23 +110,33 @@ display stateVar prevStateRef = do
     -- Up:       (0, 1, 0)  - Y is Up
     lookAt (Vertex3 0 2 (-2)) (Vertex3 0 0 2) (Vector3 0 1 0)
 
-    -- Draw Point Cloud (P2-001)
-    renderPrimitive Points $ do
-        color $ Color3 (1.0::GLfloat) 1.0 1.0
-        mapM_ drawPoint (currentPoints state)
+    -- Draw Point Cloud (P2-001) using Retained-mode rendering (VBO)
+    let pts = currentPoints state
+    let numPts = length pts
+    let numFloats = numPts * 3
+    let size = numFloats * sizeOf (undefined :: GLfloat)
+
+    color $ Color3 (1.0::GLfloat) 1.0 1.0
+    clientState VertexArray $= Enabled
+    bindBuffer ArrayBuffer $= Just vbo
+
+    allocaBytes size $ \(ptr :: Ptr GLfloat) -> do
+        let fillArray _ [] = return ()
+            fillArray idx (p:ps) = do
+                pokeElemOff ptr idx     (realToFrac (px p) / 1000.0)
+                pokeElemOff ptr (idx+1) (realToFrac (py p) / 1000.0)
+                pokeElemOff ptr (idx+2) (realToFrac (pz p) / 1000.0)
+                fillArray (idx+3) ps
+        
+        fillArray 0 pts
+        bufferData ArrayBuffer $= (fromIntegral size, ptr, StreamDraw)
+        arrayPointer VertexArray $= VertexArrayDescriptor 3 Float 0 nullPtr
+        drawArrays Points 0 (fromIntegral numPts)
+
+    bindBuffer ArrayBuffer $= Nothing
+    clientState VertexArray $= Disabled
 
     swapBuffers
-
--- | Draw a single point
--- Converts from Radar Coordinates (mm) to OpenGL Coordinates (meters).
--- 1 Unit = 1 Meter.
-drawPoint :: Point3D -> IO ()
-drawPoint p = do
-    -- Scale: 1 unit = 1 meter. Points are in mm.
-    let x = double2Float (px p) / 1000.0
-    let y = double2Float (py p) / 1000.0
-    let z = double2Float (pz p) / 1000.0
-    vertex $ Vertex3 x y z
 
 -- Requirement FR-UI-001
 

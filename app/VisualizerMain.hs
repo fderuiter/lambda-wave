@@ -15,6 +15,9 @@ import Foreign.Marshal.Alloc (allocaBytes)
 import Foreign.Ptr (castPtr, plusPtr)
 import Data.Word (Word32, Word64)
 import Foreign.Storable (peek)
+import Network.Socket
+import Network.Socket.ByteString (sendTo)
+import qualified Data.ByteString.Char8 as BC
 
 import Data.Types
 import Data.Config (targetHeight)
@@ -53,6 +56,9 @@ main = do
 
     -- 1. Start IPC Receiver
     _ <- forkOS $ ipcReceiverLoop systemState
+
+    -- Start UI Heartbeat Sender
+    _ <- forkOS uiHeartbeatLoop
 
     -- 2. Web UI (Optional)
 #ifdef ENABLE_WEB_UI
@@ -134,4 +140,12 @@ readBytes fd n = do
                 bs <- B.packCStringLen (castPtr ptr, n)
                 return (Just bs)
             else return Nothing
+
+uiHeartbeatLoop :: IO ()
+uiHeartbeatLoop = do
+    sock <- socket AF_UNIX Datagram 0
+    let addr = SockAddrUnix "/tmp/sgrt_heartbeat.sock"
+    forever $ do
+        _ <- try (sendTo sock (BC.pack "UI_HB") addr) :: IO (Either IOException Int)
+        threadDelay 10000 -- Send heartbeat every 10ms
 

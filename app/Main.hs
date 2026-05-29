@@ -10,6 +10,7 @@ import System.Posix.IO (openFd, OpenMode(..), defaultFileFlags, OpenFileFlags(..
 import System.Posix.Files (getFdStatus, isCharacterDevice, createNamedPipe, unionFileModes, ownerReadMode, ownerWriteMode)
 import System.Posix.Types (Fd, ProcessID)
 import System.Posix.Process (forkProcess, executeFile, getProcessID)
+import System.Process (callCommand)
 import Control.Monad (forever, unless, void)
 import qualified Data.Map.Strict as Map
 import System.Exit (exitFailure)
@@ -54,6 +55,11 @@ runMain = do
     -- lock capabilities to specific cores
     setNumCapabilities 2
     putStrLn "Initializing Lambda-Wave System..."
+
+    -- Requirement 4: Set OS-level priority and CPU affinity for the Safety Core
+    myPid <- getProcessID
+    _ <- try (callCommand $ "taskset -pc 0 " ++ show myPid) :: IO (Either IOException ())
+    _ <- try (callCommand $ "renice -n -10 -p " ++ show myPid) :: IO (Either IOException ())
 
     startTime <- getMonotonicTimeNS
 
@@ -128,7 +134,6 @@ runMain = do
 
     -- Spawn Safety Daemon
     exePath <- getExecutablePath
-    myPid <- getProcessID
     _daemonPid <- forkProcess $ executeFile exePath False ["--safety-daemon", show myPid] Nothing
 
     -- 3. Consumer/Parser (Dedicated Thread)
