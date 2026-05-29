@@ -10,7 +10,7 @@ jobs:
   compliance-checks:
     runs-on: ubuntu-latest
     container:
-      image: haskell:9.8
+      image: haskell:9.6.7
     steps:
       - uses: actions/checkout@v4
 
