@@ -310,5 +310,6 @@ Lambda-Wave (formerly SGRT Radar System) is a safety-critical Surface Guided Rad
 
 ### Compliance Metrics
 - **Safety Class:** IEC 62304 Class C (highest rigor)
+- **Security Policy:** Enforced vulnerability reporting process (see [Security Policy](../SECURITY.md))
 - **Test Coverage:** High (property-based + unit tests)
 - **Code Review:** Four-eyes principle for safety-critical code

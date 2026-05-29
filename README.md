@@ -190,6 +190,8 @@ cabal test --enable-coverage
 
 ## 🔒 Safety & Compliance
 
+Please review our [Security Policy](SECURITY.md) for details on vulnerability reporting and triage for safety-critical flaws.
+
 Lambda-Wave is developed to meet **IEC 62304 Class C** requirements (highest rigor for medical device software):
 
 - ✅ **Traceable Requirements:** FR-* and SR-* identifiers
