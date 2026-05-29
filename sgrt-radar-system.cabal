@@ -54,6 +54,8 @@ library
       FFI.RingBuffer.Types
       Hardware.Control
       Hardware.Consumer
+      Hardware.Phantom
+      Hardware.TTL
       Hardware.Types
       Safety.Audit
       Safety.Watchdog
@@ -83,7 +85,7 @@ executable sgrt-radar-system-exe
       Paths_sgrt_radar_system
   hs-source-dirs:
       app
-  ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
+  ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa"
   extra-libraries: stdc++
   build-depends:
       sgrt-radar-system
@@ -105,7 +107,7 @@ executable sgrt-visualizer-exe
       Paths_sgrt_radar_system
   hs-source-dirs:
       app
-  ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
+  ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa"
   build-depends:
       sgrt-radar-system
 
@@ -139,7 +141,7 @@ executable watchdog-fault
   main-is: WatchdogFault.hs
   hs-source-dirs:
       test/Safety
-  ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
+  ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa"
   build-depends:
       sgrt-radar-system
     , base
@@ -164,7 +166,7 @@ test-suite sgrt-radar-system-test
       Safety.WatchdogSpec
   hs-source-dirs:
       test
-  ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
+  ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa"
   build-depends:
       sgrt-radar-system
     , hspec
@@ -180,7 +182,7 @@ test-suite hardware-control-check
       Paths_sgrt_radar_system
   hs-source-dirs:
       test/Hardware
-  ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
+  ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa"
   build-depends:
       sgrt-radar-system
     , base
@@ -193,7 +195,7 @@ test-suite hardware-consumer-check
       Paths_sgrt_radar_system
   hs-source-dirs:
       test/Hardware
-  ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
+  ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa"
   build-depends:
       sgrt-radar-system
     , base
@@ -209,7 +211,7 @@ test-suite kalman-verification
       Paths_sgrt_radar_system
   hs-source-dirs:
       test/SignalProcessing
-  ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
+  ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa"
   build-depends:
       sgrt-radar-system
     , base
@@ -222,7 +224,7 @@ test-suite audit-check
       Paths_sgrt_radar_system
   hs-source-dirs:
       test/Safety
-  ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
+  ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa"
   build-depends:
       sgrt-radar-system
     , base
@@ -236,7 +238,7 @@ test-suite clinical-hil-validation
       Paths_sgrt_radar_system
   hs-source-dirs:
       test
-  ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
+  ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa"
   build-depends:
       sgrt-radar-system
     , base
@@ -251,7 +253,7 @@ test-suite gating-check
       Paths_sgrt_radar_system
   hs-source-dirs:
       test/Control
-  ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
+  ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa"
   build-depends:
       sgrt-radar-system
     , base
@@ -264,7 +266,7 @@ test-suite watchdog-check
       Paths_sgrt_radar_system
   hs-source-dirs:
       test
-  ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
+  ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa"
   build-depends:
       sgrt-radar-system
     , base
@@ -277,7 +279,7 @@ test-suite numeric-check
       Paths_sgrt_radar_system
   hs-source-dirs:
       test
-  ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
+  ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa"
   build-depends:
       sgrt-radar-system
     , base
@@ -290,7 +292,7 @@ test-suite sentinel-check
       Paths_sgrt_radar_system
   hs-source-dirs:
       test
-  ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
+  ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa"
   build-depends:
       sgrt-radar-system
     , base
@@ -329,7 +331,7 @@ test-suite consumer-integration-check
       Paths_sgrt_radar_system
   hs-source-dirs:
       test/Hardware
-  ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
+  ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa"
   build-depends:
       sgrt-radar-system
     , base
@@ -345,7 +347,7 @@ test-suite ui-math-check
   hs-source-dirs:
       test
       app
-  ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
+  ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa"
   build-depends:
       sgrt-radar-system
     , base
@@ -357,7 +359,7 @@ executable phantom-study
   main-is: PhantomStudy.hs
   hs-source-dirs:
       tools/data-generation
-  ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
+  ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa"
   build-depends:
       sgrt-radar-system
     , base
