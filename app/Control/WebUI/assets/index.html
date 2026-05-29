@@ -187,6 +187,7 @@
         updateFavicon('#ff0', 'triangle');
 
         ws.onopen = () => {
+            resetWatchdog();
             pauseBtn.setAttribute('aria-disabled', 'false');
             pauseBtn.removeAttribute('title');
             canvas.classList.add('live');
@@ -206,6 +207,7 @@
         };
 
         ws.onclose = () => {
+            if (watchdogTimer) clearTimeout(watchdogTimer);
             pauseBtn.setAttribute('aria-disabled', 'true');
             pauseBtn.setAttribute('title', 'Controls unavailable while disconnected');
             canvas.classList.remove('live');
@@ -222,6 +224,7 @@
         };
 
         ws.onerror = () => {
+            if (watchdogTimer) clearTimeout(watchdogTimer);
             pauseBtn.setAttribute('aria-disabled', 'true');
             pauseBtn.setAttribute('title', 'Controls unavailable while disconnected');
             canvas.classList.remove('live');
@@ -238,10 +241,39 @@
         let lastTs = 0;
         let lastBeamState = null;
         let lastStatsUpdate = 0;
+        
+        // Client-side watchdog
+        let watchdogTimer = null;
+        let lastSeqNum = -1;
+        
+        function handleDataStale() {
+            drawEmptyState('Data Stale', '#ff0', 'No new data sequences received within 100ms. Display frozen.');
+            statusEl.innerHTML = '<span aria-hidden="true">⚠ </span>DATA STALE';
+            statusEl.className = 'BeamHold';
+            document.title = 'Data Stale - Lambda-Wave Monitor';
+            updateFavicon('#ff0', 'triangle');
+            connDot.className = 'status-dot dot-connecting';
+            connText.innerText = 'Data Stale';
+            lastBeamState = null; // force re-render when data resumes
+        }
+        
+        function resetWatchdog() {
+            if (watchdogTimer) clearTimeout(watchdogTimer);
+            watchdogTimer = setTimeout(handleDataStale, 100);
+        }
 
         ws.onmessage = (event) => {
             const state = JSON.parse(event.data);
             const now = performance.now();
+            
+            if (state.sequenceNumber !== lastSeqNum) {
+                lastSeqNum = state.sequenceNumber;
+                resetWatchdog();
+                if (connText.innerText === 'Data Stale') {
+                    connDot.className = 'status-dot dot-live';
+                    connText.innerText = 'Live';
+                }
+            }
 
             // 1. Update Beam Status
             // Only update DOM if state changed to prevent aria-live screen reader spam at 30Hz

@@ -87,6 +87,16 @@ executable sgrt-radar-system-exe
   build-depends:
       sgrt-radar-system
 
+  if flag(enable-ui)
+    build-depends:
+        GLUT
+      , OpenGL
+    cpp-options: -DENABLE_UI
+    other-modules:
+        Control.UI.Renderer
+        Control.UI.Window
+        Control.UI.Input
+
 executable sgrt-visualizer-exe
   import: common-options
   main-is: VisualizerMain.hs
