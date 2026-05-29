@@ -23,6 +23,7 @@ mkState bs = do
         { currentPoints = []
         , beamState = bs
         , lastFrameTime = 0
+        , sequenceNumber = 0
         , isocenter = Point3D 0 0 0 0 0
         , threadHeartbeats = Map.empty
         , kalmanState = kState
@@ -50,9 +51,10 @@ main = do
     -- If it reads ON, it calculates ON.
     -- If user sets HOLD in between, it overwrites with ON.
     let points = [Point3D 10.0 0 0 0 0]
+    let frame = RadarFrame "" 0 points
 
     consumerThread <- forkIO $ forever $ do
-        processFrame stateVar points
+        processFrame stateVar frame
         -- threadDelay 0 -- Run as fast as possible to maximize race chance
 
     -- Monitor

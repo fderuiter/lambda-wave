@@ -95,6 +95,7 @@ data SystemState = SystemState
   { currentPoints :: [Point3D]
   , beamState :: BeamState
   , lastFrameTime :: Word64   -- For Watchdog (Nanoseconds)
+  , sequenceNumber :: Word32  -- ^ Monotonic sequence counter for visual safety (cite:source6)
   , isocenter :: Point3D      -- Calibration zero
   , threadHeartbeats :: Map String Word64 -- Heartbeats for Watchdog
   , kalmanState :: KalmanState -- ^ Filtered state (Position, Velocity, Accel)
@@ -103,22 +104,24 @@ data SystemState = SystemState
   }
 
 instance NFData SystemState where
-  rnf (SystemState pts bs t iso hb ks aq ae) = rnf pts `seq` rnf bs `seq` rnf t `seq` rnf iso `seq` rnf hb `seq` rnf ks `seq` aq `seq` rnf ae
+  rnf (SystemState pts bs t sn iso hb ks aq ae) = rnf pts `seq` rnf bs `seq` rnf t `seq` rnf sn `seq` rnf iso `seq` rnf hb `seq` rnf ks `seq` aq `seq` rnf ae
 
 -- | Raw parsed structure from the sensor
 data RadarFrame = RadarFrame
   { header :: B.ByteString
+  , seqNum :: Word32
   , points :: [Point3D]
   } deriving (Show, Eq, Generic, Binary)
 
 instance NFData RadarFrame where
-  rnf (RadarFrame h pts) = rnf h `seq` rnf pts
+  rnf (RadarFrame h sn pts) = rnf h `seq` rnf sn `seq` rnf pts
 
 -- | Packet for sending telemetry over IPC
 data TelemetryPacket = TelemetryPacket
   { tpPoints :: [Point3D]
   , tpBeamState :: BeamState
   , tpLastFrameTime :: Word64
+  , tpSequenceNumber :: Word32
   , tpIsocenter :: Point3D
   , tpThreadHeartbeats :: Map String Word64
   , tpKalmanState :: KalmanState

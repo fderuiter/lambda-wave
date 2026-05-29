@@ -17,12 +17,12 @@ main = do
     let kConfig = KalmanConfig 0.1 0.1
     let kState = initKalman 0.0 kConfig
     q <- newTBQueueIO 100
-    let initialState = SystemState [] BeamOff now (Point3D 0 0 0 0 0) Map.empty kState q False
+    let initialState = SystemState [] BeamOff now 0 (Point3D 0 0 0 0 0) Map.empty kState q False
     stateVar <- newTVarIO initialState
 
     -- 2. Run Gating Process (which should update heartbeat)
     -- We pass empty points list
-    processFrame stateVar []
+    processFrame stateVar (RadarFrame "" 0 [])
 
     -- 3. Verify Heartbeat
     finalState <- readTVarIO stateVar

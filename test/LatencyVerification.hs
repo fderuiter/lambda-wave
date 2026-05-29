@@ -73,7 +73,7 @@ main = do
 
     -- 3. Warmup Phase (Discard results)
     putStrLn "Warming up..."
-    forM_ [1..warmupIterations] $ \_ -> processFrame var pts
+    forM_ [1..warmupIterations] $ \_ -> processFrame var (RadarFrame "" 0 pts)
 
     -- 4. Measurement Loop
     putStrLn "Running measurement loop..."
@@ -126,6 +126,6 @@ main = do
 measureLatency :: TVar SystemState -> [Point3D] -> IO Word64
 measureLatency var pts = do
     start <- getMonotonicTimeNS
-    processFrame var pts
+    processFrame var (RadarFrame "" 0 pts)
     end <- getMonotonicTimeNS
     return (end - start)
