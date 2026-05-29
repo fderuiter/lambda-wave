@@ -13,9 +13,20 @@ jobs:
       image: haskell:9.6.7
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          fetch-depth: 0
 
       - name: Verify Planning Documents (IEC 62304)
         run: scripts/verify_planning.sh
+
+      - name: Validate Change Control Records (CCR)
+        run: |
+          if [ -n "${{ github.base_ref }}" ]; then
+            git diff --name-only origin/${{ github.base_ref }}...HEAD > modified_files.txt || git show --name-only --format= > modified_files.txt
+          else
+            git show --name-only --format= > modified_files.txt
+          fi
+          python3 scripts/ccr_validation.py modified_files.txt
 
       - name: Run Promotion Validator
         run: scripts/promotion_validator.sh
@@ -70,6 +81,11 @@ jobs:
             mkdir -p hpc_html
             hpc markup combined.tix --srcdir=src --hpcdir=$MIX_DIR --destdir=hpc_html
           fi
+
+      - name: Generate Safety Audit Report
+        if: always()
+        run: |
+          python3 scripts/ccr_reporter.py LATEST
 
       - name: Archive Compliance Report & HPC HTML
         if: always()
