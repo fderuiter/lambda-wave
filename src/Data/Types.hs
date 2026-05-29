@@ -19,7 +19,7 @@ module Data.Types (
     TelemetryPacket(..)
 ) where
 
-import Data.Word (Word64)
+import Data.Word (Word64, Word32)
 import Data.Map.Strict (Map)
 import qualified Data.ByteString as B
 import Foreign.Storable

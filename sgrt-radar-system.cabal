@@ -61,6 +61,7 @@ library
       SignalProcessing.Regression
       SignalProcessing.Kalman
       Numeric.Simple
+      Numeric.Kinematics
   other-modules:
       Paths_sgrt_radar_system
   hs-source-dirs:
