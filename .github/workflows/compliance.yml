@@ -12,7 +12,7 @@ jobs:
     container:
       image: haskell:9.6.7
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Verify Planning Documents (IEC 62304)
         run: scripts/verify_planning.sh
@@ -20,8 +20,6 @@ jobs:
       - name: Install system dependencies
         run: scripts/setup_env.sh
 
-      - name: Update Cabal
-        run: cabal update
 
       - name: Build dependencies with coverage
         run: cabal build --enable-coverage --only-dependencies
@@ -72,7 +70,7 @@ jobs:
 
       - name: Archive Compliance Report & HPC HTML
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@ff15f0306b3f739f7b6fd43fb5d26cd321bd4de5 # v3
         with:
           name: compliance-coverage-reports
           path: |
