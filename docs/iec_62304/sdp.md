@@ -1,5 +1,7 @@
 # Software Development Plan (SDP)
 
+**Note:** For reporting security vulnerabilities, refer to our [Security Policy](../../SECURITY.md).
+
 ## 1. Introduction
 This document defines the Software Development Plan (SDP) for the Lambda-Wave (Haskell Radar SGRT) project, in compliance with IEC 62304 Class C requirements.
 

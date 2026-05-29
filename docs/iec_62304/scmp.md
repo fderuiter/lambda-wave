@@ -1,5 +1,7 @@
 # Software Configuration Management Plan (SCMP)
 
+**Note:** For reporting security vulnerabilities, refer to our [Security Policy](../../SECURITY.md).
+
 ## 1. Introduction
 This document defines the Software Configuration Management Plan (SCMP) for the Lambda-Wave project in compliance with IEC 62304 Class C.
 
