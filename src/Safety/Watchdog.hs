@@ -48,6 +48,9 @@ watchdogLoop stateVar = do
                 _ <- try (sendTo sock (BC.pack "HB") addr) :: IO (Either IOException Int)
                 return ()
             else do
+                -- Explicitly send TRIP message to daemon to guarantee <110ms response time
+                _ <- try (sendTo sock (BC.pack "TRIP") addr) :: IO (Either IOException Int)
+                
                 -- Find frozen threads for logging
                 forM_ (Map.toList heartbeats) $ \(threadName, lastTime) -> do
                     let diff = now - lastTime

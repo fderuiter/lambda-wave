@@ -41,3 +41,10 @@ jobs:
         with:
           name: compliance-report
           path: compliance_report.txt
+
+      - name: Archive Safety Audit Artifact
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: safety-audit-report
+          path: safety_audit_report.txt

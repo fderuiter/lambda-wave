@@ -75,3 +75,4 @@ jobs:
           path: |
             coverage_report.txt
             hpc_html/
+            safety_audit_report.txt
