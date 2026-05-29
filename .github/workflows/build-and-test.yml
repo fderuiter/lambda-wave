@@ -26,6 +26,9 @@ jobs:
       - name: Build
         run: cabal build
 
+      - name: Build Watchdog Fault Executable
+        run: cabal build watchdog-fault
+
       - name: Run Tests
         run: cabal test | tee test.log
 
