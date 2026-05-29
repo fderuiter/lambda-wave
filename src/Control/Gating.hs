@@ -16,6 +16,17 @@ import qualified Data.Map.Strict as Map
 import Control.Monad (when)
 import SignalProcessing.Kalman (KalmanState(..), KalmanConfig(..), V3(..), predict, update)
 import Hardware.Control (setBeam)
+import Numeric.Kinematics
+    ( Distance(..)
+    , Velocity(..)
+    , Acceleration(..)
+    , Time(..)
+    , SystemLatencyMs
+    , KinematicMultiply(..)
+    , ScalarMultiply(..)
+    , systemLatencyTime
+    , Proxy(..)
+    )
 
 -- | Kalman Configuration
 -- Process Noise (Q): System agility (how fast we expect breathing to change)
@@ -65,7 +76,11 @@ processFrame stateVar frame = do
         -- Note: We calculate based on 'currentBeam' inside the transaction.
         -- This ensures that if the UI thread released BeamHold or modified the state concurrently,
         -- we use the fresh state as the basis for hysteresis and transition logic.
-        let proposedBeamState = evaluateGating targetHeight gatingTolerance hysteresisMargin systemLatencyNS newKState currentBeam
+        let latencyT = systemLatencyTime (Proxy :: Proxy SystemLatencyMs)
+            targetD  = Distance targetHeight
+            tolD     = Distance gatingTolerance
+            hystD    = Distance hysteresisMargin
+            proposedBeamState = evaluateGating targetD tolD hystD latencyT newKState currentBeam
 
         -- Safety: If current state is BeamHold, we MUST respect it.
         -- Otherwise, we transition to the proposed state.
@@ -102,24 +117,29 @@ processFrame stateVar frame = do
 
 -- | Evaluate Gating Decision with Hysteresis and Latency Compensation
 -- Pure function for testability.
-evaluateGating :: Double      -- ^ Target Height (mm)
-               -> Double      -- ^ Tolerance (mm)
-               -> Double      -- ^ Hysteresis Margin (mm)
-               -> Double      -- ^ System Latency (ns)
+evaluateGating :: Distance    -- ^ Target Height (Distance)
+               -> Distance    -- ^ Tolerance (Distance)
+               -> Distance    -- ^ Hysteresis Margin (Distance)
+               -> Time        -- ^ System Latency
                -> KalmanState -- ^ Current Filter State
                -> BeamState   -- ^ Previous Beam State
                -> BeamState   -- ^ New Beam State
-evaluateGating target tol hyst latencyNS kState oldBeam =
+evaluateGating target tol hyst latencyTime kState oldBeam =
     let -- Latency Compensation
         -- Predict position at (Now + Latency)
         -- x(t+dt) = x(t) + v(t)*dt + 0.5*a(t)*dt^2
-        latencySec = latencyNS / 1_000_000_000.0
         (V3 pos vel acc) = x kState
+        
+        posD = Distance pos
+        velV = Velocity vel
+        accA = Acceleration acc
 
         -- Check for NaN/Inf
         invalid = isNaN pos || isNaN vel || isInfinite pos || isInfinite vel
 
-        predPos = pos + (vel * latencySec) + (0.5 * acc * (latencySec * latencySec)) -- ⚡ Bolt Optimization: Replace ** with * for performance
+        term1 = velV |*| latencyTime
+        term2 = 0.5 |* (((accA |*| latencyTime) :: Velocity) |*| latencyTime)
+        predPos = posD + term1 + term2
 
         err = abs (predPos - target)
 

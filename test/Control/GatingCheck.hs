@@ -6,6 +6,7 @@ import Control.Monad () -- kept as suggested if instances needed, otherwise remo
 import SignalProcessing.Kalman (KalmanState(..), V3(..), M33(..))
 import Data.Types (BeamState(..))
 import qualified Control.Gating as Gating
+import Numeric.Kinematics
 
 -- | Mock implementation or imports if Gating isn't ready
 -- Since Control.Gating is not yet updated, we might need to rely on the plan to update it.
@@ -42,10 +43,10 @@ mkState pos vel = KalmanState
 -- Hysteresis: 0.5. OFF threshold: > 3.5 error.
 testHysteresis :: [String]
 testHysteresis =
-    let target = 10.0
-        tol = 3.0
-        hyst = 0.5
-        lat = 0.0 -- No latency for this test
+    let target = Distance 10.0
+        tol = Distance 3.0
+        hyst = Distance 0.5
+        lat = Time 0.0 -- No latency for this test
 
         -- Helper
         eval = Gating.evaluateGating target tol hyst lat
@@ -80,10 +81,10 @@ testHysteresis =
 -- 12.6 is inside [7, 13]. Should be ON.
 testLatencyCompensation :: [String]
 testLatencyCompensation =
-    let target = 10.0
-        tol = 3.0
-        hyst = 0.0
-        lat = 50000000.0 -- 50ms in NS
+    let target = Distance 10.0
+        tol = Distance 3.0
+        hyst = Distance 0.0
+        lat = Time 0.05 -- 50ms in S
 
         eval = Gating.evaluateGating target tol hyst lat
 
@@ -103,7 +104,7 @@ testLatencyCompensation =
 
 testSafety :: [String]
 testSafety =
-    let eval = Gating.evaluateGating 10.0 3.0 0.5 0.05
+    let eval = Gating.evaluateGating (Distance 10.0) (Distance 3.0) (Distance 0.5) (Time 0.05)
         nanState = mkState (0/0) 0
         infState = mkState (1/0) 0
     in catMaybes
