@@ -30,16 +30,6 @@ import Safety.Watchdog (watchdogLoop, runSafetyDaemon)
 import Safety.Audit
 import Data.Time.HighRes (getMonotonicTimeNS)
 
-#ifdef ENABLE_UI
-import Control.UI.Window (initWindow)
-import Control.UI.Renderer (renderLoop)
-import Control.UI.Input (handleInput)
-#endif
-
-#ifdef ENABLE_WEB_UI
-import Control.WebUI (runWebUI)
-#endif
-
 main :: IO ()
 main = do
     args <- getArgs
@@ -147,15 +137,8 @@ runMain = do
 
     putStrLn "System Armed. SafetyCore is running."
     
-#ifdef ENABLE_UI
-    putStrLn "Starting OpenGL UI on Main Thread..."
-    initWindow
-    handleInput systemState
-    renderLoop systemState
-#else
     -- Keep Main Alive
     forever $ threadDelay 1000000
-#endif
 
 -- | IPC Sender Loop using a POSIX FIFO with O_NONBLOCK
 ipcSenderLoop :: TVar SystemState -> IO ()
@@ -163,7 +146,7 @@ ipcSenderLoop stateVar = do
     let pipePath = "/tmp/sgrt_telemetry.fifo"
     _ <- try (createNamedPipe pipePath (unionFileModes ownerReadMode ownerWriteMode)) :: IO (Either IOException ())
     
-    let flags = defaultFileFlags { nonBlock = False }
+    let flags = defaultFileFlags { nonBlock = True }
 #if MIN_VERSION_unix(2,8,0)
     let flags' = flags { creat = Nothing }
 #endif
