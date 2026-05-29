@@ -17,6 +17,9 @@ jobs:
       - name: Verify Planning Documents (IEC 62304)
         run: scripts/verify_planning.sh
 
+      - name: Run Promotion Validator
+        run: scripts/promotion_validator.sh
+
       - name: Install system dependencies
         run: scripts/setup_env.sh
 
