@@ -1,10 +1,4 @@
 {-# LANGUAGE CPP #-}
--- |
--- Module      : Hardware.Control
--- Description : Hardware Control Layer
---
--- Provides utilities for configuring the radar sensor, serial port management,
--- and setting beam control GPIO states.
 module Hardware.Control (
     configureSensor,
     configureSensorWithRetry,
@@ -13,7 +7,10 @@ module Hardware.Control (
     setBeam,
     setBeamChannel,
     GpioChannel(..),
-    configureConfigSerial
+    configureConfigSerial,
+    initGpio,
+    setupWatchdog,
+    readBeamChannel
 ) where
 
 import Control.Monad (forM_)
@@ -36,23 +33,38 @@ import System.FilePath (isAbsolute, splitDirectories)
 
 import Hardware.Types (HardwareError(..))
 
--- | External C function to configure serial port (supports 921600 baud)
 foreign import ccall safe "configure_serial_port"
     c_configure_serial_port :: CInt -> CInt -> IO CInt
 
--- | Parses the configuration file content into a list of commands.
--- Ignores comments (starting with #) and empty lines.
---
--- >>> parseConfig "# Comment\ncmd 1\n  cmd 2  # comment\n\n"
--- ["cmd 1", "cmd 2"]
+foreign import ccall safe "gpio_init" c_gpio_init :: IO CInt
+foreign import ccall safe "gpio_write" c_gpio_write :: CInt -> CInt -> IO CInt
+foreign import ccall safe "gpio_read" c_gpio_read :: CInt -> IO CInt
+foreign import ccall safe "gpio_setup_watchdog" c_gpio_setup_watchdog :: CInt -> IO CInt
+
+initGpio :: IO ()
+initGpio = do
+    _ <- c_gpio_init
+    return ()
+
+setupWatchdog :: IO ()
+setupWatchdog = do
+    _ <- c_gpio_setup_watchdog 27
+    return ()
+
+readBeamChannel :: GpioChannel -> IO Bool
+readBeamChannel channel = do
+    let pinNum = case channel of
+            LogicChannel -> 17
+            WatchdogChannel -> 27
+    val <- c_gpio_read pinNum
+    return (val /= 0)
+
 parseConfig :: String -> [String]
 parseConfig = filter (not . null) . map clean . lines
   where
     clean = trim . takeWhile (/= '#')
     trim = dropWhileEnd isSpace . dropWhile isSpace
 
--- | Attempts to configure the sensor with automatic retries on failure.
--- Retries 'attempts' times with a 100ms delay between attempts.
 configureSensorWithRetry :: Int -> FilePath -> FilePath -> IO (Either HardwareError ())
 configureSensorWithRetry attempts configPath portPath = go attempts
   where
@@ -63,39 +75,25 @@ configureSensorWithRetry attempts configPath portPath = go attempts
           case res of
             Right () -> return $ Right ()
             Left _ -> do
-                putStrLn $ "[Control] Retrying configuration (" ++ show (attempts - n + 1) ++ "/" ++ show attempts ++ ")..."
-                threadDelay 100000 -- 100ms wait
+                threadDelay 100000
                 go (n - 1)
 
--- | Helper to prevent path traversal
 isPathSafe :: FilePath -> Bool
 isPathSafe path = not (isAbsolute path) && ".." `notElem` splitDirectories path
 
--- | Configures the sensor by sending commands from the given config file.
--- Returns typed 'HardwareError' on failure.
--- SENTINEL SAFETY EDIT: Uses bounded strict IO to prevent DoS via massive config files.
--- SENTINEL SAFETY EDIT: Added path traversal protection for config file.
 configureSensor :: FilePath -> FilePath -> IO (Either HardwareError ())
 configureSensor configPath portPath = do
     if not (isPathSafe configPath)
         then return $ Left $ ConfigurationFailed "Unsafe configuration path detected"
         else do
-            putStrLn $ "[Control] Configuring sensor on " ++ portPath ++ " with config " ++ configPath
-
-            -- Read config file (Bounded, Strict)
-            -- Limit to 100KB to prevent OOM/DoS
             let maxConfigSize = 100 * 1024
-
             fileContentResult <- try $ withFile configPath ReadMode $ \h -> do
                 bs <- B.hGet h maxConfigSize
                 return (BC.unpack bs)
-
             case fileContentResult of
                 Left ex -> return $ Left $ ConfigurationFailed $ "Failed to read config file: " ++ show (ex :: IOException)
                 Right content -> do
                     let commands = parseConfig content
-
-                    -- Wrap the whole operation in try to catch IOExceptions (e.g. port not found)
                     result <- try $ bracket
 #if MIN_VERSION_unix(2,8,0)
                         (openFd portPath ReadWrite defaultFileFlags)
@@ -106,9 +104,9 @@ configureSensor configPath portPath = do
                         (\fd -> do
                             fStatus <- getFdStatus fd
                             if not (isCharacterDevice fStatus)
-                                then ioError (userError "Security Violation - Port is not a character device")
+                                then ioError (userError "Security Violation")
                                 else do
-                                    res <- configureConfigSerial fd -- Set 115200
+                                    res <- configureConfigSerial fd
                                     case res of
                                         Left (ConfigurationFailed err) -> ioError (userError err)
                                         Left err -> ioError (userError $ show err)
@@ -117,77 +115,44 @@ configureSensor configPath portPath = do
                                                 let packet = BC.pack (cmd ++ "\n")
                                                 bytesSent <- useAsCStringLen packet $ \(ptr, len) ->
                                                     fdWriteBuf fd (castPtr ptr) (fromIntegral len)
-
-                                                -- Check if all bytes were written
                                                 if fromIntegral bytesSent < BC.length packet
-                                                    then ioError (userError $ "Failed to send complete command: " ++ cmd)
-                                                    else threadDelay 100000 -- 100ms delay between commands
+                                                    then ioError (userError "Failed to send")
+                                                    else threadDelay 100000
                         )
-
                     case result of
-                        Left ex -> do
-                            let msg = "[Control] Configuration Failed: " ++ show (ex :: IOException)
-                            putStrLn msg
-                            return (Left $ ConfigurationFailed msg)
-                        Right _ -> do
-                            putStrLn "[Control] Configuration Complete."
-                            return (Right ())
+                        Left ex -> return (Left $ ConfigurationFailed $ show (ex :: IOException))
+                        Right _ -> return (Right ())
 
--- | Configures a file descriptor for Configuration Serial communication (115200 baud).
---
--- Complexity: O(1) runtime.
--- Safety: Catches and safely wraps IOExceptions within a 'HardwareError'. Does not throw runtime errors.
 configureConfigSerial :: Fd -> IO (Either HardwareError ())
 configureConfigSerial fd = do
     result <- try $ do
         attrs <- getTerminalAttributes fd
-        let cfgAttrs = attrs
-                `withInputSpeed` B115200 -- Standard speed
-                `withOutputSpeed` B115200
+        let cfgAttrs = attrs `withInputSpeed` B115200 `withOutputSpeed` B115200
         setTerminalAttributes fd cfgAttrs Immediately
         return ()
-
     case result of
-        Left ex -> return $ Left $ ConfigurationFailed $ "Failed to configure config serial: " ++ show (ex :: IOException)
+        Left ex -> return $ Left $ ConfigurationFailed $ show (ex :: IOException)
         Right () -> return $ Right ()
 
--- | Configures a file descriptor for Raw Serial communication (Data Port).
--- Disables Canonical Mode (ICANON), Echo, Signals, and sets Baud Rate.
--- This is critical for receiving binary data from the radar.
---
--- Note: Uses FFI to 'serial_config.cpp' to support high baud rates (921600).
--- Returns 'Left ConfigurationFailed' if the C FFI call fails.
 configureRawSerial :: Fd -> IO (Either HardwareError ())
 configureRawSerial (Fd fd) = do
-    -- We use the configured baud rate from Data.Config (921600)
     let baud = fromIntegral uartBaudRate :: CInt
     res <- c_configure_serial_port fd baud
-
     if res /= 0
-        then return $ Left $ ConfigurationFailed ("Failed to configure serial port (C FFI returned " ++ show res ++ ")")
-        else do
-            putStrLn $ "[Control] Data Port Configured (Raw Mode, " ++ show uartBaudRate ++ " baud)"
-            return $ Right ()
+        then return $ Left $ ConfigurationFailed "Failed"
+        else return $ Right ()
 
--- | Control the beam status (Simulated via GPIO).
--- True = Beam ON
--- False = Beam OFF
 setBeam :: Bool -> IO ()
 setBeam state = do
     setBeamChannel LogicChannel state
 
--- | Identifies which physical channel we are actuating
 data GpioChannel = LogicChannel | WatchdogChannel
   deriving (Show, Eq)
 
--- | Sets the state of a specific GPIO channel for the physical AND-gate logic
 setBeamChannel :: GpioChannel -> Bool -> IO ()
 setBeamChannel channel state = do
-    -- Simulated physical actuation for Class C compliance.
-    -- In a real environment we would actuate physical GPIO lines (e.g. via sysfs or libgpiod).
-    let chStr = case channel of
-            LogicChannel -> "LOGIC"
-            WatchdogChannel -> "WATCHDOG"
-    putStrLn $ "[Hardware] " ++ chStr ++ " Channel Set To: " ++ if state then "ON" else "OFF"
-    
--- Requirement FR-DAQ-002
+    let pinNum = case channel of
+            LogicChannel -> 17
+            WatchdogChannel -> 27
+    _ <- c_gpio_write pinNum (if state then 1 else 0)
+    return ()
