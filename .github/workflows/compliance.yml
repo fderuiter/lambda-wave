@@ -14,6 +14,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Verify Planning Documents (IEC 62304)
+        run: scripts/verify_planning.sh
+
       - name: Install system dependencies
         run: scripts/setup_env.sh
 
