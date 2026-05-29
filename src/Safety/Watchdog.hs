@@ -1,10 +1,10 @@
 module Safety.Watchdog (watchdogLoop, runSafetyDaemon) where
 
 import Data.Types
-import Data.Config (watchdogTimeoutNS)
 import Control.Concurrent.STM
-import Control.Concurrent (threadDelay, forkIO)
+import Control.Concurrent (threadDelay)
 import System.IO (hFlush, stdout)
+import Data.Word (Word64)
 import Data.Time.HighRes (getMonotonicTimeNS)
 import Control.Monad (forever, when, unless, forM_)
 import System.Exit (ExitCode(..))
@@ -15,11 +15,12 @@ import qualified Data.Map.Strict as Map
 import Network.Socket
 import Network.Socket.ByteString (sendTo, recvFrom)
 import qualified Data.ByteString.Char8 as BC
-import Control.Exception (try, IOException, catch)
+import Control.Exception (try, IOException)
 import System.Timeout (timeout)
 import System.Posix.Files (removeLink)
 
 import Hardware.Control (setBeamChannel, GpioChannel(..))
+import Numeric.Kinematics
 
 udsPath :: String
 udsPath = "/tmp/sgrt_heartbeat.sock"
@@ -31,13 +32,15 @@ watchdogLoop :: TVar SystemState -> IO ()
 watchdogLoop stateVar = do
     sock <- socket AF_UNIX Datagram 0
     let addr = SockAddrUnix udsPath
+    let Time timeoutSec = watchdogTimeoutTime (Proxy :: Proxy WatchdogTimeoutMs)
+        timeoutNS = round (timeoutSec * 1_000_000_000) :: Word64
     forever $ do
         now <- getMonotonicTimeNS
         state <- readTVarIO stateVar
         let heartbeats = threadHeartbeats state
 
         -- Check all monitored threads
-        let isHealthy = all (\(_, lastTime) -> (now - lastTime) <= fromIntegral watchdogTimeoutNS) (Map.toList heartbeats)
+        let isHealthy = all (\(_, lastTime) -> (now - lastTime) <= timeoutNS) (Map.toList heartbeats)
 
         if isHealthy && not (Map.null heartbeats)
             then do
@@ -48,7 +51,7 @@ watchdogLoop stateVar = do
                 -- Find frozen threads for logging
                 forM_ (Map.toList heartbeats) $ \(threadName, lastTime) -> do
                     let diff = now - lastTime
-                    when (diff > fromIntegral watchdogTimeoutNS) $ do
+                    when (diff > timeoutNS) $ do
                         let msg = "Thread '" ++ threadName ++ "' FROZEN (Age: " ++ show diff ++ "ns)."
                         atomically $ do
                             let q = auditQueue state
@@ -77,8 +80,9 @@ runSafetyDaemon parentPid = do
     -- Loop waiting for heartbeats
     let loop = do
             -- Receive with timeout
-            -- watchdogTimeoutNS is in nanoseconds. timeout takes microseconds.
-            let timeoutUS = fromIntegral (watchdogTimeoutNS `div` 1000)
+            -- timeout takes microseconds.
+            let Time timeoutSec = watchdogTimeoutTime (Proxy :: Proxy WatchdogTimeoutMs)
+                timeoutUS = round (timeoutSec * 1_000_000) :: Int
             res <- try (timeout timeoutUS $ recvFrom sock 16) :: IO (Either IOException (Maybe (BC.ByteString, SockAddr)))
             
             case res of
