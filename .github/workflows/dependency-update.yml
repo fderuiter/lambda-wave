@@ -18,6 +18,8 @@ jobs:
 
       - name: Perform Time-Indexed Dependency Update
         run: |
+          # Update index-state to current time in cabal.project
+          sed -i 's/^index-state:.*/index-state: '"$(date -u +%Y-%m-%dT%H:%M:%SZ)"'/' cabal.project
           cabal update
           cabal freeze
           
