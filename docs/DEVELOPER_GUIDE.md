@@ -442,6 +442,8 @@ cat sgrt-radar-system-exe.prof
 
 ## ⚠️ Safety-Critical Code
 
+**Note:** Please refer to our [Security Policy](../SECURITY.md) for vulnerability reporting and triage for safety-critical flaws.
+
 ### Identification
 
 Files marked with **⚠️ SAFETY-CRITICAL** require special attention:

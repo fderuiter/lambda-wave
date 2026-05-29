@@ -333,7 +333,7 @@ docker run -it \
 
 ### Updating the Base Image
 
-To update the base image (e.g., for security patches), follow this procedure (SOUP Management):
+To update the base image (e.g., for security patches), follow this procedure (SOUP Management, see [Security Policy](../SECURITY.md)):
 
 1.  Pull the new image tag locally to verify it:
     ```bash

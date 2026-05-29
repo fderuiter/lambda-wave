@@ -2,6 +2,8 @@
 
 **Software of Unknown Provenance (SOUP) Evaluation for IEC 62304**
 
+**Note:** For vulnerabilities in SOUP, please refer to our [Security Policy](../../SECURITY.md).
+
 **SOUP Item:** Glasgow Haskell Compiler Runtime System (GHC RTS)
 **Version:** 9.6.7
 **Purpose:** Provides memory management (Garbage Collection), thread scheduling, and runtime services for the Lambda-Wave application.

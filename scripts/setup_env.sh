@@ -77,7 +77,16 @@ main() {
                     pkg-config \
                     clang-format \
                     curl \
+                    wget \
+                    apt-transport-https \
+                    gnupg \
+                    lsb-release \
                     git
+
+                wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | $sudo_cmd apt-key add -
+                echo deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main | $sudo_cmd tee -a /etc/apt/sources.list.d/trivy.list
+                $sudo_cmd apt-get update
+                $sudo_cmd apt-get install -y trivy
 
                 # Clean up apt cache to keep images small (only if running as root/docker context usually, but good practice)
                 if [ -n "${DOCKER_CONTAINER:-}" ] || [ -f /.dockerenv ]; then

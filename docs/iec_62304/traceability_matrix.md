@@ -1,5 +1,7 @@
 # IEC 62304 Traceability Matrix
 
+**Note:** For reporting security vulnerabilities, refer to our [Security Policy](../../SECURITY.md).
+
 This document provides end-to-end traceability between Functional Requirements (FR), Safety Requirements (SR), Design Elements (Modules), and Verification (Tests) as required by IEC 62304 for Class C medical software.
 
 ## Functional Requirements (FR)

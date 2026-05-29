@@ -143,6 +143,58 @@ def parse_matrix():
                         }
     return reqs
 
+def check_security_posture():
+    errors = []
+    # 1. Check if Trivy is installed
+    if subprocess.call(["which", "trivy"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL) != 0:
+        errors.append("Trivy is not installed. Security posture checks cannot be performed.")
+        return errors
+        
+    # 2. Extract Docker image from Dockerfile
+    docker_image = None
+    if os.path.exists("Dockerfile"):
+        with open("Dockerfile", "r") as f:
+            for line in f:
+                if line.startswith("FROM "):
+                    docker_image = line.split()[1].strip()
+                    break
+                    
+    if docker_image:
+        print(f"Scanning pinned SOUP image: {docker_image} with Trivy...")
+        # We run trivy image with --exit-code 1 for HIGH,CRITICAL severities
+        # and --scanners vuln
+        cmd = ["trivy", "image", "--no-progress", "--severity", "HIGH,CRITICAL", "--exit-code", "1", docker_image]
+        try:
+            result = subprocess.run(cmd, capture_output=True, text=True)
+            if result.returncode != 0:
+                output_str = result.stdout
+                if len(output_str) > 2000:
+                    output_str = output_str[:2000] + "\n...[TRUNCATED]..."
+                errors.append(f"Trivy found HIGH/CRITICAL vulnerabilities in SOUP image {docker_image}:\n{output_str}")
+            else:
+                print("Image scan passed.")
+        except Exception as e:
+            errors.append(f"Failed to run Trivy on image {docker_image}: {str(e)}")
+    else:
+        errors.append("No pinned Docker image found in Dockerfile for SOUP scanning.")
+        
+    # 3. Scan the project filesystem (cabal packages)
+    print("Scanning project dependencies with Trivy...")
+    try:
+        cmd = ["trivy", "fs", "--no-progress", "--severity", "HIGH,CRITICAL", "--exit-code", "1", "."]
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        if result.returncode != 0:
+            output_str = result.stdout
+            if len(output_str) > 2000:
+                output_str = output_str[:2000] + "\n...[TRUNCATED]..."
+            errors.append(f"Trivy found HIGH/CRITICAL vulnerabilities in project dependencies:\n{output_str}")
+        else:
+            print("Filesystem scan passed.")
+    except Exception as e:
+        errors.append(f"Failed to run Trivy on filesystem: {str(e)}")
+        
+    return errors
+
 def main():
     test_log_path = None
     bench_log_path = None
@@ -193,6 +245,12 @@ def main():
         if dep not in freeze_deps:
             mismatch = True
             mismatch_msg += f"Dependency {dep} in SOUP documentation is missing from freeze file. "
+
+    security_errors = check_security_posture()
+    if security_errors:
+        mismatch = True
+        for err in security_errors:
+            mismatch_msg += f"{err} "
     
     # Requirement parsing
     src_files = get_files(["src", "app", "cbits"], [".hs", ".cpp", ".c", ".h"])

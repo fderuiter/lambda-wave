@@ -331,6 +331,8 @@ Lambda-Wave implements the validated algorithms from:
 
 ## Safety & Compliance
 
+**Note:** Please refer to our [Security Policy](../SECURITY.md) for details on vulnerability reporting and triage for safety-critical flaws.
+
 ### IEC 62304: Medical Device Software Lifecycle
 
 **Classification:** Class C (highest level of rigor)
