@@ -88,6 +88,20 @@ def sync_soup_dependencies(freeze_deps):
         f.write(new_content)
 
 
+def get_safety_critical_modules():
+    dev_guide = "docs/DEVELOPER_GUIDE.md"
+    modules = set()
+    if os.path.exists(dev_guide):
+        with open(dev_guide, "r", encoding="utf-8") as f:
+            content = f.read()
+            m = re.search(r'Files marked with \*\*⚠️ SAFETY-CRITICAL\*\* require special attention:(.*?)(?=\n\n|\n###)', content, re.DOTALL)
+            if m:
+                for line in m.group(1).split('\n'):
+                    if line.startswith('- `'):
+                        path = line.strip().strip('- `')
+                        modules.add(path)
+    return modules
+
 def get_files(dirs, exts):
     files = []
     for d in dirs:
@@ -182,13 +196,45 @@ def main():
     
     # Requirement parsing
     src_files = get_files(["src", "app", "cbits"], [".hs", ".cpp", ".c", ".h"])
-    test_files = get_files(["test", "bench"], [".hs", ".cpp", ".c", ".h"])
+    test_files = get_files(["test", "bench", "tools", "data-generation", "hardware-simulation", "qa", "system-maintenance", "scripts"], [".hs", ".cpp", ".c", ".h", ".py", ".sh"])
     
     code_tags = find_tags(src_files)
     test_tags = find_tags(test_files)
     
     matrix = parse_matrix()
     all_code_reqs = set(code_tags.keys()) | set(test_tags.keys())
+    
+    # Check for orphan tags (tags without a matching requirement in matrix)
+    orphan_tags = all_code_reqs - set(matrix.keys())
+    if orphan_tags:
+        for t in orphan_tags:
+            print(f"PIPELINE WARNING: Orphan tag detected ({t}) not found in traceability matrix.")
+
+    # Guardrail: Check safety-critical modules for tags
+    safety_modules = get_safety_critical_modules()
+    file_to_tags = {}
+    for req, locs in code_tags.items():
+        for loc in locs:
+            filepath = loc.split(':')[0]
+            file_to_tags.setdefault(filepath, set()).add(req)
+    for req, locs in test_tags.items():
+        for loc in locs:
+            filepath = loc.split(':')[0]
+            file_to_tags.setdefault(filepath, set()).add(req)
+            
+    safety_missing = []
+    for mod in safety_modules:
+        if mod not in file_to_tags or len(file_to_tags[mod]) == 0:
+            safety_missing.append(mod)
+            
+    if safety_missing:
+        for mod in safety_missing:
+            mismatch_msg += f"Safety-critical module {mod} lacks regulatory tags. See docs/DEVELOPER_GUIDE.md. "
+        mismatch = True
+
+    # Check for files mentioned in safety docs but excluded from scanning
+    all_scanned_files = set(src_files) | set(test_files)
+    unscanned_safety_docs = [mod for mod in safety_modules if mod not in all_scanned_files]
     
     # Gaps
     compliance_gaps = []
@@ -247,9 +293,13 @@ def main():
         report += f"| {req} | {c_tags} | {t_tags} | {evidence} |\n"
     
     report += "\n## 3. Compliance Gaps\n"
-    if compliance_gaps:
-        for gap in compliance_gaps:
-            report += f"- **{gap}**: Tagged in source code but lacking a corresponding test case.\n"
+    if compliance_gaps or unscanned_safety_docs:
+        if compliance_gaps:
+            for gap in compliance_gaps:
+                report += f"- **{gap}**: Tagged in source code but lacking a corresponding test case.\n"
+        if unscanned_safety_docs:
+            for f in unscanned_safety_docs:
+                report += f"- **File {f}**: Mentioned in safety documentation but excluded from scanning.\n"
     else:
         report += "No compliance gaps found. All source requirements have corresponding tests.\n"
         
