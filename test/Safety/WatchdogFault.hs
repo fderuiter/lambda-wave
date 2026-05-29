@@ -31,7 +31,7 @@ runMain = do
     q <- newTBQueueIO 100
     -- Initialize with "TestThread" heartbeat = now
     let heartbeats = Map.fromList [("TestThread", now)]
-    let initialState = SystemState [] BeamOff now (Point3D 0 0 0 0 0) heartbeats kState q False
+    let initialState = SystemState [] BeamOff now 0 (Point3D 0 0 0 0 0) heartbeats kState q False
     stateVar <- newTVarIO initialState
 
     -- 2. Spawn Safety Daemon

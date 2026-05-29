@@ -70,6 +70,7 @@ runMain = do
           { currentPoints = []
           , beamState = BeamOff
           , lastFrameTime = startTime
+          , sequenceNumber = 0
           , isocenter = Point3D 0 0 0 0 0
           , threadHeartbeats = Map.empty
           , kalmanState = initialKState
@@ -145,8 +146,16 @@ runMain = do
     _ <- forkIO $ ipcSenderLoop systemState
 
     putStrLn "System Armed. SafetyCore is running."
+    
+#ifdef ENABLE_UI
+    putStrLn "Starting OpenGL UI on Main Thread..."
+    initWindow
+    handleInput systemState
+    renderLoop systemState
+#else
     -- Keep Main Alive
     forever $ threadDelay 1000000
+#endif
 
 -- | IPC Sender Loop using a POSIX FIFO with O_NONBLOCK
 ipcSenderLoop :: TVar SystemState -> IO ()
@@ -180,6 +189,7 @@ streamData fd stateVar = do
                   { tpPoints = currentPoints state
                   , tpBeamState = beamState state
                   , tpLastFrameTime = lastFrameTime state
+                  , tpSequenceNumber = sequenceNumber state
                   , tpIsocenter = isocenter state
                   , tpThreadHeartbeats = threadHeartbeats state
                   , tpKalmanState = kalmanState state

@@ -27,9 +27,11 @@ kConfig = KalmanConfig
     }
 
 -- | The main logic function called every frame
-processFrame :: TVar SystemState -> [Point3D] -> IO ()
-processFrame stateVar pts = do
+processFrame :: TVar SystemState -> RadarFrame -> IO ()
+processFrame stateVar frame = do
     currTime <- getMonotonicTimeNS
+
+    let pts = points frame
 
     -- 1. Read Previous State
     oldSystemState <- readTVarIO stateVar
@@ -82,6 +84,7 @@ processFrame stateVar pts = do
             { currentPoints = pts
             , beamState = resolvedBeamState
             , lastFrameTime = currTime
+            , sequenceNumber = seqNum frame
             , threadHeartbeats = Map.insert "Gating" currTime (threadHeartbeats s)
             , kalmanState = newKState
             }

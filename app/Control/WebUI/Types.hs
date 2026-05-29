@@ -36,6 +36,7 @@ instance ToJSON SystemState where
         , "pointCloud" .= currentPoints
         , "respiratoryTrace" .= kalmanState
         , "timestamp" .= lastFrameTime
+        , "sequenceNumber" .= sequenceNumber
         , "heartbeats" .= threadHeartbeats
         , "audioAlertEnabled" .= audioAlertEnabled
         ]

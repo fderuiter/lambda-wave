@@ -151,7 +151,7 @@ consumerLoop controlFp stateVar = withForeignPtr controlFp $ \controlPtr -> do
                     -- We process each frame individually to maintain correct time-steps for the filter.
                     unless (null frames) $ do
                         forM_ frames $ \frame ->
-                            processFrame stateVar (points frame)
+                            processFrame stateVar frame
 
                     -- 7. Update Read Offset
                     -- In a real ring buffer, we advance readOff by how much we processed.
@@ -279,7 +279,7 @@ getRadarFrame = do
     _version <- G.getWord32le
     totalLen <- G.getWord32le
     _platform <- G.getWord32le
-    _frameNum <- G.getWord32le
+    frameNum <- G.getWord32le
     _cpuCycles <- G.getWord32le
     numTLVs <- G.getWord32le
     _subFrameNum <- G.getWord32le
@@ -305,7 +305,7 @@ getRadarFrame = do
     -- Holding a ByteString pointing to the Ring Buffer (ForeignPtr) while
     -- advancing read_offset allows the producer to overwrite the memory,
     -- leading to race conditions if we read that ByteString later.
-    return $ RadarFrame B.empty points -- Storing empty raw header for now to save space
+    return $ RadarFrame B.empty frameNum points -- Storing empty raw header for now to save space
 
 -- | Parse TLVs (Tail Recursive)
 parseTLVs :: Int -> G.Get [Point3D]
