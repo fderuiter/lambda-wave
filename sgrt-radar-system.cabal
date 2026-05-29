@@ -214,6 +214,21 @@ test-suite audit-check
     , base
     , unix
 
+test-suite clinical-hil-validation
+  import: common-options
+  type: exitcode-stdio-1.0
+  main-is: ClinicalHILValidation.hs
+  other-modules:
+      Paths_sgrt_radar_system
+  hs-source-dirs:
+      test
+  ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
+  build-depends:
+      sgrt-radar-system
+    , base
+    , stm
+    , containers
+    
 test-suite gating-check
   import: common-options
   type: exitcode-stdio-1.0
