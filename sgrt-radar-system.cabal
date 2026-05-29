@@ -19,7 +19,11 @@ common common-options
       StrictData
       NumericUnderscores
       CPP
-  ghc-options: -Wall -Werror -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
+  if flag(sandbox)
+    ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
+    cpp-options: -DSANDBOX
+  else
+    ghc-options: -Wall -Werror -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
   build-depends:
       base ==4.17.2.1
     , stm ==2.5.1.0
@@ -39,6 +43,11 @@ flag enable-ui
 
 flag enable-web-ui
   description: Enable Web UI
+  manual: True
+  default: False
+
+flag sandbox
+  description: Enable Sandbox mode with relaxed compiler rules
   manual: True
   default: False
 
