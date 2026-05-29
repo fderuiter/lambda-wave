@@ -23,7 +23,7 @@ Lambda-Wave (formerly SGRT Radar System) is a safety-critical Surface Guided Rad
 
 ### ✅ Phase 1: Infrastructure & High-Assurance Setup (COMPLETE)
 
-#### 1.1 Toolchain & RTS Locking ✅
+#### MS-1.1 Toolchain & RTS Locking ✅
 - **Status:** COMPLETE
 - **Requirements:** SR-SOUP-001
 - **Implementation:** 
@@ -32,7 +32,7 @@ Lambda-Wave (formerly SGRT Radar System) is a safety-critical Surface Guided Rad
   - RTS flags: `-N2 -qa -l` for affinity and event logging
 - **Validation:** Runtime behavior verified with GHC RTS
 
-#### 1.2 CI/CD Strictness ⏳
+#### MS-1.2 CI/CD Strictness ⏳
 - **Status:** PARTIAL - Warnings enabled, -Werror not yet enforced
 - **Requirements:** IEC 62304 (Code Standards)
 - **Implementation:**
@@ -41,7 +41,7 @@ Lambda-Wave (formerly SGRT Radar System) is a safety-critical Surface Guided Rad
   - Compiler warnings enabled via `ghc-options: -Wall`
 - **Pending:** Add `-Werror` flag to enforce zero warnings
 
-#### 1.3 Docker Determinism ⏳
+#### MS-1.3 Docker Determinism ⏳
 - **Status:** PARTIAL - Docker build works, but not pinned to digest
 - **Requirements:** Reproducible builds
 - **Implementation:** 
@@ -53,7 +53,7 @@ Lambda-Wave (formerly SGRT Radar System) is a safety-critical Surface Guided Rad
 
 ### ✅ Phase 2: Hardware Abstraction Layer (COMPLETE)
 
-#### 2.1 C++ Ring Buffer Completion ✅
+#### MS-2.1 C++ Ring Buffer Completion ✅
 - **Status:** COMPLETE
 - **Requirements:** FR-DAQ-001, FR-DAQ-004
 - **Implementation:**
@@ -64,7 +64,7 @@ Lambda-Wave (formerly SGRT Radar System) is a safety-critical Surface Guided Rad
   - Unit tests in `test/FFI/RingBuffer/IOSpec.hs`
   - Memory safety verified (no leaks in C++ layer)
 
-#### 2.2 Ring-Buffer TLV Stream Parser ✅
+#### MS-2.2 Ring-Buffer TLV Stream Parser ✅
 - **Status:** COMPLETE
 - **Requirements:** FR-DAQ-003
 - **Implementation:**
@@ -75,7 +75,7 @@ Lambda-Wave (formerly SGRT Radar System) is a safety-critical Surface Guided Rad
   - Fuzz testing in `test/Hardware/ConsumerSpec.hs`
   - System logs "Corrupt TLV Frame" without crashing
 
-#### 2.3 Sensor Configuration ✅
+#### MS-2.3 Sensor Configuration ✅
 - **Status:** COMPLETE
 - **Requirements:** FR-DAQ-002
 - **Implementation:**
@@ -90,7 +90,7 @@ Lambda-Wave (formerly SGRT Radar System) is a safety-critical Surface Guided Rad
 
 ### ✅ Phase 3: Signal Processing Core (IN PROGRESS)
 
-#### 3.1 Background Subtraction ✅
+#### MS-3.1 Background Subtraction ✅
 - **Status:** COMPLETE
 - **Requirements:** FR-DSP-001
 - **Implementation:**
@@ -99,7 +99,7 @@ Lambda-Wave (formerly SGRT Radar System) is a safety-critical Surface Guided Rad
 - **Validation:**
   - Scenario testing with static objects shows ~0 amplitude
 
-#### 3.2 Phase Extraction & Unwrapping ✅
+#### MS-3.2 Phase Extraction & Unwrapping ✅
 - **Status:** COMPLETE (Most Recent Implementation)
 - **Requirements:** FR-DSP-002, FR-DSP-004
 - **Implementation:**
@@ -110,7 +110,7 @@ Lambda-Wave (formerly SGRT Radar System) is a safety-critical Surface Guided Rad
   - Math tests with synthetic sine waves
   - Property-based tests in `test/SignalProcessing/FMCWSpec.hs`
 
-#### 3.3 Kalman Filter Integration ⏳
+#### MS-3.3 Kalman Filter Integration ⏳
 - **Status:** PENDING
 - **Requirements:** FR-DSP-003
 - **Implementation:** Planned for `src/SignalProcessing/Regression.hs`
@@ -120,7 +120,7 @@ Lambda-Wave (formerly SGRT Radar System) is a safety-critical Surface Guided Rad
 
 ### 🔴 Phase 4: Safety & Control (PENDING)
 
-#### 4.1 Watchdog Thread ⏳
+#### MS-4.1 Watchdog Thread ⏳
 - **Status:** PARTIAL - Structure exists, needs full implementation
 - **Requirements:** SR-WD-001, SR-WD-002
 - **Implementation:**
@@ -131,7 +131,7 @@ Lambda-Wave (formerly SGRT Radar System) is a safety-critical Surface Guided Rad
   - 100ms timeout enforcement
   - Application kill on timeout
 
-#### 4.2 Gating Logic & Latency ⏳
+#### MS-4.2 Gating Logic & Latency ⏳
 - **Status:** PARTIAL - Structure exists
 - **Requirements:** FR-GAT-001, FR-GAT-002
 - **Implementation:**
@@ -141,7 +141,7 @@ Lambda-Wave (formerly SGRT Radar System) is a safety-critical Surface Guided Rad
   - Latency benchmarking in `bench/LatencyBench.hs`
   - Target: Mean < threshold, 99th percentile compliance
 
-#### 4.3 Audit Logging ⏳
+#### MS-4.3 Audit Logging ⏳
 - **Status:** PARTIAL - Structure exists
 - **Requirements:** SR-AUDIT-001
 - **Implementation:**
@@ -155,7 +155,7 @@ Lambda-Wave (formerly SGRT Radar System) is a safety-critical Surface Guided Rad
 
 ### 🔴 Phase 5: User Interface & Visualization (PENDING)
 
-#### 5.1 Real-Time Plotting ⏳
+#### MS-5.1 Real-Time Plotting ⏳
 - **Status:** PARTIAL - Structure exists
 - **Requirements:** FR-UI-001
 - **Implementation:**
@@ -166,7 +166,7 @@ Lambda-Wave (formerly SGRT Radar System) is a safety-critical Surface Guided Rad
   - Connect renderer to live data stream
   - Verify > 30Hz update rate
 
-#### 5.2 Visual Alerts ⏳
+#### MS-5.2 Visual Alerts ⏳
 - **Status:** PENDING
 - **Requirements:** FR-UI-002
 - **Implementation:** Planned Green/Red background states
@@ -176,13 +176,13 @@ Lambda-Wave (formerly SGRT Radar System) is a safety-critical Surface Guided Rad
 
 ### 🔴 Phase 6: System Validation (PENDING)
 
-#### 6.1 Phantom Study ⏳
+#### MS-6.1 Phantom Study ⏳
 - **Status:** NOT STARTED
 - **Requirements:** PR-ACC-01
 - **Target:** QUASAR/CIRS motion phantom validation
 - **Acceptance:** Correlation coefficient > target threshold
 
-#### 6.2 Latency Verification ⏳
+#### MS-6.2 Latency Verification ⏳
 - **Status:** NOT STARTED
 - **Requirements:** FR-GAT-002
 - **Target:** Oscilloscope measurement of TTL output delay
