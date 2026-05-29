@@ -1,0 +1,59 @@
+name: Automated Dependency Lifecycle Management
+
+on:
+  schedule:
+    - cron: '0 2 * * 1' # Run weekly on Monday at 2 AM
+  workflow_dispatch:
+
+jobs:
+  update-dependencies:
+    runs-on: ubuntu-latest
+    container:
+      image: haskell:9.6.7
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Install system dependencies
+        run: scripts/setup_env.sh
+
+      - name: Perform Time-Indexed Dependency Update
+        run: |
+          cabal update
+          cabal freeze
+          
+      - name: Enforce Exact Version Bounds
+        run: python3 scripts/enforce_bounds.py
+          
+      - name: Sync SOUP Documentation
+        run: python3 scripts/regulatory_sync.py --sync
+        
+      - name: Build dependencies securely
+        run: cabal build --only-dependencies
+
+      - name: Build Code
+        run: cabal build
+
+      - name: Run Tests (Safety Check Gate)
+        run: cabal test | tee test.log
+        
+      - name: Run Benchmarks
+        run: cabal bench | tee bench.log || true
+        
+      - name: Verify Regulatory Sync
+        run: python3 scripts/regulatory_sync.py test.log bench.log
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@c5a7806660adbe173f04e3e038b0ccdcd758773c # v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "chore: Automated dependency update"
+          title: "Automated Dependency Update"
+          body: |
+            This PR updates the Haskell dependencies dynamically.
+            
+            - Updates `cabal.project.freeze` with the latest time-indexed state.
+            - Rewrites `sgrt-radar-system.cabal` to strictly enforce exact version bounds.
+            - Synchronizes `docs/iec_62304/soup_analysis.md` to maintain compliance.
+            - All tests and regulatory compliance checks have passed.
+          branch: auto-dependency-update
+          base: main

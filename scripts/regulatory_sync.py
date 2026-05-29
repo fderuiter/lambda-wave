@@ -28,19 +28,14 @@ def get_runtime_settings():
     return settings
 
 def get_library_versions():
-    # Use cabal plan or just parse the .cabal file for simplified dependency listing
-    # Or cabal freeze
     deps = {}
     try:
-        if os.path.exists("sgrt-radar-system.cabal"):
-            with open("sgrt-radar-system.cabal", "r") as f:
+        if os.path.exists("cabal.project.freeze"):
+            with open("cabal.project.freeze", "r") as f:
                 for line in f:
-                    if "build-depends:" in line or line.strip().startswith(","):
-                        parts = line.split(",")
-                        for p in parts:
-                            m = re.search(r'([a-zA-Z0-9\-]+)\s*(>=|==|>|<|<=)\s*([0-9\.]+)', p)
-                            if m:
-                                deps[m.group(1)] = m.group(3)
+                    m = re.search(r'any\.([a-zA-Z0-9\-]+)\s*==\s*([0-9\.]+)', line)
+                    if m:
+                        deps[m.group(1)] = m.group(2)
     except Exception:
         pass
     return deps
@@ -55,6 +50,43 @@ def parse_soup():
             if m:
                 version = m.group(1)
     return version
+
+def get_soup_dependencies():
+    soup_path = "docs/iec_62304/soup_analysis.md"
+    deps = {}
+    if os.path.exists(soup_path):
+        with open(soup_path, "r") as f:
+            content = f.read()
+            m = re.search(r'<!-- AUTOMATED-DEPENDENCIES-START -->(.*?)<!-- AUTOMATED-DEPENDENCIES-END -->', content, re.DOTALL)
+            if m:
+                lines = m.group(1).strip().split('\n')
+                for line in lines:
+                    if line.startswith("- "):
+                        parts = line[2:].split(" == ")
+                        if len(parts) == 2:
+                            deps[parts[0].strip()] = parts[1].strip()
+    return deps
+
+def sync_soup_dependencies(freeze_deps):
+    soup_path = "docs/iec_62304/soup_analysis.md"
+    if not os.path.exists(soup_path):
+        return
+    with open(soup_path, "r") as f:
+        content = f.read()
+    
+    deps_text = "\n"
+    for dep, ver in sorted(freeze_deps.items()):
+        deps_text += f"- {dep} == {ver}\n"
+    
+    new_content = re.sub(
+        r'<!-- AUTOMATED-DEPENDENCIES-START -->.*?<!-- AUTOMATED-DEPENDENCIES-END -->',
+        f'<!-- AUTOMATED-DEPENDENCIES-START -->{deps_text}<!-- AUTOMATED-DEPENDENCIES-END -->',
+        content,
+        flags=re.DOTALL
+    )
+    with open(soup_path, "w") as f:
+        f.write(new_content)
+
 
 def get_files(dirs, exts):
     files = []
@@ -98,13 +130,30 @@ def parse_matrix():
     return reqs
 
 def main():
-    test_log_path = sys.argv[1] if len(sys.argv) > 1 else None
-    bench_log_path = sys.argv[2] if len(sys.argv) > 2 else None
+    test_log_path = None
+    bench_log_path = None
+    sync_mode = False
+    
+    for arg in sys.argv[1:]:
+        if arg == "--sync":
+            sync_mode = True
+        elif not test_log_path:
+            test_log_path = arg
+        elif not bench_log_path:
+            bench_log_path = arg
 
     # Environment Meta
     compiler_version = get_compiler_version()
     doc_version = parse_soup()
     runtime_settings = get_runtime_settings()
+    
+    freeze_deps = get_library_versions()
+    
+    if sync_mode:
+        sync_soup_dependencies(freeze_deps)
+        print("Synchronized SOUP documentation with freeze file dependencies.")
+        
+    soup_deps = get_soup_dependencies()
     
     mismatch = False
     mismatch_msg = ""
@@ -116,6 +165,20 @@ def main():
     if "-N2" not in runtime_settings or "-qa" not in runtime_settings:
         mismatch = True
         mismatch_msg += f"Runtime settings do not contain required safety flags (-N2, -qa). Found: {runtime_settings}. "
+    
+    # Check dependencies match
+    for dep, ver in freeze_deps.items():
+        if dep not in soup_deps:
+            mismatch = True
+            mismatch_msg += f"Dependency {dep} in freeze file is not in SOUP documentation. "
+        elif soup_deps[dep] != ver:
+            mismatch = True
+            mismatch_msg += f"Dependency {dep} version {ver} in freeze file differs from SOUP version {soup_deps[dep]}. "
+            
+    for dep in soup_deps:
+        if dep not in freeze_deps:
+            mismatch = True
+            mismatch_msg += f"Dependency {dep} in SOUP documentation is missing from freeze file. "
     
     # Requirement parsing
     src_files = get_files(["src", "app", "cbits"], [".hs", ".cpp", ".c", ".h"])
@@ -192,7 +255,7 @@ def main():
         
     report += "\n## 4. Dependencies Diff Report\n"
     try:
-        diff_out = subprocess.check_output(["git", "diff", "HEAD~1", "sgrt-radar-system.cabal"], stderr=subprocess.STDOUT)
+        diff_out = subprocess.check_output(["git", "diff", "HEAD~1", "cabal.project.freeze"], stderr=subprocess.STDOUT)
         diff_str = diff_out.decode('utf-8').strip()
         if diff_str:
             report += "```diff\n" + diff_str + "\n```\n"

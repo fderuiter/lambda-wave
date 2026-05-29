@@ -21,15 +21,15 @@ common common-options
       CPP
   ghc-options: -Wall -Werror -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
   build-depends:
-      base >=4.7 && <5
-    , stm
-    , binary
-    , bytestring
-    , unix
-    , deepseq
-    , containers
-    , filepath
-    , network
+      base ==4.17.2.1
+    , stm ==2.5.1.0
+    , binary ==0.8.9.1
+    , bytestring ==0.11.5.3
+    , unix ==2.7.3
+    , deepseq ==1.4.8.0
+    , containers ==0.6.7
+    , filepath ==1.4.2.2
+    , network ==3.2.8.0
   default-language: Haskell2010
 
 flag enable-ui
@@ -91,8 +91,8 @@ executable sgrt-radar-system-exe
 
   if flag(enable-ui)
     build-depends:
-        GLUT
-      , OpenGL
+        GLUT ==2.7.0.16
+      , OpenGL ==3.0.3.0
     cpp-options: -DENABLE_UI
     other-modules:
         Control.UI.Renderer
@@ -112,8 +112,8 @@ executable sgrt-visualizer-exe
 
   if flag(enable-ui)
     build-depends:
-        GLUT
-      , OpenGL
+        GLUT ==2.7.0.16
+      , OpenGL ==3.0.3.0
     cpp-options: -DENABLE_UI
     other-modules:
         Control.UI.Renderer
@@ -126,8 +126,8 @@ executable sgrt-visualizer-exe
       , warp
       , websockets
       , wai-websockets
-      , aeson
-      , text
+      , aeson ==2.2.5.0
+      , text ==2.0.2
       , http-types
       , file-embed
     cpp-options: -DENABLE_WEB_UI
@@ -143,10 +143,10 @@ executable watchdog-fault
   ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
   build-depends:
       sgrt-radar-system
-    , base
-    , stm
-    , containers
-    , unix
+    , base ==4.17.2.1
+    , stm ==2.5.1.0
+    , containers ==0.6.7
+    , unix ==2.7.3
 
 test-suite sgrt-radar-system-test
   import: common-options
@@ -168,10 +168,10 @@ test-suite sgrt-radar-system-test
   ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
   build-depends:
       sgrt-radar-system
-    , hspec
-    , QuickCheck
-    , bytestring
-    , binary
+    , hspec ==2.11.17
+    , QuickCheck ==2.18.0.0
+    , bytestring ==0.11.5.3
+    , binary ==0.8.9.1
 
 test-suite hardware-control-check
   import: common-options
@@ -184,7 +184,7 @@ test-suite hardware-control-check
   ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
   build-depends:
       sgrt-radar-system
-    , base
+    , base ==4.17.2.1
 
 test-suite hardware-consumer-check
   import: common-options
@@ -197,10 +197,10 @@ test-suite hardware-consumer-check
   ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
   build-depends:
       sgrt-radar-system
-    , base
-    , bytestring
-    , binary
-    , QuickCheck
+    , base ==4.17.2.1
+    , bytestring ==0.11.5.3
+    , binary ==0.8.9.1
+    , QuickCheck ==2.18.0.0
 
 test-suite kalman-verification
   import: common-options
@@ -213,7 +213,7 @@ test-suite kalman-verification
   ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
   build-depends:
       sgrt-radar-system
-    , base
+    , base ==4.17.2.1
 
 test-suite audit-check
   import: common-options
@@ -226,8 +226,8 @@ test-suite audit-check
   ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
   build-depends:
       sgrt-radar-system
-    , base
-    , unix
+    , base ==4.17.2.1
+    , unix ==2.7.3
 
 test-suite clinical-hil-validation
   import: common-options
@@ -240,10 +240,10 @@ test-suite clinical-hil-validation
   ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
   build-depends:
       sgrt-radar-system
-    , base
-    , stm
-    , containers
-    , process
+    , base ==4.17.2.1
+    , stm ==2.5.1.0
+    , containers ==0.6.7
+    , process ==1.6.18.0
     
 test-suite gating-check
   import: common-options
@@ -256,7 +256,7 @@ test-suite gating-check
   ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
   build-depends:
       sgrt-radar-system
-    , base
+    , base ==4.17.2.1
 
 test-suite watchdog-check
   import: common-options
@@ -269,7 +269,7 @@ test-suite watchdog-check
   ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
   build-depends:
       sgrt-radar-system
-    , base
+    , base ==4.17.2.1
 
 test-suite numeric-check
   import: common-options
@@ -282,7 +282,7 @@ test-suite numeric-check
   ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
   build-depends:
       sgrt-radar-system
-    , base
+    , base ==4.17.2.1
 
 test-suite sentinel-check
   import: common-options
@@ -295,7 +295,7 @@ test-suite sentinel-check
   ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
   build-depends:
       sgrt-radar-system
-    , base
+    , base ==4.17.2.1
 
 benchmark sgrt-radar-system-bench
   import: common-options
@@ -308,7 +308,7 @@ benchmark sgrt-radar-system-bench
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       sgrt-radar-system
-    , criterion
+    , criterion ==1.6.5.0
 
 benchmark kalman-bench
   import: common-options
@@ -321,7 +321,7 @@ benchmark kalman-bench
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       sgrt-radar-system
-    , criterion
+    , criterion ==1.6.5.0
 
 test-suite consumer-integration-check
   import: common-options
@@ -334,8 +334,8 @@ test-suite consumer-integration-check
   ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
   build-depends:
       sgrt-radar-system
-    , base
-    , bytestring
+    , base ==4.17.2.1
+    , bytestring ==0.11.5.3
 
 test-suite ui-math-check
   import: common-options
@@ -350,9 +350,9 @@ test-suite ui-math-check
   ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
   build-depends:
       sgrt-radar-system
-    , base
-    , hspec
-    , GLUT
+    , base ==4.17.2.1
+    , hspec ==2.11.17
+    , GLUT ==2.7.0.16
 
 executable phantom-study
   import: common-options
@@ -362,7 +362,7 @@ executable phantom-study
   ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
   build-depends:
       sgrt-radar-system
-    , base
+    , base ==4.17.2.1
 
 executable update-csp
   import: common-options
@@ -370,9 +370,9 @@ executable update-csp
   hs-source-dirs:
       tools/system-maintenance
   build-depends:
-      base
-    , bytestring
-    , process
+      base ==4.17.2.1
+    , bytestring ==0.11.5.3
+    , process ==1.6.18.0
 
 executable check-baud
   import: common-options
@@ -380,8 +380,8 @@ executable check-baud
   hs-source-dirs:
       tools/hardware-simulation
   build-depends:
-      base
-    , unix
+      base ==4.17.2.1
+    , unix ==2.7.3
 
 executable check-pty
   import: common-options
@@ -389,8 +389,8 @@ executable check-pty
   hs-source-dirs:
       tools/hardware-simulation
   build-depends:
-      base
-    , unix
+      base ==4.17.2.1
+    , unix ==2.7.3
 
 executable check-unix
   import: common-options
@@ -398,8 +398,8 @@ executable check-unix
   hs-source-dirs:
       tools/hardware-simulation
   build-depends:
-      base
-    , unix
+      base ==4.17.2.1
+    , unix ==2.7.3
 
 executable test-parse-errors
   import: common-options
@@ -408,9 +408,9 @@ executable test-parse-errors
       tools/qa
   build-depends:
       sgrt-radar-system
-    , base
-    , bytestring
-    , binary
+    , base ==4.17.2.1
+    , bytestring ==0.11.5.3
+    , binary ==0.8.9.1
 
 benchmark fmcw-bench
   import: common-options
@@ -423,5 +423,5 @@ benchmark fmcw-bench
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       sgrt-radar-system
-    , criterion
-    , base
+    , criterion ==1.6.5.0
+    , base ==4.17.2.1
