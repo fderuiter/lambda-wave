@@ -1,37 +1,23 @@
 module Main (main) where
 
-import Control.Concurrent.STM
-import qualified Data.Map.Strict as Map
-import Data.Types
-import Control.Gating (processFrame)
-import Data.Time.HighRes (getMonotonicTimeNS)
-import SignalProcessing.Kalman (initKalman, KalmanConfig(..))
+import System.Process (readProcessWithExitCode)
+import System.Exit (ExitCode(..), exitWith)
+import Data.List (isInfixOf)
 
 main :: IO ()
 main = do
     putStrLn "=== Watchdog Logic Verification (P0-002) ==="
 
-    -- 1. Setup State
-    now <- getMonotonicTimeNS
-    -- Initialize with default kalman state
-    let kConfig = KalmanConfig 0.1 0.1
-    let kState = initKalman 0.0 kConfig
-    q <- newTBQueueIO 100
-    let initialState = SystemState [] BeamOff now 0 (Point3D 0 0 0 0 0) Map.empty kState q False
-    stateVar <- newTVarIO initialState
-
-    -- 2. Run Gating Process (which should update heartbeat)
-    -- We pass empty points list
-    processFrame stateVar (RadarFrame "" 0 [])
-
-    -- 3. Verify Heartbeat
-    finalState <- readTVarIO stateVar
-    let heartbeats = threadHeartbeats finalState
-    case Map.lookup "Gating" heartbeats of
-        Just t -> do
-            if t >= now
-               then putStrLn "PASS: Gating updated heartbeat."
-               else putStrLn $ "FAIL: Heartbeat timestamp is old. (Now: " ++ show now ++ ", HB: " ++ show t ++ ")"
-        Nothing -> putStrLn "FAIL: No heartbeat for 'Gating'."
+    -- Run the fault injection executable using cabal
+    (exitCode, stdout, stderr) <- readProcessWithExitCode "cabal" ["exec", "watchdog-fault"] ""
+    
+    let combinedOutput = stdout ++ stderr
+    
+    if exitCode /= ExitSuccess && "SAFETY DAEMON TRIP" `isInfixOf` combinedOutput && not ("SURVIVED" `isInfixOf` combinedOutput)
+        then putStrLn "PASS: Daemon successfully tripped on timeout."
+        else do
+            putStrLn "FAIL: Watchdog test failed."
+            putStrLn combinedOutput
+            exitWith (ExitFailure 1)
 
 -- Requirement SR-WD-002

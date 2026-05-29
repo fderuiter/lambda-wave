@@ -134,6 +134,19 @@ executable sgrt-visualizer-exe
         Control.WebUI
         Control.WebUI.Types
 
+executable watchdog-fault
+  import: common-options
+  main-is: WatchdogFault.hs
+  hs-source-dirs:
+      test/Safety
+  ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
+  build-depends:
+      sgrt-radar-system
+    , base
+    , stm
+    , containers
+    , unix
+
 test-suite sgrt-radar-system-test
   import: common-options
   type: exitcode-stdio-1.0
