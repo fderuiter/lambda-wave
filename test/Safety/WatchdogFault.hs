@@ -45,11 +45,15 @@ runMain = do
     -- 3. Fork Watchdog Loop (Heartbeat Sender)
     _ <- forkIO $ watchdogLoop stateVar
 
-    -- 4. Sleep for 250ms (Watchdog timeout is 100ms)
+    -- Log stall start
+    stallStart <- getMonotonicTimeNS
+    putStrLn $ "STALL_START_NS: " ++ show stallStart
+
+    -- 4. Sleep for 200ms (Watchdog timeout is 100ms)
     -- This simulates the "TestThread" being frozen (not updating heartbeat)
     -- Watchdog should stop sending heartbeats.
     -- Safety Daemon should trip and kill us!
-    threadDelay 250000
+    threadDelay 200000
 
     -- 5. If we are here, Watchdog FAILED to kill us
     putStrLn "SURVIVED"
