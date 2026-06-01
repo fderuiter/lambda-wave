@@ -123,7 +123,7 @@ runMain = do
     _daemonPid <- forkProcess $ executeFile exePath False ["--safety-daemon", show myPid] Nothing
 
     -- 3. Consumer/Parser (Dedicated Thread)
-    _ <- forkOS $ consumerLoop ringBuffer systemState
+    _ <- forkOS $ consumerLoop True ringBuffer systemState
 
     -- 3. Safety Watchdog Heartbeat Sender (High Priority Thread)
     _ <- forkOS $ watchdogLoop systemState
@@ -169,8 +169,7 @@ streamData fd stateVar = do
     let loop = do
             state <- readTVarIO stateVar
             let packet = TelemetryPacket
-                  { tpPoints = currentPoints state
-                  , tpBeamState = beamState state
+                  { tpBeamState = beamState state
                   , tpLastFrameTime = lastFrameTime state
                   , tpSequenceNumber = sequenceNumber state
                   , tpIsocenter = isocenter state

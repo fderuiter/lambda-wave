@@ -13,12 +13,16 @@ import qualified Data.ByteString.Lazy as BL
 import qualified Data.ByteString as B
 import Foreign.Marshal.Alloc (allocaBytes)
 import Foreign.Ptr (castPtr, plusPtr)
+import Foreign.ForeignPtr (ForeignPtr)
 import Data.Word (Word32, Word64)
 import Foreign.Storable (peek)
 
 import Data.Types
 import Data.Config (targetHeight)
 import SignalProcessing.Kalman (initKalman, KalmanConfig(..))
+import Hardware.Consumer (consumerLoop)
+import FFI.RingBuffer.IO (attachRingBuffer)
+import FFI.RingBuffer.Types (RingBufferControl)
 
 #ifdef ENABLE_UI
 import Control.UI.Window (initWindow)
@@ -54,6 +58,16 @@ main = do
 
     -- 1. Start IPC Receiver
     _ <- forkOS $ ipcReceiverLoop systemState
+
+    -- 1b. Attach to Shared Ring Buffer and run Consumer (Visualizer Side)
+    -- The SafetyCore creates the buffer (4MB). We attach to it.
+    ringBufferRes <- try (attachRingBuffer (4 * 1024 * 1024)) :: IO (Either IOException (ForeignPtr RingBufferControl))
+    case ringBufferRes of
+        Left err -> putStrLn $ "Warning: Could not attach to shared ring buffer: " ++ show err
+        Right ringBuffer -> do
+            putStrLn "Attached to Shared Ring Buffer."
+            _ <- forkOS $ consumerLoop False ringBuffer systemState
+            return ()
 
     -- 2. Web UI (Optional)
 #ifdef ENABLE_WEB_UI
@@ -105,8 +119,7 @@ readData fd stateVar = do
                         Just payload -> do
                             let packet = decode (BL.fromStrict payload) :: TelemetryPacket
                             atomically $ modifyTVar' stateVar $ \s -> s
-                                { currentPoints = tpPoints packet
-                                , beamState = tpBeamState packet
+                                { beamState = tpBeamState packet
                                 , lastFrameTime = tpLastFrameTime packet
                                 , sequenceNumber = tpSequenceNumber packet
                                 , isocenter = tpIsocenter packet
