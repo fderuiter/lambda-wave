@@ -5,86 +5,115 @@
 #include <new>
 #include <cstring>
 #include <cerrno>
+#include <fcntl.h>
 
 extern "C" {
 
 RingBufferControl* create_ring_buffer(size_t size) {
-    size_t page_size = sysconf(_SC_PAGESIZE);
-    void* control_mem = nullptr;
-
-    // Use page_size alignment for control_mem to ensure efficient mlock
-    if (posix_memalign(&control_mem, page_size, sizeof(RingBufferControl)) != 0) {
+    size_t total_size = sizeof(RingBufferControl) + size;
+    
+    // Unlink old if exists
+    shm_unlink("/sgrt_ring_buffer");
+    
+    int fd = shm_open("/sgrt_ring_buffer", O_CREAT | O_RDWR, 0666);
+    if (fd == -1) return nullptr;
+    
+    if (ftruncate(fd, total_size) == -1) {
+        close(fd);
         return nullptr;
     }
 
-    // Pin control memory to prevent paging
-    if (mlock(control_mem, sizeof(RingBufferControl)) != 0) {
-        free(control_mem);
+    void* mem = mmap(nullptr, total_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+    close(fd); // fd is no longer needed after mmap
+    if (mem == MAP_FAILED) return nullptr;
+
+    // Pin memory
+    if (mlock(mem, total_size) != 0) {
+        munmap(mem, total_size);
         return nullptr;
     }
 
-    void* buffer_mem = nullptr;
-
-    // Ensure the buffer memory is aligned to page size for efficient mlock usage
-    if (posix_memalign(&buffer_mem, page_size, size) != 0) {
-        munlock(control_mem, sizeof(RingBufferControl));
-        free(control_mem);
-        return nullptr;
-    }
-
-    // Pin memory to prevent paging (critical for real-time performance)
-    if (mlock(buffer_mem, size) != 0) {
-        free(buffer_mem);
-        munlock(control_mem, sizeof(RingBufferControl));
-        free(control_mem);
-        return nullptr;
-    }
-
-    // Initialize Control structure using placement new
-    RingBufferControl* control = new (control_mem) RingBufferControl();
-    // Relaxed ordering is sufficient for initialization as the pointer is not yet published
+    RingBufferControl* control = new (mem) RingBufferControl();
     control->write_offset.store(0, std::memory_order_relaxed);
     control->read_offset.store(0, std::memory_order_relaxed);
-    control->buffer_start = static_cast<char*>(buffer_mem);
+    
+    // Note: buffer_start is a pointer. It will be valid for the creator process.
+    // Attachers must override it for their own address space.
+    control->buffer_start = static_cast<char*>(mem) + sizeof(RingBufferControl);
     control->buffer_size = size;
 
     return control;
 }
 
+RingBufferControl* attach_ring_buffer(size_t size) {
+    size_t total_size = sizeof(RingBufferControl) + size;
+    
+    int fd = shm_open("/sgrt_ring_buffer", O_RDWR, 0666);
+    if (fd == -1) return nullptr;
+
+    void* mem = mmap(nullptr, total_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+    close(fd);
+    if (mem == MAP_FAILED) return nullptr;
+
+    // Pin memory
+    if (mlock(mem, total_size) != 0) {
+        munmap(mem, total_size);
+        return nullptr;
+    }
+
+    RingBufferControl* control = static_cast<RingBufferControl*>(mem);
+    // DO NOT OVERWRITE control->buffer_start IN SHARED MEMORY!
+    // It would break the creator. 
+    // We cannot change RingBufferControl struct because of ABI.
+    // Wait, buffer_start is a field in the shared memory. We shouldn't write to it.
+    // Instead, we should NEVER read buffer_start directly if we are the attacher, or we just live with it?
+    // Actually, in our Haskell consumer code, we peek buffer_start!
+    // So we MUST change how consumer gets the buffer start!
+    return control;
+}
+
+void get_buffer_pointers(RingBufferControl* control, char** buf_start, size_t* size) {
+    if (control) {
+        // Compute dynamically for safety across processes
+        *buf_start = reinterpret_cast<char*>(control) + sizeof(RingBufferControl);
+        *size = control->buffer_size;
+    }
+}
+
 void free_ring_buffer(RingBufferControl* handle) {
     if (handle) {
-        munlock(handle->buffer_start, handle->buffer_size);
-        free(handle->buffer_start);
+        size_t total_size = sizeof(RingBufferControl) + handle->buffer_size;
+        munlock(handle, total_size);
         handle->~RingBufferControl();
-        munlock(handle, sizeof(RingBufferControl));
-        free(handle);
+        munmap(handle, total_size);
+        shm_unlink("/sgrt_ring_buffer");
+    }
+}
+
+void detach_ring_buffer(RingBufferControl* handle) {
+    if (handle) {
+        size_t total_size = sizeof(RingBufferControl) + handle->buffer_size;
+        munlock(handle, total_size);
+        munmap(handle, total_size);
     }
 }
 
 ssize_t read_from_uart(RingBufferControl* handle, int uart_fd) {
     if (!handle) return -1;
 
-    // Load write_offset relaxed: we are the only writer to it.
     size_t current_offset = handle->write_offset.load(std::memory_order_relaxed);
-    // Load read_offset acquire: ensures we see the latest value updated by the consumer
     size_t read_offset = handle->read_offset.load(std::memory_order_acquire);
-    char* buf_start = handle->buffer_start;
+    
+    // Use dynamic pointer computation
+    char* buf_start = reinterpret_cast<char*>(handle) + sizeof(RingBufferControl);
     size_t size = handle->buffer_size;
 
-    // Determine max bytes we can read before wrapping around the buffer end
-    // AND without overwriting unread data (respecting read_offset).
     size_t available_contiguous;
 
     if (read_offset > current_offset) {
-        // Space is between write cursor and read cursor (minus 1 to distinguish full vs empty)
         available_contiguous = read_offset - current_offset - 1;
     } else {
-        // read_offset <= current_offset
-        // We can write until the end of the buffer...
         size_t space_to_end = size - current_offset;
-
-        // ...unless read_offset is 0, in which case we must stop one byte short of the end
-        // to avoid wrapping to 0 and colliding with read_offset (making it look empty).
         if (read_offset == 0) {
             available_contiguous = space_to_end - 1;
         } else {
@@ -93,11 +122,9 @@ ssize_t read_from_uart(RingBufferControl* handle, int uart_fd) {
     }
 
     if (available_contiguous == 0) {
-        // Buffer is full (or at least the contiguous block is full/blocked).
         return 0;
     }
 
-    // Attempt to read as much as possible up to the safe limit
     ssize_t bytes_read;
     do {
         bytes_read = read(uart_fd, buf_start + current_offset, available_contiguous);
@@ -105,26 +132,20 @@ ssize_t read_from_uart(RingBufferControl* handle, int uart_fd) {
 
     if (bytes_read == -1) {
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
-            return -3; // EAGAIN / Would Block
+            return -3;
         }
-        return -1; // Critical Error
+        return -1;
     }
 
     if (bytes_read == 0) {
-        return -2; // EOF (Device Disconnected)
+        return -2;
     }
 
     if (bytes_read > 0) {
         size_t new_offset = current_offset + bytes_read;
-
-        // If we reached the end of the buffer, wrap around to 0
         if (new_offset >= size) {
             new_offset = 0;
         }
-
-        // Publish the new offset with release semantics
-        // This ensures the data written to the buffer is visible to the consumer
-        // before they see the updated write_offset.
         handle->write_offset.store(new_offset, std::memory_order_release);
     }
 
@@ -133,7 +154,6 @@ ssize_t read_from_uart(RingBufferControl* handle, int uart_fd) {
 
 size_t get_write_offset(RingBufferControl* handle) {
     if (!handle) return 0;
-    // Acquire semantics to ensure we see the data committed before this offset update
     return handle->write_offset.load(std::memory_order_acquire);
 }
 

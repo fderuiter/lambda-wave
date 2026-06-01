@@ -118,8 +118,7 @@ instance NFData RadarFrame where
 
 -- | Packet for sending telemetry over IPC
 data TelemetryPacket = TelemetryPacket
-  { tpPoints :: [Point3D]
-  , tpBeamState :: BeamState
+  { tpBeamState :: BeamState
   , tpLastFrameTime :: Word64
   , tpSequenceNumber :: Word32
   , tpIsocenter :: Point3D
