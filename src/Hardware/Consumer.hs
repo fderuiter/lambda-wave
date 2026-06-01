@@ -60,8 +60,8 @@ maxTLVSize = 65536
 -- * Parses frames using 'Data.Binary.Get'.
 -- * Updates 'SystemState'.
 -- * Logs errors to 'auditQueue'.
-consumerLoop :: ForeignPtr RingBufferControl -> TVar SystemState -> IO ()
-consumerLoop controlFp stateVar = withForeignPtr controlFp $ \controlPtr -> do
+consumerLoop :: Bool -> ForeignPtr RingBufferControl -> TVar SystemState -> IO ()
+consumerLoop isPrimary controlFp stateVar = withForeignPtr controlFp $ \controlPtr -> do
     -- Read initial control block (non-atomic for immutable fields)
     -- We use a dedicated peek to avoid reading atomic offsets (0, 8) which could race.
     (ptrStart, rawSize) <- peekStaticFields controlPtr
@@ -74,7 +74,7 @@ consumerLoop controlFp stateVar = withForeignPtr controlFp $ \controlPtr -> do
     -- 'controlFp' (and thus the Ring Buffer) remains alive.
     fp <- FC.newForeignPtr bufStart (touchForeignPtr controlFp)
 
-    putStrLn $ "[Consumer] Started. Buffer Size: " ++ show bufSize
+    putStrLn $ "[Consumer] Started. Primary=" ++ show isPrimary ++ ". Buffer Size: " ++ show bufSize
 
     -- Internal Loop State
     let loop readOff = do
@@ -150,8 +150,9 @@ consumerLoop controlFp stateVar = withForeignPtr controlFp $ \controlPtr -> do
                     -- Link Kalman State & Gating Logic (P1-003)
                     -- We process each frame individually to maintain correct time-steps for the filter.
                     unless (null frames) $ do
-                        forM_ frames $ \frame ->
-                            processFrame stateVar frame
+                        if isPrimary
+                            then forM_ frames $ \frame -> processFrame stateVar frame
+                            else atomically $ modifyTVar' stateVar $ \s -> s { currentPoints = concatMap points frames }
 
                     -- 7. Update Read Offset
                     -- In a real ring buffer, we advance readOff by how much we processed.
@@ -167,7 +168,9 @@ consumerLoop controlFp stateVar = withForeignPtr controlFp $ \controlPtr -> do
                     -- 8. Notify Producer (Release Semantics)
                     -- We must update the shared read offset so the producer can reclaim space
                     -- (if it implements flow control) or just for monitoring.
-                    setReadOffset controlFp newReadOff
+                    -- ONLY the Primary Consumer (SafetyCore) gets to update the flow control offset!
+                    when isPrimary $
+                        setReadOffset controlFp newReadOff
 
                     loop newReadOff
 

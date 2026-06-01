@@ -11,6 +11,7 @@ hardware via C++ FFI calls.
 -}
 module FFI.RingBuffer.IO
     ( createRingBuffer
+    , attachRingBuffer
     , readFromUart
     , ReadResult(..)
     , ingestionLoop
@@ -48,34 +49,39 @@ instance NFData ReadResult where
 foreign import ccall unsafe "create_ring_buffer"
     c_create_ring_buffer :: CSize -> IO (Ptr RingBufferControl)
 
+-- | Attaches to an existing ring buffer.
+foreign import ccall unsafe "attach_ring_buffer"
+    c_attach_ring_buffer :: CSize -> IO (Ptr RingBufferControl)
+
 -- | Frees the ring buffer.
--- Corresponds to C++ `void free_ring_buffer(RingBufferControl* handle)`
 foreign import ccall unsafe "&free_ring_buffer"
     c_free_ring_buffer_ptr :: FunPtr (Ptr RingBufferControl -> IO ())
+
+-- | Detaches from the ring buffer without unlinking it.
+foreign import ccall unsafe "&detach_ring_buffer"
+    c_detach_ring_buffer_ptr :: FunPtr (Ptr RingBufferControl -> IO ())
 
 -- | Direct import for manual cleanup on error
 foreign import ccall unsafe "free_ring_buffer"
     c_free_ring_buffer_direct :: Ptr RingBufferControl -> IO ()
 
+-- | Direct import for manual detach on error
+foreign import ccall unsafe "detach_ring_buffer"
+    c_detach_ring_buffer_direct :: Ptr RingBufferControl -> IO ()
+
 -- | Reads from UART into the ring buffer.
--- Corresponds to C++ `ssize_t read_from_uart(RingBufferControl* handle, int uart_fd)`
--- Imported as safe to allow other Haskell threads to run (GC) while this blocks/waits.
 foreign import ccall safe "read_from_uart"
     c_read_from_uart :: Ptr RingBufferControl -> CInt -> IO CSsize
 
 -- | Gets the current write offset with acquire semantics.
--- Corresponds to C++ `size_t get_write_offset(RingBufferControl* handle)`
 foreign import ccall unsafe "get_write_offset"
     c_get_write_offset :: Ptr RingBufferControl -> IO CSize
 
 -- | Sets the current read offset with release semantics.
--- Corresponds to C++ `void set_read_offset(RingBufferControl* handle, size_t offset)`
 foreign import ccall unsafe "set_read_offset"
     c_set_read_offset :: Ptr RingBufferControl -> CSize -> IO ()
 
 -- | Wrapper for create_ring_buffer.
--- Returns a ForeignPtr with a finalizer ensuring memory is freed.
--- Throws userError if size <= 0 or allocation fails.
 createRingBuffer :: Int -> IO (ForeignPtr RingBufferControl)
 createRingBuffer size = mask_ $ do
     when (size <= 0) $ throwIO (userError "Ring Buffer size must be positive")
@@ -84,6 +90,16 @@ createRingBuffer size = mask_ $ do
         then throwIO (userError "Failed to allocate Ring Buffer (C++ create_ring_buffer returned NULL)")
         else newForeignPtr c_free_ring_buffer_ptr ptr
                 `onException` c_free_ring_buffer_direct ptr
+
+-- | Wrapper for attach_ring_buffer.
+attachRingBuffer :: Int -> IO (ForeignPtr RingBufferControl)
+attachRingBuffer size = mask_ $ do
+    when (size <= 0) $ throwIO (userError "Ring Buffer size must be positive")
+    ptr <- c_attach_ring_buffer (fromIntegral size)
+    if ptr == nullPtr
+        then throwIO (userError "Failed to attach to Ring Buffer (C++ attach_ring_buffer returned NULL)")
+        else newForeignPtr c_detach_ring_buffer_ptr ptr
+                `onException` c_detach_ring_buffer_direct ptr
 
 -- | Wrapper for read_from_uart
 -- Enforces type-safe error handling via ReadResult ADT.

@@ -54,6 +54,7 @@ module FFI.RingBuffer.Types (RingBufferControl(..), peekStaticFields) where
 import Foreign.Storable
 import Foreign.Ptr
 import Foreign.C.Types
+import Foreign.Marshal.Alloc (alloca)
 
 -- | Haskell view of the C++ ring buffer control block.
 --
@@ -78,17 +79,19 @@ data RingBufferControl = RingBufferControl
 -- Use peekStaticFields for safe read-only access to constant fields.
 -- Layout verification is performed in test/FFI/RingBuffer/TypesSpec.hs via an orphan instance.
 
+foreign import ccall unsafe "get_buffer_pointers"
+    c_get_buffer_pointers :: Ptr RingBufferControl -> Ptr (Ptr CChar) -> Ptr CSize -> IO ()
+
 -- | Peeks only the static fields (bufferStart and bufferSize) from the control block.
--- This avoids reading the atomic offsets (0 and 8/4) which are modified concurrently by C++,
--- preventing potential data races (Undefined Behavior) when accessing the control block
--- from the consumer thread.
+-- This uses the get_buffer_pointers C API which computes the buffer_start
+-- dynamically. This is required because in a multi-process shared memory scenario,
+-- the raw bufferStart pointer stored in the struct is only valid for the process
+-- that created it.
 peekStaticFields :: Ptr RingBufferControl -> IO (Ptr CChar, CSize)
 peekStaticFields ptr = do
-    let sizeT = sizeOf (0 :: CSize)
-        readOff = sizeT
-        startOff = readOff + sizeT
-        sizeOff = startOff + sizeOf (nullPtr :: Ptr CChar)
-
-    start <- peekByteOff ptr startOff
-    sz    <- peekByteOff ptr sizeOff
-    return (start, sz)
+    alloca $ \bufStartPtr -> do
+        alloca $ \sizePtr -> do
+            c_get_buffer_pointers ptr bufStartPtr sizePtr
+            start <- peek bufStartPtr
+            sz <- peek sizePtr
+            return (start, sz)
