@@ -13,6 +13,13 @@ shouldBeApprox actual expected = do
 
 spec :: Spec
 spec = describe "Control.Mesher" $ do
+    describe "reconstructPolynomialSurface" $ do
+        it "reconstructs a 20x20 mesh (400 points)" $ do
+            let coeffs = [1.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+                pts = reconstructPolynomialSurface coeffs
+            length pts `shouldBe` 400
+            map pz pts `shouldBe` replicate 400 1.0
+
     describe "fitPolynomialSurface" $ do
         it "returns all zeros when there are fewer than 6 points" $ do
             let pts = [Point3D x y (1 + x + y) 0 0 | x <- [0..4], let y = 0]
