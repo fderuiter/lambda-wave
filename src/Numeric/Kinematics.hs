@@ -170,11 +170,7 @@ instance ScalarMultiply Time where
 
 -- Type-level assertions
 type SystemLatencyMs = 50
-#ifdef SANDBOX
-type WatchdogTimeoutMs = 120000
-#else
 type WatchdogTimeoutMs = 100
-#endif
 
 -- | Type-level constraint ensuring WatchdogTimeout > SystemLatency
 type AssertWatchdogSafe w l = (CmpNat w l ~ 'GT)

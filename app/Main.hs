@@ -21,7 +21,8 @@ import Foreign.Ptr (castPtr, plusPtr)
 import Data.Word (Word32)
 
 import Data.Types
-import Data.Config (targetHeight)
+import Data.Config (targetHeight, watchdogTimeoutNS, systemLatencyNS)
+import Numeric.Kinematics (WatchdogTimeoutMs, SystemLatencyMs, watchdogTimeoutTime, systemLatencyTime, Time(..), Proxy(..))
 import SignalProcessing.Kalman (initKalman, KalmanConfig(..))
 import qualified FFI.RingBuffer.IO as RingBuffer
 import Hardware.Control (configureRawSerial)
@@ -34,9 +35,10 @@ main :: IO ()
 main = do
     args <- getArgs
     case args of
-        ["--safety-daemon", parentPidStr] -> do
+        ["--safety-daemon", parentPidStr, wdNsStr] -> do
             let parentPid = read parentPidStr :: ProcessID
-            runSafetyDaemon parentPid
+                wdNs = read wdNsStr :: Word64
+            runSafetyDaemon parentPid wdNs
         _ -> runMain
 
 runMain :: IO ()
@@ -44,6 +46,36 @@ runMain = do
     -- lock capabilities to specific cores
     setNumCapabilities 2
     putStrLn "Initializing Lambda-Wave System..."
+    
+    -- Requirement 4: All safety-related constants in the configuration module must be validated against the active type-level assertions at system startup to prevent out-of-sync values
+    let Time wdTypeSec = watchdogTimeoutTime (Proxy :: Proxy WatchdogTimeoutMs)
+        wdTypeNS = round (wdTypeSec * 1_000_000_000) :: Integer
+    unless (watchdogTimeoutNS == wdTypeNS) $ do
+        putStrLn $ "FATAL: Data.Config.watchdogTimeoutNS (" ++ show watchdogTimeoutNS ++ ") does not match type-level WatchdogTimeoutMs (" ++ show wdTypeNS ++ ")"
+        exitFailure
+        
+    let Time slTypeSec = systemLatencyTime (Proxy :: Proxy SystemLatencyMs)
+        slTypeNS = slTypeSec * 1_000_000_000 :: Double
+    unless (systemLatencyNS == slTypeNS) $ do
+        putStrLn $ "FATAL: Data.Config.systemLatencyNS (" ++ show systemLatencyNS ++ ") does not match type-level SystemLatencyMs (" ++ show slTypeNS ++ ")"
+        exitFailure
+        
+    -- Requirement 1: Runtime configurable timeout defaulting to safety-critical value
+    wdEnv <- lookupEnv "SGRT_WATCHDOG_TIMEOUT_NS"
+    let wdBaseNS = case wdEnv of
+            Just val -> read val :: Integer
+            Nothing -> watchdogTimeoutNS
+            
+    -- Requirement 3: Maximum Debug Upper Bound unless authorized
+    handshake <- lookupEnv "SGRT_DEBUG_HANDSHAKE"
+    let maxDebugBoundNS = 5_000_000_000 :: Integer
+    let finalTimeoutNS = if wdBaseNS > maxDebugBoundNS && handshake /= Just "AUTHORIZED"
+                           then maxDebugBoundNS
+                           else wdBaseNS
+                           
+    -- Constraints & Guardrails: The watchdog must never default to a value lower than the 50ms system latency floor
+    let safeTimeoutNS = max (round systemLatencyNS) finalTimeoutNS :: Integer
+    let safeTimeoutWord = fromIntegral safeTimeoutNS :: Word64
 
     startTime <- getMonotonicTimeNS
 
@@ -120,13 +152,13 @@ runMain = do
     -- Spawn Safety Daemon
     exePath <- getExecutablePath
     myPid <- getProcessID
-    _daemonPid <- forkProcess $ executeFile exePath False ["--safety-daemon", show myPid] Nothing
+    _daemonPid <- forkProcess $ executeFile exePath False ["--safety-daemon", show myPid, show safeTimeoutWord] Nothing
 
     -- 3. Consumer/Parser (Dedicated Thread)
     _ <- forkOS $ consumerLoop True ringBuffer systemState
 
     -- 3. Safety Watchdog Heartbeat Sender (High Priority Thread)
-    _ <- forkOS $ watchdogLoop systemState
+    _ <- forkOS $ watchdogLoop systemState safeTimeoutWord
 
     -- 4. Audit Logging
     _ <- forkOS $ auditLoop systemState "session.log"

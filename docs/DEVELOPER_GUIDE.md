@@ -479,6 +479,17 @@ evaluateGating state tol
 
 ## 🐛 Debugging Tips
 
+### Dynamic Watchdog Suspension
+
+The safety watchdog defaults to a strict 100ms timeout, which will kill your application if you pause execution in a debugger (like GHCi or GDB). 
+
+**How to Debug:**
+You no longer need to recompile with a legacy sandbox flag. The system detects when a debugger is attached (via `TracerPid` detection in Linux) and automatically enters a "Suspended" state. 
+- You can also configure a custom watchdog timeout via `SGRT_WATCHDOG_TIMEOUT_NS` (e.g., `SGRT_WATCHDOG_TIMEOUT_NS=5000000000`).
+- By default, the timeout cannot exceed the 5-second debug upper bound unless explicitly authorized by setting the environment variable `SGRT_DEBUG_HANDSHAKE=AUTHORIZED`.
+- When resuming from a breakpoint, the safety daemon provides a short grace period and re-arms the strict monitoring (<10ms re-arming latency).
+- Note: Debugger suspension is disabled in production builds.
+
 ### Common Issues
 
 #### GC Pauses
