@@ -119,7 +119,8 @@ runChildCrash = do
 
     _ <- forkIO $ auditLoop stateVar logPath
 
-    atomically $ writeTBQueue q (AuditEvent now Critical "Test" "CRASH_EVENT")
+    atomically $ writeTBQueue q (AuditEvent now Critical "Test" "CRASH_EVENT_CRIT")
+    atomically $ writeTBQueue q (AuditEvent now Warning "Test" "CRASH_EVENT_WARN")
     threadDelay 100_000
     exitImmediately (ExitFailure 99)
 
@@ -145,8 +146,9 @@ testCrashRecovery = do
             putStrLn "FAIL (Log file not found or unreadable)"
             return False
         Right content -> do
-            let ok = "CRASH_EVENT" `isInfixOf` content
-            if ok
+            let ok1 = "CRASH_EVENT_CRIT" `isInfixOf` content
+            let ok2 = "CRASH_EVENT_WARN" `isInfixOf` content
+            if ok1 && ok2
                 then do
                     putStrLn "PASS"
                     cleanup logPath
