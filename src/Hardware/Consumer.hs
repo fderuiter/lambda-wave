@@ -41,6 +41,7 @@ import FFI.RingBuffer.Types (RingBufferControl(..), peekStaticFields)
 import FFI.RingBuffer.IO (getWriteOffset, setReadOffset)
 import Data.Types
 import Control.Gating (processFrame)
+import Control.Mesher (reconstructPolynomialSurface)
 import Hardware.Types
 
 -- | The Magic Word sequence for TI Millimeter Wave Radar
@@ -340,6 +341,20 @@ parseTLVs count = go count []
                     -- Explicitly consume any remaining bytes to satisfy G.isolate strictness
                     _padding <- G.getRemainingLazyByteString
                     return pts
+
+                go (n - 1) (points : acc)
+            2 -> do -- Surface Coefficients
+                let payloadLen = fromIntegral (tlvLen - 8)
+                points <- G.isolate payloadLen $ do
+                    c0 <- G.getFloatle
+                    c1 <- G.getFloatle
+                    c2 <- G.getFloatle
+                    c3 <- G.getFloatle
+                    c4 <- G.getFloatle
+                    c5 <- G.getFloatle
+                    _padding <- G.getRemainingLazyByteString
+                    let coeffs = [float2Double c0, float2Double c1, float2Double c2, float2Double c3, float2Double c4, float2Double c5]
+                    return (reconstructPolynomialSurface coeffs)
 
                 go (n - 1) (points : acc)
             _ -> do
