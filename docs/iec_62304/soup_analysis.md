@@ -152,3 +152,10 @@ The GHC RTS is deemed acceptable for use in this Class C system because:
 - vector-th-unbox == 0.2.2
 - witherable == 0.5
 <!-- AUTOMATED-DEPENDENCIES-END -->
+
+## 7. Supplier Records
+
+| Supplier | Component | Last Risk Assessment Date | Notes |
+|----------|-----------|---------------------------|-------|
+| Haskell Foundation | GHC RTS | 2025-10-15 | Core compiler |
+| GitHub | Code Hosting | 2025-11-20 | CI/CD |

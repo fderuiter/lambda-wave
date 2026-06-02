@@ -132,16 +132,45 @@ def parse_matrix():
             for line in f:
                 if line.startswith('|') and 'Req ID' not in line and '---' not in line:
                     parts = [p.strip() for p in line.split('|')]
-                    if len(parts) >= 7:
+                    if len(parts) >= 8:
                         req_id = parts[1]
                         reqs[req_id] = {
-                            'description': parts[2],
-                            'phase': parts[3],
-                            'modules': parts[4],
-                            'tests': parts[5],
-                            'status': parts[6]
+                            'quality_policy': parts[2],
+                            'description': parts[3],
+                            'phase': parts[4],
+                            'modules': parts[5],
+                            'tests': parts[6],
+                            'status': parts[7]
                         }
     return reqs
+
+def check_supplier_risk_assessments():
+    errors = []
+    soup_path = "docs/iec_62304/soup_analysis.md"
+    try:
+        if os.path.exists(soup_path):
+            with open(soup_path, "r") as f:
+                content = f.read()
+                m = re.search(r'## 7\. Supplier Records.*?(?=\n## |\Z)', content, re.DOTALL)
+                if m:
+                    table_lines = m.group(0).split('\n')
+                    for line in table_lines:
+                        if line.startswith('|') and 'Supplier' not in line and '---' not in line:
+                            parts = [p.strip() for p in line.split('|')]
+                            if len(parts) >= 4:
+                                supplier = parts[1]
+                                date_str = parts[3]
+                                if date_str:
+                                    try:
+                                        last_date = datetime.strptime(date_str, "%Y-%m-%d")
+                                        delta = datetime.now() - last_date
+                                        if delta.days > 365:
+                                            errors.append(f"Supplier {supplier} risk assessment is out of date ({date_str}). Must be updated annually.")
+                                    except ValueError:
+                                        errors.append(f"Invalid date format for supplier {supplier}: {date_str}")
+    except Exception as e:
+        errors.append(f"Could not parse supplier risk assessments: {e}")
+    return errors
 
 def check_security_posture():
     errors = []
@@ -251,6 +280,12 @@ def main():
         mismatch = True
         for err in security_errors:
             mismatch_msg += f"{err} "
+            
+    supplier_errors = check_supplier_risk_assessments()
+    if supplier_errors:
+        mismatch = True
+        for err in supplier_errors:
+            mismatch_msg += f"{err} "
     
     # Requirement parsing
     src_files = get_files(["src", "app", "cbits"], [".hs", ".cpp", ".c", ".h"])
@@ -329,12 +364,14 @@ def main():
         report += f"**ERROR:** {mismatch_msg}\n\n"
 
     report += "## 2. Traceability Matrix\n"
-    report += "| Req ID | Source Code Tags | Test Code Tags | Verification Evidence |\n"
-    report += "|---|---|---|---|\n"
+    report += "| Req ID | Quality Policy Origin | Source Code Tags | Test Code Tags | Verification Evidence |\n"
+    report += "|---|---|---|---|---|\n"
     
     for req in sorted(all_code_reqs | set(matrix.keys())):
         c_tags = "<br>".join(code_tags.get(req, [])) or "None"
         t_tags = "<br>".join(test_tags.get(req, [])) or "None"
+        
+        policy = matrix.get(req, {}).get('quality_policy', 'None')
         
         evidence = "Not Run"
         if req.startswith("PR-") or "Latency" in matrix.get(req, {}).get('tests', ''):
@@ -348,7 +385,7 @@ def main():
             if test_log and "FAIL" not in test_log and len(test_log) > 0:
                 evidence = f"PASS (Exec Timestamp: {datetime.now().isoformat()}Z)"
                 
-        report += f"| {req} | {c_tags} | {t_tags} | {evidence} |\n"
+        report += f"| {req} | {policy} | {c_tags} | {t_tags} | {evidence} |\n"
     
     report += "\n## 3. Compliance Gaps\n"
     if compliance_gaps or unscanned_safety_docs:

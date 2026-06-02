@@ -1,0 +1,10 @@
+[
+  {
+    "timestamp": "2026-06-02T02:23:31.669613Z",
+    "document": "docs/qms/quality_manual.md",
+    "hash": "1e6f2ca183157d7b6a442257c073c12dc4eca2ebfa959fc2f092072de1b214e1",
+    "user": "QA-Admin",
+    "status": "approved",
+    "algorithm": "SHA-256"
+  }
+]
