@@ -26,6 +26,7 @@ import SignalProcessing.Kalman (initKalman, KalmanConfig(..))
 import qualified FFI.RingBuffer.IO as RingBuffer
 import Hardware.Control (configureRawSerial)
 import Hardware.Consumer (consumerLoop)
+import Hardware.Integrity (startupIntegrityTest, integrityMonitorLoop)
 import Safety.Watchdog (watchdogLoop, runSafetyDaemon)
 import Safety.Audit
 import Data.Time.HighRes (getMonotonicTimeNS)
@@ -44,6 +45,14 @@ runMain = do
     -- lock capabilities to specific cores
     setNumCapabilities 2
     putStrLn "Initializing Lambda-Wave System..."
+
+    -- Run Hardware Integrity Startup Test
+    putStrLn "Running Startup Hardware Integrity Test..."
+    integrityOk <- startupIntegrityTest
+    unless integrityOk $ do
+        putStrLn "FATAL: Hardware Integrity Test Failed! Gating pin short-circuited or failed."
+        exitFailure
+    putStrLn "Hardware Integrity Test Passed."
 
     startTime <- getMonotonicTimeNS
 
@@ -127,6 +136,9 @@ runMain = do
 
     -- 3. Safety Watchdog Heartbeat Sender (High Priority Thread)
     _ <- forkOS $ watchdogLoop systemState
+
+    -- Hardware Integrity Monitor (Dedicated Thread)
+    _ <- forkOS $ integrityMonitorLoop systemState
 
     -- 4. Audit Logging
     _ <- forkOS $ auditLoop systemState "session.log"
