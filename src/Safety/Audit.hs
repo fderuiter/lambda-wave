@@ -101,7 +101,7 @@ processEvents stateVar queue h = go
                 hPutStrLn h entry
 
                 -- 4. Critical Flush (Safety)
-                when (severity evt == Critical) $ hFlush h
+                when (severity evt == Critical || severity evt == Warning) $ hFlush h
 
                 -- 5. Rotation Check
                 -- Track size in memory to avoid hFileSize syscall
