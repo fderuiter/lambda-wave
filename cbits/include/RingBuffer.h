@@ -7,17 +7,20 @@
 
 struct RingBufferControl {
   alignas(64) std::atomic<size_t> write_offset;
-  std::atomic<size_t> read_offset; // Added for consumer flow control
-  char *buffer_start;
+  std::atomic<size_t> read_offset;
+  size_t buffer_offset;
   size_t buffer_size;
 };
 
-// Static assertions to verify layout assumptions
-// We allow 32-bit or 64-bit platforms, but alignment and padding must ensure
-// consistent 64-byte blocks.
 static_assert(alignof(RingBufferControl) == 64,
               "RingBufferControl alignment expected to be 64");
 static_assert(sizeof(RingBufferControl) == 64,
               "RingBufferControl size expected to be 64");
 
+extern "C" {
+size_t get_write_offset(RingBufferControl* handle);
+void set_write_offset(RingBufferControl* handle, size_t val);
+size_t get_read_offset(RingBufferControl* handle);
+void set_read_offset(RingBufferControl* handle, size_t val);
+}
 #endif

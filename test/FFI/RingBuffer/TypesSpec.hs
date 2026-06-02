@@ -27,11 +27,11 @@ instance Storable RingBufferControl where
             -- Assumes strict packing which is standard for size_t/ptr
             readOff = sizeT
             startOff = readOff + sizeT
-            sizeOff = startOff + sizeOf (nullPtr :: Ptr CChar)
+            sizeOff = startOff + sizeOf (0 :: CSize)
 
         woff <- peekByteOff ptr 0
         roff <- peekByteOff ptr readOff
-        start <- peekByteOff ptr startOff
+        start <- peekByteOff ptr startOff :: IO CSize
         sz <- peekByteOff ptr sizeOff
         return $ RingBufferControl woff roff start sz
 
@@ -39,7 +39,7 @@ instance Storable RingBufferControl where
         let sizeT = sizeOf (0 :: CSize)
             readOff = sizeT
             startOff = readOff + sizeT
-            sizeOff = startOff + sizeOf (nullPtr :: Ptr CChar)
+            sizeOff = startOff + sizeOf (0 :: CSize)
 
         pokeByteOff ptr 0 woff
         pokeByteOff ptr readOff roff
@@ -53,7 +53,7 @@ instance Arbitrary RingBufferControl where
         r <- arbitrary :: Gen Word32
         -- Use simple offsets for pointer
         off <- arbitrary :: Gen Word32
-        let p = nullPtr `plusPtr` (fromIntegral off)
+        let p = fromIntegral off
         sz <- arbitrary :: Gen Word32
         return $ RingBufferControl (fromIntegral w) (fromIntegral r) p (fromIntegral sz)
 
@@ -61,10 +61,10 @@ spec :: Spec
 spec = do
   describe "RingBufferControl Storable instance" $ do
     it "has sizeOf 64" $ do
-      sizeOf (RingBufferControl 0 0 nullPtr 0) `shouldBe` 64
+      sizeOf (RingBufferControl 0 0 0 0) `shouldBe` 64
 
     it "has alignment 64" $ do
-      alignment (RingBufferControl 0 0 nullPtr 0) `shouldBe` 64
+      alignment (RingBufferControl 0 0 0 0) `shouldBe` 64
 
     it "round-trips peek and poke correctly" $ property $
       \(rb :: RingBufferControl) -> monadicIO $ do
@@ -75,9 +75,9 @@ spec = do
 
     it "calculates offsets consistently (Sanity Check)" $ do
         let sizeT = sizeOf (0 :: CSize)
-            ptrSize = sizeOf (nullPtr :: Ptr CChar)
+            ptrSize = sizeOf (0 :: CSize)
             -- If standard packing holds:
             expectedSize = sizeT * 2 + ptrSize + sizeT
 
         -- Verify that the struct size is large enough to hold the fields
-        sizeOf (RingBufferControl 0 0 nullPtr 0) `shouldSatisfy` (>= expectedSize)
+        sizeOf (RingBufferControl 0 0 0 0) `shouldSatisfy` (>= expectedSize)

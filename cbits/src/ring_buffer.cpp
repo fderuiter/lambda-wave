@@ -39,7 +39,7 @@ RingBufferControl* create_ring_buffer(size_t size) {
     
     // Note: buffer_start is a pointer. It will be valid for the creator process.
     // Attachers must override it for their own address space.
-    control->buffer_start = static_cast<char*>(mem) + sizeof(RingBufferControl);
+    control->buffer_offset = sizeof(RingBufferControl);
     control->buffer_size = size;
 
     return control;
@@ -75,7 +75,7 @@ RingBufferControl* attach_ring_buffer(size_t size) {
 void get_buffer_pointers(RingBufferControl* control, char** buf_start, size_t* size) {
     if (control) {
         // Compute dynamically for safety across processes
-        *buf_start = reinterpret_cast<char*>(control) + sizeof(RingBufferControl);
+        *buf_start = reinterpret_cast<char*>(control) + control->buffer_offset;
         *size = control->buffer_size;
     }
 }
@@ -105,7 +105,7 @@ ssize_t read_from_uart(RingBufferControl* handle, int uart_fd) {
     size_t read_offset = handle->read_offset.load(std::memory_order_acquire);
     
     // Use dynamic pointer computation
-    char* buf_start = reinterpret_cast<char*>(handle) + sizeof(RingBufferControl);
+    char* buf_start = reinterpret_cast<char*>(handle) + handle->buffer_offset;
     size_t size = handle->buffer_size;
 
     size_t available_contiguous;
@@ -152,15 +152,9 @@ ssize_t read_from_uart(RingBufferControl* handle, int uart_fd) {
     return bytes_read;
 }
 
-size_t get_write_offset(RingBufferControl* handle) {
-    if (!handle) return 0;
-    return handle->write_offset.load(std::memory_order_acquire);
-}
 
-void set_read_offset(RingBufferControl* handle, size_t offset) {
-    if (!handle) return;
-    handle->read_offset.store(offset, std::memory_order_release);
-}
+
+
 
 }
 
