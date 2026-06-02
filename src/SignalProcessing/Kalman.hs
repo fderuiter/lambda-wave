@@ -243,3 +243,4 @@ update measurement config state
 -- Requirement FR-DSP-003
 
 -- Requirement PR-ACC-01
+-- Hazard H-SYS-004: False motion detect

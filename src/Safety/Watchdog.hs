@@ -118,3 +118,6 @@ tripDaemon parentPid = do
     hFlush stdout
     exitImmediately (ExitFailure 1)
 
+-- Hazard H-SYS-001: Beam ON during motion
+-- Hazard H-SYS-003: Latency spike
+-- Hazard H-SOUP-004: Deadlocks

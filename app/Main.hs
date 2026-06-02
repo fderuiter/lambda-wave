@@ -203,3 +203,5 @@ writeBsToFd fd bs = unsafeUseAsCStringLen bs $ \(ptr, len) -> do
 -- Requirement SR-SOUP-001
 
 -- Requirement FR-GAT-002
+-- Hazard H-SOUP-001: Unbounded GC Pauses
+-- Hazard H-SOUP-002: Thread Starvation
