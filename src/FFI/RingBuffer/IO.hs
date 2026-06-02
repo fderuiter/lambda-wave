@@ -28,6 +28,7 @@ import Control.Concurrent (forkOS, ThreadId, threadDelay)
 import Control.Monad (when)
 import System.IO (hPutStrLn, stderr)
 import FFI.RingBuffer.Types (RingBufferControl, peekStaticFields)
+import FFI.RingBuffer.Generated
 import Control.DeepSeq (NFData(..))
 
 -- | Result of a read operation from the Ring Buffer / UART
@@ -74,12 +75,10 @@ foreign import ccall safe "read_from_uart"
     c_read_from_uart :: Ptr RingBufferControl -> CInt -> IO CSsize
 
 -- | Gets the current write offset with acquire semantics.
-foreign import ccall unsafe "get_write_offset"
-    c_get_write_offset :: Ptr RingBufferControl -> IO CSize
+
 
 -- | Sets the current read offset with release semantics.
-foreign import ccall unsafe "set_read_offset"
-    c_set_read_offset :: Ptr RingBufferControl -> CSize -> IO ()
+
 
 -- | Wrapper for create_ring_buffer.
 createRingBuffer :: Int -> IO (ForeignPtr RingBufferControl)
