@@ -355,13 +355,7 @@ Lambda-Wave implements the validated algorithms from:
 
 **Identified Hazards:**
 
-| Hazard | Cause | Effect | Mitigation |
-|--------|-------|--------|------------|
-| Beam ON during motion | Software fault | Radiation to wrong tissue | Watchdog timer, redundant checks |
-| Sensor disconnection | Hardware failure | Loss of monitoring | Hardware status checks, failsafe OFF |
-| Latency spike | GC pause | Delayed beam cutoff | RTS tuning, low-latency GC |
-| False motion detect | Signal noise | Treatment interruption | Kalman filtering, threshold tuning |
-| Config file error | User error | Incorrect sensor params | Config validation, checksums |
+*Note: For the complete, structured Risk Management File containing full quantitative FMEA metrics (Severity, Occurrence, Detection, RPN), please refer to `rmf.yaml` in the repository root. This is managed via the `tools/safety_risk_suite.py` CLI.*
 
 **Safety Architecture:**
 - **Fail-Safe Default:** Beam OFF if any error detected

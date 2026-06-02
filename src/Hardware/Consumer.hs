@@ -382,3 +382,4 @@ float2Double :: Float -> Double
 float2Double = GHC.Float.float2Double
 
 -- Requirement FR-DAQ-003
+-- Hazard H-SYS-002: Sensor disconnection

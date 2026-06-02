@@ -1,0 +1,90 @@
+hazards:
+  - id: H-SYS-001
+    description: Beam ON during motion
+    cause: Software fault
+    effect: Radiation to wrong tissue
+    mitigation: Watchdog timer, redundant checks
+    severity: 5
+    occurrence: 2
+    detection: 2
+    rpn: 20
+
+  - id: H-SYS-002
+    description: Sensor disconnection
+    cause: Hardware failure
+    effect: Loss of monitoring
+    mitigation: Hardware status checks, failsafe OFF
+    severity: 4
+    occurrence: 3
+    detection: 1
+    rpn: 12
+
+  - id: H-SYS-003
+    description: Latency spike
+    cause: GC pause
+    effect: Delayed beam cutoff
+    mitigation: RTS tuning, low-latency GC
+    severity: 5
+    occurrence: 2
+    detection: 3
+    rpn: 30
+
+  - id: H-SYS-004
+    description: False motion detect
+    cause: Signal noise
+    effect: Treatment interruption
+    mitigation: Kalman filtering, threshold tuning
+    severity: 2
+    occurrence: 4
+    detection: 1
+    rpn: 8
+
+  - id: H-SYS-005
+    description: Config file error
+    cause: User error
+    effect: Incorrect sensor params
+    mitigation: Config validation, checksums
+    severity: 3
+    occurrence: 3
+    detection: 2
+    rpn: 18
+
+  - id: H-SOUP-001
+    description: Unbounded GC Pauses
+    cause: Garbage collector pauses execution of the gating thread, exceeding the 15ms latency constraint.
+    effect: Delayed beam cutoff
+    mitigation: Use of -O2 compilation, -qa and -N2 RTS flags to lock capabilities. Zero-allocation loop design in hot paths.
+    severity: 5
+    occurrence: 2
+    detection: 3
+    rpn: 30
+
+  - id: H-SOUP-002
+    description: Thread Starvation
+    cause: The RTS scheduler fails to wake up the gating thread in time.
+    effect: Delayed beam cutoff
+    mitigation: Pinning critical threads, using System.Posix for high-priority IO, and implementing a 100ms hardware watchdog.
+    severity: 5
+    occurrence: 2
+    detection: 3
+    rpn: 30
+
+  - id: H-SOUP-003
+    description: FFI Memory Leaks
+    cause: Memory allocated in C++ ring buffer is not tracked by GHC GC and leaks.
+    effect: OOM crash
+    mitigation: Strict manual memory management in cbits/src/ring_buffer.cpp. Use of Valgrind.
+    severity: 3
+    occurrence: 2
+    detection: 1
+    rpn: 6
+
+  - id: H-SOUP-004
+    description: Deadlocks
+    cause: STM or MVar deadlocks within the RTS locking mechanism.
+    effect: Watchdog termination
+    mitigation: Preference for STM over MVar. Strict architectural rule against unbounded STM retries. Watchdog termination.
+    severity: 4
+    occurrence: 1
+    detection: 2
+    rpn: 8

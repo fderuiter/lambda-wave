@@ -18,7 +18,14 @@ def main():
     
     # Check if a CCR file was added or updated
     ccr_files_modified = [f for f in modified_files if f.startswith('docs/ccr/') and f.endswith('.md') and os.path.basename(f) != 'template.md']
-    
+    rmf_modified = any(f == 'rmf.yaml' for f in modified_files)
+
+    # Automated check within the CI pipeline that fails if a safety-critical change is detected without an updated risk analysis
+    if safety_modified and not rmf_modified:
+        print("ERROR: Class C changes detected in 'src/Safety/' but no updated risk analysis (rmf.yaml) found.")
+        print("Please update rmf.yaml with new or updated hazard analysis for this safety-critical change.")
+        sys.exit(1)
+
     # Requirement 4: Fail if Class C change is detected without a corresponding CCR
     if safety_modified and not ccr_files_modified:
         print("ERROR: Class C changes detected in 'src/Safety/' but no CCR file was added or updated in 'docs/ccr/'.")
@@ -48,34 +55,17 @@ def main():
 def get_valid_hazards():
     hazards = set()
     
-    # Parse soup_analysis.md for H-SOUP-*
-    soup_path = 'docs/iec_62304/soup_analysis.md'
-    if os.path.exists(soup_path):
-        with open(soup_path, 'r') as f:
-            for line in f:
-                if line.startswith('| H-'):
-                    parts = [p.strip() for p in line.split('|')]
-                    if len(parts) > 1:
-                        hazards.add(parts[1])
+    # Parse rmf.yaml for Hazard IDs
+    rmf_path = 'rmf.yaml'
+    if os.path.exists(rmf_path):
+        import yaml
+        with open(rmf_path, 'r') as f:
+            data = yaml.safe_load(f)
+            if data and 'hazards' in data:
+                for h in data['hazards']:
+                    if 'id' in h:
+                        hazards.add(h['id'])
                         
-    # Parse PURPOSE_AND_ARCHITECTURE.md for risk table strings
-    arch_path = 'docs/PURPOSE_AND_ARCHITECTURE.md'
-    if os.path.exists(arch_path):
-        with open(arch_path, 'r') as f:
-            in_table = False
-            for line in f:
-                if 'Identified Hazards:' in line:
-                    in_table = True
-                elif in_table and line.startswith('|'):
-                    if '---' in line or 'Hazard' in line:
-                        continue
-                    parts = [p.strip() for p in line.split('|')]
-                    if len(parts) >= 5:
-                        hazards.add(parts[1]) # Cause name can be considered hazard ref
-                        hazards.add(parts[2])
-                elif in_table and not line.strip() and len(hazards) > 0:
-                    in_table = False
-                    
     # The prompt explicitly mentions "Signal Noise" and "Watchdog Timeouts"
     hazards.add("Signal Noise")
     hazards.add("Watchdog Timeouts")

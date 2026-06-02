@@ -20,12 +20,7 @@ Lambda-Wave is an IEC 62304 Class C Medical Software system. The GHC RTS runs in
 
 ## 3. Potential Hazards & Risk Control Measures
 
-| Hazard ID | Description | Potential Cause | Risk Control Measure | Verification |
-|-----------|-------------|-----------------|----------------------|--------------|
-| H-SOUP-001 | Unbounded GC Pauses | Garbage collector pauses execution of the gating thread, exceeding the 15ms latency constraint. | Use of `-O2` compilation, `-qa` and `-N2` RTS flags to lock capabilities. Zero-allocation loop design in hot paths. | `bench/LatencyBench.hs` running under `+RTS -s` and verifying max pause <5ms. |
-| H-SOUP-002 | Thread Starvation | The RTS scheduler fails to wake up the gating thread in time. | Pinning critical threads, using `System.Posix` for high-priority IO, and implementing a 100ms hardware watchdog. | `test/Safety/WatchdogSpec.hs` and `test/System/RTSSpec.hs` thread priority tests. |
-| H-SOUP-003 | FFI Memory Leaks | Memory allocated in C++ ring buffer is not tracked by GHC GC and leaks. | Strict manual memory management in `cbits/src/ring_buffer.cpp`. Use of Valgrind. | `FFI.RingBuffer.IOSpec` unit tests with Valgrind memory check. |
-| H-SOUP-004 | Deadlocks | STM or MVar deadlocks within the RTS locking mechanism. | Preference for `STM` over `MVar`. Strict architectural rule against unbounded STM retries. Watchdog termination. | Code review, hlint, and `test/Safety/WatchdogSpec.hs`. |
+*Note: For the complete, structured Risk Management File containing full quantitative FMEA metrics (Severity, Occurrence, Detection, RPN) and traceability to software components, please refer to `rmf.yaml` in the repository root. This is managed via the `tools/safety_risk_suite.py` CLI.*
 
 ## 4. Anomaly List Assessment
 GHC 9.6.7 is a mature release. Known issues in the GHC issue tracker have been reviewed. No open bugs related to bounded GC or core thread scheduling were identified that affect the specific subset of features used by Lambda-Wave.
