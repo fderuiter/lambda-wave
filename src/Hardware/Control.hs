@@ -10,7 +10,8 @@ module Hardware.Control (
     configureConfigSerial,
     initGpio,
     setupWatchdog,
-    readBeamChannel
+    readBeamChannel,
+    setPolynomialOrder
 ) where
 
 import Control.Monad (forM_)
@@ -156,3 +157,14 @@ setBeamChannel channel state = do
             WatchdogChannel -> 27
     _ <- c_gpio_write pinNum (if state then 1 else 0)
     return ()
+
+-- | Configuration interface to adjust the polynomial order on the sensor
+-- This sends a command over the serial port.
+setPolynomialOrder :: Fd -> Int -> IO (Either HardwareError ())
+setPolynomialOrder fd order = do
+    let cmd = BC.pack ("surfaceOrder " ++ show order ++ "\n")
+    bytesSent <- useAsCStringLen cmd $ \(ptr, len) ->
+        fdWriteBuf fd (castPtr ptr) (fromIntegral len)
+    if fromIntegral bytesSent < BC.length cmd
+        then return $ Left (ConfigurationFailed "Failed to send surfaceOrder command")
+        else return $ Right ()

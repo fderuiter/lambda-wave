@@ -7,23 +7,11 @@ import Data.Word
 import System.IO
 import Control.Monad (forM_)
 
--- Define Point structure locally to match the one in Data.Types
-data Point = Point
-  { px' :: Float
-  , py' :: Float
-  , pz' :: Float
-  , v'  :: Float
-  } deriving (Show)
-
 magicPattern :: [Word8]
 magicPattern = [1, 2, 3, 4, 5, 6, 7, 8]
 
-putPoint :: Point -> Put
-putPoint (Point x y z v) = do
-    putFloatle x
-    putFloatle y
-    putFloatle z
-    putFloatle v
+putCoeffs :: [Float] -> Put
+putCoeffs coeffs = mapM_ putFloatle coeffs
 
 -- Deterministic "random" values based on seed
 pseudoRandom :: Int -> Int -> Int
@@ -32,18 +20,17 @@ pseudoRandom seed maxVal = (seed * 1103515245 + 12345) `mod` maxVal
 generateFrame :: Word32 -> Put
 generateFrame frameNum = do
     -- 1. Determine Frame Content
-    let numPoints = fromIntegral ((frameNum `mod` 10) + 1) :: Int
-    let points = [Point (fromIntegral i) (fromIntegral frameNum) 0 0 | i <- [1..numPoints]]
+    let coeffs = [fromIntegral frameNum, 1.0, 0.5, 0.1, 0.0, 0.1] :: [Float]
 
     -- TLV 999 Size: Deterministic "random" size between 16 and 64 bytes
     let tlv999PayloadSize = 16 + (pseudoRandom (fromIntegral frameNum) 48)
     let tlv999TotalSize = 8 + tlv999PayloadSize
 
-    let pointsSize = numPoints * 16
-    let tlv1TotalSize = 8 + pointsSize
+    let tlv2PayloadSize = 24 -- 6 floats
+    let tlv2TotalSize = 8 + tlv2PayloadSize
 
     let headerSize = 36 -- 8 magic + 7 * 4 words
-    let totalPacketLen = fromIntegral (headerSize + tlv1TotalSize + tlv999TotalSize) :: Word32
+    let totalPacketLen = fromIntegral (headerSize + tlv2TotalSize + tlv999TotalSize) :: Word32
 
     -- 2. Magic Word
     mapM_ putWord8 magicPattern
@@ -54,13 +41,13 @@ generateFrame frameNum = do
     putWord32le 0 -- Platform (4)
     putWord32le frameNum -- FrameNum (4)
     putWord32le 0 -- CPU Cycles (4)
-    putWord32le 2 -- Num TLVs (4) - Points + Unknown
+    putWord32le 2 -- Num TLVs (4) - Coefficients + Unknown
     putWord32le 0 -- SubFrame (4)
 
-    -- 4. TLV 1 (Points)
-    putWord32le 1 -- Type 1 (Detected Points)
-    putWord32le (fromIntegral tlv1TotalSize) -- Length (Header + Payload)
-    mapM_ putPoint points
+    -- 4. TLV 2 (Surface Coefficients)
+    putWord32le 2 -- Type 2
+    putWord32le (fromIntegral tlv2TotalSize) -- Length (Header + Payload)
+    putCoeffs coeffs
 
     -- 5. TLV 999 (Unknown)
     putWord32le 999 -- Type 999
