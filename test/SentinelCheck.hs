@@ -6,7 +6,7 @@ module Main (main) where
 import Control.Exception (try, SomeException)
 import Control.Monad (when)
 import Data.Time.HighRes (getMonotonicTimeNS, getRealTimeNS)
-import FFI.RingBuffer.IO (createRingBuffer, getWriteOffset, setReadOffset)
+import FFI.RingBuffer.IO (createRingBuffer, checkoutBlock, releaseBlock)
 import FFI.RingBuffer.Types (RingBufferControl(..))
 import Foreign.Storable
 import Foreign.Ptr
@@ -14,42 +14,43 @@ import Foreign.C.Types
 import Foreign.Marshal.Alloc (alloca)
 import System.Exit (exitFailure, exitSuccess)
 
--- | Orphan Storable instance strictly for testing layout.
--- This ensures that the binary layout matches expectations without exposing
--- the dangerous Storable instance (which risks atomic race conditions) to production code.
 instance Storable RingBufferControl where
     sizeOf _ = 64
     alignment _ = 64
 
     peek ptr = do
-        let sizeT = sizeOf (0 :: CSize)
-            -- Assumes strict packing which is standard for size_t/ptr
-            readOff = sizeT
-            startOff = readOff + sizeT
-            sizeOff = startOff + sizeOf (nullPtr :: Ptr CChar)
+        s0 <- peekByteOff ptr 0
+        s1 <- peekByteOff ptr 4
+        s2 <- peekByteOff ptr 8
+        s3 <- peekByteOff ptr 12
+        w0 <- peekByteOff ptr 16
+        w1 <- peekByteOff ptr 20
+        w2 <- peekByteOff ptr 24
+        w3 <- peekByteOff ptr 28
+        start <- peekByteOff ptr 32
+        sz <- peekByteOff ptr 40
+        cwb <- peekByteOff ptr 48
+        cwo <- peekByteOff ptr 56
+        return $ RingBufferControl s0 s1 s2 s3 w0 w1 w2 w3 start sz cwb cwo
 
-        woff <- peekByteOff ptr 0
-        roff <- peekByteOff ptr readOff
-        start <- peekByteOff ptr startOff
-        sz <- peekByteOff ptr sizeOff
-        return $ RingBufferControl woff roff start sz
-
-    poke ptr (RingBufferControl woff roff start sz) = do
-        let sizeT = sizeOf (0 :: CSize)
-            readOff = sizeT
-            startOff = readOff + sizeT
-            sizeOff = startOff + sizeOf (nullPtr :: Ptr CChar)
-
-        pokeByteOff ptr 0 woff
-        pokeByteOff ptr readOff roff
-        pokeByteOff ptr startOff start
-        pokeByteOff ptr sizeOff sz
+    poke ptr (RingBufferControl s0 s1 s2 s3 w0 w1 w2 w3 start sz cwb cwo) = do
+        pokeByteOff ptr 0 s0
+        pokeByteOff ptr 4 s1
+        pokeByteOff ptr 8 s2
+        pokeByteOff ptr 12 s3
+        pokeByteOff ptr 16 w0
+        pokeByteOff ptr 20 w1
+        pokeByteOff ptr 24 w2
+        pokeByteOff ptr 28 w3
+        pokeByteOff ptr 32 start
+        pokeByteOff ptr 40 sz
+        pokeByteOff ptr 48 cwb
+        pokeByteOff ptr 56 cwo
 
 main :: IO ()
 main = do
     putStrLn "Running Sentinel Checks..."
 
-    -- 1. Test HighRes Time Safety
     putStrLn "[Test] HighRes Time Return Codes..."
     t1 <- try getMonotonicTimeNS
     case t1 of
@@ -65,7 +66,6 @@ main = do
             exitFailure
         Right val -> putStrLn $ "PASS: getRealTimeNS returned " ++ show val
 
-    -- 2. Test RingBuffer Creation (Invalid Size)
     putStrLn "[Test] RingBuffer Invalid Size..."
     res <- try $ createRingBuffer 0
     case res of
@@ -81,60 +81,27 @@ main = do
              putStrLn "FAIL: createRingBuffer(-100) succeeded unexpectedly"
              exitFailure
 
-    -- 3. Test RingBuffer Creation (Valid)
     putStrLn "[Test] RingBuffer Valid Creation & FFI..."
     fp <- createRingBuffer 1024
     putStrLn "PASS: createRingBuffer(1024) succeeded"
 
-    -- 4. Test FFI Interaction (getWriteOffset)
-    -- This verifies the pointer is valid and C++ object is alive.
-    offset <- getWriteOffset fp
-    if offset == 0
-       then putStrLn "PASS: Initial getWriteOffset is 0"
-       else do
-           putStrLn $ "FAIL: Initial getWriteOffset is " ++ show offset
+    mb <- checkoutBlock fp
+    case mb of
+        Nothing -> putStrLn "PASS: Initial checkoutBlock returns Nothing (no blocks ready)"
+        Just idx -> do
+           putStrLn $ "FAIL: Initial checkoutBlock returned " ++ show idx
            exitFailure
 
-    -- 5. Test setReadOffset Safety
-    putStrLn "[Test] setReadOffset Safety..."
-
-    -- Test Negative Offset
-    resNeg <- try $ setReadOffset fp (-1)
-    case resNeg of
-        Left (e :: SomeException) -> putStrLn $ "PASS: setReadOffset(-1) threw exception: " ++ show e
-        Right _ -> do
-             putStrLn "FAIL: setReadOffset(-1) succeeded unexpectedly"
-             exitFailure
-
-    -- Test Out of Bounds Offset (>= 1024)
-    resOOB <- try $ setReadOffset fp 1024
-    case resOOB of
-        Left (e :: SomeException) -> putStrLn $ "PASS: setReadOffset(1024) threw exception: " ++ show e
-        Right _ -> do
-             putStrLn "FAIL: setReadOffset(1024) succeeded unexpectedly"
-             exitFailure
-
-    -- Test Valid Offset
-    resValid <- try $ setReadOffset fp 100
-    case resValid of
-        Left (e :: SomeException) -> do
-             putStrLn $ "FAIL: setReadOffset(100) threw exception: " ++ show e
-             exitFailure
-        Right _ -> putStrLn "PASS: setReadOffset(100) succeeded"
-
-
-    -- 6. Test RingBufferControl Layout
     putStrLn "[Test] RingBufferControl Storable Layout..."
-    let actualSize = sizeOf (RingBufferControl 0 0 nullPtr 0)
+    let actualSize = sizeOf (RingBufferControl 0 0 0 0 0 0 0 0 nullPtr 0 0 0)
     putStrLn $ "RingBufferControl Size: " ++ show actualSize ++ " (Expected: 64)"
     when (actualSize /= 64) $ do
         putStrLn "FAIL: Incorrect RingBufferControl size"
         exitFailure
 
-    -- Verify poke/peek roundtrip
     putStrLn "[Test] RingBufferControl Poke/Peek..."
     alloca $ \ptr -> do
-        let rb = RingBufferControl 1 2 nullPtr 100
+        let rb = RingBufferControl 1 2 3 4 5 6 7 8 nullPtr 100 0 0
         poke ptr rb
         rb' <- peek ptr
         if rb == rb'

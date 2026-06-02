@@ -15,56 +15,64 @@ import Foreign.C.Types
 import Data.Word (Word32)
 import FFI.RingBuffer.Types
 
--- | Orphan Storable instance strictly for testing layout.
--- This ensures that the binary layout matches expectations without exposing
--- the dangerous Storable instance (which risks atomic race conditions) to production code.
 instance Storable RingBufferControl where
     sizeOf _ = 64
     alignment _ = 64
 
     peek ptr = do
-        let sizeT = sizeOf (0 :: CSize)
-            -- Assumes strict packing which is standard for size_t/ptr
-            readOff = sizeT
-            startOff = readOff + sizeT
-            sizeOff = startOff + sizeOf (nullPtr :: Ptr CChar)
+        s0 <- peekByteOff ptr 0
+        s1 <- peekByteOff ptr 4
+        s2 <- peekByteOff ptr 8
+        s3 <- peekByteOff ptr 12
+        w0 <- peekByteOff ptr 16
+        w1 <- peekByteOff ptr 20
+        w2 <- peekByteOff ptr 24
+        w3 <- peekByteOff ptr 28
+        start <- peekByteOff ptr 32
+        sz <- peekByteOff ptr 40
+        cwb <- peekByteOff ptr 48
+        cwo <- peekByteOff ptr 56
+        return $ RingBufferControl s0 s1 s2 s3 w0 w1 w2 w3 start sz cwb cwo
 
-        woff <- peekByteOff ptr 0
-        roff <- peekByteOff ptr readOff
-        start <- peekByteOff ptr startOff
-        sz <- peekByteOff ptr sizeOff
-        return $ RingBufferControl woff roff start sz
+    poke ptr (RingBufferControl s0 s1 s2 s3 w0 w1 w2 w3 start sz cwb cwo) = do
+        pokeByteOff ptr 0 s0
+        pokeByteOff ptr 4 s1
+        pokeByteOff ptr 8 s2
+        pokeByteOff ptr 12 s3
+        pokeByteOff ptr 16 w0
+        pokeByteOff ptr 20 w1
+        pokeByteOff ptr 24 w2
+        pokeByteOff ptr 28 w3
+        pokeByteOff ptr 32 start
+        pokeByteOff ptr 40 sz
+        pokeByteOff ptr 48 cwb
+        pokeByteOff ptr 56 cwo
 
-    poke ptr (RingBufferControl woff roff start sz) = do
-        let sizeT = sizeOf (0 :: CSize)
-            readOff = sizeT
-            startOff = readOff + sizeT
-            sizeOff = startOff + sizeOf (nullPtr :: Ptr CChar)
-
-        pokeByteOff ptr 0 woff
-        pokeByteOff ptr readOff roff
-        pokeByteOff ptr startOff start
-        pokeByteOff ptr sizeOff sz
-
--- | Arbitrary instance for property testing
 instance Arbitrary RingBufferControl where
     arbitrary = do
-        w <- arbitrary :: Gen Word32
-        r <- arbitrary :: Gen Word32
-        -- Use simple offsets for pointer
+        s0 <- arbitrary :: Gen Word32
+        s1 <- arbitrary :: Gen Word32
+        s2 <- arbitrary :: Gen Word32
+        s3 <- arbitrary :: Gen Word32
+        w0 <- arbitrary :: Gen Word32
+        w1 <- arbitrary :: Gen Word32
+        w2 <- arbitrary :: Gen Word32
+        w3 <- arbitrary :: Gen Word32
         off <- arbitrary :: Gen Word32
         let p = nullPtr `plusPtr` (fromIntegral off)
         sz <- arbitrary :: Gen Word32
-        return $ RingBufferControl (fromIntegral w) (fromIntegral r) p (fromIntegral sz)
+        cwb <- arbitrary :: Gen Word32
+        cwo <- arbitrary :: Gen Word32
+        return $ RingBufferControl s0 s1 s2 s3 w0 w1 w2 w3 p (fromIntegral sz) (fromIntegral cwb) (fromIntegral cwo)
 
 spec :: Spec
 spec = do
   describe "RingBufferControl Storable instance" $ do
     it "has sizeOf 64" $ do
-      sizeOf (RingBufferControl 0 0 nullPtr 0) `shouldBe` 64
+      sizeOf (RingBufferControl 0 0 0 0 0 0 0 0 nullPtr 0 0 0) `shouldBe` 64
 
     it "has alignment 64" $ do
-      alignment (RingBufferControl 0 0 nullPtr 0) `shouldBe` 64
+      alignment (RingBufferControl 0 0 0 0 0 0 0 0 nullPtr 0 0 0) `shouldBe` 64
 
     it "round-trips peek and poke correctly" $ property $
       \(rb :: RingBufferControl) -> monadicIO $ do
@@ -74,10 +82,4 @@ spec = do
         assert (rb == rb')
 
     it "calculates offsets consistently (Sanity Check)" $ do
-        let sizeT = sizeOf (0 :: CSize)
-            ptrSize = sizeOf (nullPtr :: Ptr CChar)
-            -- If standard packing holds:
-            expectedSize = sizeT * 2 + ptrSize + sizeT
-
-        -- Verify that the struct size is large enough to hold the fields
-        sizeOf (RingBufferControl 0 0 nullPtr 0) `shouldSatisfy` (>= expectedSize)
+        sizeOf (RingBufferControl 0 0 0 0 0 0 0 0 nullPtr 0 0 0) `shouldSatisfy` (>= 64)

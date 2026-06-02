@@ -5,11 +5,22 @@
 #include <cstddef>
 #include <cstdint>
 
+constexpr size_t NUM_BLOCKS = 4;
+
+enum class BlockState : uint32_t {
+    AVAILABLE = 0,
+    WRITING = 1,
+    READY = 2,
+    CHECKED_OUT = 3
+};
+
 struct RingBufferControl {
-  alignas(64) std::atomic<size_t> write_offset;
-  std::atomic<size_t> read_offset; // Added for consumer flow control
+  alignas(64) std::atomic<uint32_t> block_states[NUM_BLOCKS];
+  uint32_t block_bytes_written[NUM_BLOCKS];
   char *buffer_start;
   size_t buffer_size;
+  size_t current_write_block;
+  size_t current_write_offset;
 };
 
 // Static assertions to verify layout assumptions
