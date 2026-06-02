@@ -38,7 +38,7 @@ import Data.Time.HighRes (getMonotonicTimeNS)
 import Data.Maybe (isJust)
 
 import FFI.RingBuffer.Types (RingBufferControl(..), peekStaticFields)
-import FFI.RingBuffer.IO (getWriteOffset, setReadOffset)
+import FFI.RingBuffer.IO (getWriteOffset, setReadOffset, checkoutBlock, releaseBlock)
 import Data.Types
 import Control.Gating (processFrame)
 import Control.Mesher (reconstructPolynomialSurface)
@@ -77,6 +77,9 @@ consumerLoop isPrimary controlFp stateVar = withForeignPtr controlFp $ \controlP
 
     putStrLn $ "[Consumer] Started. Primary=" ++ show isPrimary ++ ". Buffer Size: " ++ show bufSize
 
+    let numBlocks = 8
+        blockSize = bufSize `div` numBlocks
+
     -- Internal Loop State
     let loop readOff = do
             -- 1. Poll Write Offset (Atomic Acquire)
@@ -90,8 +93,20 @@ consumerLoop isPrimary controlFp stateVar = withForeignPtr controlFp $ \controlP
                     threadDelay 1000 -- 1ms
                     loop readOff
                 else do
-                    -- 2. Calculate available data
-                    -- (available calculation omitted as currently unused, but good for debug)
+                    -- 2. Calculate available data and checkout blocks (Transactional Block Handover)
+                    let startBlock = readOff `div` blockSize
+                        endBlock = if writeOff == 0 then (bufSize - 1) `div` blockSize else (writeOff - 1) `div` blockSize
+                        
+                        blocksToCheckOut = if startBlock <= endBlock
+                                           then [startBlock .. endBlock]
+                                           else [startBlock .. numBlocks - 1] ++ [0 .. endBlock]
+                    
+                    -- Check out blocks to protect them from the producer during zero-copy read
+                    checkedOutStatuses <- mapM (\b -> do
+                        success <- checkoutBlock controlFp b
+                        return (b, success)) blocksToCheckOut
+                    
+                    let actuallyCheckedOut = map fst $ filter snd checkedOutStatuses
 
                     -- 3. Create Zero-Copy Lazy ByteString
                     let lbs = createLazyByteString fp bufSize readOff writeOff
@@ -170,8 +185,11 @@ consumerLoop isPrimary controlFp stateVar = withForeignPtr controlFp $ \controlP
                     -- We must update the shared read offset so the producer can reclaim space
                     -- (if it implements flow control) or just for monitoring.
                     -- ONLY the Primary Consumer (SafetyCore) gets to update the flow control offset!
-                    when isPrimary $
+                    when isPrimary $ do
                         setReadOffset controlFp newReadOff
+
+                    -- Release the protected blocks now that evaluation is complete for this consumer
+                    mapM_ (releaseBlock controlFp) actuallyCheckedOut
 
                     loop newReadOff
 

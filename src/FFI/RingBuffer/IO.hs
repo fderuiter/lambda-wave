@@ -17,11 +17,13 @@ module FFI.RingBuffer.IO
     , ingestionLoop
     , getWriteOffset
     , setReadOffset
+    , checkoutBlock
+    , releaseBlock
     ) where
 
 import Foreign.Ptr (Ptr, nullPtr, FunPtr)
 import Foreign.ForeignPtr (ForeignPtr, newForeignPtr, withForeignPtr)
-import Foreign.C.Types (CSize(..), CInt(..))
+import Foreign.C.Types (CSize(..), CInt(..), CBool(..))
 import System.Posix.Types (CSsize(..), Fd(..))
 import Control.Exception (throwIO, catch, SomeException, mask_, onException)
 import Control.Concurrent (forkOS, ThreadId, threadDelay)
@@ -81,6 +83,12 @@ foreign import ccall unsafe "get_write_offset"
 foreign import ccall unsafe "set_read_offset"
     c_set_read_offset :: Ptr RingBufferControl -> CSize -> IO ()
 
+foreign import ccall unsafe "checkout_block"
+    c_checkout_block :: Ptr RingBufferControl -> CSize -> IO CBool
+
+foreign import ccall unsafe "release_block"
+    c_release_block :: Ptr RingBufferControl -> CSize -> IO ()
+
 -- | Wrapper for create_ring_buffer.
 createRingBuffer :: Int -> IO (ForeignPtr RingBufferControl)
 createRingBuffer size = mask_ $ do
@@ -139,6 +147,17 @@ setReadOffset fp off = do
             throwIO (userError $ "Offset " ++ show off ++ " exceeds buffer size " ++ show bufSize)
 
         c_set_read_offset ptr (fromIntegral off)
+
+-- | Wrapper for checkout_block
+checkoutBlock :: ForeignPtr RingBufferControl -> Int -> IO Bool
+checkoutBlock fp blockIdx = withForeignPtr fp $ \ptr -> do
+    (CBool res) <- c_checkout_block ptr (fromIntegral blockIdx)
+    return (res /= 0)
+
+-- | Wrapper for release_block
+releaseBlock :: ForeignPtr RingBufferControl -> Int -> IO ()
+releaseBlock fp blockIdx = withForeignPtr fp $ \ptr -> do
+    c_release_block ptr (fromIntegral blockIdx)
 
 -- | Ingestion Thread: Spawns a bound thread that loops calling read_from_uart.
 -- The loop terminates if read_from_uart returns ReadError or ReadEOF.

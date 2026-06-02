@@ -6,6 +6,7 @@
 #include <cstring>
 #include <cerrno>
 #include <fcntl.h>
+#include <algorithm>
 
 extern "C" {
 
@@ -36,6 +37,9 @@ RingBufferControl* create_ring_buffer(size_t size) {
     RingBufferControl* control = new (mem) RingBufferControl();
     control->write_offset.store(0, std::memory_order_relaxed);
     control->read_offset.store(0, std::memory_order_relaxed);
+    for (int i = 0; i < NUM_BLOCKS; ++i) {
+        control->blocks[i].store(0, std::memory_order_relaxed);
+    }
     
     // Note: buffer_start is a pointer. It will be valid for the creator process.
     // Attachers must override it for their own address space.
@@ -121,6 +125,28 @@ ssize_t read_from_uart(RingBufferControl* handle, int uart_fd) {
         }
     }
 
+    // Transactional Block Protection
+    // Restrict available_contiguous so we never enter a CHECKED_OUT block.
+    size_t block_size = size / NUM_BLOCKS;
+    size_t allowed_by_blocks = 0;
+    size_t check_offset = current_offset;
+
+    while (allowed_by_blocks < available_contiguous) {
+        size_t b_idx = check_offset / block_size;
+        if (b_idx >= NUM_BLOCKS) b_idx = NUM_BLOCKS - 1; // Safeguard
+
+        if (handle->blocks[b_idx].load(std::memory_order_acquire) == 1) {
+            break; // Stop at first checked out block
+        }
+        
+        size_t bytes_to_end_of_block = block_size - (check_offset % block_size);
+        size_t step = std::min(bytes_to_end_of_block, available_contiguous - allowed_by_blocks);
+        allowed_by_blocks += step;
+        check_offset = (check_offset + step) % size;
+    }
+
+    available_contiguous = allowed_by_blocks;
+
     if (available_contiguous == 0) {
         return 0;
     }
@@ -160,6 +186,17 @@ size_t get_write_offset(RingBufferControl* handle) {
 void set_read_offset(RingBufferControl* handle, size_t offset) {
     if (!handle) return;
     handle->read_offset.store(offset, std::memory_order_release);
+}
+
+bool checkout_block(RingBufferControl* handle, size_t block_idx) {
+    if (!handle || block_idx >= NUM_BLOCKS) return false;
+    uint32_t expected = 0; // AVAILABLE
+    return handle->blocks[block_idx].compare_exchange_strong(expected, 1, std::memory_order_acquire);
+}
+
+void release_block(RingBufferControl* handle, size_t block_idx) {
+    if (!handle || block_idx >= NUM_BLOCKS) return;
+    handle->blocks[block_idx].store(0, std::memory_order_release);
 }
 
 }
