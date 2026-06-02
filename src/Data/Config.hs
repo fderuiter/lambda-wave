@@ -53,3 +53,4 @@ uartBaudRate :: Int
 uartBaudRate = 921600
 
 -- Requirement FR-DAQ-002
+-- Hazard H-SYS-005: Config file error
