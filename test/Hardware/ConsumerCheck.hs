@@ -12,6 +12,7 @@ import Control.Monad (unless)
 import Data.Types
 import Hardware.Consumer
 import Hardware.Types
+import Data.Config (quantizationEnabled, quantizationScale)
 
 assert :: String -> Bool -> IO ()
 assert msg cond = do
@@ -55,12 +56,19 @@ testFindsMagicWord = do
         testPoints = [point, point]
         magic = mapM_ P.putWord8 [1, 2, 3, 4, 5, 6, 7, 8]
         testHeader = do
-            P.putWord32le 0; P.putWord32le 76; P.putWord32le 0; P.putWord32le 1
+            P.putWord32le 0; let tlvLen = if quantizationEnabled then 24 else 40
+            P.putWord32le (36 + tlvLen); P.putWord32le 0; P.putWord32le 1
             P.putWord32le 0; P.putWord32le 1; P.putWord32le 0
         tlv = do
-            P.putWord32le 1; P.putWord32le 40; mapM_ putPoint testPoints
+            P.putWord32le 1; P.putWord32le (if quantizationEnabled then 24 else 40); mapM_ putPoint testPoints
         putPoint (Point x y z vel) = do
-            P.putFloatle x; P.putFloatle y; P.putFloatle z; P.putFloatle vel
+            if quantizationEnabled then do
+                P.putWord16le (round (x / quantizationScale))
+                P.putWord16le (round (y / quantizationScale))
+                P.putWord16le (round (z / quantizationScale))
+                P.putWord16le (round (vel / quantizationScale))
+            else do
+                P.putFloatle x; P.putFloatle y; P.putFloatle z; P.putFloatle vel
         payload = P.runPut (magic >> testHeader >> tlv)
         garbage = BL.pack (replicate 10 0xFF)
         input = garbage <> payload
@@ -104,7 +112,13 @@ testPaddedTLVs = do
             P.putWord32le 1; P.putWord32le 28; mapM_ putPoint testPoints
             P.putWord32le 0xDEADBEEF
         putPoint (Point x y z vel) = do
-            P.putFloatle x; P.putFloatle y; P.putFloatle z; P.putFloatle vel
+            if quantizationEnabled then do
+                P.putWord16le (round (x / quantizationScale))
+                P.putWord16le (round (y / quantizationScale))
+                P.putWord16le (round (z / quantizationScale))
+                P.putWord16le (round (vel / quantizationScale))
+            else do
+                P.putFloatle x; P.putFloatle y; P.putFloatle z; P.putFloatle vel
         payload = P.runPut (magic >> testHeader >> tlv)
         payload2 = payload <> payload
         (frames, consumed, err) = parseStream payload2
@@ -157,9 +171,15 @@ testUnknownTLVs = do
         validTlv = do
             P.putWord32le 1; P.putWord32le 24; mapM_ putPoint testPoints
         putPoint (Point x y z vel) = do
-            P.putFloatle x; P.putFloatle y; P.putFloatle z; P.putFloatle vel
+            if quantizationEnabled then do
+                P.putWord16le (round (x / quantizationScale))
+                P.putWord16le (round (y / quantizationScale))
+                P.putWord16le (round (z / quantizationScale))
+                P.putWord16le (round (vel / quantizationScale))
+            else do
+                P.putFloatle x; P.putFloatle y; P.putFloatle z; P.putFloatle vel
         hdr = do
-            P.putWord32le 0; P.putWord32le 80; P.putWord32le 0; P.putWord32le 1
+            P.putWord32le 0; P.putWord32le (36 + 20 + (if quantizationEnabled then 16 else 24)); P.putWord32le 0; P.putWord32le 1
             P.putWord32le 0; P.putWord32le 2; P.putWord32le 0
         payload = P.runPut (magic >> hdr >> unknownTlv >> validTlv)
         (frames, consumed, err) = parseStream payload
@@ -172,7 +192,7 @@ testUnknownTLVs = do
         err == Nothing &&
         length frames == 1 &&
         pointCheck &&
-        consumed == 80
+        consumed == (36 + 20 + (if quantizationEnabled then 16 else 24))
 
 testDoSAttack :: IO ()
 testDoSAttack = do

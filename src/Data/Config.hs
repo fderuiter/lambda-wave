@@ -11,7 +11,9 @@ module Data.Config (
     targetHeight,
     systemLatencyNS,
     watchdogTimeoutNS,
-    uartBaudRate
+    uartBaudRate,
+    quantizationEnabled,
+    quantizationScale
 ) where
 
 -- | System Configuration Constants
@@ -53,3 +55,16 @@ uartBaudRate :: Int
 uartBaudRate = 921600
 
 -- Requirement FR-DAQ-002
+-- | Quantization for High-Frequency Telemetry
+
+quantizationEnabled :: Bool
+
+quantizationEnabled = True
+
+
+
+quantizationScale :: Float
+
+quantizationScale = 2000.0 / 32767.0 -- Covers +/- 2 meters
+
+

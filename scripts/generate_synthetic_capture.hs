@@ -20,11 +20,14 @@ magicPattern :: [Word8]
 magicPattern = [1, 2, 3, 4, 5, 6, 7, 8]
 
 putPoint :: Point -> Put
+-- | Using Q-format (Int16) for high-frequency telemetry
 putPoint (Point x y z v) = do
-    putFloatle x
-    putFloatle y
-    putFloatle z
-    putFloatle v
+    let scale = 0.061035 -- (2000.0 / 32767.0)
+
+    putWord16le (round (x / scale))
+    putWord16le (round (y / scale))
+    putWord16le (round (z / scale))
+    putWord16le (round (v / scale))
 
 generateFrame :: Word32 -> [Point] -> Put
 generateFrame frameNum points = do
@@ -36,7 +39,7 @@ generateFrame frameNum points = do
     putWord32le 0 -- Version (4)
 
     let numPoints = length points
-    let pointsSize = numPoints * 16
+    let pointsSize = numPoints * 8 -- 8 bytes per point in Q-format
     let tlvHeaderSize = 8
     let tlvTotalSize = tlvHeaderSize + pointsSize
     let headerSize = 36 -- 8 magic + 7 * 4 words

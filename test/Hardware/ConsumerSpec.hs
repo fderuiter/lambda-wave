@@ -13,6 +13,7 @@ import qualified Data.ByteString as B
 import Data.Types
 import Hardware.Consumer
 import Hardware.Types
+import Data.Config (quantizationEnabled, quantizationScale)
 
 spec :: Spec
 spec = do
@@ -34,7 +35,8 @@ spec = do
             magic = mapM_ P.putWord8 [1, 2, 3, 4, 5, 6, 7, 8]
             testHeader = do
                 P.putWord32le 0 -- Version
-                P.putWord32le 76 -- Total Len
+                let tlvLen = if quantizationEnabled then 24 else 40
+                P.putWord32le (36 + tlvLen) -- Total Len
                 P.putWord32le 0 -- Platform
                 P.putWord32le 1 -- Frame Num
                 P.putWord32le 0 -- CPU
@@ -44,14 +46,20 @@ spec = do
             -- TLV: Type 1, Len 40
             tlv = do
                 P.putWord32le 1 -- Type
-                P.putWord32le 40 -- Length (Header + Payload)
+                P.putWord32le (if quantizationEnabled then 24 else 40) -- Length (Header + Payload)
                 mapM_ putPoint testPoints
 
             putPoint (Point x y z v) = do
-                P.putFloatle x
-                P.putFloatle y
-                P.putFloatle z
-                P.putFloatle v
+                if quantizationEnabled then do
+                    P.putWord16le (round (x / quantizationScale))
+                    P.putWord16le (round (y / quantizationScale))
+                    P.putWord16le (round (z / quantizationScale))
+                    P.putWord16le (round (v / quantizationScale))
+                else do
+                    P.putFloatle x
+                    P.putFloatle y
+                    P.putFloatle z
+                    P.putFloatle v
 
             payload = P.runPut (magic >> testHeader >> tlv)
 
@@ -98,7 +106,8 @@ spec = do
 
             testHeader = do
                 P.putWord32le 0 -- Version
-                P.putWord32le (36 + 28) -- Total Len = Header(36) + TLV(28) = 64
+                let tlvPayloadLen = if quantizationEnabled then 8 * length testPoints else 16 * length testPoints
+                P.putWord32le (fromIntegral (36 + 8 + tlvPayloadLen + 4)) -- Total Len
                 P.putWord32le 0 -- Platform
                 P.putWord32le 1 -- Frame Num
                 P.putWord32le 0 -- CPU
@@ -112,10 +121,16 @@ spec = do
                 P.putWord32le 0xDEADBEEF -- 4 bytes padding
 
             putPoint (Point x y z v) = do
-                P.putFloatle x
-                P.putFloatle y
-                P.putFloatle z
-                P.putFloatle v
+                if quantizationEnabled then do
+                    P.putWord16le (round (x / quantizationScale))
+                    P.putWord16le (round (y / quantizationScale))
+                    P.putWord16le (round (z / quantizationScale))
+                    P.putWord16le (round (v / quantizationScale))
+                else do
+                    P.putFloatle x
+                    P.putFloatle y
+                    P.putFloatle z
+                    P.putFloatle v
 
             payload = P.runPut (magic >> testHeader >> tlv)
 
@@ -185,19 +200,26 @@ spec = do
             -- TLV 2: Valid Points (Type 1)
             validTlv = do
                 P.putWord32le 1 -- Type
-                P.putWord32le 24 -- Length
+                P.putWord32le (if quantizationEnabled then 16 else 24) -- Length
                 mapM_ putPoint testPoints
 
             putPoint (Point x y z v) = do
-                P.putFloatle x
-                P.putFloatle y
-                P.putFloatle z
-                P.putFloatle v
+                if quantizationEnabled then do
+                    P.putWord16le (round (x / quantizationScale))
+                    P.putWord16le (round (y / quantizationScale))
+                    P.putWord16le (round (z / quantizationScale))
+                    P.putWord16le (round (v / quantizationScale))
+                else do
+                    P.putFloatle x
+                    P.putFloatle y
+                    P.putFloatle z
+                    P.putFloatle v
 
             -- Header
             header = do
                 P.putWord32le 0 -- Version
-                P.putWord32le 80 -- Total Len
+                let pktLen = 36 + 20 + (if quantizationEnabled then 16 else 24)
+                P.putWord32le (fromIntegral pktLen) -- Total Len
                 P.putWord32le 0 -- Platform
                 P.putWord32le 1 -- Frame Num
                 P.putWord32le 0 -- CPU
@@ -214,7 +236,8 @@ spec = do
             [] -> expectationFailure "Test failed: Expected at least one frame"
             (frame:_) -> do
                 length (Data.Types.points frame) `shouldBe` 1
-        consumed `shouldBe` 80
+        let pktLen = 36 + 20 + (if quantizationEnabled then 16 else 24)
+        consumed `shouldBe` fromIntegral pktLen
 
     it "Detects DoS Attack (TLV too large)" $ do
          -- Construct a frame with TLV length > 65536

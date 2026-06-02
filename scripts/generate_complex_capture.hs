@@ -20,10 +20,11 @@ magicPattern = [1, 2, 3, 4, 5, 6, 7, 8]
 
 putPoint :: Point -> Put
 putPoint (Point x y z v) = do
-    putFloatle x
-    putFloatle y
-    putFloatle z
-    putFloatle v
+    let scale = 0.061035
+    putWord16le (round (x / scale))
+    putWord16le (round (y / scale))
+    putWord16le (round (z / scale))
+    putWord16le (round (v / scale))
 
 -- Deterministic "random" values based on seed
 pseudoRandom :: Int -> Int -> Int
@@ -39,7 +40,7 @@ generateFrame frameNum = do
     let tlv999PayloadSize = 16 + (pseudoRandom (fromIntegral frameNum) 48)
     let tlv999TotalSize = 8 + tlv999PayloadSize
 
-    let pointsSize = numPoints * 16
+    let pointsSize = numPoints * 8
     let tlv1TotalSize = 8 + pointsSize
 
     let headerSize = 36 -- 8 magic + 7 * 4 words

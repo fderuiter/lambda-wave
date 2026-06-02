@@ -42,6 +42,7 @@ import FFI.RingBuffer.IO (getWriteOffset, setReadOffset)
 import Data.Types
 import Control.Gating (processFrame)
 import Hardware.Types
+import Data.Config (quantizationEnabled, quantizationScale)
 
 -- | The Magic Word sequence for TI Millimeter Wave Radar
 magicPattern :: BL.ByteString
@@ -310,6 +311,12 @@ getRadarFrame = do
     -- leading to race conditions if we read that ByteString later.
     return $ RadarFrame B.empty frameNum points -- Storing empty raw header for now to save space
 
+-- | ⚡ Bolt Optimization: Use specialized native GHC.Float.float2Double
+-- instead of realToFrac to avoid type class dictionary lookups,
+-- minimizing overhead and intermediate allocations during parsing.
+float2Double :: Float -> Double
+float2Double = GHC.Float.float2Double
+
 -- | Parse TLVs (Tail Recursive)
 parseTLVs :: Int -> G.Get [Point3D]
 parseTLVs count = go count []
@@ -325,17 +332,14 @@ parseTLVs count = go count []
 
         case tlvType of
             1 -> do -- Detected Points
-                -- Payload: Array of Point {x,y,z,v} (4 * 4 = 16 bytes)
-                -- TI SDK Standard: tlvLen includes Header (8 bytes).
-                -- So Payload Length = tlvLen - 8.
                 let payloadLen = fromIntegral (tlvLen - 8)
+                let pointSize = if quantizationEnabled then 8 else 16
+                let numPoints = payloadLen `div` pointSize
 
                 points <- G.isolate payloadLen $ do
-                    -- Num points
-                    let numPoints = payloadLen `div` 16
-
-                    -- Read the points
-                    pts <- getPoints numPoints
+                    pts <- if quantizationEnabled
+                           then getQuantizedPoints numPoints
+                           else getPoints numPoints
 
                     -- Explicitly consume any remaining bytes to satisfy G.isolate strictness
                     _padding <- G.getRemainingLazyByteString
@@ -344,7 +348,6 @@ parseTLVs count = go count []
                 go (n - 1) (points : acc)
             _ -> do
                 -- Skip unknown TLV
-                -- tlvLen includes Header (8 bytes). We already read header.
                 let payloadLen = fromIntegral (tlvLen - 8)
                 G.isolate payloadLen $ do
                     _padding <- G.getRemainingLazyByteString
@@ -366,6 +369,34 @@ getPoint = do
     z <- G.getFloatle
     Point x y z <$> G.getFloatle
 
+getQuantizedPoints :: Int -> G.Get [Point3D]
+getQuantizedPoints count = go count []
+  where
+    go 0 acc = return (reverse acc)
+    go n acc = do
+        p <- getQuantizedPoint
+        go (n - 1) (p : acc)
+
+getQuantizedPoint :: G.Get Point3D
+getQuantizedPoint = do
+    xRaw <- G.getInt16le
+    yRaw <- G.getInt16le
+    zRaw <- G.getInt16le
+    vRaw <- G.getInt16le
+    
+    let x = fromIntegral xRaw * float2Double quantizationScale
+    let y = fromIntegral yRaw * float2Double quantizationScale
+    let z = fromIntegral zRaw * float2Double quantizationScale
+    let v = fromIntegral vRaw * float2Double quantizationScale
+
+    return Point3D
+        { px = x
+        , py = y
+        , pz = z
+        , v  = v
+        , snr = 0.0
+        }
+
 toPoint3D :: Point -> Point3D
 toPoint3D Point{..} = Point3D
     { px = float2Double px'
@@ -374,11 +405,5 @@ toPoint3D Point{..} = Point3D
     , v  = float2Double v'
     , snr = 0.0 -- Not in Type 1
     }
-
--- ⚡ Bolt Optimization: Use specialized native GHC.Float.float2Double
--- instead of realToFrac to avoid type class dictionary lookups,
--- minimizing overhead and intermediate allocations during parsing.
-float2Double :: Float -> Double
-float2Double = GHC.Float.float2Double
 
 -- Requirement FR-DAQ-003
