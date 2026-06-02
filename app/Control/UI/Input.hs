@@ -20,6 +20,9 @@ import Data.Types
 import Control.Concurrent.STM
 import Graphics.UI.GLUT
 
+import Data.Time.HighRes (getMonotonicTimeNS)
+import Control.Monad (when)
+
 -- | Register Input Callbacks
 -- Sets up the keyboard handler for the current window.
 handleInput :: TVar SystemState -> IO ()
@@ -33,5 +36,11 @@ keyboardHandler stateVar key state _ _ = case (key, state) of
     (Char ' ', Down) -> do
         -- Spacebar engages Hold (Latching)
         -- P2-003: Manual Override
-        atomically $ modifyTVar stateVar $ \s -> s { beamState = BeamHold }
+        now <- getMonotonicTimeNS
+        atomically $ do
+            s <- readTVar stateVar
+            when (beamState s /= BeamHold) $ do
+                let msg = "Beam State Changed: " ++ show (beamState s) ++ " -> BeamHold"
+                writeTBQueue (auditQueue s) (AuditEvent now Warning "UI" msg)
+            writeTVar stateVar $ s { beamState = BeamHold }
     _ -> return ()
