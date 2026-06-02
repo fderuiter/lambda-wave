@@ -89,7 +89,7 @@ def validate_ccr(ccr_path, valid_hazards):
     with open(ccr_path, 'r') as f:
         content = f.read()
         
-    required_sections = ['Problem Description', 'Proposed Change', 'Impact on Hazards', 'Verification Strategy']
+    required_sections = ['Problem Description', 'Proposed Change', 'Impact on Hazards', 'Verification Strategy', 'Quality Policy Origin']
     for sec in required_sections:
         if sec not in content:
             print(f"  ERROR: Missing required section '{sec}'")
