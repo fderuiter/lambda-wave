@@ -24,7 +24,7 @@ jobs:
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Install system dependencies
-        run: scripts/setup_env.sh
+        run: scripts/setup_env.sh --skip-security
 
 
       - name: Generate Haddock Documentation
