@@ -92,7 +92,8 @@ processFrame stateVar frame = do
         -- We compare against 'currentBeam' to log transitions that happen NOW.
         when (resolvedBeamState /= currentBeam) $ do
              let msg = "Beam State Changed: " ++ show currentBeam ++ " -> " ++ show resolvedBeamState
-             writeTBQueue (auditQueue s) (AuditEvent currTime Info "Gating" msg)
+                 sev = if resolvedBeamState == BeamHold || currentBeam == BeamHold then Warning else Info
+             writeTBQueue (auditQueue s) (AuditEvent currTime sev "Gating" msg)
 
         -- Update State
         writeTVar stateVar $! s
