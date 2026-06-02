@@ -30,6 +30,8 @@ common common-options
     , binary ==0.8.9.1
     , bytestring ==0.11.5.3
     , unix ==2.7.3
+    , vector
+    , template-haskell
     , deepseq ==1.4.8.0
     , containers ==0.6.7
     , filepath ==1.4.2.2
@@ -61,12 +63,14 @@ library
       Data.Time.HighRes
       FFI.RingBuffer.IO
       FFI.RingBuffer.Types
+      FFI.RingBuffer.Generated
       Hardware.Control
       Hardware.Consumer
       Hardware.Types
       Safety.Audit
       Safety.Watchdog
       SignalProcessing.FMCW
+      SignalProcessing.Matrix
       SignalProcessing.Regression
       SignalProcessing.Kalman
       Numeric.Simple
@@ -80,6 +84,7 @@ library
   cxx-sources:
       cbits/src/RingBufferCheck.cpp
       cbits/src/ring_buffer.cpp
+      cbits/src/ring_buffer_ffi.cpp
       cbits/src/serial_config.cpp
       cbits/src/gpio_driver.cpp
   cc-options: -Wall -O2
@@ -146,6 +151,8 @@ executable watchdog-fault
     , stm ==2.5.1.0
     , containers ==0.6.7
     , unix ==2.7.3
+    , vector
+    , template-haskell
 
 test-suite sgrt-radar-system-test
   import: common-options
@@ -153,14 +160,16 @@ test-suite sgrt-radar-system-test
   main-is: Spec.hs
   other-modules:
       Paths_sgrt_radar_system
-      FFI.RingBuffer.TypesSpec
+      FFI.RingBuffer.Types
+      FFI.RingBuffer.GeneratedSpec
       FFI.RingBuffer.IOSpec
       RegressionSpec
       Control.MesherSpec
       Hardware.ConsumerSpec
       Hardware.ControlSpec
       System.RTSSpec
-      SignalProcessing.FMCWSpec
+      SignalProcessing.FMCW
+      SignalProcessing.MatrixSpec
       Safety.WatchdogSpec
   hs-source-dirs:
       test
@@ -227,6 +236,8 @@ test-suite audit-check
       sgrt-radar-system
     , base ==4.17.2.1
     , unix ==2.7.3
+    , vector
+    , template-haskell
 
 test-suite clinical-hil-validation
   import: common-options
@@ -381,6 +392,8 @@ executable check-baud
   build-depends:
       base ==4.17.2.1
     , unix ==2.7.3
+    , vector
+    , template-haskell
 
 executable check-pty
   import: common-options
@@ -390,6 +403,8 @@ executable check-pty
   build-depends:
       base ==4.17.2.1
     , unix ==2.7.3
+    , vector
+    , template-haskell
 
 executable check-unix
   import: common-options
@@ -399,6 +414,8 @@ executable check-unix
   build-depends:
       base ==4.17.2.1
     , unix ==2.7.3
+    , vector
+    , template-haskell
 
 executable test-parse-errors
   import: common-options
