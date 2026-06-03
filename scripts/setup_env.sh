@@ -36,6 +36,22 @@ ensure_sudo() {
 
 # --- OS Detection & Installation ---
 main() {
+    local skip_security=false
+
+    # Parse arguments
+    while [[ "$#" -gt 0 ]]; do
+        case $1 in
+            --skip-security)
+                skip_security=true
+                ;;
+            *)
+                log_error "Unknown parameter passed: $1"
+                exit 1
+                ;;
+        esac
+        shift
+    done
+
     local os_name
     os_name="$(uname -s)"
     local sudo_cmd
@@ -83,10 +99,16 @@ main() {
                     lsb-release \
                     git
 
-                wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | $sudo_cmd apt-key add -
-                echo deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main | $sudo_cmd tee -a /etc/apt/sources.list.d/trivy.list
-                $sudo_cmd apt-get update
-                $sudo_cmd apt-get install -y trivy
+                if [ "$skip_security" = false ]; then
+                    log_info "Installing security scanning tools (Trivy)..."
+                    $sudo_cmd mkdir -p /etc/apt/keyrings
+                    wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | gpg --dearmor | $sudo_cmd tee /etc/apt/keyrings/trivy.gpg > /dev/null
+                    echo "deb [signed-by=/etc/apt/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | $sudo_cmd tee /etc/apt/sources.list.d/trivy.list > /dev/null
+                    $sudo_cmd apt-get update
+                    $sudo_cmd apt-get install -y trivy
+                else
+                    log_info "Skipping security scanning tools installation as requested."
+                fi
 
                 # Clean up apt cache to keep images small (only if running as root/docker context usually, but good practice)
                 if [ -n "${DOCKER_CONTAINER:-}" ] || [ -f /.dockerenv ]; then
