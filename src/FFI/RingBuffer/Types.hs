@@ -13,24 +13,29 @@ languages.
 
 ==== Memory layout
 
-The 'Storable' instance below dynamically calculates the layout to match
-the C++ @struct RingBufferControl@ across 32-bit and 64-bit architectures:
+The layout matches the C++ @struct RingBufferControl@ across 32-bit and
+64-bit architectures:
 
 * Total size: 64 bytes (due to alignas(64))
 * Alignment: 64 bytes
-* Field offsets depend on `size_t` and pointer size:
+* Field offsets depend on @size_t@ and pointer size:
     * @writeOffset :: CSize@ at offset 0
-    * @readOffset  :: CSize@ at offset `sizeof(size_t)`
-    * @bufferStart :: Ptr CChar@ at offset `2 * sizeof(size_t)`
-    * @bufferSize  :: CSize@ at offset `2 * sizeof(size_t) + sizeof(void*)`
+    * @readOffset  :: CSize@ at offset @sizeof(size_t)@
+    * @bufferStart :: Ptr CChar@ at offset @2 * sizeof(size_t)@
+    * @bufferSize  :: CSize@ at offset @2 * sizeof(size_t) + sizeof(void*)@
 
 Any padding between fields and up to the full 64-byte size is owned by
 the C++ side.
 
+Note: 'Storable' is intentionally /not/ defined in this module to prevent
+accidental non-atomic access to the atomic fields. Layout verification is
+performed via an orphan 'Storable' instance in the test suite
+(@test\/FFI\/RingBuffer\/TypesSpec.hs@).
+
 ==== Concurrency and safety
 
 This structure is typically accessed concurrently by C++ and Haskell
-code (e.g. a producer on the C++ side and a consumer on the Haskell
+
 side). In particular:
 
 * 'writeOffset' is expected to be updated atomically on the C++ side
