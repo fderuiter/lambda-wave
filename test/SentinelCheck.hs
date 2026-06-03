@@ -26,11 +26,11 @@ instance Storable RingBufferControl where
             -- Assumes strict packing which is standard for size_t/ptr
             readOff = sizeT
             startOff = readOff + sizeT
-            sizeOff = startOff + sizeOf (nullPtr :: Ptr CChar)
+            sizeOff = startOff + sizeOf (0 :: CSize)
 
         woff <- peekByteOff ptr 0
         roff <- peekByteOff ptr readOff
-        start <- peekByteOff ptr startOff
+        start <- peekByteOff ptr startOff :: IO CSize
         sz <- peekByteOff ptr sizeOff
         return $ RingBufferControl woff roff start sz
 
@@ -38,7 +38,7 @@ instance Storable RingBufferControl where
         let sizeT = sizeOf (0 :: CSize)
             readOff = sizeT
             startOff = readOff + sizeT
-            sizeOff = startOff + sizeOf (nullPtr :: Ptr CChar)
+            sizeOff = startOff + sizeOf (0 :: CSize)
 
         pokeByteOff ptr 0 woff
         pokeByteOff ptr readOff roff
@@ -125,7 +125,7 @@ main = do
 
     -- 6. Test RingBufferControl Layout
     putStrLn "[Test] RingBufferControl Storable Layout..."
-    let actualSize = sizeOf (RingBufferControl 0 0 nullPtr 0)
+    let actualSize = sizeOf (RingBufferControl 0 0 0 0)
     putStrLn $ "RingBufferControl Size: " ++ show actualSize ++ " (Expected: 64)"
     when (actualSize /= 64) $ do
         putStrLn "FAIL: Incorrect RingBufferControl size"
@@ -134,7 +134,7 @@ main = do
     -- Verify poke/peek roundtrip
     putStrLn "[Test] RingBufferControl Poke/Peek..."
     alloca $ \ptr -> do
-        let rb = RingBufferControl 1 2 nullPtr 100
+        let rb = RingBufferControl 1 2 0 100
         poke ptr rb
         rb' <- peek ptr
         if rb == rb'

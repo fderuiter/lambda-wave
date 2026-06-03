@@ -56,47 +56,18 @@ documentation of the ring buffer control structure and protocol.
 -}
 module FFI.RingBuffer.Types (RingBufferControl(..), peekStaticFields) where
 
-import Foreign.Storable
-import Foreign.Ptr
 import Foreign.C.Types
-import Foreign.Marshal.Alloc (alloca)
+import Foreign.Ptr
+import Foreign.Storable
+import FFI.RingBuffer.Generated
 
--- | Haskell view of the C++ ring buffer control block.
---
--- Note: On the C++ side, @writeOffset@ is a @std::atomic<size_t>@.
--- This Haskell representation uses 'CSize' to match the platform-specific
--- size of @size_t@ (32-bit or 64-bit).
---
--- As a result, this type and its 'Storable' instance must /not/ be used for
--- concurrent access to @writeOffset@. All atomic operations on that field
--- must be performed through dedicated FFI functions that implement the
--- required atomic semantics. The 'Storable' instance is intended only for
--- layout-compatible, non-concurrent inspection/initialisation of the struct.
-data RingBufferControl = RingBufferControl
-    { writeOffset :: !CSize      -- ^ Corresponds to std::atomic<size_t>
-    , readOffset  :: !CSize      -- ^ Corresponds to std::atomic<size_t>
-    , bufferStart :: !(Ptr CChar)   -- ^ Start of the data buffer.
-    , bufferSize  :: !CSize      -- ^ size_t; buffer capacity in bytes (non-atomic).
-    } deriving (Show, Eq)
-
--- SENTINEL SAFETY EDIT: Storable instance removed to prevent race conditions.
--- Access to atomic fields (writeOffset, readOffset) via peek/poke is unsafe.
--- Use peekStaticFields for safe read-only access to constant fields.
--- Layout verification is performed in test/FFI/RingBuffer/TypesSpec.hs via an orphan instance.
-
-foreign import ccall unsafe "get_buffer_pointers"
-    c_get_buffer_pointers :: Ptr RingBufferControl -> Ptr (Ptr CChar) -> Ptr CSize -> IO ()
-
--- | Peeks only the static fields (bufferStart and bufferSize) from the control block.
--- This uses the get_buffer_pointers C API which computes the buffer_start
--- dynamically. This is required because in a multi-process shared memory scenario,
--- the raw bufferStart pointer stored in the struct is only valid for the process
--- that created it.
+-- We compute the dynamic start pointer from the offset
 peekStaticFields :: Ptr RingBufferControl -> IO (Ptr CChar, CSize)
 peekStaticFields ptr = do
-    alloca $ \bufStartPtr -> do
-        alloca $ \sizePtr -> do
-            c_get_buffer_pointers ptr bufStartPtr sizePtr
-            start <- peek bufStartPtr
-            sz <- peek sizePtr
-            return (start, sz)
+    -- offset is at byte 16 (since atomic_size_t is 8 bytes each)
+    let offsetPtr = ptr `plusPtr` (2 * sizeOf (undefined :: CSize))
+    let sizePtr = ptr `plusPtr` (3 * sizeOf (undefined :: CSize))
+    offset <- peek (castPtr offsetPtr :: Ptr CSize)
+    sz <- peek (castPtr sizePtr :: Ptr CSize)
+    let start = ptr `plusPtr` fromIntegral offset
+    return (start, sz)
