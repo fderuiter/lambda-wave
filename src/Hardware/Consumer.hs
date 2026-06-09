@@ -43,6 +43,8 @@ import Data.Types
 import Control.Gating (processFrame)
 import Control.Mesher (reconstructPolynomialSurface)
 import Hardware.Types
+import Hardware.Control (setBeam)
+import Text.Printf (printf)
 
 -- | The Magic Word sequence for TI Millimeter Wave Radar
 magicPattern :: BL.ByteString
@@ -91,7 +93,24 @@ consumerLoop isPrimary controlFp stateVar = withForeignPtr controlFp $ \controlP
                     loop readOff
                 else do
                     -- 2. Calculate available data
-                    -- (available calculation omitted as currently unused, but good for debug)
+                    let availableBytes = if writeOff >= readOff
+                                         then writeOff - readOff
+                                         else bufSize - readOff + writeOff
+                    let saturation = fromIntegral availableBytes / fromIntegral bufSize :: Double
+
+                    when (saturation >= 0.90) $ do
+                        now <- getMonotonicTimeNS
+                        let evt = AuditEvent
+                                { eventTime = now
+                                , severity  = Critical
+                                , component = "Consumer"
+                                , message   = "Buffer pressure reached " ++ show (round (saturation * 100) :: Int) ++ "% saturation. Triggering Beam Off."
+                                }
+                        atomically $ do
+                            st <- readTVar stateVar
+                            writeTBQueue (auditQueue st) evt
+                            writeTVar stateVar (st { beamState = BeamOff })
+                        when isPrimary $ setBeam False
 
                     -- 3. Create Zero-Copy Lazy ByteString
                     let lbs = createLazyByteString fp bufSize readOff writeOff
@@ -143,6 +162,9 @@ consumerLoop isPrimary controlFp stateVar = withForeignPtr controlFp $ \controlP
                             atomically $ do
                                 st <- readTVar stateVar
                                 writeTBQueue (auditQueue st) evt
+                                writeTVar stateVar (st { beamState = BeamOff })
+
+                            when isPrimary $ setBeam False
 
                             -- Also print to stderr for immediate feedback during dev
                             hPutStrLn stderr $ "[Consumer] Error: " ++ show err
@@ -151,6 +173,19 @@ consumerLoop isPrimary controlFp stateVar = withForeignPtr controlFp $ \controlP
                     -- Link Kalman State & Gating Logic (P1-003)
                     -- We process each frame individually to maintain correct time-steps for the filter.
                     unless (null frames) $ do
+                        forM_ frames $ \frame -> do
+                            now <- getMonotonicTimeNS
+                            let headerHex = concatMap (\x -> printf "%02X" (fromIntegral x :: Int)) (B.unpack (header frame))
+                            let evt = AuditEvent
+                                    { eventTime = now
+                                    , severity  = Info
+                                    , component = "Consumer"
+                                    , message   = "Processed frame " ++ show (seqNum frame) ++ " | Header: " ++ headerHex
+                                    }
+                            atomically $ do
+                                st <- readTVar stateVar
+                                writeTBQueue (auditQueue st) evt
+
                         if isPrimary
                             then forM_ frames $ \frame -> processFrame stateVar frame
                             else atomically $ modifyTVar' stateVar $ \s -> s { currentPoints = concatMap points frames }
@@ -272,6 +307,8 @@ parseStream input =
 -- | Parser for a single Radar Frame
 getRadarFrame :: G.Get RadarFrame
 getRadarFrame = do
+    rawHeader <- B.copy <$> G.lookAhead (G.getByteString 36)
+
     -- 1. Scan for Magic Word
     -- (We assume we are positioned at Magic Word or Partial Magic Word by skipToMagicWord)
     magic <- G.getLazyByteString 8
@@ -309,7 +346,7 @@ getRadarFrame = do
     -- Holding a ByteString pointing to the Ring Buffer (ForeignPtr) while
     -- advancing read_offset allows the producer to overwrite the memory,
     -- leading to race conditions if we read that ByteString later.
-    return $ RadarFrame B.empty frameNum points -- Storing empty raw header for now to save space
+    return $ RadarFrame rawHeader frameNum points
 
 -- | Parse TLVs (Tail Recursive)
 parseTLVs :: Int -> G.Get [Point3D]
