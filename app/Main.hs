@@ -4,12 +4,11 @@ module Main (main) where
 import Control.Concurrent (forkOS, setNumCapabilities, threadDelay, forkIO)
 import Control.Concurrent.STM
 import Control.Exception (try, IOException)
-import System.Environment (lookupEnv, getArgs, getExecutablePath)
+import System.Environment (lookupEnv)
 import Data.Maybe (fromMaybe)
 import System.Posix.IO (openFd, OpenMode(..), defaultFileFlags, OpenFileFlags(..), fdWriteBuf, closeFd)
 import System.Posix.Files (getFdStatus, isCharacterDevice, createNamedPipe, unionFileModes, ownerReadMode, ownerWriteMode)
-import System.Posix.Types (Fd, ProcessID)
-import System.Posix.Process (forkProcess, executeFile, getProcessID)
+import System.Posix.Types (Fd)
 import Control.Monad (forever, unless, void)
 import qualified Data.Map.Strict as Map
 import System.Exit (exitFailure)
@@ -25,19 +24,13 @@ import Data.Config (targetHeight)
 import SignalProcessing.Kalman (initKalman, KalmanConfig(..))
 import qualified FFI.RingBuffer.IO as RingBuffer
 import Hardware.Control (configureRawSerial)
-import Hardware.Consumer (consumerLoop)
-import Safety.Watchdog (watchdogLoop, runSafetyDaemon)
+import Hardware.Consumer (coreLoop)
+import Safety.Watchdog (checkWatchdogInit)
 import Safety.Audit
 import Data.Time.HighRes (getMonotonicTimeNS)
 
 main :: IO ()
-main = do
-    args <- getArgs
-    case args of
-        ["--safety-daemon", parentPidStr] -> do
-            let parentPid = read parentPidStr :: ProcessID
-            runSafetyDaemon parentPid
-        _ -> runMain
+main = runMain
 
 runMain :: IO ()
 runMain = do
@@ -100,9 +93,6 @@ runMain = do
     _cliFd <- openAndValidatePort "CLI port" cliPort
 
     -- 1. Setup Ring Buffer (4MB)
-    -- We use the new FFI.RingBuffer.IO directly.
-    -- NOW RETURNS ForeignPtr RingBufferControl.
-    -- This ensures the buffer is automatically freed when all references (Main thread, consumer thread, ingestion thread) are gone.
     ringBuffer <- RingBuffer.createRingBuffer (4 * 1024 * 1024)
 
     -- Configure Port (Raw Mode) to prevent data corruption
@@ -113,32 +103,21 @@ runMain = do
             exitFailure
         Right () -> return ()
 
-    -- 2. Hardware Ingestion (Dedicated Thread)
-    -- ingestionLoop accepts ForeignPtr
-    _ <- RingBuffer.ingestionLoop ringBuffer fd
+    -- Initialize Watchdog Hardware State
+    checkWatchdogInit
 
-    -- Spawn Safety Daemon
-    exePath <- getExecutablePath
-    myPid <- getProcessID
-    _daemonPid <- forkProcess $ executeFile exePath False ["--safety-daemon", show myPid] Nothing
-
-    -- 3. Consumer/Parser (Dedicated Thread)
-    _ <- forkOS $ consumerLoop True ringBuffer systemState
-
-    -- 3. Safety Watchdog Heartbeat Sender (High Priority Thread)
-    _ <- forkOS $ watchdogLoop systemState
-
-    -- 4. Audit Logging
+    -- 2. Audit Logging
     _ <- forkOS $ auditLoop systemState "session.log"
 
-    -- 5. IPC Sender to Visualizer
+    -- 3. IPC Sender to Visualizer
     putStrLn "Starting IPC Telemetry Stream..."
     _ <- forkIO $ ipcSenderLoop systemState
 
     putStrLn "System Armed. SafetyCore is running."
     
-    -- Keep Main Alive
-    forever $ threadDelay 1000000
+    -- 4. Start single-process Core Execution Loop directly in main thread
+    coreLoop True ringBuffer fd systemState
+
 
 -- | IPC Sender Loop using a POSIX FIFO with O_NONBLOCK
 ipcSenderLoop :: TVar SystemState -> IO ()

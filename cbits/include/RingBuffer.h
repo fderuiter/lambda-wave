@@ -1,16 +1,16 @@
 #ifndef RING_BUFFER_CONTROL_H
 #define RING_BUFFER_CONTROL_H
 
-#include <atomic>
 #include <cstddef>
 #include <cstdint>
 
 struct RingBufferControl {
-  alignas(64) std::atomic<size_t> write_offset;
-  std::atomic<size_t> read_offset;
+  alignas(64) size_t write_offset;
+  size_t read_offset;
   size_t buffer_offset;
   size_t buffer_size;
 };
+
 
 static_assert(alignof(RingBufferControl) == 64,
               "RingBufferControl alignment expected to be 64");

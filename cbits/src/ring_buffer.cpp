@@ -1,44 +1,22 @@
 #include "../include/RingBuffer.h"
 #include <unistd.h>
-#include <sys/mman.h>
 #include <cstdlib>
 #include <new>
 #include <cstring>
 #include <cerrno>
-#include <fcntl.h>
 
 extern "C" {
 
 RingBufferControl* create_ring_buffer(size_t size) {
     size_t total_size = sizeof(RingBufferControl) + size;
     
-    // Unlink old if exists
-    shm_unlink("/sgrt_ring_buffer");
-    
-    int fd = shm_open("/sgrt_ring_buffer", O_CREAT | O_RDWR, 0666);
-    if (fd == -1) return nullptr;
-    
-    if (ftruncate(fd, total_size) == -1) {
-        close(fd);
-        return nullptr;
-    }
-
-    void* mem = mmap(nullptr, total_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-    close(fd); // fd is no longer needed after mmap
-    if (mem == MAP_FAILED) return nullptr;
-
-    // Pin memory
-    if (mlock(mem, total_size) != 0) {
-        munmap(mem, total_size);
-        return nullptr;
-    }
+    void* mem = std::malloc(total_size);
+    if (!mem) return nullptr;
 
     RingBufferControl* control = new (mem) RingBufferControl();
-    control->write_offset.store(0, std::memory_order_relaxed);
-    control->read_offset.store(0, std::memory_order_relaxed);
+    control->write_offset = 0;
+    control->read_offset = 0;
     
-    // Note: buffer_start is a pointer. It will be valid for the creator process.
-    // Attachers must override it for their own address space.
     control->buffer_offset = sizeof(RingBufferControl);
     control->buffer_size = size;
 
@@ -46,35 +24,12 @@ RingBufferControl* create_ring_buffer(size_t size) {
 }
 
 RingBufferControl* attach_ring_buffer(size_t size) {
-    size_t total_size = sizeof(RingBufferControl) + size;
-    
-    int fd = shm_open("/sgrt_ring_buffer", O_RDWR, 0666);
-    if (fd == -1) return nullptr;
-
-    void* mem = mmap(nullptr, total_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-    close(fd);
-    if (mem == MAP_FAILED) return nullptr;
-
-    // Pin memory
-    if (mlock(mem, total_size) != 0) {
-        munmap(mem, total_size);
-        return nullptr;
-    }
-
-    RingBufferControl* control = static_cast<RingBufferControl*>(mem);
-    // DO NOT OVERWRITE control->buffer_start IN SHARED MEMORY!
-    // It would break the creator. 
-    // We cannot change RingBufferControl struct because of ABI.
-    // Wait, buffer_start is a field in the shared memory. We shouldn't write to it.
-    // Instead, we should NEVER read buffer_start directly if we are the attacher, or we just live with it?
-    // Actually, in our Haskell consumer code, we peek buffer_start!
-    // So we MUST change how consumer gets the buffer start!
-    return control;
+    // Single process architecture, attach just creates a new one or should not be used
+    return create_ring_buffer(size);
 }
 
 void get_buffer_pointers(RingBufferControl* control, char** buf_start, size_t* size) {
     if (control) {
-        // Compute dynamically for safety across processes
         *buf_start = reinterpret_cast<char*>(control) + control->buffer_offset;
         *size = control->buffer_size;
     }
@@ -82,27 +37,20 @@ void get_buffer_pointers(RingBufferControl* control, char** buf_start, size_t* s
 
 void free_ring_buffer(RingBufferControl* handle) {
     if (handle) {
-        size_t total_size = sizeof(RingBufferControl) + handle->buffer_size;
-        munlock(handle, total_size);
         handle->~RingBufferControl();
-        munmap(handle, total_size);
-        shm_unlink("/sgrt_ring_buffer");
+        std::free(handle);
     }
 }
 
 void detach_ring_buffer(RingBufferControl* handle) {
-    if (handle) {
-        size_t total_size = sizeof(RingBufferControl) + handle->buffer_size;
-        munlock(handle, total_size);
-        munmap(handle, total_size);
-    }
+    free_ring_buffer(handle);
 }
 
 ssize_t read_from_uart(RingBufferControl* handle, int uart_fd) {
     if (!handle) return -1;
 
-    size_t current_offset = handle->write_offset.load(std::memory_order_relaxed);
-    size_t read_offset = handle->read_offset.load(std::memory_order_acquire);
+    size_t current_offset = handle->write_offset;
+    size_t read_offset = handle->read_offset;
     
     // Use dynamic pointer computation
     char* buf_start = reinterpret_cast<char*>(handle) + handle->buffer_offset;
@@ -146,15 +94,11 @@ ssize_t read_from_uart(RingBufferControl* handle, int uart_fd) {
         if (new_offset >= size) {
             new_offset = 0;
         }
-        handle->write_offset.store(new_offset, std::memory_order_release);
+        handle->write_offset = new_offset;
     }
 
     return bytes_read;
 }
-
-
-
-
 
 }
 
@@ -162,3 +106,4 @@ ssize_t read_from_uart(RingBufferControl* handle, int uart_fd) {
 
 // Requirement FR-DAQ-004
 // Hazard H-SOUP-003: FFI Memory Leaks
+

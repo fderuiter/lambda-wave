@@ -8,12 +8,11 @@ Description : Zero-Copy Consumer for Ring Buffer
 Copyright   : (c) 2024
 License     : AGPL-3.0-only
 
-This module implements the consumer thread that reads from the shared ring buffer
-using a zero-copy strategy. It polls the C++ ring buffer's write offset using
-acquire semantics and parses the incoming data stream into Haskell types.
+This module implements the core execution loop that reads from the UART into the ring buffer
+and parses the incoming data stream into Haskell types within a single process.
 -}
 module Hardware.Consumer (
-    consumerLoop,
+    coreLoop,
     parseStream, -- Exported for testing
     createLazyByteString -- Exported for testing
 ) where
@@ -36,14 +35,17 @@ import System.IO (hPutStrLn, stderr)
 import qualified GHC.Float
 import Data.Time.HighRes (getMonotonicTimeNS)
 import Data.Maybe (isJust)
+import System.Posix.Types (Fd)
+import System.Exit (exitFailure)
 
 import FFI.RingBuffer.Types (RingBufferControl(..), peekStaticFields)
-import FFI.RingBuffer.IO (getWriteOffset, setReadOffset)
+import FFI.RingBuffer.IO (getWriteOffset, setReadOffset, readFromUart, ReadResult(..))
 import Data.Types
 import Control.Gating (processFrame)
 import Control.Mesher (reconstructPolynomialSurface)
 import Hardware.Types
 import Hardware.Control (setBeam)
+import Safety.Watchdog (checkWatchdog)
 import Text.Printf (printf)
 
 -- | The Magic Word sequence for TI Millimeter Wave Radar
@@ -51,48 +53,49 @@ magicPattern :: BL.ByteString
 magicPattern = BL.pack [1, 2, 3, 4, 5, 6, 7, 8]
 
 -- | Maximum allowed TLV size to prevent Denial of Service (DoS) attacks
--- where a malicious packet claims a huge size, causing the parser to hang
--- or attempt massive allocations.
 maxTLVSize :: Word32
 maxTLVSize = 65536
 
--- | The Consumer Thread Loop
+-- | The Core Execution Loop
 --
+-- * Reads from UART.
 -- * Polls 'write_offset' (atomic acquire).
 -- * If new data exists, creates a Lazy ByteString referencing the buffer (Zero-Copy).
 -- * Parses frames using 'Data.Binary.Get'.
 -- * Updates 'SystemState'.
+-- * Evaluates Watchdog
 -- * Logs errors to 'auditQueue'.
-consumerLoop :: Bool -> ForeignPtr RingBufferControl -> TVar SystemState -> IO ()
-consumerLoop isPrimary controlFp stateVar = withForeignPtr controlFp $ \controlPtr -> do
-    -- Read initial control block (non-atomic for immutable fields)
-    -- We use a dedicated peek to avoid reading atomic offsets (0, 8) which could race.
+coreLoop :: Bool -> ForeignPtr RingBufferControl -> Fd -> TVar SystemState -> IO ()
+coreLoop isPrimary controlFp fd stateVar = withForeignPtr controlFp $ \controlPtr -> do
     (ptrStart, rawSize) <- peekStaticFields controlPtr
     let bufStart = ptrStart
         bufSize  = fromIntegral rawSize :: Int
 
-    -- ForeignPtr to the buffer.
-    -- We attach a Haskell finalizer that touches 'controlFp'.
-    -- This ensures that as long as 'fp' (and any ByteString derived from it) is alive,
-    -- 'controlFp' (and thus the Ring Buffer) remains alive.
     fp <- FC.newForeignPtr bufStart (touchForeignPtr controlFp)
 
-    putStrLn $ "[Consumer] Started. Primary=" ++ show isPrimary ++ ". Buffer Size: " ++ show bufSize
+    putStrLn $ "[CoreLoop] Started. Primary=" ++ show isPrimary ++ ". Buffer Size: " ++ show bufSize
 
-    -- Internal Loop State
     let loop readOff = do
-            -- 1. Poll Write Offset (Atomic Acquire)
-            -- Pass the ForeignPtr to ensure safety, although we are already inside withForeignPtr,
-            -- this double check is fine or we rely on the fact that controlFp is alive.
+            -- 1. Read from UART (Non-blocking or fast blocking)
+            res <- readFromUart controlFp fd
+            case res of
+                ReadError -> do
+                    hPutStrLn stderr "CRITICAL FAILURE: readFromUart returned error. Core loop TERMINATING."
+                    exitFailure
+                ReadEOF -> do
+                    hPutStrLn stderr "Device Disconnected (EOF). Terminating."
+                    exitFailure
+                _ -> return ()
+
+            -- 2. Poll Write Offset
             writeOff <- getWriteOffset controlFp
 
             if writeOff == readOff
                 then do
-                    -- No new data, sleep briefly to avoid busy wait
+                    when isPrimary $ checkWatchdog stateVar
                     threadDelay 1000 -- 1ms
                     loop readOff
                 else do
-                    -- 2. Calculate available data
                     let availableBytes = if writeOff >= readOff
                                          then writeOff - readOff
                                          else bufSize - readOff + writeOff
@@ -112,37 +115,18 @@ consumerLoop isPrimary controlFp stateVar = withForeignPtr controlFp $ \controlP
                             writeTVar stateVar (st { beamState = BeamOff })
                         when isPrimary $ setBeam False
 
-                    -- 3. Create Zero-Copy Lazy ByteString
                     let lbs = createLazyByteString fp bufSize readOff writeOff
-
-                    -- 4. Parse Frames
-                    -- We use 'runGetIncremental' to handle the stream.
-                    -- Note: Since we poll chunks, we might get partial frames.
-                    -- However, 'runGetIncremental' expects to be fed.
-                    -- Here, we simplify by attempting to parse as much as possible
-                    -- from the current snapshot. A robust implementation would maintain
-                    -- the decoder state across loops.
-
                     let (frames, bytesConsumed, maybeErr) = parseStream lbs
 
-                    -- Check for Busy Loop Condition:
-                    -- If we consumed 0 bytes and have no error, it means we are stuck
-                    -- (likely due to a partial magic word at the end of the buffer).
-                    -- We MUST sleep to allow the producer to add more data.
-                    unless (bytesConsumed > 0 || isJust maybeErr) $
+                    unless (bytesConsumed > 0 || isJust maybeErr) $ do
+                        when isPrimary $ checkWatchdog stateVar
                         threadDelay 1000 -- 1ms
 
-                    -- 5. Force Evaluation (Critical for FFI Safety)
-                    -- We must ensure all data is copied out of the Ring Buffer (via Lazy ByteString)
-                    -- BEFORE we update the read_offset. If we don't, the producer might overwrite
-                    -- the memory while we are lazily parsing it.
                     _ <- evaluate (force frames)
 
-                    -- Log Error if detected
                     case maybeErr of
                         Nothing -> return ()
                         Just err -> do
-                            -- Construct AuditEvent
                             now <- getMonotonicTimeNS
                             let (sev, msg) = case err of
                                     DoSAttackDetected -> (Critical, "Potential DoS: TLV Too Large")
@@ -165,13 +149,8 @@ consumerLoop isPrimary controlFp stateVar = withForeignPtr controlFp $ \controlP
                                 writeTVar stateVar (st { beamState = BeamOff })
 
                             when isPrimary $ setBeam False
+                            hPutStrLn stderr $ "[CoreLoop] Error: " ++ show err
 
-                            -- Also print to stderr for immediate feedback during dev
-                            hPutStrLn stderr $ "[Consumer] Error: " ++ show err
-
-                    -- 6. Update State
-                    -- Link Kalman State & Gating Logic (P1-003)
-                    -- We process each frame individually to maintain correct time-steps for the filter.
                     unless (null frames) $ do
                         forM_ frames $ \frame -> do
                             now <- getMonotonicTimeNS
@@ -190,27 +169,17 @@ consumerLoop isPrimary controlFp stateVar = withForeignPtr controlFp $ \controlP
                             then forM_ frames $ \frame -> processFrame stateVar frame
                             else atomically $ modifyTVar' stateVar $ \s -> s { currentPoints = concatMap points frames }
 
-                    -- 7. Update Read Offset
-                    -- In a real ring buffer, we advance readOff by how much we processed.
-                    -- But here, the producer might overwrite us if we are slow.
-                    -- Also, we constructed 'lbs' from *all* available data.
-                    -- If we successfully parsed everything, we catch up to writeOff.
-                    -- If we have partial data at the end, we should only advance by bytesConsumed.
-
-                    -- SENTINEL SAFETY CHECK: Ensure we don't pass negative offset
                     let safeConsumed = max 0 (fromIntegral bytesConsumed)
                     let newReadOff = (readOff + safeConsumed) `rem` bufSize
 
-                    -- 8. Notify Producer (Release Semantics)
-                    -- We must update the shared read offset so the producer can reclaim space
-                    -- (if it implements flow control) or just for monitoring.
-                    -- ONLY the Primary Consumer (SafetyCore) gets to update the flow control offset!
-                    when isPrimary $
+                    when isPrimary $ do
                         setReadOffset controlFp newReadOff
+                        checkWatchdog stateVar
 
                     loop newReadOff
 
     loop 0
+
 
 -- | Creates a Lazy ByteString from the ring buffer pointers.
 -- Handles the wrap-around case by creating 1 or 2 chunks.
