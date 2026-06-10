@@ -86,7 +86,17 @@
         <h1 class="sr-only">Lambda-Wave Real-time Monitor</h1>
         <div id="sr-announcer" class="sr-only" aria-live="polite" aria-atomic="true"></div>
         <div id="beam-status" class="Offline" role="alert" aria-live="assertive" aria-atomic="true">CONNECTING...</div>
-        <canvas id="plot" width="800" height="400" tabindex="0" role="img" aria-label="Real-time trace and point cloud visualization. Y-axis scale: +100mm to -100mm."></canvas>
+        <div style="position: relative; width: 800px; height: 400px; margin: 0 auto; max-width: 100%;">
+            <canvas id="plot" width="800" height="400" tabindex="0" role="img" aria-label="Real-time trace and point cloud visualization. Y-axis scale: +100mm to -100mm." style="position: absolute; top:0; left:0; width: 100%; height: 100%;"></canvas>
+            <canvas id="heatmap" width="800" height="400" tabindex="0" role="img" aria-label="3D Heatmap visualization" style="position: absolute; top:0; left:0; width: 100%; height: 100%; display: none;"></canvas>
+            <div id="pause-overlay" style="display: none; position: absolute; top:0; left:0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); pointer-events: none; flex-direction: column; align-items: center; justify-content: center;">
+                <div style="color: #ff0; font-size: 32px; font-weight: bold; margin-bottom: 10px;">PAUSED</div>
+                <div id="pause-text-click" style="color: #ccc; font-size: 16px;"></div>
+            </div>
+        </div>
+        <div style="text-align: center; margin-top: 10px;">
+            <label style="cursor: pointer;"><input type="checkbox" id="toggle-heatmap"> Enable 3D Heatmap</label>
+        </div>
         <div id="stats">
             <span aria-live="polite" aria-atomic="true"><span id="conn-dot" class="status-dot dot-connecting" aria-hidden="true"></span><span id="conn-text">Connecting...</span></span> <span aria-hidden="true">|</span>
             <abbr tabindex="0" title="Time elapsed for the current radar frame" style="cursor: help; text-decoration: underline dotted; text-decoration-skip-ink: none;">Frame Time</abbr><span aria-hidden="true">:</span> <span id="ts">0.0</span> ms <span aria-hidden="true">|</span> <abbr tabindex="0" title="Number of points in the current point cloud" style="cursor: help; text-decoration: underline dotted; text-decoration-skip-ink: none;">Points</abbr><span aria-hidden="true">:</span> <span id="pt-count">0</span>
@@ -108,6 +118,8 @@
         const width = canvas.width;
         const height = canvas.height;
         let isPaused = false;
+        let heatmapEnabled = false;
+        let lastStatePointCloud = null;
         const pauseBtn = document.getElementById('pause-btn');
         const srAnnouncer = document.getElementById('sr-announcer');
         const clickTapStr = window.matchMedia("(hover: none) and (pointer: coarse)").matches ? 'Tap' : 'Click';
@@ -121,6 +133,7 @@
             if (isPaused) {
                 canvas.setAttribute('aria-label', 'PAUSED: Real-time trace and point cloud visualization. Y-axis scale: +100mm to -100mm.');
                 canvas.setAttribute('title', `${clickTapStr} to resume trace`);
+                heatmapCanvasClick.setAttribute('title', `${clickTapStr} to resume trace`);
                 ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
                 ctx.fillRect(0, 0, width, height);
                 ctx.fillStyle = '#ff0';
@@ -131,21 +144,31 @@
                 ctx.fillStyle = '#ccc';
                 ctx.font = '16px monospace';
                 ctx.fillText(`${clickTapStr} to resume`, width / 2, height / 2 + 20);
+                
+                if (heatmapEnabled) {
+                    document.getElementById('pause-overlay').style.display = 'flex';
+                    document.getElementById('pause-text-click').innerText = `${clickTapStr} to resume`;
+                }
             } else {
                 canvas.setAttribute('aria-label', 'Real-time trace and point cloud visualization. Y-axis scale: +100mm to -100mm.');
                 canvas.setAttribute('title', `${clickTapStr} to pause trace`);
+                heatmapCanvasClick.setAttribute('title', `${clickTapStr} to pause trace`);
+                document.getElementById('pause-overlay').style.display = 'none';
+                if (heatmapEnabled && lastStatePointCloud) renderHeatmap(lastStatePointCloud);
             }
         }
 
         pauseBtn.addEventListener('click', togglePause);
         canvas.addEventListener('click', togglePause);
+        const heatmapCanvasClick = document.getElementById('heatmap');
+        heatmapCanvasClick.addEventListener('click', togglePause);
 
         document.addEventListener('keydown', (e) => {
             if (e.code === 'Space' && document.activeElement !== pauseBtn) {
                 e.preventDefault(); // Prevent scrolling when pressing Space
                 togglePause();
             }
-            if (e.code === 'Enter' && document.activeElement === canvas) {
+            if (e.code === 'Enter' && (document.activeElement === canvas || document.activeElement === heatmapCanvasClick)) {
                 e.preventDefault(); // Native activation for focused custom elements
                 togglePause();
             }
@@ -336,7 +359,204 @@
             }
         };
 
+        // WebGL Setup for 3D Heatmap
+        const heatmapCanvas = document.getElementById('heatmap');
+        const gl = heatmapCanvas.getContext('webgl') || heatmapCanvas.getContext('experimental-webgl');
+
+        document.getElementById('toggle-heatmap').addEventListener('change', (e) => {
+            heatmapEnabled = e.target.checked;
+            if (heatmapEnabled) {
+                canvas.style.display = 'none';
+                heatmapCanvas.style.display = 'block';
+                if (isPaused) {
+                    document.getElementById('pause-overlay').style.display = 'flex';
+                    document.getElementById('pause-text-click').innerText = `${clickTapStr} to resume`;
+                    if (lastStatePointCloud) renderHeatmap(lastStatePointCloud);
+                }
+            } else {
+                canvas.style.display = 'block';
+                heatmapCanvas.style.display = 'none';
+                document.getElementById('pause-overlay').style.display = 'none';
+            }
+        });
+
+        const vsSource = `
+            attribute vec3 aPosition;
+            attribute vec3 aBaseline;
+            uniform mat4 uMVP;
+            varying float vIntensity;
+            void main() {
+                gl_Position = uMVP * vec4(aPosition, 1.0);
+                vIntensity = distance(aPosition, aBaseline);
+            }
+        `;
+        const fsSource = `
+            precision mediump float;
+            varying float vIntensity;
+            uniform float uMaxIntensity;
+            void main() {
+                float t = clamp(vIntensity / uMaxIntensity, 0.0, 1.0);
+                vec3 color;
+                if (t < 0.25) color = mix(vec3(0,0,1), vec3(0,1,1), t/0.25);
+                else if (t < 0.5) color = mix(vec3(0,1,1), vec3(0,1,0), (t-0.25)/0.25);
+                else if (t < 0.75) color = mix(vec3(0,1,0), vec3(1,1,0), (t-0.5)/0.25);
+                else color = mix(vec3(1,1,0), vec3(1,0,0), (t-0.75)/0.25);
+                gl_FragColor = vec4(color, 1.0);
+            }
+        `;
+
+        function compileShader(gl, type, source) {
+            const shader = gl.createShader(type);
+            gl.shaderSource(shader, source);
+            gl.compileShader(shader);
+            if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+                console.error(gl.getShaderInfoLog(shader));
+                gl.deleteShader(shader);
+                return null;
+            }
+            return shader;
+        }
+
+        const vertexShader = compileShader(gl, gl.VERTEX_SHADER, vsSource);
+        const fragmentShader = compileShader(gl, gl.FRAGMENT_SHADER, fsSource);
+        const shaderProgram = gl.createProgram();
+        gl.attachShader(shaderProgram, vertexShader);
+        gl.attachShader(shaderProgram, fragmentShader);
+        gl.linkProgram(shaderProgram);
+
+        const programInfo = {
+            program: shaderProgram,
+            attribLocations: {
+                vertexPosition: gl.getAttribLocation(shaderProgram, 'aPosition'),
+                baselinePosition: gl.getAttribLocation(shaderProgram, 'aBaseline'),
+            },
+            uniformLocations: {
+                uMVP: gl.getUniformLocation(shaderProgram, 'uMVP'),
+                uMaxIntensity: gl.getUniformLocation(shaderProgram, 'uMaxIntensity'),
+            },
+        };
+
+        const posBuffer = gl.createBuffer();
+        const baselineBuffer = gl.createBuffer();
+        const indexBuffer = gl.createBuffer();
+        
+        let baselineData = null;
+        const GRID_W = 20;
+        const GRID_H = 20;
+        const indices = [];
+        for (let c = 0; c < 19; c++) {
+            for (let r = 0; r < 20; r++) {
+                indices.push(c * 20 + r);
+                indices.push((c + 1) * 20 + r);
+            }
+            if (c < 18) {
+                indices.push((c + 1) * 20 + 19);
+                indices.push((c + 1) * 20 + 0);
+            }
+        }
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
+        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
+
+        function multiplyMat4(a, b) {
+            const out = new Float32Array(16);
+            for(let i=0;i<4;i++) {
+                for(let j=0;j<4;j++) {
+                    let sum = 0;
+                    for(let k=0;k<4;k++) sum += a[k*4+i] * b[j*4+k];
+                    out[j*4+i] = sum;
+                }
+            }
+            return out;
+        }
+
+        function createOrtho(left, right, bottom, top, near, far) {
+            return new Float32Array([
+                2/(right-left), 0, 0, 0,
+                0, 2/(top-bottom), 0, 0,
+                0, 0, -2/(far-near), 0,
+                -(right+left)/(right-left), -(top+bottom)/(top-bottom), -(far+near)/(far-near), 1
+            ]);
+        }
+        
+        function createRotateX(angle) {
+            const s = Math.sin(angle), c = Math.cos(angle);
+            return new Float32Array([
+                1, 0, 0, 0,
+                0, c, s, 0,
+                0, -s, c, 0,
+                0, 0, 0, 1
+            ]);
+        }
+
+        function createRotateZ(angle) {
+            const s = Math.sin(angle), c = Math.cos(angle);
+            return new Float32Array([
+                c, s, 0, 0,
+                -s, c, 0, 0,
+                0, 0, 1, 0,
+                0, 0, 0, 1
+            ]);
+        }
+
+        // x and y in [-100, 100]. Let's fit them in view.
+        const ortho = createOrtho(-150, 150, -150, 150, -200, 200);
+        let mvp = ortho;
+        mvp = multiplyMat4(mvp, createRotateX(-Math.PI / 3));
+        mvp = multiplyMat4(mvp, createRotateZ(Math.PI / 6));
+
+        function renderHeatmap(points) {
+            if (!points || points.length !== 400) return;
+
+            if (!baselineData) {
+                baselineData = new Float32Array(points.length * 3);
+                points.forEach((p, i) => {
+                    baselineData[i*3] = p.x;
+                    baselineData[i*3+1] = p.y;
+                    baselineData[i*3+2] = p.z;
+                });
+                gl.bindBuffer(gl.ARRAY_BUFFER, baselineBuffer);
+                gl.bufferData(gl.ARRAY_BUFFER, baselineData, gl.STATIC_DRAW);
+            }
+
+            const posData = new Float32Array(points.length * 3);
+            points.forEach((p, i) => {
+                posData[i*3] = p.x;
+                posData[i*3+1] = p.y;
+                posData[i*3+2] = p.z;
+            });
+            
+            gl.bindBuffer(gl.ARRAY_BUFFER, posBuffer);
+            gl.bufferData(gl.ARRAY_BUFFER, posData, gl.DYNAMIC_DRAW);
+
+            gl.viewport(0, 0, heatmapCanvas.width, heatmapCanvas.height);
+            gl.clearColor(0.0, 0.0, 0.0, 1.0);
+            gl.enable(gl.DEPTH_TEST);
+            gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_TEST);
+
+            gl.useProgram(programInfo.program);
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, posBuffer);
+            gl.vertexAttribPointer(programInfo.attribLocations.vertexPosition, 3, gl.FLOAT, false, 0, 0);
+            gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, baselineBuffer);
+            gl.vertexAttribPointer(programInfo.attribLocations.baselinePosition, 3, gl.FLOAT, false, 0, 0);
+            gl.enableVertexAttribArray(programInfo.attribLocations.baselinePosition);
+
+            gl.uniformMatrix4fv(programInfo.uniformLocations.uMVP, false, mvp);
+            gl.uniform1f(programInfo.uniformLocations.uMaxIntensity, 20.0); // 20mm max displacement for heatmap
+
+            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
+            gl.drawElements(gl.TRIANGLE_STRIP, indices.length, gl.UNSIGNED_SHORT, 0);
+        }
+
         function draw(points, trace) {
+            lastStatePointCloud = points;
+            if (heatmapEnabled) {
+                renderHeatmap(points);
+                return;
+            }
+            
             ctx.clearRect(0, 0, width, height);
 
             // Draw Trace (Line Graph)
