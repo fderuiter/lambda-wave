@@ -14,6 +14,11 @@ module SignalProcessing.FMCW
     , chirpZTransform
     , CZTParams(..)
       -- * Static Clutter Removal
+    , MTIConfig
+    , mkMTIConfig
+    , mtiAlphaBase
+    , mtiAlphaMax
+    , mtiThreshold
     , applyStaticClutterRemoval
       -- * Phase-Based Motion Tracking
     , calculatePhase
@@ -22,6 +27,7 @@ module SignalProcessing.FMCW
     ) where
 
 import Data.Complex
+import Data.List (foldl')
 
 -- | Equation (1): Verified
 -- Calculate the beat frequency from a target range.
@@ -150,36 +156,76 @@ calculateDisplacement f_min delta_phi = (c * delta_phi) / (4 * pi * f_min)
 
 -- | Requirement FR-DSP-001: Static Clutter Removal
 -- Implements an Exponential Moving Average (EMA) high-pass filter.
+-- Dynamically adjusts alpha based on real-time signal variance (motion metric).
 --
 -- Complexity: O(N) runtime where N is the number of bins.
 -- Safety: Total function, handles all inputs gracefully.
-applyStaticClutterRemoval :: Double                  -- ^ Alpha (Learning Rate, e.g., 0.05)
+
+-- | Parameters for Adaptive MTI Filter
+data MTIConfig = MTIConfig
+    { mtiAlphaBase :: !Double  -- ^ Base learning rate (standard motion)
+    , mtiAlphaMax  :: !Double  -- ^ Max learning rate (static environment)
+    , mtiThreshold :: !Double  -- ^ Motion variance threshold
+    } deriving (Show, Eq)
+
+-- | Smart constructor for MTIConfig with validation.
+-- Enforces: 0 <= mtiAlphaBase <= mtiAlphaMax <= 1 and isFinite mtiThreshold
+mkMTIConfig :: Double -> Double -> Double -> Either String MTIConfig
+mkMTIConfig alphaBase alphaMax threshold
+    | not (isFinite alphaBase) = Left "mtiAlphaBase must be finite"
+    | not (isFinite alphaMax) = Left "mtiAlphaMax must be finite"
+    | not (isFinite threshold) = Left "mtiThreshold must be finite"
+    | alphaBase < 0.0 = Left "mtiAlphaBase must be >= 0"
+    | alphaBase > 1.0 = Left "mtiAlphaBase must be <= 1"
+    | alphaMax < 0.0 = Left "mtiAlphaMax must be >= 0"
+    | alphaMax > 1.0 = Left "mtiAlphaMax must be <= 1"
+    | alphaBase > alphaMax = Left "mtiAlphaBase must be <= mtiAlphaMax"
+    | otherwise = Right (MTIConfig alphaBase alphaMax threshold)
+  where
+    isFinite x = not (isNaN x || isInfinite x)
+
+applyStaticClutterRemoval :: MTIConfig               -- ^ Filter configuration
                           -> [Complex Double]        -- ^ Previous Mean (State)
                           -> [Complex Double]        -- ^ Current Frame Input
                           -> ([Complex Double], [Complex Double]) -- ^ (New Mean, Output Frame)
 -- ⚡ Bolt Optimization: Replaced O(N) multi-pass `zipWith` chain with single-pass
--- guarded recursion to prevent intermediate thunk allocations and improve stream fusion.
-applyStaticClutterRemoval alpha prevMean input =
+-- strict left fold to prevent intermediate thunk allocations and avoid stack growth.
+applyStaticClutterRemoval config prevMean input =
     if null prevMean
     then goInit input
-    else go prevMean input
+    else
+        let !motionMetric = calculateMotionMetric prevMean input
+            !alpha = if motionMetric < mtiThreshold config
+                     then mtiAlphaMax config
+                     else mtiAlphaBase config
+            !alphaC = alpha :+ 0
+            !oneMinusAlphaC = (1.0 - alpha) :+ 0
+
+            -- Process bins with strict tail-recursive fold
+            (revMeans, revOutputs) = foldl' processBin ([], []) (zip prevMean input)
+              where
+                processBin (!accMeans, !accOutputs) (!p, !i) =
+                    let !m = oneMinusAlphaC * p + alphaC * i
+                        !o = i - m
+                    in (m : accMeans, o : accOutputs)
+        in (reverse revMeans, reverse revOutputs)
   where
-    !alphaC = alpha :+ 0
-    !oneMinusAlphaC = (1.0 - alpha) :+ 0
+    calculateMotionMetric prevs inputs = foldl' accumMetric 0.0 (zip prevs inputs)
+      where
+        accumMetric !acc (!p, !i) =
+            let !dr = realPart i - realPart p
+                !di = imagPart i - imagPart p
+                !magSq = dr * dr + di * di
+            in acc + magSq
 
-    goInit [] = ([], [])
-    goInit (i:is) =
-        let !(m, o) = (i, 0 :+ 0)
-            (ms, os) = goInit is
-        in (m : ms, o : os)
-
-    go [] _ = ([], [])
-    go _ [] = ([], [])
-    go (p:ps) (i:is) =
-        let !m = oneMinusAlphaC * p + alphaC * i
-            !o = i - m
-            (ms, os) = go ps is
-        in (m : ms, o : os)
+    goInit inputs =
+        let (revMeans, revOutputs) = foldl' initBin ([], []) inputs
+              where
+                initBin (!accMeans, !accOutputs) !i =
+                    let !m = i
+                        !o = 0 :+ 0
+                    in (m : accMeans, o : accOutputs)
+        in (reverse revMeans, reverse revOutputs)
 
 -- Requirement FR-DSP-004
 
