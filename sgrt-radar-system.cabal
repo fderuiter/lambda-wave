@@ -73,6 +73,7 @@ library
       SignalProcessing.Matrix
       SignalProcessing.Regression
       SignalProcessing.Kalman
+      Numeric.Robust
       Numeric.Simple
       Numeric.Kinematics
   other-modules:

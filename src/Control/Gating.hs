@@ -11,9 +11,9 @@ import Data.Types
 import Data.Config
 import Control.Concurrent.STM
 import Data.Time.HighRes (getMonotonicTimeNS)
-import Data.List (foldl')
 import qualified Data.Map.Strict as Map
 import Control.Monad (when)
+import Numeric.Robust (median)
 import SignalProcessing.Kalman (KalmanState(..), KalmanConfig(..), V3(..), predict, update)
 import Hardware.Control (setBeam)
 import Numeric.Kinematics
@@ -53,9 +53,11 @@ processFrame stateVar frame = do
     let dtNS = if currTime > lastTime then currTime - lastTime else 0
         dtSec = fromIntegral dtNS / 1_000_000_000.0
 
-    -- 3. Measurement (Average Height)
-    -- Optimize: Strict fold
-    let (!totalHeight, !count) = foldl' (\(!sumH, !cnt) pt -> (sumH + pz pt, cnt + 1)) (0.0, 0 :: Int) pts
+    -- 3. Measurement (Median Height)
+    -- Use robust median to ignore large localized deviations
+    let zVals = map pz pts
+        count = length zVals
+        meas = median zVals
 
     -- 4. Kalman Filter Step
     -- Predict
@@ -63,8 +65,7 @@ processFrame stateVar frame = do
 
     -- Update (only if we have measurements)
     let newKState = if count > 0
-            then let meas = totalHeight / fromIntegral count
-                 in update meas kConfig predState
+            then update meas kConfig predState
             else predState -- Coasting (Dead Reckoning) if signal lost
 
     -- 6. Update System State & Resolve Final Beam State

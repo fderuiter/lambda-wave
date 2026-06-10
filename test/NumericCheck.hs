@@ -2,6 +2,7 @@ module Main (main) where
 
 import Control.Exception (try, SomeException)
 import Numeric.Simple
+import Numeric.Robust
 import System.Exit (exitSuccess)
 
 main :: IO ()
@@ -90,6 +91,17 @@ main = do
     case gj2 of
         Nothing -> putStrLn "PASS: gaussJordan singular matrix"
         Just _ -> putStrLn "FAIL: gaussJordan singular matrix"
+
+    -- 11. Test Robust.median
+    putStrLn "Testing Robust.median..."
+    let medOdd = median [1.0, 3.0, 2.0]
+    if medOdd == 2.0 then putStrLn "PASS: median odd list" else putStrLn $ "FAIL: median odd list, got " ++ show medOdd
+    
+    let medEven = median [1.0, 4.0, 2.0, 3.0]
+    if medEven == 2.5 then putStrLn "PASS: median even list" else putStrLn $ "FAIL: median even list, got " ++ show medEven
+    
+    let medEmpty = median []
+    if medEmpty == 0.0 then putStrLn "PASS: median empty list" else putStrLn $ "FAIL: median empty list, got " ++ show medEmpty
 
     putStrLn "Numeric Check Complete."
     exitSuccess
