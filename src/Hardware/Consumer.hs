@@ -79,18 +79,46 @@ consumerLoop isPrimary controlFp stateVar = withForeignPtr controlFp $ \controlP
 
     putStrLn $ "[Consumer] Started. Primary=" ++ show isPrimary ++ ". Buffer Size: " ++ show bufSize
 
+    initialWriteOff <- getWriteOffset controlFp
+
     -- Internal Loop State
-    let loop readOff = do
+    let loop readOff lastWriteOff totalRead totalWrite = do
             -- 1. Poll Write Offset (Atomic Acquire)
             -- Pass the ForeignPtr to ensure safety, although we are already inside withForeignPtr,
             -- this double check is fine or we rely on the fact that controlFp is alive.
             writeOff <- getWriteOffset controlFp
 
-            if writeOff == readOff
+            -- Track producer writes
+            let deltaWrite = if writeOff >= lastWriteOff
+                             then writeOff - lastWriteOff
+                             else bufSize - lastWriteOff + writeOff
+            let newTotalWrite = totalWrite + deltaWrite
+            let unreadBytes = newTotalWrite - totalRead
+
+            -- Check for Lap condition (Secondary Consumers only)
+            if not isPrimary && unreadBytes > bufSize
+                then do
+                    -- OVERFLOW DETECTED
+                    now <- getMonotonicTimeNS
+                    let evt = AuditEvent
+                            { eventTime = now
+                            , severity  = Warning
+                            , component = "SecondaryConsumer"
+                            , message   = "Data Incomplete: Producer lapped the secondary consumer."
+                            }
+                    atomically $ do
+                        st <- readTVar stateVar
+                        writeTBQueue (auditQueue st) evt
+                        -- Set overflow timestamp so UI can flash a warning
+                        writeTVar stateVar (st { lastOverflowTime = now })
+                    
+                    -- Reset local tracking to current producer position to recover
+                    loop writeOff writeOff newTotalWrite newTotalWrite
+                else if writeOff == readOff
                 then do
                     -- No new data, sleep briefly to avoid busy wait
                     threadDelay 1000 -- 1ms
-                    loop readOff
+                    loop readOff writeOff totalRead newTotalWrite
                 else do
                     -- 2. Calculate available data
                     let availableBytes = if writeOff >= readOff
@@ -200,6 +228,7 @@ consumerLoop isPrimary controlFp stateVar = withForeignPtr controlFp $ \controlP
                     -- SENTINEL SAFETY CHECK: Ensure we don't pass negative offset
                     let safeConsumed = max 0 (fromIntegral bytesConsumed)
                     let newReadOff = (readOff + safeConsumed) `rem` bufSize
+                    let newTotalRead = totalRead + safeConsumed
 
                     -- 8. Notify Producer (Release Semantics)
                     -- We must update the shared read offset so the producer can reclaim space
@@ -208,9 +237,9 @@ consumerLoop isPrimary controlFp stateVar = withForeignPtr controlFp $ \controlP
                     when isPrimary $
                         setReadOffset controlFp newReadOff
 
-                    loop newReadOff
+                    loop newReadOff writeOff newTotalRead newTotalWrite
 
-    loop 0
+    loop 0 initialWriteOff 0 0
 
 -- | Creates a Lazy ByteString from the ring buffer pointers.
 -- Handles the wrap-around case by creating 1 or 2 chunks.

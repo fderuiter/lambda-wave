@@ -101,10 +101,11 @@ data SystemState = SystemState
   , kalmanState :: KalmanState -- ^ Filtered state (Position, Velocity, Accel)
   , auditQueue :: TBQueue AuditEvent -- ^ High-performance event queue
   , audioAlertEnabled :: Bool -- ^ Feature toggle for Audio Alerts (P2-002)
+  , lastOverflowTime :: Word64 -- ^ Timestamp of the last detected buffer overflow (ns)
   }
 
 instance NFData SystemState where
-  rnf (SystemState pts bs t sn iso hb ks aq ae) = rnf pts `seq` rnf bs `seq` rnf t `seq` rnf sn `seq` rnf iso `seq` rnf hb `seq` rnf ks `seq` aq `seq` rnf ae
+  rnf (SystemState pts bs t sn iso hb ks aq ae ot) = rnf pts `seq` rnf bs `seq` rnf t `seq` rnf sn `seq` rnf iso `seq` rnf hb `seq` rnf ks `seq` aq `seq` rnf ae `seq` rnf ot
 
 -- | Raw parsed structure from the sensor
 data RadarFrame = RadarFrame
@@ -125,4 +126,5 @@ data TelemetryPacket = TelemetryPacket
   , tpThreadHeartbeats :: Map String Word64
   , tpKalmanState :: KalmanState
   , tpAudioAlertEnabled :: Bool
+  , tpLastOverflowTime :: Word64
   } deriving (Show, Generic, Binary)

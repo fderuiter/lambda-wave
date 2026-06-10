@@ -6,6 +6,7 @@ import Control.Concurrent.STM
 import Control.Exception (try, IOException)
 import System.Environment (lookupEnv, getArgs, getExecutablePath)
 import Data.Maybe (fromMaybe)
+import Text.Read (readMaybe)
 import System.Posix.IO (openFd, OpenMode(..), defaultFileFlags, OpenFileFlags(..), fdWriteBuf, closeFd)
 import System.Posix.Files (getFdStatus, isCharacterDevice, createNamedPipe, unionFileModes, ownerReadMode, ownerWriteMode)
 import System.Posix.Types (Fd, ProcessID)
@@ -66,6 +67,7 @@ runMain = do
           , kalmanState = initialKState
           , auditQueue = auditQ
           , audioAlertEnabled = audioAlerts
+          , lastOverflowTime = 0
           }
 
     systemState <- newTVarIO initialState
@@ -99,11 +101,11 @@ runMain = do
     fd <- openAndValidatePort "sensor port" sensorPort
     _cliFd <- openAndValidatePort "CLI port" cliPort
 
-    -- 1. Setup Ring Buffer (4MB)
-    -- We use the new FFI.RingBuffer.IO directly.
-    -- NOW RETURNS ForeignPtr RingBufferControl.
-    -- This ensures the buffer is automatically freed when all references (Main thread, consumer thread, ingestion thread) are gone.
-    ringBuffer <- RingBuffer.createRingBuffer (4 * 1024 * 1024)
+    -- 1. Setup Ring Buffer
+    -- The shared buffer capacity is configurable and defaults to at least double the primary consumer's processing window (8MB).
+    bufSizeStr <- lookupEnv "SGRT_BUFFER_SIZE"
+    let bufSize = fromMaybe (8 * 1024 * 1024) (bufSizeStr >>= readMaybe)
+    ringBuffer <- RingBuffer.createRingBuffer bufSize
 
     -- Configure Port (Raw Mode) to prevent data corruption
     res <- configureRawSerial fd
@@ -176,6 +178,7 @@ streamData fd stateVar = do
                   , tpThreadHeartbeats = threadHeartbeats state
                   , tpKalmanState = kalmanState state
                   , tpAudioAlertEnabled = audioAlertEnabled state
+                  , tpLastOverflowTime = lastOverflowTime state
                   }
             let payload = BL.toStrict (encode packet)
             let len = fromIntegral (B.length payload) :: Word32

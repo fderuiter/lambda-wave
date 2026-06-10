@@ -163,6 +163,18 @@ display stateVar prevStateRef vboPoints vboHeartbeat = do
         scale 0.2 0.2 (0.2 :: GLfloat)
         drawArrays Triangles 0 3
 
+    -- Draw Data Incomplete Warning if lapped recently (Requirement 3)
+    now <- getMonotonicTimeNS
+    let timeSinceOverflow = now - lastOverflowTime state
+    when (timeSinceOverflow < 2000000000) $ do -- 2 seconds
+        -- Flash the UI by flashing a huge red triangle
+        color $ Color3 (1.0::GLfloat) 0.0 0.0 -- Red warning
+        preservingMatrix $ do
+            loadIdentity
+            translate (Vector3 0.0 0.0 (-1.5 :: GLfloat))
+            scale 0.5 0.5 (0.5 :: GLfloat)
+            drawArrays Triangles 0 3
+
     bindBuffer ArrayBuffer $= Nothing
     clientState VertexArray $= Disabled
 

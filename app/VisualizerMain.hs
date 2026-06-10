@@ -4,6 +4,9 @@ module Main (main) where
 import Control.Concurrent (forkIO, threadDelay, forkOS)
 import Control.Concurrent.STM
 import Control.Exception (try, IOException)
+import System.Environment (lookupEnv)
+import Data.Maybe (fromMaybe)
+import Text.Read (readMaybe)
 import System.Posix.IO (openFd, OpenMode(..), defaultFileFlags, OpenFileFlags(..), fdReadBuf)
 import System.Posix.Types (Fd, ByteCount)
 import Control.Monad (forever)
@@ -52,6 +55,7 @@ main = do
           , kalmanState = initialKState
           , auditQueue = auditQ
           , audioAlertEnabled = False
+          , lastOverflowTime = 0
           }
 
     systemState <- newTVarIO initialState
@@ -60,8 +64,10 @@ main = do
     _ <- forkOS $ ipcReceiverLoop systemState
 
     -- 1b. Attach to Shared Ring Buffer and run Consumer (Visualizer Side)
-    -- The SafetyCore creates the buffer (4MB). We attach to it.
-    ringBufferRes <- try (attachRingBuffer (4 * 1024 * 1024)) :: IO (Either IOException (ForeignPtr RingBufferControl))
+    -- The shared buffer capacity is configurable and defaults to at least double the primary consumer's processing window (8MB).
+    bufSizeStr <- lookupEnv "SGRT_BUFFER_SIZE"
+    let bufSize = fromMaybe (8 * 1024 * 1024) (bufSizeStr >>= readMaybe)
+    ringBufferRes <- try (attachRingBuffer bufSize) :: IO (Either IOException (ForeignPtr RingBufferControl))
     case ringBufferRes of
         Left err -> putStrLn $ "Warning: Could not attach to shared ring buffer: " ++ show err
         Right ringBuffer -> do
@@ -126,6 +132,7 @@ readData fd stateVar = do
                                 , threadHeartbeats = tpThreadHeartbeats packet
                                 , kalmanState = tpKalmanState packet
                                 , audioAlertEnabled = tpAudioAlertEnabled packet
+                                , lastOverflowTime = tpLastOverflowTime packet
                                 }
                             loop
     loop

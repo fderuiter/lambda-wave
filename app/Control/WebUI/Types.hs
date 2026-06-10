@@ -39,4 +39,5 @@ instance ToJSON SystemState where
         , "sequenceNumber" .= sequenceNumber
         , "heartbeats" .= threadHeartbeats
         , "audioAlertEnabled" .= audioAlertEnabled
+        , "lastOverflowTime" .= lastOverflowTime
         ]
