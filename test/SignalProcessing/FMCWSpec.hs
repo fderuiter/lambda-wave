@@ -138,7 +138,7 @@ spec = describe "SignalProcessing.FMCW" $ do
     describe "Static Clutter Removal (Requirement FR-DSP-001)" $ do
         it "converges to zero for static input" $ do
             let n_bins = 10
-                alpha = 0.1
+                config = MTIConfig 0.1 0.1 0.0
                 -- Static input: Constant vector of 1.0 + 0i
                 input = replicate n_bins (1.0 :+ 0.0) :: [Complex Double]
                 -- Initial mean: Zero
@@ -148,15 +148,39 @@ spec = describe "SignalProcessing.FMCW" $ do
                 simulate :: Int -> [Complex Double] -> [Complex Double]
                 simulate 0 mean = mean
                 simulate k mean =
-                    let (newMean, _) = applyStaticClutterRemoval alpha mean input
+                    let (newMean, _) = applyStaticClutterRemoval config mean input
                     in simulate (k - 1) newMean
 
                 finalMean = simulate 100 initialMean
-                (_, output) = applyStaticClutterRemoval alpha finalMean input
+                (_, output) = applyStaticClutterRemoval config finalMean input
 
                 -- Output should be input - mean. If mean converges to input, output should be close to 0.
                 mag = sum (map magnitude output)
 
             mag `shouldSatisfy` (< 1.0e-1) -- Relaxed check for list impl
+
+        it "increases suppression strength (alphaMax) when motion is below threshold" $ do
+            let n_bins = 5
+                config = MTIConfig { mtiAlphaBase = 0.1, mtiAlphaMax = 0.9, mtiThreshold = 1.0 }
+                prevMean = replicate n_bins (0.0 :+ 0.0)
+                -- Low motion input (magnitude squared diff per bin is 0.5^2 = 0.25, which is < 1.0)
+                input = replicate n_bins (0.5 :+ 0.0)
+                (newMean, _) = applyStaticClutterRemoval config prevMean input
+                -- Since motion is low, alpha=0.9 should be used
+                -- newMean = 0.1*0 + 0.9*0.5 = 0.45
+            let expectedMean = replicate n_bins (0.45 :+ 0.0)
+            newMean `shouldBe` expectedMean
+
+        it "uses standard suppression strength (alphaBase) when motion is above threshold" $ do
+            let n_bins = 5
+                config = MTIConfig { mtiAlphaBase = 0.1, mtiAlphaMax = 0.9, mtiThreshold = 1.0 }
+                prevMean = replicate n_bins (0.0 :+ 0.0)
+                -- High motion input (magnitude squared diff per bin is 2.0^2 = 4.0, which is >= 1.0)
+                input = replicate n_bins (2.0 :+ 0.0)
+                (newMean, _) = applyStaticClutterRemoval config prevMean input
+                -- Since motion is high, alpha=0.1 should be used
+                -- newMean = 0.9*0 + 0.1*2.0 = 0.2
+            let expectedMean = replicate n_bins (0.2 :+ 0.0)
+            newMean `shouldBe` expectedMean
 
 -- Requirement FR-DSP-004

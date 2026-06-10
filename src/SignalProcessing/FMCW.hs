@@ -14,6 +14,7 @@ module SignalProcessing.FMCW
     , chirpZTransform
     , CZTParams(..)
       -- * Static Clutter Removal
+    , MTIConfig(..)
     , applyStaticClutterRemoval
       -- * Phase-Based Motion Tracking
     , calculatePhase
@@ -150,35 +151,56 @@ calculateDisplacement f_min delta_phi = (c * delta_phi) / (4 * pi * f_min)
 
 -- | Requirement FR-DSP-001: Static Clutter Removal
 -- Implements an Exponential Moving Average (EMA) high-pass filter.
+-- Dynamically adjusts alpha based on real-time signal variance (motion metric).
 --
 -- Complexity: O(N) runtime where N is the number of bins.
 -- Safety: Total function, handles all inputs gracefully.
-applyStaticClutterRemoval :: Double                  -- ^ Alpha (Learning Rate, e.g., 0.05)
+
+-- | Parameters for Adaptive MTI Filter
+data MTIConfig = MTIConfig
+    { mtiAlphaBase :: !Double  -- ^ Base learning rate (standard motion)
+    , mtiAlphaMax  :: !Double  -- ^ Max learning rate (static environment)
+    , mtiThreshold :: !Double  -- ^ Motion variance threshold
+    } deriving (Show, Eq)
+
+applyStaticClutterRemoval :: MTIConfig               -- ^ Filter configuration
                           -> [Complex Double]        -- ^ Previous Mean (State)
                           -> [Complex Double]        -- ^ Current Frame Input
                           -> ([Complex Double], [Complex Double]) -- ^ (New Mean, Output Frame)
 -- ⚡ Bolt Optimization: Replaced O(N) multi-pass `zipWith` chain with single-pass
 -- guarded recursion to prevent intermediate thunk allocations and improve stream fusion.
-applyStaticClutterRemoval alpha prevMean input =
+applyStaticClutterRemoval config prevMean input =
     if null prevMean
     then goInit input
-    else go prevMean input
+    else
+        let !motionMetric = calculateMotionMetric 0.0 0 prevMean input
+            !alpha = if motionMetric < mtiThreshold config
+                     then mtiAlphaMax config
+                     else mtiAlphaBase config
+            !alphaC = alpha :+ 0
+            !oneMinusAlphaC = (1.0 - alpha) :+ 0
+            
+            go [] _ = ([], [])
+            go _ [] = ([], [])
+            go (p:ps) (i:is) =
+                let !m = oneMinusAlphaC * p + alphaC * i
+                    !o = i - m
+                    (ms, os) = go ps is
+                in (m : ms, o : os)
+        in go prevMean input
   where
-    !alphaC = alpha :+ 0
-    !oneMinusAlphaC = (1.0 - alpha) :+ 0
+    calculateMotionMetric !acc !n [] [] = if n == 0 then 0.0 else acc / fromIntegral n
+    calculateMotionMetric !acc !n (p:ps) (i:is) =
+        let !dr = realPart i - realPart p
+            !di = imagPart i - imagPart p
+            !magSq = dr * dr + di * di
+        in calculateMotionMetric (acc + magSq) (n + 1) ps is
+    calculateMotionMetric !acc !n _ _ = if n == 0 then 0.0 else acc / fromIntegral n
 
     goInit [] = ([], [])
     goInit (i:is) =
         let !(m, o) = (i, 0 :+ 0)
             (ms, os) = goInit is
-        in (m : ms, o : os)
-
-    go [] _ = ([], [])
-    go _ [] = ([], [])
-    go (p:ps) (i:is) =
-        let !m = oneMinusAlphaC * p + alphaC * i
-            !o = i - m
-            (ms, os) = go ps is
         in (m : ms, o : os)
 
 -- Requirement FR-DSP-004

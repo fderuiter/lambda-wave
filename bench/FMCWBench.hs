@@ -14,7 +14,7 @@ main = do
     defaultMain [
         bgroup "FMCW" [
             bench "chirpZTransform" $ nf (chirpZTransform czt_params) x,
-            bench "applyStaticClutterRemoval" $ nf (applyStaticClutterRemoval 0.05 p) x,
+            bench "applyStaticClutterRemoval" $ nf (applyStaticClutterRemoval (MTIConfig 0.05 0.95 1.0) p) x,
             bench "unwrapPhase" $ nf unwrapPhase [0.0, 0.1 .. 100.0]
         ]
       ]
