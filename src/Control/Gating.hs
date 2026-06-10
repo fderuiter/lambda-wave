@@ -56,17 +56,20 @@ processFrame stateVar frame = do
     -- 3. Measurement (Median Height)
     -- Use robust median to ignore large localized deviations
     let zVals = map pz pts
-        count = length zVals
-        meas = median zVals
 
     -- 4. Kalman Filter Step
     -- Predict
     let predState = predict dtSec kConfig oldKState
 
-    -- Update (only if we have measurements)
-    let newKState = if count > 0
-            then update meas kConfig predState
-            else predState -- Coasting (Dead Reckoning) if signal lost
+    -- ISSUE 2: Short-circuit if no measurements to avoid unnecessary median work
+    -- ISSUE 1: Handle Maybe Double result from median
+    let newKState = if null zVals
+            then predState -- Coast immediately if signal lost
+            else
+                let measRes = median zVals
+                in case measRes of
+                    Just meas -> update meas kConfig predState
+                    Nothing -> predState -- Coast if median fails (shouldn't happen after null check)
 
     -- 6. Update System State & Resolve Final Beam State
     finalBeamState <- atomically $ do

@@ -95,13 +95,29 @@ main = do
     -- 11. Test Robust.median
     putStrLn "Testing Robust.median..."
     let medOdd = median [1.0, 3.0, 2.0]
-    if medOdd == 2.0 then putStrLn "PASS: median odd list" else putStrLn $ "FAIL: median odd list, got " ++ show medOdd
-    
+    if medOdd == Just 2.0 then putStrLn "PASS: median odd list" else putStrLn $ "FAIL: median odd list, got " ++ show medOdd
+
     let medEven = median [1.0, 4.0, 2.0, 3.0]
-    if medEven == 2.5 then putStrLn "PASS: median even list" else putStrLn $ "FAIL: median even list, got " ++ show medEven
-    
+    if medEven == Just 2.5 then putStrLn "PASS: median even list" else putStrLn $ "FAIL: median even list, got " ++ show medEven
+
+    -- ISSUE 7: Handle Maybe Double for empty list
     let medEmpty = median []
-    if medEmpty == 0.0 then putStrLn "PASS: median empty list" else putStrLn $ "FAIL: median empty list, got " ++ show medEmpty
+    case medEmpty of
+        Nothing -> putStrLn "PASS: median empty list"
+        Just v -> putStrLn $ "FAIL: median empty list, got Just " ++ show v
+
+    -- ISSUE 6: Additional test cases
+    let medSingle = median [5.0]
+    if medSingle == Just 5.0 then putStrLn "PASS: median single element" else putStrLn $ "FAIL: median single element, got " ++ show medSingle
+
+    let medDuplicates = median [1.0, 2.0, 2.0, 3.0]
+    if medDuplicates == Just 2.0 then putStrLn "PASS: median duplicate values" else putStrLn $ "FAIL: median duplicate values, got " ++ show medDuplicates
+
+    -- ISSUE 6: Large list performance check (~400 values)
+    let largeList = [1.0, 2.0 .. 400.0] :: [Double]
+        medLarge = median largeList
+        expectedLarge = Just 200.5  -- Median of 1..400 is (200+201)/2 = 200.5
+    if medLarge == expectedLarge then putStrLn "PASS: median large list (400 elements)" else putStrLn $ "FAIL: median large list, got " ++ show medLarge ++ ", expected " ++ show expectedLarge
 
     putStrLn "Numeric Check Complete."
     exitSuccess
