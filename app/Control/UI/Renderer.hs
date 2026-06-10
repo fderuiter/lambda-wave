@@ -139,17 +139,33 @@ display stateVar prevStateRef vboPoints vboHeartbeat = do
     bindBuffer ArrayBuffer $= Just vboPoints
     
     let pts = currentPoints state
-        numPts = length pts
+        
+        -- Helper to split points into 20-element columns
+        split20 :: [a] -> [[a]]
+        split20 [] = []
+        split20 xs = let (c, rest) = splitAt 20 xs in c : split20 rest
+        
+        cols = split20 pts
+
+        -- Horizontal segments: connect adjacent columns
+        horizSegments = concatMap (\(colA, colB) -> concat (zipWith (\a b -> [a, b]) colA colB)) (zip cols (tail cols))
+
+        -- Vertical segments: connect adjacent points within the same column
+        vertSegments = concatMap (\col -> concatMap (\(a, b) -> [a, b]) (zip col (tail col))) cols
+
+        lineEndpoints = horizSegments ++ vertSegments
+        numLinePts = length lineEndpoints
+
         -- Map to flat array of GLfloat
-        flatPts = concatMap (\p -> [double2Float (px p) / 1000.0, double2Float (py p) / 1000.0, double2Float (pz p) / 1000.0]) pts
+        flatPts = concatMap (\p -> [double2Float (px p) / 1000.0, double2Float (py p) / 1000.0, double2Float (pz p) / 1000.0]) lineEndpoints
         
     withArray flatPts $ \ptr -> do
-        let dataSize = fromIntegral $ numPts * 3 * sizeOf (undefined :: GLfloat)
+        let dataSize = fromIntegral $ numLinePts * 3 * sizeOf (undefined :: GLfloat)
         bufferSubData ArrayBuffer WriteToBuffer 0 dataSize ptr
         
     vertexPointer $= (VertexArrayDescriptor 3 Float 0 nullPtr)
     color $ Color3 (1.0::GLfloat) 1.0 1.0
-    drawArrays Points 0 (fromIntegral numPts)
+    drawArrays Lines 0 (fromIntegral numLinePts)
 
     -- Draw Visual Heartbeat (Sequence counter driven)
     bindBuffer ArrayBuffer $= Just vboHeartbeat
