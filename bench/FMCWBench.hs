@@ -10,11 +10,12 @@ main = do
     let n_samples = 1000 :: Int
     let x = [ (fromIntegral n :+ (fromIntegral n * 0.5)) | n <- [0..n_samples-1] ]
     let p = [ (fromIntegral n * 0.1 :+ (fromIntegral n * 0.2)) | n <- [0..n_samples-1] ]
+    let Right mti_config = mkMTIConfig 0.05 0.95 1.0
 
     defaultMain [
         bgroup "FMCW" [
             bench "chirpZTransform" $ nf (chirpZTransform czt_params) x,
-            bench "applyStaticClutterRemoval" $ nf (applyStaticClutterRemoval 0.05 p) x,
+            bench "applyStaticClutterRemoval" $ nf (applyStaticClutterRemoval mti_config p) x,
             bench "unwrapPhase" $ nf unwrapPhase [0.0, 0.1 .. 100.0]
         ]
       ]
