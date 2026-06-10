@@ -188,7 +188,7 @@ consumerLoop isPrimary controlFp stateVar = withForeignPtr controlFp $ \controlP
 
                         if isPrimary
                             then forM_ frames $ \frame -> processFrame stateVar frame
-                            else atomically $ modifyTVar' stateVar $ \s -> s { currentPoints = concatMap points frames }
+                            else atomically $ modifyTVar' stateVar $ \s -> s { currentPoints = concatMap points frames, gantryAngle = fromIntegral (seqNum (last frames)) * 0.5 }
 
                     -- 7. Update Read Offset
                     -- In a real ring buffer, we advance readOff by how much we processed.

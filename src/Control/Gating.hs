@@ -101,6 +101,7 @@ processFrame stateVar frame = do
             , beamState = resolvedBeamState
             , lastFrameTime = currTime
             , sequenceNumber = seqNum frame
+            , gantryAngle = fromIntegral (seqNum frame) * 0.5
             , threadHeartbeats = Map.insert "Gating" currTime (threadHeartbeats s)
             , kalmanState = newKState
             }

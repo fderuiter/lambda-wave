@@ -52,6 +52,8 @@ main = do
           , kalmanState = initialKState
           , auditQueue = auditQ
           , audioAlertEnabled = False
+          , cameraSyncEnabled = False
+          , gantryAngle = 0.0
           }
 
     systemState <- newTVarIO initialState
@@ -126,6 +128,8 @@ readData fd stateVar = do
                                 , threadHeartbeats = tpThreadHeartbeats packet
                                 , kalmanState = tpKalmanState packet
                                 , audioAlertEnabled = tpAudioAlertEnabled packet
+                                , cameraSyncEnabled = tpCameraSyncEnabled packet
+                                , gantryAngle = tpGantryAngle packet
                                 }
                             loop
     loop

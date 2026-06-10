@@ -100,7 +100,9 @@ data SystemState = SystemState
   , threadHeartbeats :: Map String Word64 -- Heartbeats for Watchdog
   , kalmanState :: KalmanState -- ^ Filtered state (Position, Velocity, Accel)
   , auditQueue :: TBQueue AuditEvent -- ^ High-performance event queue
-  , audioAlertEnabled :: Bool -- ^ Feature toggle for Audio Alerts (P2-002)
+  , audioAlertEnabled :: Bool
+  , cameraSyncEnabled :: Bool
+  , gantryAngle :: Double -- ^ Feature toggle for Audio Alerts (P2-002)
   }
 
 instance NFData SystemState where
@@ -125,4 +127,6 @@ data TelemetryPacket = TelemetryPacket
   , tpThreadHeartbeats :: Map String Word64
   , tpKalmanState :: KalmanState
   , tpAudioAlertEnabled :: Bool
+  , tpCameraSyncEnabled :: Bool
+  , tpGantryAngle :: Double
   } deriving (Show, Generic, Binary)

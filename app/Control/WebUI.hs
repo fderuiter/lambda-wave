@@ -4,7 +4,7 @@
 
 module Control.WebUI (runWebUI) where
 
-import Control.Concurrent (threadDelay)
+import Control.Concurrent (threadDelay, forkIO)
 import Control.Concurrent.STM
 import Control.Monad (forever)
 import Data.Aeson (encode)
@@ -97,6 +97,14 @@ wsApp token stateVar pending = do
             -- Use a ping thread to detect dead connections and prevent socket leaks
             withPingThread conn 10 (return ()) $ do
                 -- Simple loop: push state every 33ms
+                _ <- forkIO $ forever $ do
+                    msg <- WS.receiveData conn :: IO BC.ByteString
+                    case msg of
+                        "TOGGLE_SYNC" -> atomically $ modifyTVar' stateVar $ \s -> s { cameraSyncEnabled = not (cameraSyncEnabled s) }
+                        _ -> return ()
+                
+
+
                 forever $ do
                     state <- readTVarIO stateVar
                     sendTextData conn (encode state)

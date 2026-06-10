@@ -49,12 +49,12 @@
         #pt-count { width: 4ch; }
         .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
         canvas:focus-visible { outline: 2px solid #0ff; outline-offset: 2px; }
-        #pause-btn { position: relative; background: #333; color: #fff; border: 1px solid #555; padding: 5px 10px; cursor: pointer; border-radius: 4px; font-family: monospace; display: inline-block; margin-top: 10px; transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, transform 0.1s ease; }
-        #pause-btn:focus-visible { outline: 2px solid #0ff; outline-offset: 2px; }
-        #pause-btn:hover:not([aria-disabled="true"]) { background: #444; }
-        #pause-btn:active:not([aria-disabled="true"]) { transform: scale(0.97); }
-        #pause-btn[aria-disabled="true"] { background: #222; color: #555; cursor: not-allowed; border-color: #333; }
-        #pause-btn[aria-disabled="true"] kbd { background: #111; color: #444; border-color: #333; box-shadow: none; }
+        #sync-btn, #pause-btn { position: relative; background: #333; color: #fff; border: 1px solid #555; padding: 5px 10px; cursor: pointer; border-radius: 4px; font-family: monospace; display: inline-block; margin-top: 10px; transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, transform 0.1s ease; }
+        #sync-btn:focus-visible, #pause-btn:focus-visible { outline: 2px solid #0ff; outline-offset: 2px; }
+        #sync-btn:hover:not([aria-disabled="true"]), #pause-btn:hover:not([aria-disabled="true"]) { background: #444; }
+        #sync-btn:active:not([aria-disabled="true"]), #pause-btn:active:not([aria-disabled="true"]) { transform: scale(0.97); }
+        #sync-btn[aria-disabled="true"], #pause-btn[aria-disabled="true"] { background: #222; color: #555; cursor: not-allowed; border-color: #333; }
+        #sync-btn[aria-disabled="true"] kbd, #pause-btn[aria-disabled="true"] kbd { background: #111; color: #444; border-color: #333; box-shadow: none; }
         kbd {
             background-color: #222;
             border: 1px solid #555;
@@ -92,6 +92,7 @@
             <abbr tabindex="0" title="Time elapsed for the current radar frame" style="cursor: help; text-decoration: underline dotted; text-decoration-skip-ink: none;">Frame Time</abbr><span aria-hidden="true">:</span> <span id="ts">0.0</span> ms <span aria-hidden="true">|</span> <abbr tabindex="0" title="Number of points in the current point cloud" style="cursor: help; text-decoration: underline dotted; text-decoration-skip-ink: none;">Points</abbr><span aria-hidden="true">:</span> <span id="pt-count">0</span>
         </div>
         <div style="text-align: center;">
+            <button id="sync-btn" aria-keyshortcuts="S" aria-disabled="true" title="Controls unavailable while disconnected" style="margin-right: 10px;">Enable Sync <kbd aria-hidden="true">S</kbd></button>
             <button id="pause-btn" aria-keyshortcuts="Space" aria-disabled="true" title="Controls unavailable while disconnected">Pause Trace <kbd aria-hidden="true">Space</kbd></button>
         </div>
     </main>
@@ -109,6 +110,20 @@
         const height = canvas.height;
         let isPaused = false;
         const pauseBtn = document.getElementById('pause-btn');
+        let isSyncEnabled = false;
+        const syncBtn = document.getElementById('sync-btn');
+
+        function toggleSync() {
+            if (syncBtn.getAttribute('aria-disabled') === 'true') return;
+            isSyncEnabled = !isSyncEnabled;
+            syncBtn.innerHTML = (isSyncEnabled ? 'Disable Sync' : 'Enable Sync') + ' <kbd aria-hidden="true">S</kbd>';
+            srAnnouncer.textContent = isSyncEnabled ? 'Camera synchronization enabled' : 'Camera synchronization disabled';
+            if (ws.readyState === WebSocket.OPEN) {
+                ws.send("TOGGLE_SYNC");
+            }
+        }
+
+        syncBtn.addEventListener('click', toggleSync);
         const srAnnouncer = document.getElementById('sr-announcer');
         const clickTapStr = window.matchMedia("(hover: none) and (pointer: coarse)").matches ? 'Tap' : 'Click';
 
@@ -141,7 +156,8 @@
         canvas.addEventListener('click', togglePause);
 
         document.addEventListener('keydown', (e) => {
-            if (e.code === 'Space' && document.activeElement !== pauseBtn) {
+            if (e.code === 'KeyS' && document.activeElement !== syncBtn && document.activeElement !== pauseBtn) { e.preventDefault(); toggleSync(); }
+            if (e.code === 'Space' && document.activeElement !== pauseBtn && document.activeElement !== syncBtn) {
                 e.preventDefault(); // Prevent scrolling when pressing Space
                 togglePause();
             }
@@ -192,7 +208,9 @@
         ws.onopen = () => {
             resetWatchdog();
             pauseBtn.setAttribute('aria-disabled', 'false');
+            syncBtn.setAttribute('aria-disabled', 'false');
             pauseBtn.removeAttribute('title');
+            syncBtn.removeAttribute('title');
             canvas.classList.add('live');
 
             if (isPaused) {
@@ -212,7 +230,9 @@
         ws.onclose = () => {
             if (watchdogTimer) clearTimeout(watchdogTimer);
             pauseBtn.setAttribute('aria-disabled', 'true');
+            syncBtn.setAttribute('aria-disabled', 'true');
             pauseBtn.setAttribute('title', 'Controls unavailable while disconnected');
+            syncBtn.setAttribute('title', 'Controls unavailable while disconnected');
             canvas.classList.remove('live');
             canvas.removeAttribute('title');
             connDot.className = 'status-dot dot-offline';
@@ -229,7 +249,9 @@
         ws.onerror = () => {
             if (watchdogTimer) clearTimeout(watchdogTimer);
             pauseBtn.setAttribute('aria-disabled', 'true');
+            syncBtn.setAttribute('aria-disabled', 'true');
             pauseBtn.setAttribute('title', 'Controls unavailable while disconnected');
+            syncBtn.setAttribute('title', 'Controls unavailable while disconnected');
             canvas.classList.remove('live');
             canvas.removeAttribute('title');
             connDot.className = 'status-dot dot-offline';
@@ -279,6 +301,10 @@
             }
 
             // 1. Update Beam Status
+            if (state.cameraSyncEnabled !== isSyncEnabled) {
+                isSyncEnabled = state.cameraSyncEnabled;
+                syncBtn.innerHTML = (isSyncEnabled ? 'Disable Sync' : 'Enable Sync') + ' <kbd aria-hidden="true">S</kbd>';
+            }
             // Only update DOM if state changed to prevent aria-live screen reader spam at 30Hz
             if (state.beamState !== lastBeamState) {
                 // Insert space before capital letters (e.g., "BeamOn" -> "BEAM ON")

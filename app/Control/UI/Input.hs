@@ -33,6 +33,14 @@ handleInput stateVar = do
 -- * Spacebar (Down): Engages 'BeamHold' (Safety Override).
 keyboardHandler :: TVar SystemState -> KeyboardMouseCallback
 keyboardHandler stateVar key state _ _ = case (key, state) of
+    (Char 'S', Down) -> do
+        atomically $ do
+            s <- readTVar stateVar
+            writeTVar stateVar $ s { cameraSyncEnabled = not (cameraSyncEnabled s) }
+    (Char 's', Down) -> do
+        atomically $ do
+            s <- readTVar stateVar
+            writeTVar stateVar $ s { cameraSyncEnabled = not (cameraSyncEnabled s) }
     (Char ' ', Down) -> do
         -- Spacebar engages Hold (Latching)
         -- P2-003: Manual Override

@@ -66,6 +66,8 @@ runMain = do
           , kalmanState = initialKState
           , auditQueue = auditQ
           , audioAlertEnabled = audioAlerts
+          , cameraSyncEnabled = False
+          , gantryAngle = 0.0
           }
 
     systemState <- newTVarIO initialState
@@ -176,6 +178,8 @@ streamData fd stateVar = do
                   , tpThreadHeartbeats = threadHeartbeats state
                   , tpKalmanState = kalmanState state
                   , tpAudioAlertEnabled = audioAlertEnabled state
+                  , tpCameraSyncEnabled = cameraSyncEnabled state
+                  , tpGantryAngle = gantryAngle state
                   }
             let payload = BL.toStrict (encode packet)
             let len = fromIntegral (B.length payload) :: Word32

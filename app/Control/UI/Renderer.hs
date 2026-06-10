@@ -24,6 +24,7 @@ import Graphics.UI.GLUT
 import Graphics.Rendering.OpenGL
 import GHC.Float (double2Float)
 import Data.Types (SystemState(..), Point3D(..), BeamState(..))
+import Numeric.Simple (orbitCamera)
 import Data.IORef
 import System.IO (hFlush, stdout)
 import Control.Monad (when, forever)
@@ -132,7 +133,15 @@ display stateVar prevStateRef vboPoints vboHeartbeat = do
     -- Position: (0, 2, -2) - Above and behind the radar origin
     -- Target:   (0, 0, 2)  - Looking towards the patient (positive Z)
     -- Up:       (0, 1, 0)  - Y is Up
-    lookAt (Vertex3 0 2 (-2)) (Vertex3 0 0 2) (Vector3 0 1 0)
+    let (camX, camY, camZ, upX, upY, upZ) = if cameraSyncEnabled state
+
+            then let ([cx, cy, cz], [ux, uy, uz]) = orbitCamera (gantryAngle state) 0.0 0.0 2.0 4.0 2.0
+
+                 in (cx, cy, cz, ux, uy, uz)
+
+            else (0.0, 2.0, -2.0, 0.0, 1.0, 0.0)
+
+    lookAt (Vertex3 (realToFrac camX) (realToFrac camY) (realToFrac camZ)) (Vertex3 0 0 2) (Vector3 (realToFrac upX) (realToFrac upY) (realToFrac upZ))
 
     -- Draw Point Cloud (VBO Migration)
     clientState VertexArray $= Enabled
