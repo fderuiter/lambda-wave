@@ -14,7 +14,11 @@ module SignalProcessing.FMCW
     , chirpZTransform
     , CZTParams(..)
       -- * Static Clutter Removal
-    , MTIConfig(..)
+    , MTIConfig
+    , mkMTIConfig
+    , mtiAlphaBase
+    , mtiAlphaMax
+    , mtiThreshold
     , applyStaticClutterRemoval
       -- * Phase-Based Motion Tracking
     , calculatePhase
@@ -23,6 +27,7 @@ module SignalProcessing.FMCW
     ) where
 
 import Data.Complex
+import Data.List (foldl')
 
 -- | Equation (1): Verified
 -- Calculate the beat frequency from a target range.
@@ -163,45 +168,64 @@ data MTIConfig = MTIConfig
     , mtiThreshold :: !Double  -- ^ Motion variance threshold
     } deriving (Show, Eq)
 
+-- | Smart constructor for MTIConfig with validation.
+-- Enforces: 0 <= mtiAlphaBase <= mtiAlphaMax <= 1 and isFinite mtiThreshold
+mkMTIConfig :: Double -> Double -> Double -> Either String MTIConfig
+mkMTIConfig alphaBase alphaMax threshold
+    | not (isFinite alphaBase) = Left "mtiAlphaBase must be finite"
+    | not (isFinite alphaMax) = Left "mtiAlphaMax must be finite"
+    | not (isFinite threshold) = Left "mtiThreshold must be finite"
+    | alphaBase < 0.0 = Left "mtiAlphaBase must be >= 0"
+    | alphaBase > 1.0 = Left "mtiAlphaBase must be <= 1"
+    | alphaMax < 0.0 = Left "mtiAlphaMax must be >= 0"
+    | alphaMax > 1.0 = Left "mtiAlphaMax must be <= 1"
+    | alphaBase > alphaMax = Left "mtiAlphaBase must be <= mtiAlphaMax"
+    | otherwise = Right (MTIConfig alphaBase alphaMax threshold)
+  where
+    isFinite x = not (isNaN x || isInfinite x)
+
 applyStaticClutterRemoval :: MTIConfig               -- ^ Filter configuration
                           -> [Complex Double]        -- ^ Previous Mean (State)
                           -> [Complex Double]        -- ^ Current Frame Input
                           -> ([Complex Double], [Complex Double]) -- ^ (New Mean, Output Frame)
 -- ⚡ Bolt Optimization: Replaced O(N) multi-pass `zipWith` chain with single-pass
--- guarded recursion to prevent intermediate thunk allocations and improve stream fusion.
+-- strict left fold to prevent intermediate thunk allocations and avoid stack growth.
 applyStaticClutterRemoval config prevMean input =
     if null prevMean
     then goInit input
     else
-        let !motionMetric = calculateMotionMetric 0.0 0 prevMean input
+        let !motionMetric = calculateMotionMetric prevMean input
             !alpha = if motionMetric < mtiThreshold config
                      then mtiAlphaMax config
                      else mtiAlphaBase config
             !alphaC = alpha :+ 0
             !oneMinusAlphaC = (1.0 - alpha) :+ 0
-            
-            go [] _ = ([], [])
-            go _ [] = ([], [])
-            go (p:ps) (i:is) =
-                let !m = oneMinusAlphaC * p + alphaC * i
-                    !o = i - m
-                    (ms, os) = go ps is
-                in (m : ms, o : os)
-        in go prevMean input
-  where
-    calculateMotionMetric !acc !n [] [] = if n == 0 then 0.0 else acc / fromIntegral n
-    calculateMotionMetric !acc !n (p:ps) (i:is) =
-        let !dr = realPart i - realPart p
-            !di = imagPart i - imagPart p
-            !magSq = dr * dr + di * di
-        in calculateMotionMetric (acc + magSq) (n + 1) ps is
-    calculateMotionMetric !acc !n _ _ = if n == 0 then 0.0 else acc / fromIntegral n
 
-    goInit [] = ([], [])
-    goInit (i:is) =
-        let !(m, o) = (i, 0 :+ 0)
-            (ms, os) = goInit is
-        in (m : ms, o : os)
+            -- Process bins with strict tail-recursive fold
+            (revMeans, revOutputs) = foldl' processBin ([], []) (zip prevMean input)
+              where
+                processBin (!accMeans, !accOutputs) (!p, !i) =
+                    let !m = oneMinusAlphaC * p + alphaC * i
+                        !o = i - m
+                    in (m : accMeans, o : accOutputs)
+        in (reverse revMeans, reverse revOutputs)
+  where
+    calculateMotionMetric prevs inputs = foldl' accumMetric 0.0 (zip prevs inputs)
+      where
+        accumMetric !acc (!p, !i) =
+            let !dr = realPart i - realPart p
+                !di = imagPart i - imagPart p
+                !magSq = dr * dr + di * di
+            in acc + magSq
+
+    goInit inputs =
+        let (revMeans, revOutputs) = foldl' initBin ([], []) inputs
+              where
+                initBin (!accMeans, !accOutputs) !i =
+                    let !m = i
+                        !o = 0 :+ 0
+                    in (m : accMeans, o : accOutputs)
+        in (reverse revMeans, reverse revOutputs)
 
 -- Requirement FR-DSP-004
 

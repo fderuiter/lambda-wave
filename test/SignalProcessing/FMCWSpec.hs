@@ -138,7 +138,7 @@ spec = describe "SignalProcessing.FMCW" $ do
     describe "Static Clutter Removal (Requirement FR-DSP-001)" $ do
         it "converges to zero for static input" $ do
             let n_bins = 10
-                config = MTIConfig 0.1 0.1 0.0
+                Right config = mkMTIConfig 0.1 0.1 0.0
                 -- Static input: Constant vector of 1.0 + 0i
                 input = replicate n_bins (1.0 :+ 0.0) :: [Complex Double]
                 -- Initial mean: Zero
@@ -161,26 +161,47 @@ spec = describe "SignalProcessing.FMCW" $ do
 
         it "increases suppression strength (alphaMax) when motion is below threshold" $ do
             let n_bins = 5
-                config = MTIConfig { mtiAlphaBase = 0.1, mtiAlphaMax = 0.9, mtiThreshold = 1.0 }
+                Right config = mkMTIConfig 0.1 0.9 1.0
                 prevMean = replicate n_bins (0.0 :+ 0.0)
-                -- Low motion input (magnitude squared diff per bin is 0.5^2 = 0.25, which is < 1.0)
-                input = replicate n_bins (0.5 :+ 0.0)
+                -- Low motion input (magnitude squared diff per bin is 0.5^2 = 0.25)
+                -- Total motion metric = 5 * 0.25 = 1.25, but threshold is 1.0
+                -- Actually need sum < 1.0, so use smaller input
+                input = replicate n_bins (0.4 :+ 0.0)
+                -- Total motion metric = 5 * 0.16 = 0.8 < 1.0
                 (newMean, _) = applyStaticClutterRemoval config prevMean input
                 -- Since motion is low, alpha=0.9 should be used
-                -- newMean = 0.1*0 + 0.9*0.5 = 0.45
-            let expectedMean = replicate n_bins (0.45 :+ 0.0)
+                -- newMean = 0.1*0 + 0.9*0.4 = 0.36
+            let expectedMean = replicate n_bins (0.36 :+ 0.0)
             newMean `shouldBe` expectedMean
 
         it "uses standard suppression strength (alphaBase) when motion is above threshold" $ do
             let n_bins = 5
-                config = MTIConfig { mtiAlphaBase = 0.1, mtiAlphaMax = 0.9, mtiThreshold = 1.0 }
+                Right config = mkMTIConfig 0.1 0.9 1.0
                 prevMean = replicate n_bins (0.0 :+ 0.0)
-                -- High motion input (magnitude squared diff per bin is 2.0^2 = 4.0, which is >= 1.0)
+                -- High motion input (magnitude squared diff per bin is 2.0^2 = 4.0)
+                -- Total motion metric = 5 * 4.0 = 20.0 > 1.0
                 input = replicate n_bins (2.0 :+ 0.0)
                 (newMean, _) = applyStaticClutterRemoval config prevMean input
                 -- Since motion is high, alpha=0.1 should be used
                 -- newMean = 0.9*0 + 0.1*2.0 = 0.2
             let expectedMean = replicate n_bins (0.2 :+ 0.0)
             newMean `shouldBe` expectedMean
+
+        it "uses alphaBase when motionMetric equals threshold" $ do
+            let n_bins = 5
+                Right config = mkMTIConfig 0.1 0.9 1.0
+                prevMean = replicate n_bins (0.0 :+ 0.0)
+                -- Set input so total motion metric = threshold = 1.0
+                -- magnitude squared per bin = 1.0 / 5 = 0.2
+                -- sqrt(0.2) ≈ 0.447
+                input = replicate n_bins (0.4472135955 :+ 0.0)
+                (newMean, _) = applyStaticClutterRemoval config prevMean input
+                -- When motionMetric == threshold, condition (< threshold) is false
+                -- So alphaBase=0.1 should be used
+                -- newMean = 0.9*0 + 0.1*input = 0.1*input
+            let expectedMean = replicate n_bins (0.04472135955 :+ 0.0)
+                diffs = zipWith (-) (map magnitude newMean) (map magnitude expectedMean)
+                maxDiff = maximum (map abs diffs)
+            maxDiff `shouldSatisfy` (< 1.0e-9)
 
 -- Requirement FR-DSP-004
