@@ -1,6 +1,6 @@
 module Main (main) where
 
-import Control.Concurrent (forkIO, threadDelay)
+import Control.Concurrent (forkOS, threadDelay)
 import Control.Concurrent.STM
 import qualified Data.Map.Strict as Map
 import Data.Types
@@ -8,11 +8,14 @@ import Data.Time.HighRes (getMonotonicTimeNS)
 import SignalProcessing.Kalman (initKalman, KalmanConfig(..))
 import Safety.Watchdog (watchdogLoop, runSafetyDaemon)
 import System.Environment (getArgs, getExecutablePath)
-import System.Posix.Process (forkProcess, executeFile, getProcessID)
+import System.Process (spawnProcess)
+import System.Posix.Process (getProcessID)
 import System.Posix.Types (ProcessID)
+import System.IO (hFlush, stdout, hSetBuffering, BufferMode(LineBuffering))
 
 main :: IO ()
 main = do
+    hSetBuffering stdout LineBuffering
     args <- getArgs
     case args of
         ["--safety-daemon", parentPidStr] -> do
@@ -23,6 +26,7 @@ main = do
 runMain :: IO ()
 runMain = do
     putStrLn "=== Watchdog Fault Injection Test ==="
+    hFlush stdout
 
     -- 1. Setup State
     now <- getMonotonicTimeNS
@@ -36,18 +40,25 @@ runMain = do
 
     -- 2. Spawn Safety Daemon
     exePath <- getExecutablePath
+    putStrLn $ "EXE: " ++ exePath
+    hFlush stdout
     myPid <- getProcessID
-    _daemonPid <- forkProcess $ executeFile exePath False ["--safety-daemon", show myPid] Nothing
+    _daemonPid <- spawnProcess exePath ["--safety-daemon", show myPid]
     
     -- Small delay to let Daemon bind socket
     threadDelay 50000
 
     -- 3. Fork Watchdog Loop (Heartbeat Sender)
-    _ <- forkIO $ watchdogLoop stateVar
+    putStrLn "About to forkOS watchdogLoop"
+    hFlush stdout
+    _ <- forkOS $ watchdogLoop stateVar
+    putStrLn "forkOS complete"
+    hFlush stdout
 
     -- Log stall start
     stallStart <- getMonotonicTimeNS
     putStrLn $ "STALL_START_NS: " ++ show stallStart
+    hFlush stdout
 
     -- 4. Sleep for 200ms (Watchdog timeout is 100ms)
     -- This simulates the "TestThread" being frozen (not updating heartbeat)

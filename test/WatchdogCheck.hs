@@ -38,7 +38,7 @@ findSubstrIndex :: String -> String -> Maybe Int
 findSubstrIndex substr str = go str 0
   where
     go [] _ = Nothing
-    go s@(c:cs) i
+    go s@(_:cs) i
         | substr `isPrefixOf` s = Just i
         | otherwise = go cs (i + 1)
 
@@ -49,8 +49,9 @@ main = do
     -- Clean up previous run
     _ <- try (removeFile "session.log") :: IO (Either SomeException ())
 
-    -- Run the fault injection executable using cabal
-    (exitCode, stdout, stderr) <- readProcessWithExitCode "cabal" ["exec", "watchdog-fault"] ""
+    -- Run the fault injection executable directly
+    let exePath = "dist-newstyle/build/x86_64-linux/ghc-9.4.7/sgrt-radar-system-0.1.0.0/x/watchdog-fault/build/watchdog-fault/watchdog-fault"
+    (_exitCode, stdout, stderr) <- readProcessWithExitCode exePath [] ""
     
     let combinedOutput = stdout ++ stderr
     let linesOutput = lines combinedOutput
@@ -62,6 +63,7 @@ main = do
 
     unless ("SAFETY DAEMON TRIP" `isInfixOf` combinedOutput) $ do
         putStrLn "FAIL: 'SAFETY DAEMON TRIP' signature not found in logs."
+        putStrLn $ "OUTPUT:\n" ++ combinedOutput
         exitWith (ExitFailure 1)
 
     -- Requirement 1: 10ms sensitivity check
@@ -70,6 +72,7 @@ main = do
         (a:_) -> return a
         [] -> do
             putStrLn "FAIL: Could not find freeze age in output."
+            putStrLn $ "OUTPUT:\n" ++ combinedOutput
             exitWith (ExitFailure 1)
             
     putStrLn $ "Watchdog detected freeze at age: " ++ show ageMs ++ " ms"
@@ -83,6 +86,7 @@ main = do
         Just val -> return (val :: Integer)
         Nothing -> do
             putStrLn "FAIL: Could not find STALL_START_NS."
+            putStrLn $ "OUTPUT:\n" ++ combinedOutput
             exitWith (ExitFailure 1)
 
     -- Parse session.log
@@ -113,6 +117,7 @@ main = do
     -- Requirement 2: verify 'Beam Off' state change
     unless ("[Hardware] WATCHDOG Channel Set To: OFF" `isInfixOf` combinedOutput) $ do
         putStrLn "FAIL: Beam Off command not found in output prior to termination."
+        putStrLn $ "OUTPUT:\n" ++ combinedOutput
         exitWith (ExitFailure 1)
 
     -- Requirement 5: Generate non-alterable audit artifact

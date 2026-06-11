@@ -25,7 +25,7 @@ common common-options
   else
     ghc-options: -Wall -Werror -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
   build-depends:
-      base ==4.17.2.1
+      base >= 4.16 && < 5
     , stm ==2.5.1.0
     , binary ==0.8.9.1
     , bytestring ==0.11.5.3
@@ -147,10 +147,11 @@ executable watchdog-fault
   ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
   build-depends:
       sgrt-radar-system
-    , base ==4.17.2.1
+    , base >= 4.16 && < 5
     , stm ==2.5.1.0
     , containers ==0.6.7
     , unix ==2.7.3
+    , process
     , vector
     , template-haskell
 
@@ -160,16 +161,14 @@ test-suite sgrt-radar-system-test
   main-is: Spec.hs
   other-modules:
       Paths_sgrt_radar_system
-      FFI.RingBuffer.Types
-      FFI.RingBuffer.GeneratedSpec
+      FFI.RingBuffer.TypesSpec
       FFI.RingBuffer.IOSpec
       RegressionSpec
       Control.MesherSpec
       Hardware.ConsumerSpec
       Hardware.ControlSpec
       System.RTSSpec
-      SignalProcessing.FMCW
-      SignalProcessing.MatrixSpec
+      SignalProcessing.FMCWSpec
       Safety.WatchdogSpec
   hs-source-dirs:
       test
@@ -180,6 +179,8 @@ test-suite sgrt-radar-system-test
     , QuickCheck ==2.18.0.0
     , bytestring ==0.11.5.3
     , binary ==0.8.9.1
+    , process
+    , directory
 
 test-suite hardware-control-check
   import: common-options
@@ -192,7 +193,7 @@ test-suite hardware-control-check
   ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
   build-depends:
       sgrt-radar-system
-    , base ==4.17.2.1
+    , base >= 4.16 && < 5
 
 test-suite hardware-consumer-check
   import: common-options
@@ -205,7 +206,7 @@ test-suite hardware-consumer-check
   ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
   build-depends:
       sgrt-radar-system
-    , base ==4.17.2.1
+    , base >= 4.16 && < 5
     , bytestring ==0.11.5.3
     , binary ==0.8.9.1
     , QuickCheck ==2.18.0.0
@@ -221,7 +222,7 @@ test-suite kalman-verification
   ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
   build-depends:
       sgrt-radar-system
-    , base ==4.17.2.1
+    , base >= 4.16 && < 5
 
 test-suite audit-check
   import: common-options
@@ -234,7 +235,7 @@ test-suite audit-check
   ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
   build-depends:
       sgrt-radar-system
-    , base ==4.17.2.1
+    , base >= 4.16 && < 5
     , unix ==2.7.3
     , vector
     , template-haskell
@@ -250,7 +251,7 @@ test-suite clinical-hil-validation
   ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
   build-depends:
       sgrt-radar-system
-    , base ==4.17.2.1
+    , base >= 4.16 && < 5
     , stm ==2.5.1.0
     , containers ==0.6.7
     , process ==1.6.18.0
@@ -266,7 +267,7 @@ test-suite gating-check
   ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
   build-depends:
       sgrt-radar-system
-    , base ==4.17.2.1
+    , base >= 4.16 && < 5
 
 test-suite watchdog-check
   import: common-options
@@ -279,7 +280,9 @@ test-suite watchdog-check
   ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
   build-depends:
       sgrt-radar-system
-    , base ==4.17.2.1
+    , base >= 4.16 && < 5
+    , process
+    , directory
 
 test-suite numeric-check
   import: common-options
@@ -292,7 +295,7 @@ test-suite numeric-check
   ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
   build-depends:
       sgrt-radar-system
-    , base ==4.17.2.1
+    , base >= 4.16 && < 5
 
 test-suite sentinel-check
   import: common-options
@@ -305,7 +308,7 @@ test-suite sentinel-check
   ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
   build-depends:
       sgrt-radar-system
-    , base ==4.17.2.1
+    , base >= 4.16 && < 5
 
 benchmark sgrt-radar-system-bench
   import: common-options
@@ -344,7 +347,7 @@ test-suite consumer-integration-check
   ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
   build-depends:
       sgrt-radar-system
-    , base ==4.17.2.1
+    , base >= 4.16 && < 5
     , bytestring ==0.11.5.3
 
 test-suite ui-math-check
@@ -360,9 +363,10 @@ test-suite ui-math-check
   ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
   build-depends:
       sgrt-radar-system
-    , base ==4.17.2.1
+    , base >= 4.16 && < 5
     , hspec ==2.11.17
     , GLUT ==2.7.0.16
+    , OpenGL ==3.0.3.0
 
 executable phantom-study
   import: common-options
@@ -372,7 +376,7 @@ executable phantom-study
   ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
   build-depends:
       sgrt-radar-system
-    , base ==4.17.2.1
+    , base >= 4.16 && < 5
 
 executable update-csp
   import: common-options
@@ -380,7 +384,7 @@ executable update-csp
   hs-source-dirs:
       tools/system-maintenance
   build-depends:
-      base ==4.17.2.1
+      base >= 4.16 && < 5
     , bytestring ==0.11.5.3
     , process ==1.6.18.0
 
@@ -390,7 +394,7 @@ executable check-baud
   hs-source-dirs:
       tools/hardware-simulation
   build-depends:
-      base ==4.17.2.1
+      base >= 4.16 && < 5
     , unix ==2.7.3
     , vector
     , template-haskell
@@ -401,7 +405,7 @@ executable check-pty
   hs-source-dirs:
       tools/hardware-simulation
   build-depends:
-      base ==4.17.2.1
+      base >= 4.16 && < 5
     , unix ==2.7.3
     , vector
     , template-haskell
@@ -412,7 +416,7 @@ executable check-unix
   hs-source-dirs:
       tools/hardware-simulation
   build-depends:
-      base ==4.17.2.1
+      base >= 4.16 && < 5
     , unix ==2.7.3
     , vector
     , template-haskell
@@ -424,7 +428,7 @@ executable test-parse-errors
       tools/qa
   build-depends:
       sgrt-radar-system
-    , base ==4.17.2.1
+    , base >= 4.16 && < 5
     , bytestring ==0.11.5.3
     , binary ==0.8.9.1
 
@@ -440,4 +444,4 @@ benchmark fmcw-bench
   build-depends:
       sgrt-radar-system
     , criterion ==1.6.5.0
-    , base ==4.17.2.1
+    , base >= 4.16 && < 5

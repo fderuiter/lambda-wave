@@ -10,7 +10,6 @@ import Test.QuickCheck
 import Test.QuickCheck.Monadic
 import Foreign.Storable
 import Foreign.Marshal.Alloc (alloca)
-import Foreign.Ptr
 import Foreign.C.Types
 import Data.Word (Word32)
 import FFI.RingBuffer.Types
