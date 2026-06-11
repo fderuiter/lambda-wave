@@ -38,14 +38,14 @@ jobs:
 
       - name: Archive Compliance Report
         if: always()
-        uses: actions/upload-artifact@ff15f0306b3f739f7b6fd43fb5d26cd321bd4de5 # v3
+        uses: actions/upload-artifact@v4
         with:
           name: regulatory-evidence-report
           path: regulatory_evidence_report.md
 
       - name: Archive Safety Audit Artifact
         if: always()
-        uses: actions/upload-artifact@ff15f0306b3f739f7b6fd43fb5d26cd321bd4de5 # v3
+        uses: actions/upload-artifact@v4
         with:
           name: safety-audit-report
           path: safety_audit_report.txt
