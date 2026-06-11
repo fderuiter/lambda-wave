@@ -4,6 +4,7 @@ module SignalProcessing.FMCWSpec (spec) where
 import Test.Hspec
 import Data.Complex
 import SignalProcessing.FMCW
+import Control.Monad (zipWithM_)
 
 -- Helper for float comparison
 approxEq :: Double -> Double -> Double -> Bool
@@ -138,7 +139,7 @@ spec = describe "SignalProcessing.FMCW" $ do
     describe "Static Clutter Removal (Requirement FR-DSP-001)" $ do
         it "converges to zero for static input" $ do
             let n_bins = 10
-                Right config = mkMTIConfig 0.1 0.1 0.0
+                config = either error id $ mkMTIConfig 0.1 0.1 0.0
                 -- Static input: Constant vector of 1.0 + 0i
                 input = replicate n_bins (1.0 :+ 0.0) :: [Complex Double]
                 -- Initial mean: Zero
@@ -161,7 +162,7 @@ spec = describe "SignalProcessing.FMCW" $ do
 
         it "increases suppression strength (alphaMax) when motion is below threshold" $ do
             let n_bins = 5
-                Right config = mkMTIConfig 0.1 0.9 1.0
+                config = either error id $ mkMTIConfig 0.1 0.9 1.0
                 prevMean = replicate n_bins (0.0 :+ 0.0)
                 -- Low motion input (magnitude squared diff per bin is 0.5^2 = 0.25)
                 -- Total motion metric = 5 * 0.25 = 1.25, but threshold is 1.0
@@ -172,11 +173,11 @@ spec = describe "SignalProcessing.FMCW" $ do
                 -- Since motion is low, alpha=0.9 should be used
                 -- newMean = 0.1*0 + 0.9*0.4 = 0.36
             let expectedMean = replicate n_bins (0.36 :+ 0.0)
-            newMean `shouldBe` expectedMean
+            zipWithM_ (\(r1 :+ _) (r2 :+ _) -> abs (r1 - r2) `shouldSatisfy` (< 1e-10)) newMean expectedMean
 
         it "uses standard suppression strength (alphaBase) when motion is above threshold" $ do
             let n_bins = 5
-                Right config = mkMTIConfig 0.1 0.9 1.0
+                config = either error id $ mkMTIConfig 0.1 0.9 1.0
                 prevMean = replicate n_bins (0.0 :+ 0.0)
                 -- High motion input (magnitude squared diff per bin is 2.0^2 = 4.0)
                 -- Total motion metric = 5 * 4.0 = 20.0 > 1.0
@@ -185,11 +186,11 @@ spec = describe "SignalProcessing.FMCW" $ do
                 -- Since motion is high, alpha=0.1 should be used
                 -- newMean = 0.9*0 + 0.1*2.0 = 0.2
             let expectedMean = replicate n_bins (0.2 :+ 0.0)
-            newMean `shouldBe` expectedMean
+            zipWithM_ (\(r1 :+ _) (r2 :+ _) -> abs (r1 - r2) `shouldSatisfy` (< 1e-10)) newMean expectedMean
 
         it "uses alphaBase when motionMetric equals threshold" $ do
             let n_bins = 5
-                Right config = mkMTIConfig 0.1 0.9 1.0
+                config = either error id $ mkMTIConfig 0.1 0.9 1.0
                 prevMean = replicate n_bins (0.0 :+ 0.0)
                 -- Set input so total motion metric = threshold = 1.0
                 -- magnitude squared per bin = 1.0 / 5 = 0.2

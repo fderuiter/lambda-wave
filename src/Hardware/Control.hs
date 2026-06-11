@@ -155,6 +155,11 @@ setBeamChannel channel state = do
     let pinNum = case channel of
             LogicChannel -> 17
             WatchdogChannel -> 27
+    let stateStr = if state then "ON" else "OFF"
+    let chanStr = case channel of
+            LogicChannel -> "LOGIC Channel"
+            WatchdogChannel -> "WATCHDOG Channel"
+    putStrLn $ "[Hardware] " ++ chanStr ++ " Set To: " ++ stateStr
     _ <- c_gpio_write pinNum (if state then 1 else 0)
     return ()
 

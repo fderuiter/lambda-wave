@@ -69,10 +69,6 @@ multiply a b
 matVecMult :: Matrix -> Vector -> Vector
 matVecMult m v = [ dot row v | row <- m ]
 
-{-# RULES
-"bolt/dot_product" forall v1 v2. sum (zipWith (*) v1 v2) = dot v1 v2
-"bolt/mat_vec_mult" forall m v. map (\row -> sum (zipWith (*) row v)) m = matVecMult m v
-  #-}
 
 -- | Calculate the dot product of two vectors.
 --

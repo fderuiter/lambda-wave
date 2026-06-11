@@ -1,13 +1,12 @@
 {-# LANGUAGE TemplateHaskell #-}
-module SignalProcessing.Matrix where
+module SignalProcessing.Matrix (generateMatrix) where
 
 import Language.Haskell.TH
-import qualified Data.Vector.Unboxed as V
 
 -- | Generates a Matrix newtype that wraps a flat Vector.
 -- E.g. generateMatrix "Matrix3x3" 3 3
 generateMatrix :: String -> Int -> Int -> Q [Dec]
-generateMatrix nameStr rows cols = do
+generateMatrix nameStr _rows _cols = do
     let name = mkName nameStr
     let conName = mkName nameStr
     -- newtype MatrixNxM = MatrixNxM (Vector Double)

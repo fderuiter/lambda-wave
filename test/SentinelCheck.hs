@@ -9,7 +9,6 @@ import Data.Time.HighRes (getMonotonicTimeNS, getRealTimeNS)
 import FFI.RingBuffer.IO (createRingBuffer, getWriteOffset, setReadOffset)
 import FFI.RingBuffer.Types (RingBufferControl(..))
 import Foreign.Storable
-import Foreign.Ptr
 import Foreign.C.Types
 import Foreign.Marshal.Alloc (alloca)
 import System.Exit (exitFailure, exitSuccess)

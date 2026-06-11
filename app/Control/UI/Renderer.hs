@@ -21,12 +21,11 @@ module Control.UI.Renderer (
 
 import Control.Concurrent.STM
 import Graphics.UI.GLUT
-import Graphics.Rendering.OpenGL
 import GHC.Float (double2Float)
 import Data.Types (SystemState(..), Point3D(..), BeamState(..))
 import Data.IORef
 import System.IO (hFlush, stdout)
-import Control.Monad (when, forever)
+import Control.Monad (when)
 import qualified Data.Map.Strict as Map
 import Data.Time.HighRes (getMonotonicTimeNS)
 import Foreign.Marshal.Array (withArray)
@@ -147,13 +146,13 @@ display stateVar prevStateRef vboPoints vboHeartbeat = do
         let dataSize = fromIntegral $ numPts * 3 * sizeOf (undefined :: GLfloat)
         bufferSubData ArrayBuffer WriteToBuffer 0 dataSize ptr
         
-    vertexPointer $= (VertexArrayDescriptor 3 Float 0 nullPtr)
+    arrayPointer VertexArray $= (VertexArrayDescriptor 3 Float 0 nullPtr)
     color $ Color3 (1.0::GLfloat) 1.0 1.0
     drawArrays Points 0 (fromIntegral numPts)
 
     -- Draw Visual Heartbeat (Sequence counter driven)
     bindBuffer ArrayBuffer $= Just vboHeartbeat
-    vertexPointer $= (VertexArrayDescriptor 3 Float 0 nullPtr)
+    arrayPointer VertexArray $= (VertexArrayDescriptor 3 Float 0 nullPtr)
     color $ Color3 (0.0::GLfloat) 1.0 1.0 -- Cyan heartbeat
 
     preservingMatrix $ do
