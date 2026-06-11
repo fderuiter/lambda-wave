@@ -27,7 +27,7 @@ import Control.Exception (throwIO, catch, SomeException, mask_, onException)
 import Control.Concurrent (forkOS, ThreadId, threadDelay)
 import Control.Monad (when)
 import System.IO (hPutStrLn, stderr)
-import FFI.RingBuffer.Types (RingBufferControl, peekStaticFields)
+import FFI.RingBuffer.Types (peekStaticFields)
 import FFI.RingBuffer.Generated
 import Control.DeepSeq (NFData(..))
 

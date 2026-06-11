@@ -13,9 +13,9 @@ import System.Posix.Types (ProcessID)
 import System.Posix.Signals (signalProcess, sigKILL)
 import qualified Data.Map.Strict as Map
 import Network.Socket
-import Network.Socket.ByteString (sendTo, recvFrom)
+import Network.Socket.ByteString (sendTo, recv)
 import qualified Data.ByteString.Char8 as BC
-import Control.Exception (try, IOException)
+import Control.Exception (try, IOException, catch, SomeException)
 import System.Timeout (timeout)
 import System.Posix.Files (removeLink)
 
@@ -30,7 +30,9 @@ udsPath = "/tmp/sgrt_heartbeat.sock"
 -- Evaluates thread heartbeats. If everything is fine, it sends a heartbeat to the Daemon.
 -- If any thread is frozen, it stops sending heartbeats, causing the Daemon to trip.
 watchdogLoop :: TVar SystemState -> IO ()
-watchdogLoop stateVar = do
+watchdogLoop stateVar = (`catch` \e -> do putStrLn $ "WATCHDOG CRASHED: " ++ show (e :: SomeException); hFlush stdout) $ do
+    putStrLn "WATCHDOG LOOP START"
+    hFlush stdout
     sock <- socket AF_UNIX Datagram 0
     let addr = SockAddrUnix udsPath
     let Time timeoutSec = watchdogTimeoutTime (Proxy :: Proxy WatchdogTimeoutMs)
@@ -45,16 +47,17 @@ watchdogLoop stateVar = do
 
         if isHealthy && not (Map.null heartbeats)
             then do
+                putStrLn $ "DEBUG WATCHDOG HEALTHY: now=" ++ show now
+                hFlush stdout
                 -- Send heartbeat
                 _ <- try (sendTo sock (BC.pack "HB") addr) :: IO (Either IOException Int)
                 return ()
             else do
-                -- Explicitly send TRIP message to daemon to guarantee <110ms response time
-                _ <- try (sendTo sock (BC.pack "TRIP") addr) :: IO (Either IOException Int)
-                
-                -- Find frozen threads for logging
+                -- Find frozen threads for logging BEFORE sending TRIP, because daemon will kill us immediately
                 forM_ (Map.toList heartbeats) $ \(threadName, lastTime) -> do
                     let diff = now - lastTime
+                    putStrLn $ "DEBUG WATCHDOG: diff=" ++ show diff
+                    hFlush stdout
                     when (diff > timeoutNS) $ do
                         let msg = "Thread '" ++ threadName ++ "' FROZEN (Age: " ++ show diff ++ "ns)."
                         atomically $ do
@@ -64,6 +67,11 @@ watchdogLoop stateVar = do
                                 writeTBQueue q (AuditEvent now Critical "Watchdog" msg)
                         putStrLn $ "!!! MAIN WATCHDOG: " ++ msg
                         hFlush stdout
+                        threadDelay 1000
+
+                -- Explicitly send TRIP message to daemon to guarantee <110ms response time
+                _ <- try (sendTo sock (BC.pack "TRIP") addr) :: IO (Either IOException Int)
+                return ()
                 
         threadDelay 10000 -- Check every 10ms
 
@@ -86,14 +94,22 @@ runSafetyDaemon parentPid = do
             -- Receive with timeout
             -- timeout takes microseconds.
             let Time timeoutSec = watchdogTimeoutTime (Proxy :: Proxy WatchdogTimeoutMs)
-                timeoutUS = round (timeoutSec * 1_000_000) :: Int
-            res <- try (timeout timeoutUS $ recvFrom sock 16) :: IO (Either IOException (Maybe (BC.ByteString, SockAddr)))
+                -- Add a 5ms grace period to the daemon timeout so the main watchdog has time to log the freeze
+                timeoutUS = round (timeoutSec * 1_000_000) + 5000 :: Int
+            res <- try (timeout timeoutUS $ recv sock 16) :: IO (Either IOException (Maybe BC.ByteString))
             
             case res of
-                Right (Just (msg, _)) | msg == BC.pack "HB" -> do
-                    loop
-                _ -> do
-                    -- Timeout, IO error, or invalid message -> TRIP!
+                Right (Just msg) -> do
+                    if msg == BC.pack "HB"
+                        then loop
+                        else do
+                            putStrLn $ "[Safety Daemon] Invalid message received: " ++ show msg
+                            tripDaemon parentPid
+                Right Nothing -> do
+                    putStrLn "[Safety Daemon] Timeout reached!"
+                    tripDaemon parentPid
+                Left err -> do
+                    putStrLn $ "[Safety Daemon] IO Error: " ++ show err
                     tripDaemon parentPid
     
     loop
@@ -113,9 +129,10 @@ tripDaemon parentPid = do
     
     -- Terminate main application process
     putStrLn $ "!!! SAFETY DAEMON: Terminating Parent PID " ++ show parentPid
+    hFlush stdout
+    
     _ <- try (signalProcess sigKILL parentPid) :: IO (Either IOException ())
     
-    hFlush stdout
     exitImmediately (ExitFailure 1)
 
 -- Hazard H-SYS-001: Beam ON during motion
