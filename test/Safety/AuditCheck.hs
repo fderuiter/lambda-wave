@@ -14,6 +14,8 @@ import Data.List (isInfixOf)
 import Control.Monad (when)
 import Control.Exception (try, IOException)
 import System.Environment (getArgs, getExecutablePath)
+import qualified Data.ByteString as B
+import Safety.Crypto (decryptLog)
 
 -- | Test Setup
 withTestEnv :: (TVar SystemState -> TBQueue AuditEvent -> FilePath -> IO Bool) -> IO Bool
@@ -64,7 +66,8 @@ testBasicLogging = do
 
         -- Verify File Content
         -- Use strict IO or ensure handle is closed.
-        content <- readFile logPath
+        rawContent <- B.readFile logPath
+        let content = decryptLog rawContent
         let ok = "Hello World" `isInfixOf` content
 
         if ok
@@ -140,12 +143,13 @@ testCrashRecovery = do
     _ <- getProcessStatus True False pid
 
     -- Verify Log
-    res <- try $ readFile logPath :: IO (Either IOException String)
+    res <- try $ B.readFile logPath :: IO (Either IOException B.ByteString)
     case res of
         Left _ -> do
             putStrLn "FAIL (Log file not found or unreadable)"
             return False
-        Right content -> do
+        Right rawContent -> do
+            let content = decryptLog rawContent
             let ok1 = "CRASH_EVENT_CRIT" `isInfixOf` content
             let ok2 = "CRASH_EVENT_WARN" `isInfixOf` content
             if ok1 && ok2
