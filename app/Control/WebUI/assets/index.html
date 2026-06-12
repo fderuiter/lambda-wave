@@ -97,7 +97,7 @@
     </main>
 
     <script>
-        const ws = new WebSocket("ws://" + location.host + "/ws");
+        const ws = new WebSocket("wss://" + location.host + "/ws");
         const statusEl = document.getElementById('beam-status');
         const tsEl = document.getElementById('ts');
         const ptCountEl = document.getElementById('pt-count');

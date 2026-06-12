@@ -18,6 +18,8 @@ import qualified Data.ByteString.Char8 as BC
 import Control.Exception (try, IOException, catch, SomeException)
 import System.Timeout (timeout)
 import System.Posix.Files (removeLink)
+import qualified Data.ByteString as B
+import Safety.Crypto (encryptLog)
 
 import Hardware.Control (setBeamChannel, GpioChannel(..))
 import Numeric.Kinematics
@@ -125,7 +127,16 @@ tripDaemon parentPid = do
     -- Independent Audit Log recording
     now <- getMonotonicTimeNS
     let auditMsg = show now ++ " [CRITICAL] [SafetyDaemon] " ++ msg ++ "\n"
-    _ <- try (appendFile "session.log" auditMsg) :: IO (Either IOException ())
+    encAudit <- encryptLog auditMsg
+    res <- try (B.appendFile "session.log" encAudit) :: IO (Either IOException ())
+    
+    case res of
+        Left err -> do
+            putStrLn $ "!!! SAFETY DAEMON IO ERROR writing session.log: " ++ show err
+            hFlush stdout
+            _ <- try (B.appendFile "fallback_audit.log" encAudit) :: IO (Either IOException ())
+            return ()
+        Right () -> return ()
     
     -- Terminate main application process
     putStrLn $ "!!! SAFETY DAEMON: Terminating Parent PID " ++ show parentPid

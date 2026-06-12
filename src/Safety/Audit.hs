@@ -20,6 +20,8 @@ import Control.Exception (try, IOException)
 import System.Posix.Files (rename)
 import Text.Printf (printf)
 import Data.Char (isControl)
+import qualified Data.ByteString as B
+import Safety.Crypto (encryptLog)
 
 -- | Signals why the inner loop exited
 data LoopResult = RotationNeeded
@@ -98,7 +100,8 @@ processEvents stateVar queue h = go
                                 (show (severity evt))
                                 (sanitize $ component evt)
                                 (sanitize $ message evt)
-                hPutStrLn h entry
+                enc <- encryptLog (entry ++ "\n")
+                B.hPut h enc
 
                 -- 4. Critical Flush (Safety)
                 when (severity evt == Critical || severity evt == Warning) $ hFlush h

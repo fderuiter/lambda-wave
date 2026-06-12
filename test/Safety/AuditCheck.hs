@@ -14,6 +14,8 @@ import Data.List (isInfixOf)
 import Control.Monad (when)
 import Control.Exception (try, IOException)
 import System.Environment (getArgs, getExecutablePath)
+import qualified Data.ByteString as B
+import Safety.Crypto (decryptLog)
 
 -- | Test Setup
 withTestEnv :: (TVar SystemState -> TBQueue AuditEvent -> FilePath -> IO Bool) -> IO Bool
@@ -64,12 +66,16 @@ testBasicLogging = do
 
         -- Verify File Content
         -- Use strict IO or ensure handle is closed.
-        content <- readFile logPath
-        let ok = "Hello World" `isInfixOf` content
-
-        if ok
-           then putStrLn "PASS" >> return True
-           else putStrLn ("FAIL: Content was " ++ show content) >> return False
+        rawContent <- B.readFile logPath
+        case decryptLog rawContent of
+            Right content -> do
+                let ok = "Hello World" `isInfixOf` content
+                if ok
+                   then putStrLn "PASS" >> return True
+                   else putStrLn ("FAIL: Content was " ++ show content) >> return False
+            Left err -> do
+                putStrLn ("FAIL: Decryption error: " ++ err)
+                return False
 
 testLogRotation :: IO Bool
 testLogRotation = do
@@ -140,21 +146,27 @@ testCrashRecovery = do
     _ <- getProcessStatus True False pid
 
     -- Verify Log
-    res <- try $ readFile logPath :: IO (Either IOException String)
+    res <- try $ B.readFile logPath :: IO (Either IOException B.ByteString)
     case res of
         Left _ -> do
             putStrLn "FAIL (Log file not found or unreadable)"
             return False
-        Right content -> do
-            let ok1 = "CRASH_EVENT_CRIT" `isInfixOf` content
-            let ok2 = "CRASH_EVENT_WARN" `isInfixOf` content
-            if ok1 && ok2
-                then do
-                    putStrLn "PASS"
-                    cleanup logPath
-                    return True
-                else do
-                    putStrLn ("FAIL: Content was " ++ show content)
+        Right rawContent -> do
+            case decryptLog rawContent of
+                Right content -> do
+                    let ok1 = "CRASH_EVENT_CRIT" `isInfixOf` content
+                    let ok2 = "CRASH_EVENT_WARN" `isInfixOf` content
+                    if ok1 && ok2
+                        then do
+                            putStrLn "PASS"
+                            cleanup logPath
+                            return True
+                        else do
+                            putStrLn ("FAIL: Content was " ++ show content)
+                            cleanup logPath
+                            return False
+                Left err -> do
+                    putStrLn ("FAIL: Decryption error: " ++ err)
                     cleanup logPath
                     return False
   where
