@@ -29,7 +29,7 @@ common common-options
     , stm ==2.5.1.0
     , binary ==0.8.9.1
     , bytestring ==0.11.5.3
-    , unix ==2.7.3
+    , unix >=2.7 && <2.9
     , vector
     , template-haskell
     , deepseq >=1.4.8.0 && <1.5
@@ -164,7 +164,7 @@ executable watchdog-fault
     , base >= 4.16 && < 5
     , stm ==2.5.1.0
     , containers ==0.6.7
-    , unix ==2.7.3
+    , unix >=2.7 && <2.9
     , process
     , vector
     , template-haskell
@@ -250,7 +250,7 @@ test-suite audit-check
   build-depends:
       sgrt-radar-system
     , base >= 4.16 && < 5
-    , unix ==2.7.3
+    , unix >=2.7 && <2.9
     , vector
     , template-haskell
 
@@ -409,7 +409,7 @@ executable check-baud
       tools/hardware-simulation
   build-depends:
       base >= 4.16 && < 5
-    , unix ==2.7.3
+    , unix >=2.7 && <2.9
     , vector
     , template-haskell
 
@@ -420,7 +420,7 @@ executable check-pty
       tools/hardware-simulation
   build-depends:
       base >= 4.16 && < 5
-    , unix ==2.7.3
+    , unix >=2.7 && <2.9
     , vector
     , template-haskell
 
@@ -431,7 +431,7 @@ executable check-unix
       tools/hardware-simulation
   build-depends:
       base >= 4.16 && < 5
-    , unix ==2.7.3
+    , unix >=2.7 && <2.9
     , vector
     , template-haskell
 
