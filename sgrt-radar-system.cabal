@@ -34,7 +34,7 @@ common common-options
     , template-haskell
     , deepseq >=1.4.8.0 && <1.5
     , containers ==0.6.7
-    , filepath ==1.4.2.2
+    , filepath >=1.4.2.2 && <1.5
     , network ==3.2.8.0
     , crypton
     , memory
