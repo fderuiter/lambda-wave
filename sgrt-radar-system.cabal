@@ -254,7 +254,7 @@ test-suite clinical-hil-validation
     , base >= 4.16 && < 5
     , stm ==2.5.1.0
     , containers ==0.6.7
-    , process ==1.6.18.0
+    , process >= 1.6.18.0
     
 test-suite gating-check
   import: common-options
@@ -386,7 +386,7 @@ executable update-csp
   build-depends:
       base >= 4.16 && < 5
     , bytestring ==0.11.5.3
-    , process ==1.6.18.0
+    , process >= 1.6.18.0
 
 executable check-baud
   import: common-options
