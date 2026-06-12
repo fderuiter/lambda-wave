@@ -2,28 +2,61 @@
 module Safety.Crypto (encryptLog, decryptLog, encryptWebsocket, decryptWebsocket) where
 
 import Crypto.Cipher.AES (AES256)
-import Crypto.Cipher.Types (BlockCipher(..), Cipher(..), nullIV)
+import Crypto.Cipher.Types (BlockCipher(..), Cipher(..), makeIV, IV)
 import Crypto.Error (CryptoFailable(..))
+import Crypto.Random (getRandomBytes)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as BC
+import Data.ByteArray.Encoding (convertToBase, convertFromBase, Base(Base64))
 
 key :: B.ByteString
 key = BC.pack "01234567890123456789012345678901"
 
-processBytes :: B.ByteString -> B.ByteString
-processBytes pt = 
+processBytes :: IV AES256 -> B.ByteString -> Either String B.ByteString
+processBytes iv pt = 
     case cipherInit key :: CryptoFailable AES256 of
-        CryptoPassed c -> ctrCombine c nullIV pt
-        _ -> pt
+        CryptoPassed c -> Right $ ctrCombine c iv pt
+        CryptoFailed e -> Left ("Cipher init failed: " ++ show e)
 
-encryptLog :: String -> B.ByteString
-encryptLog str = processBytes (BC.pack str)
+encryptIO :: B.ByteString -> IO B.ByteString
+encryptIO pt = do
+    ivBytes <- getRandomBytes 16
+    case makeIV ivBytes of
+        Just iv -> case processBytes iv pt of
+            Right ct -> return (B.append ivBytes ct)
+            Left e   -> error ("Encryption failed: " ++ e)
+        Nothing -> error "Failed to generate IV"
 
-decryptLog :: B.ByteString -> String
-decryptLog bs = BC.unpack (processBytes bs)
+decryptPure :: B.ByteString -> Either String B.ByteString
+decryptPure bs =
+    if B.length bs < 16
+        then Left "Ciphertext too short"
+        else do
+            let (ivBytes, ct) = B.splitAt 16 bs
+            case makeIV ivBytes of
+                Just iv -> processBytes iv ct
+                Nothing -> Left "Invalid IV"
 
-encryptWebsocket :: B.ByteString -> B.ByteString
-encryptWebsocket = processBytes
+encryptLog :: String -> IO B.ByteString
+encryptLog str = do
+    enc <- encryptIO (BC.pack str)
+    return $ convertToBase Base64 enc `B.append` "\n"
 
-decryptWebsocket :: B.ByteString -> B.ByteString
-decryptWebsocket = processBytes
+decryptLog :: B.ByteString -> Either String String
+decryptLog bs = do
+    let lines' = filter (not . B.null) (BC.lines bs)
+    decLines <- mapM decodeLine lines'
+    return (concat decLines)
+  where
+    decodeLine l = case convertFromBase Base64 l :: Either String B.ByteString of
+        Left e -> Left ("Base64 decode failed: " ++ e)
+        Right dec -> case decryptPure dec of
+            Right pt -> Right (BC.unpack pt)
+            Left e   -> Left e
+
+encryptWebsocket :: B.ByteString -> IO B.ByteString
+encryptWebsocket = encryptIO
+
+decryptWebsocket :: B.ByteString -> Either String B.ByteString
+decryptWebsocket = decryptPure
+

@@ -34,6 +34,16 @@ import qualified Data.Map.Strict as Map
 import Control.WebUI.Types ()
 import Data.Types (SystemState, auditQueue, AuditEvent(..), Severity(..))
 import Data.Time.HighRes (getMonotonicTimeNS)
+import Data.ByteArray.Encoding (convertFromBase, Base(Base64))
+import Crypto.Hash (hash, SHA256(..), Digest)
+
+-- Provisioned credential map (username -> hashed password)
+credentialStore :: Map.Map B.ByteString (Digest SHA256)
+credentialStore = Map.fromList
+    [ ("admin", hash (BC.pack "password") :: Digest SHA256)
+    , ("operator", hash (BC.pack "password") :: Digest SHA256)
+    ]
+
 
 indexHtml :: B.ByteString
 indexHtml = $(embedFile "app/Control/WebUI/assets/index.html")
@@ -45,19 +55,25 @@ runWebUI :: TVar SystemState -> IO ()
 runWebUI stateVar = do
     -- Ensure certificates exist
     certExists <- doesFileExist "cert.pem"
-    if not certExists
+    keyExists <- doesFileExist "key.pem"
+    if not (certExists && keyExists)
        then do
            putStrLn "Generating self-signed TLS certificates..."
            callCommand "openssl req -x509 -newkey rsa:2048 -keyout key.pem -out cert.pem -sha256 -days 365 -nodes -subj '/CN=localhost' 2>/dev/null"
        else putStrLn "TLS certificates found."
 
-    store <- newTVarIO Map.empty
-    
-    putStrLn "Starting Web UI on https://127.0.0.1:8443"
-    let settings = setServerName "" $ setPort 8443 $ setHost "127.0.0.1" defaultSettings
-    let tSettings = tlsSettings "cert.pem" "key.pem"
-    
-    runTLS tSettings settings $ websocketsOr defaultConnectionOptions (wsApp store stateVar) (httpApp store stateVar)
+    certExists' <- doesFileExist "cert.pem"
+    keyExists' <- doesFileExist "key.pem"
+    if not (certExists' && keyExists')
+       then error "Failed to generate or find TLS certificates. Aborting."
+       else do
+           store <- newTVarIO Map.empty
+           
+           putStrLn "Starting Web UI on https://127.0.0.1:8443"
+           let settings = setServerName "" $ setPort 8443 $ setHost "127.0.0.1" defaultSettings
+           let tSettings = tlsSettings "cert.pem" "key.pem"
+           
+           runTLS tSettings settings $ websocketsOr defaultConnectionOptions (wsApp store stateVar) (httpApp store stateVar)
 
 generateToken :: IO B.ByteString
 generateToken = do
@@ -93,26 +109,36 @@ httpApp store stateVar req respond = do
             (fromStrict indexHtml)
        else case authHeader of
             Just auth | "Basic " `B.isPrefixOf` auth -> do
-                -- Simplified basic auth check. Accept any password if username is admin for example.
-                -- Wait, we just need unique users to get unique sessions.
-                -- In reality, we should base64 decode and verify.
                 let creds = B.drop 6 auth
-                if creds == "YWRtaW46cGFzc3dvcmQ=" || creds == "b3BlcmF0b3I6cGFzc3dvcmQ=" -- admin:password, operator:password
-                    then do
-                        token <- generateToken
-                        now <- getCurrentTime
-                        let expiry = addUTCTime 1800 now -- 30 minutes
-                        atomically $ modifyTVar' store (Map.insert token expiry)
+                case convertFromBase Base64 creds :: Either String B.ByteString of
+                    Right decoded -> do
+                        let (user, passWithColon) = B.break (== 58) decoded -- 58 is ':'
+                            pass = B.drop 1 passWithColon
+                        let passHash = hash pass :: Digest SHA256
                         
-                        logAuthEvent stateVar ("Login successful for user " ++ BC.unpack creds) True
+                        let isValidUser = case Map.lookup user credentialStore of
+                                Just expectedHash -> expectedHash == passHash
+                                Nothing -> False
                         
-                        respond $ responseLBS status302
-                            [ ("Set-Cookie", "session=" <> token <> "; HttpOnly; Secure; SameSite=Strict; Path=/")
-                            , ("Location", "/")
-                            ]
-                            ""
-                    else do
-                        logAuthEvent stateVar "Login failed" False
+                        if isValidUser
+                            then do
+                                token <- generateToken
+                                now <- getCurrentTime
+                                let expiry = addUTCTime 1800 now -- 30 minutes
+                                atomically $ modifyTVar' store (Map.insert token expiry)
+                                
+                                logAuthEvent stateVar ("Login successful for user " ++ BC.unpack user) True
+                                
+                                respond $ responseLBS status302
+                                    [ ("Set-Cookie", "session=" <> token <> "; HttpOnly; Secure; SameSite=Strict; Path=/")
+                                    , ("Location", "/")
+                                    ]
+                                    ""
+                            else do
+                                logAuthEvent stateVar "Login failed" False
+                                respond401 respond
+                    Left _ -> do
+                        logAuthEvent stateVar "Login failed: invalid encoding" False
                         respond401 respond
             _ -> respond401 respond
 

@@ -100,7 +100,8 @@ processEvents stateVar queue h = go
                                 (show (severity evt))
                                 (sanitize $ component evt)
                                 (sanitize $ message evt)
-                B.hPut h (encryptLog (entry ++ "\n"))
+                enc <- encryptLog (entry ++ "\n")
+                B.hPut h enc
 
                 -- 4. Critical Flush (Safety)
                 when (severity evt == Critical || severity evt == Warning) $ hFlush h

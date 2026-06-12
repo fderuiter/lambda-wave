@@ -8,6 +8,8 @@ import Text.Read (readMaybe)
 import Control.Monad (when, unless)
 import Data.Maybe (mapMaybe)
 import Control.Exception (try, SomeException)
+import qualified Data.ByteString as B
+import Safety.Crypto (decryptLog)
 
 -- Extract all digits from a string prefix
 takeDigits :: String -> String
@@ -95,7 +97,13 @@ main = do
         putStrLn "FAIL: session.log not found."
         exitWith (ExitFailure 1)
 
-    sessionLogs <- readFile "session.log"
+    sessionLogsBs <- B.readFile "session.log"
+    sessionLogs <- case decryptLog sessionLogsBs of
+        Right pt -> return pt
+        Left err -> do
+            putStrLn $ "FAIL: Could not decrypt session.log: " ++ err
+            exitWith (ExitFailure 1)
+
     let tripLine = findInfix "[CRITICAL] [SafetyDaemon] !!! SAFETY DAEMON TRIP" (lines sessionLogs)
     tripNs <- case tripLine of
         Just line -> case readMaybe (takeWhile (/= ' ') line) of

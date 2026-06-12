@@ -67,12 +67,15 @@ testBasicLogging = do
         -- Verify File Content
         -- Use strict IO or ensure handle is closed.
         rawContent <- B.readFile logPath
-        let content = decryptLog rawContent
-        let ok = "Hello World" `isInfixOf` content
-
-        if ok
-           then putStrLn "PASS" >> return True
-           else putStrLn ("FAIL: Content was " ++ show content) >> return False
+        case decryptLog rawContent of
+            Right content -> do
+                let ok = "Hello World" `isInfixOf` content
+                if ok
+                   then putStrLn "PASS" >> return True
+                   else putStrLn ("FAIL: Content was " ++ show content) >> return False
+            Left err -> do
+                putStrLn ("FAIL: Decryption error: " ++ err)
+                return False
 
 testLogRotation :: IO Bool
 testLogRotation = do
@@ -149,16 +152,21 @@ testCrashRecovery = do
             putStrLn "FAIL (Log file not found or unreadable)"
             return False
         Right rawContent -> do
-            let content = decryptLog rawContent
-            let ok1 = "CRASH_EVENT_CRIT" `isInfixOf` content
-            let ok2 = "CRASH_EVENT_WARN" `isInfixOf` content
-            if ok1 && ok2
-                then do
-                    putStrLn "PASS"
-                    cleanup logPath
-                    return True
-                else do
-                    putStrLn ("FAIL: Content was " ++ show content)
+            case decryptLog rawContent of
+                Right content -> do
+                    let ok1 = "CRASH_EVENT_CRIT" `isInfixOf` content
+                    let ok2 = "CRASH_EVENT_WARN" `isInfixOf` content
+                    if ok1 && ok2
+                        then do
+                            putStrLn "PASS"
+                            cleanup logPath
+                            return True
+                        else do
+                            putStrLn ("FAIL: Content was " ++ show content)
+                            cleanup logPath
+                            return False
+                Left err -> do
+                    putStrLn ("FAIL: Decryption error: " ++ err)
                     cleanup logPath
                     return False
   where
