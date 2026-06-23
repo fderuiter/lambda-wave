@@ -1,8 +1,6 @@
 module Main (main) where
 
-import qualified Data.ByteString.Lazy as BL
 import qualified Data.Binary.Put as P
-import qualified Data.ByteString as B
 import Hardware.Consumer
 import Data.Types
 
