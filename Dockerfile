@@ -1,5 +1,5 @@
 # Dockerfile for SGRT Radar System
-FROM haskell@sha256:9cf51a755e3c8646dbfef84abb750bda3672258bdb375085e2db11f18c7c5e05
+FROM haskell@sha256:9ae9287b4b48a8e437c290b8aa1a4a0433a1c2a3d3cff965ad0883426a41c960
 
 # Install system dependencies
 COPY scripts/setup_env.sh /tmp/setup_env.sh

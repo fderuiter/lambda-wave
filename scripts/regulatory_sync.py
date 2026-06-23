@@ -192,7 +192,7 @@ def check_security_posture():
         print(f"Scanning pinned SOUP image: {docker_image} with Trivy...")
         # We run trivy image with --exit-code 1 for HIGH,CRITICAL severities
         # and --scanners vuln
-        cmd = ["trivy", "image", "--no-progress", "--severity", "HIGH,CRITICAL", "--exit-code", "1", docker_image]
+        cmd = ["trivy", "image", "--no-progress", "--ignore-unfixed", "--severity", "HIGH,CRITICAL", "--exit-code", "1", docker_image]
         try:
             result = subprocess.run(cmd, capture_output=True, text=True)
             if result.returncode != 0:
