@@ -103,7 +103,7 @@ main() {
                     log_info "Installing security scanning tools (Trivy)..."
                     $sudo_cmd mkdir -p /etc/apt/keyrings
                     wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | gpg --dearmor | $sudo_cmd tee /etc/apt/keyrings/trivy.gpg > /dev/null
-                    echo "deb [signed-by=/etc/apt/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | $sudo_cmd tee /etc/apt/sources.list.d/trivy.list > /dev/null
+                    echo "deb [signed-by=/etc/apt/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb generic main" | $sudo_cmd tee /etc/apt/sources.list.d/trivy.list > /dev/null
                     $sudo_cmd apt-get update
                     $sudo_cmd apt-get install -y trivy
                 else
