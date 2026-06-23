@@ -11,7 +11,7 @@ import System.Exit (ExitCode(ExitFailure))
 import qualified Data.Map.Strict as Map
 import Data.Time.HighRes (getMonotonicTimeNS)
 import Data.List (isInfixOf)
-import Control.Monad (when)
+import Control.Monad (when, forM_)
 import Control.Exception (try, IOException)
 import System.Environment (getArgs, getExecutablePath)
 import qualified Data.ByteString as B
@@ -83,16 +83,12 @@ testLogRotation = do
     withTestEnv $ \stateVar q logPath -> do
         tid <- forkIO $ auditLoop stateVar logPath
 
-        -- Write > 10MB of data
-        -- 10MB string
-        let hugeMsg = replicate (10 * 1024 * 1024 + 1024) 'A'
+        let chunk = replicate (1024 * 1024) 'A' -- 1MB chunk
         now <- getMonotonicTimeNS
 
-        -- Write huge message
-        atomically $ writeTBQueue q (AuditEvent now Info "Test" hugeMsg)
-
-        -- Wait for write (this might take a few seconds in CI)
-        threadDelay 10_000_000
+        forM_ ([1..11] :: [Int]) $ \_ -> do
+            atomically $ writeTBQueue q (AuditEvent now Info "Test" chunk)
+            threadDelay 500_000 -- Wait 0.5s for each chunk to be processed
 
         -- Debug: Check Size
         stat <- getFileStatus logPath
@@ -188,5 +184,3 @@ main = do
             if p1 && p2 && p3
                then putStrLn "VERIFICATION PASSED"
                else fail "VERIFICATION FAILED"
-
--- Requirement SR-AUDIT-001

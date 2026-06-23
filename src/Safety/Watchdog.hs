@@ -77,7 +77,7 @@ watchdogLoop stateVar = (`catch` \e -> do putStrLn $ "WATCHDOG CRASHED: " ++ sho
                 _ <- try (sendTo sock (BC.pack "TRIP") addr) :: IO (Either IOException Int)
                 return ()
                 
-        threadDelay 10000 -- Check every 10ms
+        threadDelay 2000 -- Check every 2ms
 
 -- | Runs the independent Safety Daemon process
 runSafetyDaemon :: ProcessID -> IO ()
