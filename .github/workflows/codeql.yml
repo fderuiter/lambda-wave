@@ -9,7 +9,7 @@ on:
     - cron: '30 1 * * 0'
 
 jobs:
-  analyze:
+  analyze-matrix:
     name: Analyze
     runs-on: ubuntu-latest
     permissions:
@@ -58,3 +58,10 @@ jobs:
         # on high severity findings, we can use the github-script action
         # or depend on GitHub repository settings.
         echo "CodeQL analysis complete."
+
+  analyze:
+    name: Analyze
+    needs: analyze-matrix
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "All matrix analyses passed"
