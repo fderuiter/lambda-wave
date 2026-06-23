@@ -1,13 +1,14 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Main (main) where
 
+import qualified Data.HashMap.Strict as HM
 import Control.Concurrent (forkIO, threadDelay)
 import Control.Concurrent.STM
 import qualified Data.Map.Strict as Map
 import Data.Time.HighRes (getMonotonicTimeNS)
 import Text.Printf (printf)
 import System.Exit (exitFailure)
-import System.Process (callCommand)
+import System.Process (system)
 import Control.Monad (forever)
 import Data.List (sort)
 
@@ -76,7 +77,7 @@ runHILSimulation name rig duration = do
             , threadHeartbeats = Map.empty
             , kalmanState = initKalman targetHeight (KalmanConfig 1000.0 2.0)
             , auditQueue = q
-            , audioAlertEnabled = False
+            , audioAlertEnabled = False, activeLanguage = "en", localizedBeamState = "BEAM OFF"
             }
     var <- newTVarIO s
     
@@ -97,7 +98,7 @@ runHILSimulation name rig duration = do
             threadDelay 33000
             
             tBefore <- getMonotonicTimeNS
-            processFrame var (RadarFrame "" (fromIntegral i) pts)
+            processFrame HM.empty var (RadarFrame "" (fromIntegral i) pts)
             
             st <- readTVarIO var
             let expectedBool = beamState st == BeamOn
@@ -153,4 +154,5 @@ runHILSimulation name rig duration = do
 generatePdfReport :: [Double] -> IO ()
 generatePdfReport lats = do
     writeFile "latencies.csv" $ unlines (map show lats)
-    callCommand "python3 scripts/generate_report.py"
+    _ <- system "python3 scripts/generate_report.py"
+    return ()

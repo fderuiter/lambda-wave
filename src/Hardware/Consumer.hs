@@ -20,6 +20,7 @@ module Hardware.Consumer (
 
 import Control.Concurrent (threadDelay)
 import Control.Concurrent.STM
+import Data.I18n (Translations)
 import Control.Monad (unless, when, forM_)
 import Control.DeepSeq (force)
 import Control.Exception (evaluate)
@@ -63,8 +64,9 @@ maxTLVSize = 65536
 -- * Parses frames using 'Data.Binary.Get'.
 -- * Updates 'SystemState'.
 -- * Logs errors to 'auditQueue'.
-consumerLoop :: Bool -> ForeignPtr RingBufferControl -> TVar SystemState -> IO ()
-consumerLoop isPrimary controlFp stateVar = withForeignPtr controlFp $ \controlPtr -> do
+
+consumerLoop :: Translations -> Bool -> ForeignPtr RingBufferControl -> TVar SystemState -> IO ()
+consumerLoop translations isPrimary controlFp stateVar = withForeignPtr controlFp $ \controlPtr -> do
     -- Read initial control block (non-atomic for immutable fields)
     -- We use a dedicated peek to avoid reading atomic offsets (0, 8) which could race.
     (ptrStart, rawSize) <- peekStaticFields controlPtr
@@ -187,7 +189,7 @@ consumerLoop isPrimary controlFp stateVar = withForeignPtr controlFp $ \controlP
                                 writeTBQueue (auditQueue st) evt
 
                         if isPrimary
-                            then forM_ frames $ \frame -> processFrame stateVar frame
+                            then forM_ frames $ \frame -> processFrame translations stateVar frame
                             else atomically $ modifyTVar' stateVar $ \s -> s { currentPoints = concatMap points frames }
 
                     -- 7. Update Read Offset

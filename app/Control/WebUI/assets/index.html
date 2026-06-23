@@ -81,6 +81,12 @@
     </noscript>
     <main>
         <div style="text-align: right; margin-bottom: 10px;">
+            <label for="lang-select" style="color: #0ff; font-family: sans-serif; margin-right: 10px;">Language:</label>
+            <select id="lang-select" style="background: #222; color: #eee; border: 1px solid #555; padding: 2px 5px; font-family: sans-serif; margin-right: 20px;">
+                <option value="en">English</option>
+                <option value="es">Español</option>
+                <option value="fr">Français</option>
+            </select>
             <a href="dashboard.html" style="color: #0ff; text-decoration: none; font-family: sans-serif;">&rarr; Compliance Hub</a>
         </div>
         <h1 class="sr-only">Lambda-Wave Real-time Monitor</h1>
@@ -189,6 +195,13 @@
         document.title = 'Connecting... - Lambda-Wave Monitor';
         updateFavicon('#ff0', 'triangle');
 
+        const langSelect = document.getElementById('lang-select');
+        langSelect.addEventListener('change', (e) => {
+            if (ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ lang: e.target.value }));
+            }
+        });
+
         ws.onopen = () => {
             resetWatchdog();
             pauseBtn.setAttribute('aria-disabled', 'false');
@@ -278,34 +291,37 @@
                 }
             }
 
+            if (state.activeLanguage && langSelect.value !== state.activeLanguage) {
+                langSelect.value = state.activeLanguage;
+            }
+
             // 1. Update Beam Status
             // Only update DOM if state changed to prevent aria-live screen reader spam at 30Hz
-            if (state.beamState !== lastBeamState) {
-                // Insert space before capital letters (e.g., "BeamOn" -> "BEAM ON")
-                const textLabel = state.beamState.replace(/([A-Z])/g, ' $1').trim().toUpperCase();
+            if (state.rawBeamState !== lastBeamState) {
+                const textLabel = state.beamState; // Provided localized string by backend
                 let iconHtml = '';
                 let faviconColor = '#555';
                 let faviconShape = 'circle';
 
-                if (state.beamState === 'BeamOn') {
+                if (state.rawBeamState === 'BeamOn') {
                     faviconColor = '#0f0'; faviconShape = 'circle';
                     iconHtml = '<span aria-hidden="true">● </span>';
                 }
-                else if (state.beamState === 'BeamOff') {
+                else if (state.rawBeamState === 'BeamOff') {
                     faviconColor = '#f00'; faviconShape = 'square';
                     iconHtml = '<span aria-hidden="true">■ </span>';
                 }
-                else if (state.beamState === 'BeamHold') {
+                else if (state.rawBeamState === 'BeamHold') {
                     faviconColor = '#ff0'; faviconShape = 'triangle';
                     iconHtml = '<span aria-hidden="true">▲ </span>';
                 }
 
                 statusEl.innerHTML = iconHtml + textLabel;
-                statusEl.className = state.beamState;
+                statusEl.className = state.rawBeamState;
                 document.title = textLabel + ' - Lambda-Wave Monitor';
                 updateFavicon(faviconColor, faviconShape);
 
-                lastBeamState = state.beamState;
+                lastBeamState = state.rawBeamState;
             }
 
             // 2. Update Stats (Throttled to ~4Hz for readability)

@@ -1,0 +1,35 @@
+{
+  "en": {
+    "BeamOn": "BEAM ON",
+    "BeamOff": "BEAM OFF",
+    "BeamHold": "BEAM HOLD",
+    "Live": "Live",
+    "Disconnected": "Disconnected",
+    "Connecting": "Connecting...",
+    "DataStale": "Data Stale",
+    "Offline": "OFFLINE",
+    "AuditStateChanged": "Beam State Changed: %s -> %s"
+  },
+  "es": {
+    "BeamOn": "HAZ ENCENDIDO",
+    "BeamOff": "HAZ APAGADO",
+    "BeamHold": "HAZ EN PAUSA",
+    "Live": "En vivo",
+    "Disconnected": "Desconectado",
+    "Connecting": "Conectando...",
+    "DataStale": "Datos obsoletos",
+    "Offline": "FUERA DE LÍNEA",
+    "AuditStateChanged": "Estado del haz cambiado: %s -> %s"
+  },
+  "fr": {
+    "BeamOn": "FAISCEAU ALLUMÉ",
+    "BeamOff": "FAISCEAU ÉTEINT",
+    "BeamHold": "FAISCEAU EN PAUSE",
+    "Live": "En direct",
+    "Disconnected": "Déconnecté",
+    "Connecting": "Connexion...",
+    "DataStale": "Données périmées",
+    "Offline": "HORS LIGNE",
+    "AuditStateChanged": "État du faisceau modifié: %s -> %s"
+  }
+}

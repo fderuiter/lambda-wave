@@ -107,10 +107,7 @@ processEvents stateVar queue h = go
                 when (severity evt == Critical || severity evt == Warning) $ hFlush h
 
                 -- 5. Rotation Check
-                -- Track size in memory to avoid hFileSize syscall
-                -- Note: entry is formatted string. hPutStrLn adds newline.
-                -- We assume ASCII for logging components as per sanitize logic.
-                let !newSize = currentSize + fromIntegral (length entry + 1) -- +1 for newline
+                let !newSize = currentSize + fromIntegral (B.length enc)
                 if newSize > 10 * 1024 * 1024 -- 10MB limit
                     then return RotationNeeded
                     else go newSize

@@ -1,3 +1,4 @@
+import qualified Data.HashMap.Strict as HM
 {-# LANGUAGE BangPatterns #-}
 module Main (main) where
 
@@ -28,7 +29,7 @@ mkState bs = do
         , threadHeartbeats = Map.empty
         , kalmanState = kState
         , auditQueue = q
-        , audioAlertEnabled = False
+        , audioAlertEnabled = False, activeLanguage = "en", localizedBeamState = "BEAM OFF"
         }
 
 main :: IO ()
@@ -54,7 +55,7 @@ main = do
     let frame = RadarFrame "" 0 points
 
     consumerThread <- forkIO $ forever $ do
-        processFrame stateVar frame
+        processFrame HM.empty stateVar frame
         -- threadDelay 0 -- Run as fast as possible to maximize race chance
 
     -- Monitor

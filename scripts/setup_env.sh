@@ -97,6 +97,8 @@ main() {
                     apt-transport-https \
                     gnupg \
                     lsb-release \
+                    python3-matplotlib \
+                    python3-reportlab \
                     git
 
                 if [ "$skip_security" = false ]; then

@@ -51,9 +51,8 @@ main = do
     -- Clean up previous run
     _ <- try (removeFile "session.log") :: IO (Either SomeException ())
 
-    -- Run the fault injection executable directly
-    let exePath = "dist-newstyle/build/x86_64-linux/ghc-9.4.7/sgrt-radar-system-0.1.0.0/x/watchdog-fault/build/watchdog-fault/watchdog-fault"
-    (_exitCode, stdout, stderr) <- readProcessWithExitCode exePath [] ""
+    -- Run the fault injection executable using cabal exec
+    (_exitCode, stdout, stderr) <- readProcessWithExitCode "cabal" ["exec", "watchdog-fault"] ""
     
     let combinedOutput = stdout ++ stderr
     let linesOutput = lines combinedOutput

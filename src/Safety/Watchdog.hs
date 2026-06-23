@@ -7,8 +7,8 @@ import System.IO (hFlush, stdout)
 import Data.Word (Word64)
 import Data.Time.HighRes (getMonotonicTimeNS)
 import Control.Monad (forever, when, unless, forM_)
-import System.Exit (ExitCode(..))
-import System.Posix.Process (exitImmediately)
+import System.Exit (ExitCode(..), exitWith)
+import System.Posix.Process (getProcessID)
 import System.Posix.Types (ProcessID)
 import System.Posix.Signals (signalProcess, sigKILL)
 import qualified Data.Map.Strict as Map
@@ -24,8 +24,8 @@ import Safety.Crypto (encryptLog)
 import Hardware.Control (setBeamChannel, GpioChannel(..))
 import Numeric.Kinematics
 
-udsPath :: String
-udsPath = "/tmp/sgrt_heartbeat.sock"
+udsPath :: ProcessID -> String
+udsPath pid = "/tmp/sgrt_heartbeat_" ++ show pid ++ ".sock"
 
 -- | The Watchdog Heartbeat Sender Loop (Runs in Main Process)
 -- Requirement SR-WD-001
@@ -35,8 +35,10 @@ watchdogLoop :: TVar SystemState -> IO ()
 watchdogLoop stateVar = (`catch` \e -> do putStrLn $ "WATCHDOG CRASHED: " ++ show (e :: SomeException); hFlush stdout) $ do
     putStrLn "WATCHDOG LOOP START"
     hFlush stdout
+    myPid <- getProcessID
     sock <- socket AF_UNIX Datagram 0
-    let addr = SockAddrUnix udsPath
+    let addr = SockAddrUnix (udsPath myPid)
+
     let Time timeoutSec = watchdogTimeoutTime (Proxy :: Proxy WatchdogTimeoutMs)
         timeoutNS = round (timeoutSec * 1_000_000_000) :: Word64
     forever $ do
@@ -75,18 +77,19 @@ watchdogLoop stateVar = (`catch` \e -> do putStrLn $ "WATCHDOG CRASHED: " ++ sho
                 _ <- try (sendTo sock (BC.pack "TRIP") addr) :: IO (Either IOException Int)
                 return ()
                 
-        threadDelay 10000 -- Check every 10ms
+        threadDelay 2000 -- Check every 2ms
 
 -- | Runs the independent Safety Daemon process
 runSafetyDaemon :: ProcessID -> IO ()
 runSafetyDaemon parentPid = do
     putStrLn "[Safety Daemon] Started and monitoring parent process."
     
+    let path = udsPath parentPid
     -- Ensure clean socket
-    _ <- try (removeLink udsPath) :: IO (Either IOException ())
+    _ <- try (removeLink path) :: IO (Either IOException ())
     
     sock <- socket AF_UNIX Datagram 0
-    bind sock (SockAddrUnix udsPath)
+    bind sock (SockAddrUnix path)
     
     -- Ensure Beam is ON for Watchdog Channel initially
     setBeamChannel WatchdogChannel True
@@ -144,7 +147,7 @@ tripDaemon parentPid = do
     
     _ <- try (signalProcess sigKILL parentPid) :: IO (Either IOException ())
     
-    exitImmediately (ExitFailure 1)
+    exitWith (ExitFailure 1)
 
 -- Hazard H-SYS-001: Beam ON during motion
 -- Hazard H-SYS-003: Latency spike
