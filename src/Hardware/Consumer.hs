@@ -112,7 +112,15 @@ consumerLoop translations isPrimary controlFp stateVar = withForeignPtr controlF
                             st <- readTVar stateVar
                             writeTBQueue (auditQueue st) evt
                             writeTVar stateVar (st { beamState = BeamOff })
-                        when isPrimary $ setBeam False
+                        when isPrimary $ do
+                            res <- setBeam False
+                            case res of
+                                Left err -> do
+                                    let evt2 = AuditEvent now Critical "Hardware" ("Actuation Error: " ++ show err)
+                                    atomically $ do
+                                        st2 <- readTVar stateVar
+                                        writeTBQueue (auditQueue st2) evt2
+                                Right () -> return ()
 
                     -- 3. Create Zero-Copy Lazy ByteString
                     let lbs = createLazyByteString fp bufSize readOff writeOff
@@ -166,7 +174,15 @@ consumerLoop translations isPrimary controlFp stateVar = withForeignPtr controlF
                                 writeTBQueue (auditQueue st) evt
                                 writeTVar stateVar (st { beamState = BeamOff })
 
-                            when isPrimary $ setBeam False
+                            when isPrimary $ do
+                                res <- setBeam False
+                                case res of
+                                    Left errHardware -> do
+                                        let evt2 = AuditEvent now Critical "Hardware" ("Actuation Error: " ++ show errHardware)
+                                        atomically $ do
+                                            st2 <- readTVar stateVar
+                                            writeTBQueue (auditQueue st2) evt2
+                                    Right () -> return ()
 
                             -- Also print to stderr for immediate feedback during dev
                             hPutStrLn stderr $ "[Consumer] Error: " ++ show err
