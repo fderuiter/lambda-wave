@@ -1,3 +1,6 @@
 packages: .
 
+package sgrt-radar-system
+  coverage: true
+
 index-state: HEAD

@@ -47,7 +47,7 @@ jobs:
         run: python3 scripts/regulatory_sync.py
 
       - name: Build dependencies with coverage
-        run: cabal build --enable-coverage --only-dependencies
+        run: cabal build --only-dependencies
 
       - name: Verify Dependency Integrity
         run: |
@@ -55,13 +55,13 @@ jobs:
           python3 scripts/verify_integrity.py > integrity_report.txt
 
       - name: Build with coverage
-        run: cabal build --enable-coverage
+        run: cabal build
 
       - name: Build fault injection tools
-        run: cabal build watchdog-fault --enable-coverage
+        run: cabal build watchdog-fault
 
       - name: Run Safety-Critical Tests and Generate Coverage
-        run: cabal test sgrt-radar-system-test watchdog-check --enable-coverage
+        run: cabal test sgrt-radar-system-test watchdog-check
 
       - name: Calculate and Enforce Coverage
         run: |
