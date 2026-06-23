@@ -47,7 +47,9 @@ jobs:
         run: python3 scripts/regulatory_sync.py
 
       - name: Build dependencies with coverage
-        run: cabal build --enable-coverage --only-dependencies
+        run: |
+          echo -e "package sgrt-radar-system\n  coverage: True" >> cabal.project.local
+          cabal build --only-dependencies
 
       - name: Verify Dependency Integrity
         run: |
@@ -55,13 +57,13 @@ jobs:
           python3 scripts/verify_integrity.py > integrity_report.txt
 
       - name: Build with coverage
-        run: cabal build --enable-coverage
+        run: cabal build
 
       - name: Build fault injection tools
-        run: cabal build watchdog-fault --enable-coverage
+        run: cabal build watchdog-fault
 
       - name: Run Safety-Critical Tests and Generate Coverage
-        run: cabal test sgrt-radar-system-test watchdog-check --enable-coverage
+        run: cabal test sgrt-radar-system-test watchdog-check
 
       - name: Calculate and Enforce Coverage
         run: |
@@ -79,7 +81,7 @@ jobs:
           hpc sum $TIX_FILES --output=combined.tix
           
           # We need the mix dir for the library
-          MIX_DIR=$(find dist-newstyle -name "vanilla" | grep "sgrt-radar-system" | grep "mix" | head -n 1)
+          MIX_DIR=$(find dist-newstyle -name "sgrt-radar-system-*-inplace" | grep "mix" | head -n 1)
           
           # Generate report for Safety modules
           hpc report combined.tix --srcdir=src --hpcdir=$MIX_DIR --include=Safety.Watchdog --include=Safety.Audit > coverage_report.txt
@@ -92,7 +94,7 @@ jobs:
       - name: Generate High-Fidelity Coverage Report (HPC HTML)
         if: always()
         run: |
-          MIX_DIR=$(find dist-newstyle -name "vanilla" | grep "sgrt-radar-system" | grep "mix" | head -n 1)
+          MIX_DIR=$(find dist-newstyle -name "sgrt-radar-system-*-inplace" | grep "mix" | head -n 1)
           if [ -f "combined.tix" ]; then
             mkdir -p hpc_html
             hpc markup combined.tix --srcdir=src --hpcdir=$MIX_DIR --destdir=hpc_html
