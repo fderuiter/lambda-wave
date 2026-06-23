@@ -99,7 +99,9 @@ main() {
                     apt-transport-https \
                     gnupg \
                     lsb-release \
-                    git
+                    git \
+                    python3-matplotlib \
+                    python3-reportlab
 
                 if [ "$skip_security" = false ]; then
                     log_info "Installing security scanning tools (Trivy)..."
@@ -131,7 +133,9 @@ main() {
                     ghc \
                     git \
                     curl \
-                    hlint
+                    hlint \
+                    python3-matplotlib \
+                    python3-reportlab
             else
                 log_error "Unsupported Linux distribution. Please install dependencies manually."
                 exit 1
