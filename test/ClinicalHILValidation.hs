@@ -58,8 +58,11 @@ main = do
 loopbackMonitor :: TVar Bool -> IO ()
 loopbackMonitor expectedStateVar = forever $ do
     expected <- readTVarIO expectedStateVar
-    actual <- readBeamChannel LogicChannel
-    if expected /= actual
+    actualRes <- readBeamChannel LogicChannel
+    let match = case actualRes of
+            Right actual -> expected == actual
+            Left _       -> False
+    if not match
         then threadDelay 10
         else threadDelay 100
 
@@ -105,8 +108,11 @@ runHILSimulation name rig duration = do
             atomically $ writeTVar expectedStateVar expectedBool
             
             let waitMatch = do
-                    actual <- readBeamChannel LogicChannel
-                    if actual == expectedBool
+                    actualRes <- readBeamChannel LogicChannel
+                    let isMatch = case actualRes of
+                            Right actual -> actual == expectedBool
+                            Left _       -> False
+                    if isMatch
                         then getMonotonicTimeNS
                         else waitMatch
             tMatched <- waitMatch

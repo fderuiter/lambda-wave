@@ -47,13 +47,16 @@ setupWatchdog = do
         Success -> return ()
         _ -> ioError (userError "Failed to setup watchdog")
 
-readBeamChannel :: GpioChannel -> IO Bool
+readBeamChannel :: GpioChannel -> IO (Either HardwareError Bool)
 readBeamChannel channel = do
     let pinNum = case channel of
             LogicChannel -> 17
             WatchdogChannel -> 27
     val <- c_gpio_read pinNum
-    return (val /= 0)
+    case val of
+        0 -> return (Right False)
+        1 -> return (Right True)
+        _ -> return (Left ConnectionLost)
 
 parseConfig :: String -> [String]
 parseConfig = filter (not . null) . map clean . lines
@@ -137,14 +140,14 @@ configureRawSerial (Fd fd) = do
         Success -> return $ Right ()
         _       -> return $ Left $ ConfigurationFailed "Failed"
 
-setBeam :: Bool -> IO ()
+setBeam :: Bool -> IO (Either HardwareError ())
 setBeam state = do
     setBeamChannel LogicChannel state
 
 data GpioChannel = LogicChannel | WatchdogChannel
   deriving (Show, Eq)
 
-setBeamChannel :: GpioChannel -> Bool -> IO ()
+setBeamChannel :: GpioChannel -> Bool -> IO (Either HardwareError ())
 setBeamChannel channel state = do
     let pinNum = case channel of
             LogicChannel -> 17
@@ -156,8 +159,16 @@ setBeamChannel channel state = do
     putStrLn $ "[Hardware] " ++ chanStr ++ " Set To: " ++ stateStr
     res <- c_gpio_write pinNum (if state then 1 else 0)
     case toHardwareResult res of
-        Success -> return ()
-        _ -> putStrLn $ "[Hardware] Failed to set " ++ chanStr
+        Success -> return (Right ())
+        Failure msg -> do
+            putStrLn $ "[Hardware] Failed to set " ++ chanStr ++ ": " ++ msg
+            return (Left (UnknownError msg))
+        PosixError -> do
+            putStrLn $ "[Hardware] PosixError setting " ++ chanStr
+            return (Left ConnectionLost)
+        _ -> do
+            putStrLn $ "[Hardware] Failed to set " ++ chanStr
+            return (Left ConnectionLost)
 
 -- | Configuration interface to adjust the polynomial order on the sensor
 -- This sends a command over the serial port.
