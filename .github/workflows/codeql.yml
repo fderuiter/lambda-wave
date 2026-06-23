@@ -17,6 +17,11 @@ jobs:
       contents: read
       security-events: write
 
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [ 'cpp', 'python' ]
+
     steps:
     - name: Checkout repository
       uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
@@ -24,14 +29,17 @@ jobs:
     - name: Initialize CodeQL
       uses: github/codeql-action/init@03e4368ac7daa2bd82b3e85262f3bf87ee112f57 # v3
       with:
-        languages: cpp, python
+        languages: ${{ matrix.language }}
+        build-mode: ${{ matrix.language == 'cpp' && 'manual' || 'none' }}
 
     - name: Install build dependencies
+      if: matrix.language == 'cpp'
       run: |
         sudo apt-get update
         sudo apt-get install -y ghc cabal-install g++ libgl1-mesa-dev libglu1-mesa-dev freeglut3-dev libgtk-3-dev libepoxy-dev pkg-config
 
     - name: Build project for CodeQL
+      if: matrix.language == 'cpp'
       run: |
         cabal update
         cabal build
@@ -39,7 +47,7 @@ jobs:
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@03e4368ac7daa2bd82b3e85262f3bf87ee112f57 # v3
       with:
-        category: "/language:cpp"
+        category: "/language:${{matrix.language}}"
       # Fail the build on high-severity security findings
       env:
         CODEQL_ACTION_EXTRA_OPTIONS: '{"analyze": {"fail-on-error": true}}'
