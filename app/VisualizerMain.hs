@@ -2,6 +2,9 @@
 module Main (main) where
 
 import Control.Concurrent (threadDelay, forkOS)
+#ifdef ENABLE_WEB_UI
+import Control.Concurrent (forkIO)
+#endif
 import Control.Concurrent.STM
 import Control.Exception (try, IOException)
 import System.Posix.IO (openFd, OpenMode(..), defaultFileFlags, OpenFileFlags(..), fdReadBuf)
