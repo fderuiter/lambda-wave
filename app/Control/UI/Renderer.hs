@@ -15,8 +15,7 @@ Safety:
   - Runs in the main UI thread (GLUT requirement).
 -}
 module Control.UI.Renderer (
-    renderLoop,
-    shouldBeep
+    renderLoop
 ) where
 
 import Control.Concurrent.STM
@@ -31,12 +30,7 @@ import Data.Time.HighRes (getMonotonicTimeNS)
 import Foreign.Marshal.Array (withArray)
 import Foreign.Storable (sizeOf)
 import Foreign.Ptr (nullPtr)
-
--- | Determines if an audio alert should be triggered (P2-002).
--- O(1) complexity. Pure function for testability.
-shouldBeep :: Bool -> BeamState -> BeamState -> Bool
-shouldBeep audioEnabled prevState currentState =
-    audioEnabled && prevState /= BeamOff && currentState == BeamOff
+import UI.Presentation (getBeamDisplayInfo, bdiColorRGB, scalePointToMeters, shouldTriggerAudioAlert)
 
 -- | Main Render Loop
 -- Initializes callbacks and enters the GLUT event processing loop.
@@ -112,15 +106,12 @@ display stateVar prevStateRef vboPoints vboHeartbeat = do
     -- Green = BeamOn, Red = BeamOff, Yellow = BeamHold
     let currentState = beamState state
 
-    when (shouldBeep (audioAlertEnabled state) prevState currentState) $
+    when (shouldTriggerAudioAlert (audioAlertEnabled state) prevState currentState) $
         putStr "\a" >> hFlush stdout
 
     writeIORef prevStateRef currentState
 
-    let (bgR, bgG, bgB) = case currentState of
-            BeamOn   -> (0.0::GLfloat, 0.2, 0.0)
-            BeamOff  -> (0.2, 0.0, 0.0)
-            BeamHold -> (0.2, 0.2, 0.0)
+    let (bgR, bgG, bgB) = bdiColorRGB (getBeamDisplayInfo currentState)
 
     clearColor $= Color4 bgR bgG bgB 1.0
     clear [ColorBuffer]
@@ -139,8 +130,9 @@ display stateVar prevStateRef vboPoints vboHeartbeat = do
     
     let pts = currentPoints state
         numPts = length pts
+        scaledPts = map scalePointToMeters pts
         -- Map to flat array of GLfloat
-        flatPts = concatMap (\p -> [double2Float (px p) / 1000.0, double2Float (py p) / 1000.0, double2Float (pz p) / 1000.0]) pts
+        flatPts = concatMap (\p -> [double2Float (px p), double2Float (py p), double2Float (pz p)]) scaledPts
         
     withArray flatPts $ \ptr -> do
         let dataSize = fromIntegral $ numPts * 3 * sizeOf (undefined :: GLfloat)

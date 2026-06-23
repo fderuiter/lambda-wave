@@ -79,6 +79,7 @@ library
       Safety.Audit
       Safety.Crypto
       Safety.Watchdog
+      UI.Presentation
       SignalProcessing.FMCW
       SignalProcessing.Matrix
       SignalProcessing.Regression
