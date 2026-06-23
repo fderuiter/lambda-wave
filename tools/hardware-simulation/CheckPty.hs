@@ -1,7 +1,6 @@
 module Main (main) where
 
 import System.Posix.Terminal
-import System.Posix.IO
 
 main :: IO ()
 main = do

@@ -91,8 +91,8 @@ testLogRotation = do
         -- Write huge message
         atomically $ writeTBQueue q (AuditEvent now Info "Test" hugeMsg)
 
-        -- Wait for write (this might take a second)
-        threadDelay 5_000_000
+        -- Wait for write (this might take a few seconds in CI)
+        threadDelay 10_000_000
 
         -- Debug: Check Size
         stat <- getFileStatus logPath

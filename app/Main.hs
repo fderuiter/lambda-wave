@@ -10,7 +10,7 @@ import System.Posix.IO (openFd, OpenMode(..), defaultFileFlags, OpenFileFlags(..
 import System.Posix.Files (getFdStatus, isCharacterDevice, createNamedPipe, unionFileModes, ownerReadMode, ownerWriteMode)
 import System.Posix.Types (Fd, ProcessID)
 import System.Posix.Process (forkProcess, executeFile, getProcessID)
-import Control.Monad (forever, unless, void)
+import Control.Monad (forever, unless)
 import qualified Data.Map.Strict as Map
 import System.Exit (exitFailure)
 import Data.Binary (encode)
