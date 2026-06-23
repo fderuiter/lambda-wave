@@ -92,7 +92,7 @@ runSafetyDaemon parentPid = do
     bind sock (SockAddrUnix path)
     
     -- Ensure Beam is ON for Watchdog Channel initially
-    setBeamChannel WatchdogChannel True
+    _ <- setBeamChannel WatchdogChannel True
 
     -- Loop waiting for heartbeats
     let loop = do
@@ -125,7 +125,7 @@ tripDaemon parentPid = do
     let msg = "!!! SAFETY DAEMON TRIP: Lost Heartbeat. FORCING BEAM OFF."
     putStrLn msg
     -- Dual-Channel Safety: Force Watchdog channel off
-    setBeamChannel WatchdogChannel False
+    _ <- setBeamChannel WatchdogChannel False
     
     -- Independent Audit Log recording
     now <- getMonotonicTimeNS
