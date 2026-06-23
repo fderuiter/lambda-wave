@@ -30,7 +30,7 @@ mkState = do
             , threadHeartbeats = Map.empty
             , kalmanState = kState
             , auditQueue = q
-            , audioAlertEnabled = False
+            , audioAlertEnabled = False, activeLanguage = "en", localizedBeamState = "BEAM OFF"
             }
     newTVarIO s0
 

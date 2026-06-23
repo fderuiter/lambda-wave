@@ -1,3 +1,4 @@
+import qualified Data.HashMap.Strict as HM
 {-# LANGUAGE OverloadedStrings #-}
 module Main (main) where
 
@@ -76,7 +77,7 @@ runHILSimulation name rig duration = do
             , threadHeartbeats = Map.empty
             , kalmanState = initKalman targetHeight (KalmanConfig 1000.0 2.0)
             , auditQueue = q
-            , audioAlertEnabled = False
+            , audioAlertEnabled = False, activeLanguage = "en", localizedBeamState = "BEAM OFF"
             }
     var <- newTVarIO s
     
@@ -97,7 +98,7 @@ runHILSimulation name rig duration = do
             threadDelay 33000
             
             tBefore <- getMonotonicTimeNS
-            processFrame var (RadarFrame "" (fromIntegral i) pts)
+            processFrame HM.empty var (RadarFrame "" (fromIntegral i) pts)
             
             st <- readTVarIO var
             let expectedBool = beamState st == BeamOn

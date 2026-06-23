@@ -23,6 +23,7 @@ import SignalProcessing.Kalman (initKalman, KalmanConfig(..))
 import Hardware.Consumer (consumerLoop)
 import FFI.RingBuffer.IO (attachRingBuffer)
 import FFI.RingBuffer.Types (RingBufferControl)
+import Data.I18n (loadTranslations)
 
 #ifdef ENABLE_UI
 import Control.UI.Window (initWindow)
@@ -42,6 +43,8 @@ main = do
     let initialKState = initKalman targetHeight kConfig
     auditQ <- newTBQueueIO 1000 -- Dummy queue
 
+    translations <- loadTranslations "config/locales.json"
+
     let initialState = SystemState
           { currentPoints = []
           , beamState = BeamOff
@@ -52,6 +55,8 @@ main = do
           , kalmanState = initialKState
           , auditQueue = auditQ
           , audioAlertEnabled = False
+          , activeLanguage = "en"
+          , localizedBeamState = "BEAM OFF"
           }
 
     systemState <- newTVarIO initialState
@@ -66,7 +71,7 @@ main = do
         Left err -> putStrLn $ "Warning: Could not attach to shared ring buffer: " ++ show err
         Right ringBuffer -> do
             putStrLn "Attached to Shared Ring Buffer."
-            _ <- forkOS $ consumerLoop False ringBuffer systemState
+            _ <- forkOS $ consumerLoop translations False ringBuffer systemState
             return ()
 
     -- 2. Web UI (Optional)
@@ -126,6 +131,8 @@ readData fd stateVar = do
                                 , threadHeartbeats = tpThreadHeartbeats packet
                                 , kalmanState = tpKalmanState packet
                                 , audioAlertEnabled = tpAudioAlertEnabled packet
+                                , activeLanguage = tpActiveLanguage packet
+                                , localizedBeamState = tpLocalizedBeamState packet
                                 }
                             loop
     loop

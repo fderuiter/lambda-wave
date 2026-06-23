@@ -4,10 +4,10 @@
 
 module Control.WebUI (runWebUI) where
 
-import Control.Concurrent (threadDelay)
+import Control.Concurrent (threadDelay, forkIO)
 import Control.Concurrent.STM
 import Control.Monad (forever, void)
-import Data.Aeson (encode)
+import Data.Aeson (encode, decode, FromJSON(..), withObject, (.:))
 import Data.FileEmbed (embedFile)
 import Network.HTTP.Types (status200, status401, status302)
 import Network.Wai
@@ -32,7 +32,7 @@ import Data.Time.Clock (getCurrentTime, addUTCTime, UTCTime)
 import qualified Data.Map.Strict as Map
 
 import Control.WebUI.Types ()
-import Data.Types (SystemState, auditQueue, AuditEvent(..), Severity(..))
+import Data.Types (SystemState(..), AuditEvent(..), Severity(..))
 import Data.Time.HighRes (getMonotonicTimeNS)
 import Data.ByteArray.Encoding (convertFromBase, Base(Base64))
 import Crypto.Hash (hash, SHA256(..), Digest)
@@ -181,6 +181,11 @@ checkSession store cookieHeader = case cookieHeader of
                         return True
                     _ -> return False
 
+data LangRequest = LangRequest { reqLang :: String }
+
+instance FromJSON LangRequest where
+    parseJSON = withObject "LangRequest" $ \v -> LangRequest <$> v .: "lang"
+
 wsApp :: SessionStore -> TVar SystemState -> ServerApp
 wsApp store stateVar pending = do
     let headers = WS.requestHeaders (pendingRequest pending)
@@ -194,8 +199,14 @@ wsApp store stateVar pending = do
         then do
             conn <- acceptRequest pending
             withPingThread conn 10 (return ()) $ do
-                forever $ do
+                _ <- forkIO $ forever $ do
                     state <- readTVarIO stateVar
                     sendTextData conn (encode state)
                     threadDelay 33000
+                forever $ do
+                    msg <- WS.receiveData conn
+                    let parsed = decode msg :: Maybe LangRequest
+                    case parsed of
+                        Just lr -> atomically $ modifyTVar' stateVar (\s -> s { activeLanguage = reqLang lr })
+                        Nothing -> return ()
         else rejectRequest pending "Untrusted Origin or Invalid Token"
