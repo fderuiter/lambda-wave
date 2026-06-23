@@ -5,7 +5,7 @@ import SignalProcessing.Kalman (initKalman, KalmanConfig(..))
 import Safety.Audit (auditLoop)
 import Control.Concurrent (forkIO, threadDelay, killThread)
 import Control.Concurrent.STM
-import System.Posix.Files (fileExist, removeLink, getFileStatus, fileSize)
+import System.Posix.Files (fileExist, removeLink)
 import System.Posix.Process (forkProcess, executeFile, getProcessStatus, exitImmediately)
 import System.Exit (ExitCode(ExitFailure))
 import qualified Data.Map.Strict as Map
@@ -83,27 +83,27 @@ testLogRotation = do
     withTestEnv $ \stateVar q logPath -> do
         tid <- forkIO $ auditLoop stateVar logPath
 
-        -- Write > 10MB of data
-        -- 10MB string
-        let hugeMsg = replicate (10 * 1024 * 1024 + 1024) 'A'
+        -- Write 11MB of data in 1MB chunks to avoid massive memory allocation
+        let mbMsg = replicate (1024 * 1024) 'A'
         now <- getMonotonicTimeNS
 
-        -- Write huge message
-        atomically $ writeTBQueue q (AuditEvent now Info "Test" hugeMsg)
+        -- Write huge messages
+        mapM_ (\_ -> atomically $ writeTBQueue q (AuditEvent now Info "Test" mbMsg)) ([1..11] :: [Int])
 
-        -- Wait for write (this might take a second)
-        threadDelay 5_000_000
+        -- Wait for rotation (up to 30 seconds)
+        let waitForRotation 0 = return False
+            waitForRotation n = do
+                rotated <- fileExist (logPath ++ ".bak")
+                if rotated
+                    then return True
+                    else do
+                        threadDelay 1_000_000
+                        waitForRotation (n - 1)
 
-        -- Debug: Check Size
-        stat <- getFileStatus logPath
-        putStrLn $ "DEBUG: Current Log Size: " ++ show (fileSize stat)
+        rotated <- waitForRotation (30 :: Int)
 
-        -- Send trigger event
+        -- Send trigger event (not strictly needed since we waited for .bak, but kept for cleanup)
         atomically $ writeTBQueue q (AuditEvent now Info "Test" "Trigger")
-        threadDelay 1_000_000
-
-        -- Check if .bak exists
-        rotated <- fileExist (logPath ++ ".bak")
 
         killThread tid
 

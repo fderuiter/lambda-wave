@@ -52,7 +52,7 @@ main = do
     _ <- try (removeFile "session.log") :: IO (Either SomeException ())
 
     -- Run the fault injection executable directly
-    let exePath = "dist-newstyle/build/x86_64-linux/ghc-9.4.7/sgrt-radar-system-0.1.0.0/x/watchdog-fault/build/watchdog-fault/watchdog-fault"
+    let exePath = "watchdog-fault"
     (_exitCode, stdout, stderr) <- readProcessWithExitCode exePath [] ""
     
     let combinedOutput = stdout ++ stderr

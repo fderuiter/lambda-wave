@@ -92,6 +92,8 @@ main() {
                     libbsd-dev \
                     pkg-config \
                     clang-format \
+                    python3-matplotlib \
+                    python3-reportlab \
                     curl \
                     wget \
                     apt-transport-https \
