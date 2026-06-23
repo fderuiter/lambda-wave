@@ -165,8 +165,69 @@ display stateVar prevStateRef vboPoints vboHeartbeat = do
     bindBuffer ArrayBuffer $= Nothing
     clientState VertexArray $= Disabled
 
+    -- Render High-Contrast Safety Dashboard (FR-UI-001)
+    matrixMode $= Projection
+    preservingMatrix $ do
+        loadIdentity
+        (_, Size w h) <- get viewport
+        let wf = fromIntegral w :: GLfloat
+            hf = fromIntegral h :: GLfloat
+        
+        ortho2D 0 (realToFrac wf) 0 (realToFrac hf)
+        
+        matrixMode $= Modelview 0
+        preservingMatrix $ do
+            loadIdentity
+            
+            -- Draw background status bar (Dark grey for contrast > 4.5:1)
+            let barHeight = 60.0 :: GLfloat
+            color $ Color3 (0.1 :: GLfloat) 0.1 0.1
+            renderPrimitive Quads $ do
+                vertex $ Vertex2 0 (hf - barHeight)
+                vertex $ Vertex2 wf (hf - barHeight)
+                vertex $ Vertex2 wf hf
+                vertex $ Vertex2 0 hf
+                
+            -- Determine state variables
+            let (txt, symColor, drawSymbol) = case currentState of
+                    BeamOn   -> ("BEAM ON", Color3 (0.0 :: GLfloat) 1.0 0.0, drawCircle)
+                    BeamOff  -> ("BEAM OFF", Color3 (1.0 :: GLfloat) 0.0 0.0, drawSquare)
+                    BeamHold -> ("BEAM HOLD", Color3 (1.0 :: GLfloat) 1.0 0.0, drawTriangle)
+            
+            -- Draw Symbol
+            color symColor
+            drawSymbol (wf / 2 - 60) (hf - 30) 15.0
+            
+            -- Draw Text
+            color $ Color3 (1.0 :: GLfloat) 1.0 1.0 -- White text
+            rasterPos (Vertex2 (wf / 2 - 30) (hf - 35) :: Vertex2 GLfloat)
+            renderString Helvetica18 txt
+            
+        matrixMode $= Projection
+
     swapBuffers
 
 -- Requirement FR-UI-001
 
 -- Requirement FR-UI-002
+
+-- | Drawing functions for high-contrast safety dashboard symbols
+drawSquare :: GLfloat -> GLfloat -> GLfloat -> IO ()
+drawSquare cx cy r = renderPrimitive Quads $ do
+    vertex $ Vertex2 (cx - r) (cy - r)
+    vertex $ Vertex2 (cx + r) (cy - r)
+    vertex $ Vertex2 (cx + r) (cy + r)
+    vertex $ Vertex2 (cx - r) (cy + r)
+
+drawTriangle :: GLfloat -> GLfloat -> GLfloat -> IO ()
+drawTriangle cx cy r = renderPrimitive Triangles $ do
+    vertex $ Vertex2 cx (cy + r)
+    vertex $ Vertex2 (cx - r * 0.866) (cy - r * 0.5)
+    vertex $ Vertex2 (cx + r * 0.866) (cy - r * 0.5)
+
+drawCircle :: GLfloat -> GLfloat -> GLfloat -> IO ()
+drawCircle cx cy r = renderPrimitive Polygon $ do
+    let segments = 30 :: Int
+    mapM_ (\i -> do
+        let theta = 2.0 * pi * fromIntegral i / fromIntegral segments
+        vertex $ Vertex2 (cx + r * cos theta) (cy + r * sin theta)) [0..segments-1]

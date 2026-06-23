@@ -1,7 +1,7 @@
 {-# LANGUAGE CPP #-}
 module Main (main) where
 
-import Control.Concurrent (forkIO, threadDelay, forkOS)
+import Control.Concurrent (threadDelay, forkOS)
 import Control.Concurrent.STM
 import Control.Exception (try, IOException)
 import System.Posix.IO (openFd, OpenMode(..), defaultFileFlags, OpenFileFlags(..), fdReadBuf)
@@ -14,8 +14,8 @@ import qualified Data.ByteString as B
 import Foreign.Marshal.Alloc (allocaBytes)
 import Foreign.Ptr (castPtr, plusPtr)
 import Foreign.ForeignPtr (ForeignPtr)
-import Data.Word (Word32, Word64)
-import Foreign.Storable (peek)
+import Data.Word (Word32)
+
 
 import Data.Types
 import Data.Config (targetHeight)
