@@ -26,10 +26,16 @@ jobs:
       with:
         languages: cpp, python
 
-    - name: Install build dependencies
+    - name: Install system dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y ghc cabal-install g++ libgl1-mesa-dev libglu1-mesa-dev freeglut3-dev
+        sudo apt-get install -y g++ libgl1-mesa-dev libglu1-mesa-dev freeglut3-dev
+
+    - name: Setup Haskell
+      uses: haskell-actions/setup@v2
+      with:
+        ghc-version: '9.6.7'
+        cabal-version: '3.10.3.0'
 
     - name: Build project for CodeQL
       run: |
