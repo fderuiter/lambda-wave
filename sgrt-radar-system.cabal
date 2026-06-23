@@ -121,8 +121,10 @@ executable sgrt-visualizer-exe
 
   if flag(enable-ui)
     build-depends:
-        GLUT ==2.7.0.16
-      , OpenGL ==3.0.3.0
+        base >= 4.16 && < 5
+    pkgconfig-depends: gtk+-3.0, epoxy
+    cxx-sources: cbits/src/gtk_ui.cpp
+    cxx-options: -std=c++11 -Wall -O2
     cpp-options: -DENABLE_UI
     other-modules:
         Control.UI.Renderer
@@ -374,13 +376,14 @@ test-suite ui-math-check
   hs-source-dirs:
       test
       app
+  pkgconfig-depends: gtk+-3.0, epoxy
+  cxx-sources: cbits/src/gtk_ui.cpp
+  cxx-options: -std=c++11 -Wall -O2
   ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
   build-depends:
       sgrt-radar-system
     , base >= 4.16 && < 5
     , hspec ==2.11.17
-    , GLUT ==2.7.0.16
-    , OpenGL ==3.0.3.0
 
 executable phantom-study
   import: common-options

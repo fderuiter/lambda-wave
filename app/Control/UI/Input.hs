@@ -1,46 +1,28 @@
-{-|
-Module      : Control.UI.Input
-Description : Input Handling for the OpenGL UI
-Copyright   : (c) 2024
-License     : AGPL-3.0-only
-
-This module manages keyboard and mouse input for the visualization window.
-It provides critical safety controls, such as the manual "Beam Hold" override.
-
-Complexity: O(1) - Constant time event processing.
-Safety:
-  - Updates 'SystemState' via atomic STM transactions.
-  - 'BeamHold' is a latching state; pressing Spacebar engages it immediately.
--}
 module Control.UI.Input (
     handleInput
 ) where
 
 import Data.Types
 import Control.Concurrent.STM
-import Graphics.UI.GLUT
-
+import Control.Concurrent (forkIO, threadDelay)
+import Foreign.C.Types
 import Data.Time.HighRes (getMonotonicTimeNS)
-import Control.Monad (when)
+import Control.Monad (when, forever)
 
--- | Register Input Callbacks
--- Sets up the keyboard handler for the current window.
+foreign import ccall "check_space_pressed" c_check_space_pressed :: IO CInt
+
+-- | Setup input handling. Forks a thread to poll GTK C++ state.
 handleInput :: TVar SystemState -> IO ()
 handleInput stateVar = do
-    keyboardMouseCallback $= Just (keyboardHandler stateVar)
-
--- | Keyboard Event Handler
--- * Spacebar (Down): Engages 'BeamHold' (Safety Override).
-keyboardHandler :: TVar SystemState -> KeyboardMouseCallback
-keyboardHandler stateVar key state _ _ = case (key, state) of
-    (Char ' ', Down) -> do
-        -- Spacebar engages Hold (Latching)
-        -- P2-003: Manual Override
-        now <- getMonotonicTimeNS
-        atomically $ do
-            s <- readTVar stateVar
-            when (beamState s /= BeamHold) $ do
-                let msg = "Beam State Changed: " ++ show (beamState s) ++ " -> BeamHold"
-                writeTBQueue (auditQueue s) (AuditEvent now Warning "UI" msg)
-            writeTVar stateVar $ s { beamState = BeamHold }
-    _ -> return ()
+    _ <- forkIO $ forever $ do
+        pressed <- c_check_space_pressed
+        when (pressed == 1) $ do
+            now <- getMonotonicTimeNS
+            atomically $ do
+                s <- readTVar stateVar
+                when (beamState s /= BeamHold) $ do
+                    let msg = "Beam State Changed: " ++ show (beamState s) ++ " -> BeamHold"
+                    writeTBQueue (auditQueue s) (AuditEvent now Warning "UI" msg)
+                writeTVar stateVar $ s { beamState = BeamHold }
+        threadDelay 10000 -- 10ms
+    return ()

@@ -9,7 +9,7 @@ RUN chmod +x /tmp/setup_env.sh && /tmp/setup_env.sh
 WORKDIR /app
 
 # Copy project definition
-COPY sgrt-radar-system.cabal cabal.project cabal.project.freeze ./
+COPY sgrt-radar-system.cabal cabal.project ./
 
 # Build dependencies securely
 RUN cabal build --only-dependencies
