@@ -84,6 +84,8 @@ main() {
                     freeglut3-dev \
                     libgl1-mesa-dev \
                     libglu1-mesa-dev \
+                    libgtk-3-dev \
+                    libepoxy-dev \
                     libx11-dev \
                     libxrandr-dev \
                     libxinerama-dev \
@@ -123,6 +125,7 @@ main() {
                     make automake gcc gcc-c++ kernel-devel \
                     lapack-devel blas-devel \
                     freeglut-devel mesa-libGL-devel mesa-libGLU-devel \
+                    gtk3-devel libepoxy-devel \
                     clang-tools-extra \
                     cabal-install \
                     ghc \
@@ -142,7 +145,7 @@ main() {
                 # Brew bundle or direct install? Direct install for simplicity.
                 # lapack/openblas are keg-only in brew usually, might need env vars.
                 # But installing them is the first step.
-                brew install lapack openblas freeglut mesa clang-format cabal-install ghc git curl hlint ormolu
+                brew install lapack openblas freeglut mesa clang-format cabal-install ghc git curl hlint ormolu gtk+3 libepoxy pkg-config
 
                 log_info "Note: You may need to set LDFLAGS/CPPFLAGS for openblas/lapack."
             else
