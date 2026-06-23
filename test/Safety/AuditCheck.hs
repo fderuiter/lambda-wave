@@ -5,7 +5,7 @@ import SignalProcessing.Kalman (initKalman, KalmanConfig(..))
 import Safety.Audit (auditLoop)
 import Control.Concurrent (forkIO, threadDelay, killThread)
 import Control.Concurrent.STM
-import System.Posix.Files (fileExist, removeLink)
+import System.Posix.Files (fileExist, removeLink, getFileStatus, fileSize)
 import System.Posix.Process (forkProcess, executeFile, getProcessStatus, exitImmediately)
 import System.Exit (ExitCode(ExitFailure))
 import qualified Data.Map.Strict as Map
@@ -84,11 +84,16 @@ testLogRotation = do
         tid <- forkIO $ auditLoop stateVar logPath
 
         -- Write > 10MB of data
-        let hugeMsg = replicate (10 * 1024 * 1024 + 1024) 'A'
+        -- Write 10250 strings of length 1024
+        let chunkMsg = replicate 1024 'A'
         now <- getMonotonicTimeNS
 
-        -- Write huge message
-        atomically $ writeTBQueue q (AuditEvent now Info "Test" hugeMsg)
+        let writeChunks 0 = return ()
+            writeChunks n = do
+                atomically $ writeTBQueue q (AuditEvent now Info "Test" chunkMsg)
+                writeChunks (n - 1)
+        
+        writeChunks (10250 :: Int)
 
         -- Send trigger event
         atomically $ writeTBQueue q (AuditEvent now Info "Test" "Trigger")
