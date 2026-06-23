@@ -19,7 +19,7 @@ jobs:
       - name: Prepare container tooling
         run: |
           apt-get update
-          DEBIAN_FRONTEND=noninteractive apt-get install -y git python3 ca-certificates
+          DEBIAN_FRONTEND=noninteractive apt-get install -y git python3 ca-certificates python3-yaml
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
           python3 --version
           git --version
