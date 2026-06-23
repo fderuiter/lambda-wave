@@ -31,11 +31,13 @@ import System.Directory (doesFileExist)
 import Data.Time.Clock (getCurrentTime, addUTCTime, UTCTime)
 import qualified Data.Map.Strict as Map
 
-import Control.WebUI.Types ()
+import Control.WebUI.Types (encodeWebPayload)
 import Data.Types (SystemState(..), AuditEvent(..), Severity(..))
 import Data.Time.HighRes (getMonotonicTimeNS)
+import Data.IORef (newIORef, readIORef, writeIORef)
 import Data.ByteArray.Encoding (convertFromBase, Base(Base64))
 import Crypto.Hash (hash, SHA256(..), Digest)
+import UI.Presentation (shouldTriggerAudioAlert)
 
 -- Provisioned credential map (username -> hashed password)
 credentialStore :: Map.Map B.ByteString (Digest SHA256)
@@ -199,10 +201,17 @@ wsApp store stateVar pending = do
         then do
             conn <- acceptRequest pending
             withPingThread conn 10 (return ()) $ do
-                _ <- forkIO $ forever $ do
-                    state <- readTVarIO stateVar
-                    sendTextData conn (encode state)
-                    threadDelay 33000
+                _ <- forkIO $ do
+                    prevStateRef <- newIORef BeamOff
+                    forever $ do
+                        state <- readTVarIO stateVar
+                        prevState <- readIORef prevStateRef
+                        
+                        let beep = shouldTriggerAudioAlert (audioAlertEnabled state) prevState (beamState state)
+                        writeIORef prevStateRef (beamState state)
+                        
+                        sendTextData conn (encodeWebPayload state beep)
+                        threadDelay 33000
                 forever $ do
                     msg <- WS.receiveData conn
                     let parsed = decode msg :: Maybe LangRequest

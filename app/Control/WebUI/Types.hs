@@ -2,11 +2,29 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 
-module Control.WebUI.Types () where
+module Control.WebUI.Types (
+    WebPayload(..),
+    encodeWebPayload
+) where
 
 import Data.Aeson
+import qualified Data.Aeson.KeyMap as KM
 import Data.Types
 import SignalProcessing.Kalman (KalmanState(..), V3(..))
+import UI.Presentation (getBeamDisplayInfo, bdiColorHex, bdiShape, bdiIconSymbol, scalePointToMeters, scaleKalmanStateToMeters)
+import qualified Data.ByteString.Lazy as BL
+
+data WebPayload = WebPayload SystemState Bool
+
+encodeWebPayload :: SystemState -> Bool -> BL.ByteString
+encodeWebPayload state beep = encode (WebPayload state beep)
+
+instance ToJSON WebPayload where
+    toJSON (WebPayload state beep) =
+        let val = toJSON state
+        in case val of
+            Object m -> Object (KM.insert "triggerAudioAlert" (toJSON beep) m)
+            _ -> val
 
 instance ToJSON BeamState where
     toJSON BeamOn   = "BeamOn"
@@ -31,11 +49,16 @@ instance ToJSON KalmanState where
         ]
 
 instance ToJSON SystemState where
-    toJSON (SystemState{..}) = object
+    toJSON (SystemState{..}) = 
+        let displayInfo = getBeamDisplayInfo beamState
+        in object
         [ "beamState" .= localizedBeamState
         , "rawBeamState" .= beamState
-        , "pointCloud" .= currentPoints
-        , "respiratoryTrace" .= kalmanState
+        , "beamColorHex" .= bdiColorHex displayInfo
+        , "beamShape" .= bdiShape displayInfo
+        , "beamIconSymbol" .= bdiIconSymbol displayInfo
+        , "pointCloud" .= map scalePointToMeters currentPoints
+        , "respiratoryTrace" .= scaleKalmanStateToMeters kalmanState
         , "timestamp" .= lastFrameTime
         , "sequenceNumber" .= sequenceNumber
         , "heartbeats" .= threadHeartbeats
