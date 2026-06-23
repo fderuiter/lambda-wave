@@ -7,8 +7,8 @@ import System.IO (hFlush, stdout)
 import Data.Word (Word64)
 import Data.Time.HighRes (getMonotonicTimeNS)
 import Control.Monad (forever, when, unless, forM_)
-import System.Exit (ExitCode(..))
-import System.Posix.Process (exitImmediately, getProcessID)
+import System.Exit (ExitCode(..), exitWith)
+import System.Posix.Process (getProcessID)
 import System.Posix.Types (ProcessID)
 import System.Posix.Signals (signalProcess, sigKILL)
 import qualified Data.Map.Strict as Map
@@ -147,7 +147,7 @@ tripDaemon parentPid = do
     
     _ <- try (signalProcess sigKILL parentPid) :: IO (Either IOException ())
     
-    exitImmediately (ExitFailure 1)
+    exitWith (ExitFailure 1)
 
 -- Hazard H-SYS-001: Beam ON during motion
 -- Hazard H-SYS-003: Latency spike

@@ -63,7 +63,7 @@ jobs:
         run: cabal build watchdog-fault
 
       - name: Run Safety-Critical Tests and Generate Coverage
-        run: cabal test sgrt-radar-system-test watchdog-check
+        run: cabal test sgrt-radar-system-test watchdog-check audit-check
 
       - name: Calculate and Enforce Coverage
         run: |
@@ -78,13 +78,14 @@ jobs:
             exit 1
           fi
           
-          hpc sum $TIX_FILES --output=combined.tix
+          hpc sum $TIX_FILES --union --exclude=Paths_sgrt_radar_system --exclude=Main --output=combined.tix
           
           # We need the mix dir for the library
           MIX_DIR=$(find dist-newstyle -name "sgrt-radar-system-*-inplace" | grep "mix" | head -n 1)
+          PARENT_DIR=$(dirname $MIX_DIR)
           
           # Generate report for Safety modules
-          hpc report combined.tix --srcdir=src --hpcdir=$MIX_DIR --include=Safety.Watchdog --include=Safety.Audit > coverage_report.txt
+          hpc report combined.tix --srcdir=src --hpcdir=$PARENT_DIR --include=sgrt-radar-system-0.1.0.0-inplace/Safety.Watchdog --include=sgrt-radar-system-0.1.0.0-inplace/Safety.Audit > coverage_report.txt
           
           cat coverage_report.txt
           
@@ -95,9 +96,10 @@ jobs:
         if: always()
         run: |
           MIX_DIR=$(find dist-newstyle -name "sgrt-radar-system-*-inplace" | grep "mix" | head -n 1)
+          PARENT_DIR=$(dirname $MIX_DIR)
           if [ -f "combined.tix" ]; then
             mkdir -p hpc_html
-            hpc markup combined.tix --srcdir=src --hpcdir=$MIX_DIR --destdir=hpc_html
+            hpc markup combined.tix --srcdir=src --hpcdir=$PARENT_DIR --destdir=hpc_html
           fi
 
       - name: Generate Safety Audit Report

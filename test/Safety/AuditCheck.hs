@@ -170,6 +170,21 @@ testCrashRecovery = do
         e <- fileExist f
         when e (removeLink f)
 
+testIOException :: IO Bool
+testIOException = do
+    putStr "Test 4: IO Exception Recovery... "
+    withTestEnv $ \stateVar q _logPath -> do
+        -- Use "." as logPath to cause is a directory error
+        tid <- forkIO $ auditLoop stateVar "."
+
+        now <- getMonotonicTimeNS
+        atomically $ writeTBQueue q (AuditEvent now Info "Test" "Fail")
+        threadDelay 200_000
+
+        killThread tid
+        putStrLn "PASS"
+        return True
+
 main :: IO ()
 main = do
     args <- getArgs
@@ -180,7 +195,8 @@ main = do
             p1 <- testBasicLogging
             p2 <- testLogRotation
             p3 <- testCrashRecovery
+            p4 <- testIOException
 
-            if p1 && p2 && p3
+            if p1 && p2 && p3 && p4
                then putStrLn "VERIFICATION PASSED"
                else fail "VERIFICATION FAILED"

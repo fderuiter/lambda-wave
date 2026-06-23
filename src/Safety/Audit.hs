@@ -65,10 +65,7 @@ runAuditLoop stateVar queue logPath = do
         Right RotationNeeded -> do
             -- Rotate Log: log -> log.bak
             -- We ignore errors here (e.g. if rename fails, we just overwrite/append next time)
-            resRename <- try $ rename logPath (logPath ++ ".bak") :: IO (Either IOException ())
-            case resRename of
-                Left e -> hPutStrLn stderr $ "AUDIT ROTATION FAILURE: " ++ show e
-                Right _ -> return ()
+            _ <- try $ rename logPath (logPath ++ ".bak") :: IO (Either IOException ())
             runAuditLoop stateVar queue logPath
 
 processEvents :: TVar SystemState -> TBQueue AuditEvent -> Handle -> Integer -> IO LoopResult
@@ -111,12 +108,8 @@ processEvents stateVar queue h = go
 
                 -- 5. Rotation Check
                 let !newSize = currentSize + fromIntegral (B.length enc)
-                -- DEBUG
-                hPutStrLn stderr $ "AUDIT DEBUG: newSize = " ++ show newSize
                 if newSize > 10 * 1024 * 1024 -- 10MB limit
-                    then do
-                        hPutStrLn stderr "AUDIT DEBUG: Returning RotationNeeded"
-                        return RotationNeeded
+                    then return RotationNeeded
                     else go newSize
 
 -- Requirement SR-AUDIT-001
