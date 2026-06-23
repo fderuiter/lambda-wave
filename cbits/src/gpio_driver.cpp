@@ -18,7 +18,7 @@ static bool hw_mode = false;
 
 extern "C" {
 
-static void handle_fatal_signal(int sig) {
+static void clear_watchdog_safe_state() {
     if (g_watchdog_pin >= 0) {
         if (hw_mode && gpio_map != nullptr && g_watchdog_pin < 54) {
             int pin = g_watchdog_pin;
@@ -26,6 +26,10 @@ static void handle_fatal_signal(int sig) {
         }
         g_pins[g_watchdog_pin].store(0); // Hardware interlock safe state
     }
+}
+
+static void handle_fatal_signal(int sig) {
+    clear_watchdog_safe_state();
     std::exit(128 + sig);
 }
 
@@ -69,6 +73,7 @@ int gpio_init() {
         hw_mode = true;
     }
 
+    std::atexit(clear_watchdog_safe_state);
     std::signal(SIGTERM, handle_fatal_signal);
     std::signal(SIGABRT, handle_fatal_signal);
     std::signal(SIGINT, handle_fatal_signal);

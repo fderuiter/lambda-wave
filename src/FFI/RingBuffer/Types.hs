@@ -54,10 +54,11 @@ layout can lead to data corruption and undefined behaviour.
 See also: @RingBuffer.h@ for the authoritative C++ definition and
 documentation of the ring buffer control structure and protocol.
 -}
-module FFI.RingBuffer.Types (RingBufferControl(..), peekStaticFields) where
+module FFI.RingBuffer.Types (RingBufferControl(..), peekStaticFields, getBufferSize) where
 
 import Foreign.C.Types
 import Foreign.Ptr
+import Foreign.ForeignPtr (ForeignPtr, withForeignPtr)
 import Foreign.Storable
 import FFI.RingBuffer.Generated
 
@@ -71,3 +72,8 @@ peekStaticFields ptr = do
     sz <- peek (castPtr sizePtr :: Ptr CSize)
     let start = ptr `plusPtr` fromIntegral offset
     return (start, sz)
+
+getBufferSize :: ForeignPtr RingBufferControl -> IO Int
+getBufferSize fp = withForeignPtr fp $ \ptr -> do
+    (_, sz) <- peekStaticFields ptr
+    return (fromIntegral sz)
