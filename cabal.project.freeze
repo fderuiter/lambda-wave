@@ -168,4 +168,4 @@ constraints: any.GLURaw ==2.0.0.5,
              any.vector-stream ==0.1.0.1,
              any.vector-th-unbox ==0.2.2,
              any.witherable ==0.5
-index-state: hackage.haskell.org 2026-06-23T15:33:58Z
+index-state: hackage.haskell.org 2026-06-23T15:43:51Z
