@@ -22,35 +22,30 @@ import Data.Char (isSpace)
 import Data.List (dropWhileEnd)
 import System.IO (withFile, IOMode(ReadMode))
 import System.Posix.Terminal
-import System.Posix.IO (openFd, closeFd, fdWriteBuf, OpenMode(ReadWrite), defaultFileFlags)
+import System.Posix.IO (openFd, closeFd, OpenMode(ReadWrite), defaultFileFlags)
+import System.Posix.IO.ByteString (fdWrite)
 import System.Posix.Files (getFdStatus, isCharacterDevice)
 import System.Posix.Types (Fd(..))
-import Foreign.Ptr (castPtr)
-import Data.ByteString (useAsCStringLen)
-import Foreign.C.Types (CInt(..))
 import Data.Config (uartBaudRate)
 import qualified Data.ByteString as B
 import System.FilePath (isAbsolute, splitDirectories)
 
 import Hardware.Types (HardwareError(..))
-
-foreign import ccall safe "configure_serial_port"
-    c_configure_serial_port :: CInt -> CInt -> IO CInt
-
-foreign import ccall safe "gpio_init" c_gpio_init :: IO CInt
-foreign import ccall safe "gpio_write" c_gpio_write :: CInt -> CInt -> IO CInt
-foreign import ccall safe "gpio_read" c_gpio_read :: CInt -> IO CInt
-foreign import ccall safe "gpio_setup_watchdog" c_gpio_setup_watchdog :: CInt -> IO CInt
+import Hardware.FFI.Common
 
 initGpio :: IO ()
 initGpio = do
-    _ <- c_gpio_init
-    return ()
+    res <- c_gpio_init
+    case toHardwareResult res of
+        Success -> return ()
+        _ -> ioError (userError "Failed to initialize GPIO")
 
 setupWatchdog :: IO ()
 setupWatchdog = do
-    _ <- c_gpio_setup_watchdog 27
-    return ()
+    res <- c_gpio_setup_watchdog 27
+    case toHardwareResult res of
+        Success -> return ()
+        _ -> ioError (userError "Failed to setup watchdog")
 
 readBeamChannel :: GpioChannel -> IO Bool
 readBeamChannel channel = do
@@ -114,8 +109,7 @@ configureSensor configPath portPath = do
                                         Right () -> do
                                             forM_ commands $ \cmd -> do
                                                 let packet = BC.pack (cmd ++ "\n")
-                                                bytesSent <- useAsCStringLen packet $ \(ptr, len) ->
-                                                    fdWriteBuf fd (castPtr ptr) (fromIntegral len)
+                                                bytesSent <- fdWrite fd packet
                                                 if fromIntegral bytesSent < BC.length packet
                                                     then ioError (userError "Failed to send")
                                                     else threadDelay 100000
@@ -137,11 +131,11 @@ configureConfigSerial fd = do
 
 configureRawSerial :: Fd -> IO (Either HardwareError ())
 configureRawSerial (Fd fd) = do
-    let baud = fromIntegral uartBaudRate :: CInt
+    let baud = fromIntegral uartBaudRate
     res <- c_configure_serial_port fd baud
-    if res /= 0
-        then return $ Left $ ConfigurationFailed "Failed"
-        else return $ Right ()
+    case toHardwareResult res of
+        Success -> return $ Right ()
+        _       -> return $ Left $ ConfigurationFailed "Failed"
 
 setBeam :: Bool -> IO ()
 setBeam state = do
@@ -160,16 +154,17 @@ setBeamChannel channel state = do
             LogicChannel -> "LOGIC Channel"
             WatchdogChannel -> "WATCHDOG Channel"
     putStrLn $ "[Hardware] " ++ chanStr ++ " Set To: " ++ stateStr
-    _ <- c_gpio_write pinNum (if state then 1 else 0)
-    return ()
+    res <- c_gpio_write pinNum (if state then 1 else 0)
+    case toHardwareResult res of
+        Success -> return ()
+        _ -> putStrLn $ "[Hardware] Failed to set " ++ chanStr
 
 -- | Configuration interface to adjust the polynomial order on the sensor
 -- This sends a command over the serial port.
 setPolynomialOrder :: Fd -> Int -> IO (Either HardwareError ())
 setPolynomialOrder fd order = do
     let cmd = BC.pack ("surfaceOrder " ++ show order ++ "\n")
-    bytesSent <- useAsCStringLen cmd $ \(ptr, len) ->
-        fdWriteBuf fd (castPtr ptr) (fromIntegral len)
+    bytesSent <- fdWrite fd cmd
     if fromIntegral bytesSent < BC.length cmd
         then return $ Left (ConfigurationFailed "Failed to send surfaceOrder command")
         else return $ Right ()
