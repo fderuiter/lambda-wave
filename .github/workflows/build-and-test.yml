@@ -15,7 +15,7 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Install system dependencies
-        run: scripts/setup_env.sh --skip-security
+        run: scripts/setup_env.sh
 
       - name: Update package index
         run: cabal update
@@ -50,4 +50,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: safety-audit-report
-          path: safety_audit_report.txt
+          path: "**/safety_audit_report.txt"
