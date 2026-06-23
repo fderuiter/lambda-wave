@@ -16,6 +16,8 @@ import qualified Data.Map.Strict as Map
 import Control.Monad (when)
 import SignalProcessing.Kalman (KalmanState(..), KalmanConfig(..), V3(..), predict, update)
 import Hardware.Control (setBeam)
+import Data.I18n (Translations, translateAudit, translateBeamState)
+import qualified Data.Text as T
 import Numeric.Kinematics
     ( Distance(..)
     , Velocity(..)
@@ -37,9 +39,10 @@ kConfig = KalmanConfig
     , measNoise = 2.0  -- 2mm noise estimate
     }
 
+
 -- | The main logic function called every frame
-processFrame :: TVar SystemState -> RadarFrame -> IO ()
-processFrame stateVar frame = do
+processFrame :: Translations -> TVar SystemState -> RadarFrame -> IO ()
+processFrame translations stateVar frame = do
     currTime <- getMonotonicTimeNS
 
     let pts = points frame
@@ -91,9 +94,11 @@ processFrame stateVar frame = do
         -- Log Beam Change (only if resolved state is different from what we read initially or updated)
         -- We compare against 'currentBeam' to log transitions that happen NOW.
         when (resolvedBeamState /= currentBeam) $ do
-             let msg = "Beam State Changed: " ++ show currentBeam ++ " -> " ++ show resolvedBeamState
+             let msg = translateAudit translations (T.pack $ activeLanguage s) currentBeam resolvedBeamState
                  sev = if resolvedBeamState == BeamHold || currentBeam == BeamHold then Warning else Info
              writeTBQueue (auditQueue s) (AuditEvent currTime sev "Gating" msg)
+
+        let locStr = T.unpack $ translateBeamState translations (T.pack $ activeLanguage s) resolvedBeamState
 
         -- Update State
         writeTVar stateVar $! s
@@ -103,6 +108,7 @@ processFrame stateVar frame = do
             , sequenceNumber = seqNum frame
             , threadHeartbeats = Map.insert "Gating" currTime (threadHeartbeats s)
             , kalmanState = newKState
+            , localizedBeamState = locStr
             }
 
         return resolvedBeamState

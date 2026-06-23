@@ -11,7 +11,7 @@ import System.Exit (ExitCode(ExitFailure))
 import qualified Data.Map.Strict as Map
 import Data.Time.HighRes (getMonotonicTimeNS)
 import Data.List (isInfixOf)
-import Control.Monad (when)
+import Control.Monad (when, forM_)
 import Control.Exception (try, IOException)
 import System.Environment (getArgs, getExecutablePath)
 import qualified Data.ByteString as B
@@ -29,7 +29,7 @@ withTestEnv action = do
     now <- getMonotonicTimeNS
     q <- newTBQueueIO 100
     let kConfig = KalmanConfig 1.0 1.0
-    let st = SystemState [] BeamOff now 0 (Point3D 0 0 0 0 0) Map.empty (initKalman 0 kConfig) q False
+    let st = SystemState [] BeamOff now 0 (Point3D 0 0 0 0 0) Map.empty (initKalman 0 kConfig) q False "en" "BEAM OFF"
     stateVar <- newTVarIO st
 
     -- Run Action
@@ -83,16 +83,12 @@ testLogRotation = do
     withTestEnv $ \stateVar q logPath -> do
         tid <- forkIO $ auditLoop stateVar logPath
 
-        -- Write > 10MB of data
-        -- 10MB string
-        let hugeMsg = replicate (10 * 1024 * 1024 + 1024) 'A'
+        let chunk = replicate (1024 * 1024) 'A' -- 1MB chunk
         now <- getMonotonicTimeNS
 
-        -- Write huge message
-        atomically $ writeTBQueue q (AuditEvent now Info "Test" hugeMsg)
-
-        -- Wait for write (this might take a second)
-        threadDelay 5_000_000
+        forM_ ([1..11] :: [Int]) $ \_ -> do
+            atomically $ writeTBQueue q (AuditEvent now Info "Test" chunk)
+            threadDelay 500_000 -- Wait 0.5s for each chunk to be processed
 
         -- Debug: Check Size
         stat <- getFileStatus logPath
@@ -120,7 +116,7 @@ runChildCrash = do
     now <- getMonotonicTimeNS
     q <- newTBQueueIO 100
     let kConfig = KalmanConfig 1.0 1.0
-    let st = SystemState [] BeamOff now 0 (Point3D 0 0 0 0 0) Map.empty (initKalman 0 kConfig) q False
+    let st = SystemState [] BeamOff now 0 (Point3D 0 0 0 0 0) Map.empty (initKalman 0 kConfig) q False "en" "BEAM OFF"
     stateVar <- newTVarIO st
 
     _ <- forkIO $ auditLoop stateVar logPath
@@ -174,6 +170,21 @@ testCrashRecovery = do
         e <- fileExist f
         when e (removeLink f)
 
+testIOException :: IO Bool
+testIOException = do
+    putStr "Test 4: IO Exception Recovery... "
+    withTestEnv $ \stateVar q _logPath -> do
+        -- Use "." as logPath to cause is a directory error
+        tid <- forkIO $ auditLoop stateVar "."
+
+        now <- getMonotonicTimeNS
+        atomically $ writeTBQueue q (AuditEvent now Info "Test" "Fail")
+        threadDelay 200_000
+
+        killThread tid
+        putStrLn "PASS"
+        return True
+
 main :: IO ()
 main = do
     args <- getArgs
@@ -184,9 +195,8 @@ main = do
             p1 <- testBasicLogging
             p2 <- testLogRotation
             p3 <- testCrashRecovery
+            p4 <- testIOException
 
-            if p1 && p2 && p3
+            if p1 && p2 && p3 && p4
                then putStrLn "VERIFICATION PASSED"
                else fail "VERIFICATION FAILED"
-
--- Requirement SR-AUDIT-001

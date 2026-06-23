@@ -88,3 +88,13 @@ hazards:
     occurrence: 1
     detection: 2
     rpn: 8
+
+  - id: H-SYS-006
+    description: Parallel test execution interference
+    cause: Shared IPC sockets
+    effect: False watchdog timeouts
+    mitigation: Dynamic IPC sockets
+    severity: 2
+    occurrence: 2
+    detection: 1
+    rpn: 4

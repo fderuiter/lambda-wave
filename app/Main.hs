@@ -10,7 +10,7 @@ import System.Posix.IO (openFd, OpenMode(..), defaultFileFlags, OpenFileFlags(..
 import System.Posix.Files (getFdStatus, isCharacterDevice, createNamedPipe, unionFileModes, ownerReadMode, ownerWriteMode)
 import System.Posix.Types (Fd, ProcessID)
 import System.Posix.Process (forkProcess, executeFile, getProcessID)
-import Control.Monad (forever, unless, void)
+import Control.Monad (forever, unless)
 import qualified Data.Map.Strict as Map
 import System.Exit (exitFailure)
 import Data.Binary (encode)
@@ -29,6 +29,7 @@ import Hardware.Consumer (consumerLoop)
 import Safety.Watchdog (watchdogLoop, runSafetyDaemon)
 import Safety.Audit
 import Data.Time.HighRes (getMonotonicTimeNS)
+import Data.I18n (loadTranslations)
 
 main :: IO ()
 main = do
@@ -46,6 +47,8 @@ runMain = do
     putStrLn "Initializing Lambda-Wave System..."
 
     startTime <- getMonotonicTimeNS
+
+    translations <- loadTranslations "config/locales.json"
 
     let kConfig = KalmanConfig { procNoise = 10.0, measNoise = 2.0 }
     let initialKState = initKalman targetHeight kConfig
@@ -66,6 +69,8 @@ runMain = do
           , kalmanState = initialKState
           , auditQueue = auditQ
           , audioAlertEnabled = audioAlerts
+          , activeLanguage = "en"
+          , localizedBeamState = "BEAM OFF"
           }
 
     systemState <- newTVarIO initialState
@@ -123,7 +128,7 @@ runMain = do
     _daemonPid <- forkProcess $ executeFile exePath False ["--safety-daemon", show myPid] Nothing
 
     -- 3. Consumer/Parser (Dedicated Thread)
-    _ <- forkOS $ consumerLoop True ringBuffer systemState
+    _ <- forkOS $ consumerLoop translations True ringBuffer systemState
 
     -- 3. Safety Watchdog Heartbeat Sender (High Priority Thread)
     _ <- forkOS $ watchdogLoop systemState
@@ -176,6 +181,8 @@ streamData fd stateVar = do
                   , tpThreadHeartbeats = threadHeartbeats state
                   , tpKalmanState = kalmanState state
                   , tpAudioAlertEnabled = audioAlertEnabled state
+                  , tpActiveLanguage = activeLanguage state
+                  , tpLocalizedBeamState = localizedBeamState state
                   }
             let payload = BL.toStrict (encode packet)
             let len = fromIntegral (B.length payload) :: Word32

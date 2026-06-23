@@ -32,11 +32,13 @@ instance ToJSON KalmanState where
 
 instance ToJSON SystemState where
     toJSON (SystemState{..}) = object
-        [ "beamState" .= beamState
+        [ "beamState" .= localizedBeamState
+        , "rawBeamState" .= beamState
         , "pointCloud" .= currentPoints
         , "respiratoryTrace" .= kalmanState
         , "timestamp" .= lastFrameTime
         , "sequenceNumber" .= sequenceNumber
         , "heartbeats" .= threadHeartbeats
         , "audioAlertEnabled" .= audioAlertEnabled
+        , "activeLanguage" .= activeLanguage
         ]

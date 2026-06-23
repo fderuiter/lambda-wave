@@ -6,7 +6,7 @@ import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as BC
 import System.Process (readProcess)
 import System.Exit (exitFailure)
-import Data.List (isPrefixOf, tails, isInfixOf)
+import Data.List (isInfixOf)
 
 -- Helper to calculate sha256 via openssl and base64 encode it
 sha256Base64 :: B.ByteString -> IO String
@@ -31,7 +31,7 @@ main = do
     putStrLn "Reading index.html..."
     content <- B.readFile "app/Control/WebUI/assets/index.html" `catch` \e -> do
         print (e :: SomeException)
-        exitFailure
+        _ <- exitFailure
         return B.empty
 
     styleHash <- case extractTag "<style>" "</style>" content of
