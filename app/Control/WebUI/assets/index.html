@@ -8,9 +8,9 @@
     <style>
         body { font-family: monospace; background: #111; color: #eee; margin: 0; padding: 20px; }
         #beam-status { font-size: 2em; text-align: center; padding: 20px; border-radius: 10px; margin-bottom: 20px; transition: background-color 0.3s ease, color 0.3s ease; }
-        .BeamOn { background: #0f0; color: #000; }
-        .BeamOff { background: #cc0000; color: #fff; }
-        .BeamHold { background: #ff0; color: #000; }
+        .BeamOn { background: var(--beam-bg-color, #0f0); color: #000; }
+        .BeamOff { background: var(--beam-bg-color, #cc0000); color: #fff; }
+        .BeamHold { background: var(--beam-bg-color, #ff0); color: #000; }
         .Offline { background: #555; color: #ccc; }
         canvas { border: 1px solid #333; background: #000; display: block; margin: 0 auto; max-width: 100%; height: auto; cursor: default; }
         canvas.live { cursor: pointer; }
@@ -291,6 +291,17 @@
                 }
             }
 
+            if (state.triggerAudioAlert) {
+                // Beep alert
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = ctx.createOscillator();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(800, ctx.currentTime);
+                osc.connect(ctx.destination);
+                osc.start();
+                osc.stop(ctx.currentTime + 0.2);
+            }
+
             if (state.activeLanguage && langSelect.value !== state.activeLanguage) {
                 langSelect.value = state.activeLanguage;
             }
@@ -299,25 +310,14 @@
             // Only update DOM if state changed to prevent aria-live screen reader spam at 30Hz
             if (state.rawBeamState !== lastBeamState) {
                 const textLabel = state.beamState; // Provided localized string by backend
-                let iconHtml = '';
-                let faviconColor = '#555';
-                let faviconShape = 'circle';
-
-                if (state.rawBeamState === 'BeamOn') {
-                    faviconColor = '#0f0'; faviconShape = 'circle';
-                    iconHtml = '<span aria-hidden="true">● </span>';
-                }
-                else if (state.rawBeamState === 'BeamOff') {
-                    faviconColor = '#f00'; faviconShape = 'square';
-                    iconHtml = '<span aria-hidden="true">■ </span>';
-                }
-                else if (state.rawBeamState === 'BeamHold') {
-                    faviconColor = '#ff0'; faviconShape = 'triangle';
-                    iconHtml = '<span aria-hidden="true">▲ </span>';
-                }
+                let iconHtml = '<span aria-hidden="true">' + state.beamIconSymbol + '</span>';
+                let faviconColor = state.beamColorHex;
+                let faviconShape = state.beamShape;
 
                 statusEl.innerHTML = iconHtml + textLabel;
                 statusEl.className = state.rawBeamState;
+                statusEl.style.setProperty('--beam-bg-color', state.beamColorHex);
+                
                 document.title = textLabel + ' - Lambda-Wave Monitor';
                 updateFavicon(faviconColor, faviconShape);
 
@@ -356,9 +356,9 @@
             ctx.clearRect(0, 0, width, height);
 
             // Draw Trace (Line Graph)
-            // Map position (mm) to Y pixels. Assume breathing range is e.g. -20mm to +20mm around 0.
-            // Let's use fixed scale: +/- 100mm range.
-            const scaleY = height / 200; // 200mm range (-100 to +100)
+            // Map position (meters) to Y pixels. Assume breathing range is e.g. -0.02m to +0.02m around 0.
+            // Let's use fixed scale: +/- 0.1m range.
+            const scaleY = height / 0.2; // 0.2m range (-0.1 to +0.1)
             const midY = height / 2;
 
             // Draw center reference line
@@ -376,11 +376,11 @@
             ctx.font = '12px monospace';
             ctx.textAlign = 'left';
             ctx.textBaseline = 'bottom';
-            ctx.fillText(' 0mm', 5, midY - 4);
+            ctx.fillText(' 0.0m', 5, midY - 4);
             ctx.textBaseline = 'top';
-            ctx.fillText('+100mm', 5, 5);
+            ctx.fillText('+0.1m', 5, 5);
             ctx.textBaseline = 'bottom';
-            ctx.fillText('-100mm', 5, height - 5);
+            ctx.fillText('-0.1m', 5, height - 5);
 
             ctx.strokeStyle = '#0ff';
             ctx.lineWidth = 2;
