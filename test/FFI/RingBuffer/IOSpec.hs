@@ -24,7 +24,7 @@ import SignalProcessing.Kalman (initKalman, KalmanConfig(..))
 
 createDummyState :: IO (TVar SystemState)
 createDummyState = do
-    auditQ <- newTBQueueIO 100
+    auditQ <- newTBQueueIO 10000
     let kState = initKalman 0.0 (KalmanConfig 1.0 1.0)
     newTVarIO $ SystemState
         { currentPoints = []

@@ -18,7 +18,7 @@ import Data.Config (targetHeight)
 -- | Dummy State
 mkState :: BeamState -> IO SystemState
 mkState bs = do
-    q <- newTBQueueIO 100
+    q <- newTBQueueIO 10000
     let kConfig = KalmanConfig { procNoise = 10.0, measNoise = 2.0 }
     let kState = initKalman targetHeight kConfig
     return $ SystemState
