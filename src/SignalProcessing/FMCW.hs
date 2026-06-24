@@ -11,6 +11,7 @@ module SignalProcessing.FMCW
       calculateBeatFreq
     , calculateRangeResolution
       -- * Chirp Z-Transform (CZT)
+      -- | Equation (2) (Requirement MR-002)
     , chirpZTransform
     , CZTParams(..)
       -- * Static Clutter Removal
@@ -29,7 +30,7 @@ module SignalProcessing.FMCW
 import Data.Complex
 import Data.List (foldl')
 
--- | Equation (1): Verified
+-- | Equation (1) (Requirement MR-001): Verified
 -- Calculate the beat frequency from a target range.
 -- f_FFT = (2 * B * R) / (c * T)
 --
@@ -107,7 +108,7 @@ chirpZTransform params x_n = map calculateBin [0 .. cztSteps params - 1]
         in
             summation 0.0 0.0 1.0 0.0 x_n
 
--- | Equation (4): Verified
+-- | Equation (4) (Requirement MR-004): Verified
 -- Extract the phase from the complex value at the peak index.
 --
 -- Complexity: O(1) runtime.
@@ -141,7 +142,7 @@ unwrapPhase (x:xs) = x : go x 0.0 xs
             !val = p - newCorrection
         in val : go p newCorrection ps
 
--- | Equation (5): Verified
+-- | Equation (5) (Requirement MR-005): Verified
 -- Calculate displacement from phase change.
 -- d = (c * delta_phi) / (4 * pi * f_min)
 --
