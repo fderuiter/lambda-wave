@@ -1,3 +1,4 @@
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE OverloadedStrings #-}
 module Main (main) where
 
@@ -14,7 +15,7 @@ import Data.List (sort)
 
 import Data.Types
 import Data.Config (targetHeight, gatingTolerance)
-import SignalProcessing.Kalman (initKalman, KalmanConfig(..), V3(..), KalmanState(..))
+import SignalProcessing.Kalman (initKalman, KalmanConfig(..), pattern V3, KalmanState(..))
 import Control.Gating (processFrame)
 import Hardware.Control (initGpio, setupWatchdog, readBeamChannel, GpioChannel(..))
 

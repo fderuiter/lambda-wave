@@ -1,3 +1,4 @@
+{-# LANGUAGE PatternSynonyms #-}
 module UI.Presentation (
     BeamDisplayInfo(..),
     getBeamDisplayInfo,
@@ -7,7 +8,7 @@ module UI.Presentation (
 ) where
 
 import Data.Types (BeamState(..), Point3D(..))
-import SignalProcessing.Kalman (KalmanState(..), V3(..))
+import SignalProcessing.Kalman (KalmanState(..), pattern V3)
 
 data BeamDisplayInfo = BeamDisplayInfo
     { bdiColorHex   :: String
