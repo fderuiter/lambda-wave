@@ -10,7 +10,8 @@ module Control.WebUI.Types (
 import Data.Aeson
 import qualified Data.Aeson.KeyMap as KM
 import Data.Types
-import SignalProcessing.Kalman (KalmanState(..), V3(..))
+import SignalProcessing.Kalman (KalmanState(..), pattern V3)
+import SignalProcessing.Matrix (Vector, vToList)
 import UI.Presentation (getBeamDisplayInfo, bdiColorHex, bdiShape, bdiIconSymbol, scalePointToMeters, scaleKalmanStateToMeters)
 import qualified Data.ByteString.Lazy as BL
 
@@ -40,8 +41,8 @@ instance ToJSON Point3D where
         , "snr" .= snr
         ]
 
-instance ToJSON V3 where
-    toJSON (V3 x y z) = object ["x" .= x, "y" .= y, "z" .= z]
+instance ToJSON Vector where
+    toJSON v = let [x, y, z] = vToList v in object ["x" .= x, "y" .= y, "z" .= z]
 
 instance ToJSON KalmanState where
     toJSON (KalmanState{..}) = object
