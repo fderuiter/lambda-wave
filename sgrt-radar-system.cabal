@@ -43,6 +43,7 @@ common common-options
     , aeson
     , text
     , unordered-containers
+    , stm
   default-language: Haskell2010
 
 flag enable-ui
@@ -88,6 +89,7 @@ library
       
       Numeric.Kinematics
   other-modules:
+      Control.UIMathSpec
       Paths_sgrt_radar_system
   hs-source-dirs:
       src
@@ -107,6 +109,7 @@ executable sgrt-radar-system-exe
   import: common-options
   main-is: Main.hs
   other-modules:
+      Control.UIMathSpec
       Paths_sgrt_radar_system
   hs-source-dirs:
       app
@@ -119,6 +122,7 @@ executable sgrt-visualizer-exe
   import: common-options
   main-is: VisualizerMain.hs
   other-modules:
+      Control.UIMathSpec
       Paths_sgrt_radar_system
   hs-source-dirs:
       app
@@ -132,6 +136,7 @@ executable sgrt-visualizer-exe
       , OpenGL ==3.0.3.0
     cpp-options: -DENABLE_UI
     other-modules:
+      Control.UIMathSpec
         Control.UI.Renderer
         Control.UI.Window
         Control.UI.Input
@@ -152,10 +157,12 @@ executable sgrt-visualizer-exe
       , process
       , time
       , unordered-containers
+    , stm
       , directory
       , wai-extra
     cpp-options: -DENABLE_WEB_UI
     other-modules:
+      Control.UIMathSpec
         Control.WebUI
         Control.WebUI.Types
 
@@ -180,6 +187,7 @@ test-suite sgrt-radar-system-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
+      Control.UIMathSpec
       Paths_sgrt_radar_system
       FFI.RingBuffer.TypesSpec
       FFI.RingBuffer.IOSpec
@@ -207,6 +215,7 @@ test-suite hardware-control-check
   type: exitcode-stdio-1.0
   main-is: ControlCheck.hs
   other-modules:
+      Control.UIMathSpec
       Paths_sgrt_radar_system
   hs-source-dirs:
       test/Hardware
@@ -220,6 +229,7 @@ test-suite hardware-consumer-check
   type: exitcode-stdio-1.0
   main-is: ConsumerCheck.hs
   other-modules:
+      Control.UIMathSpec
       Paths_sgrt_radar_system
   hs-source-dirs:
       test/Hardware
@@ -236,6 +246,7 @@ test-suite kalman-verification
   type: exitcode-stdio-1.0
   main-is: KalmanCheck.hs
   other-modules:
+      Control.UIMathSpec
       Paths_sgrt_radar_system
   hs-source-dirs:
       test/SignalProcessing
@@ -249,6 +260,7 @@ test-suite audit-check
   type: exitcode-stdio-1.0
   main-is: AuditCheck.hs
   other-modules:
+      Control.UIMathSpec
       Paths_sgrt_radar_system
   hs-source-dirs:
       test/Safety
@@ -265,6 +277,7 @@ test-suite clinical-hil-validation
   type: exitcode-stdio-1.0
   main-is: ClinicalHILValidation.hs
   other-modules:
+      Control.UIMathSpec
       Paths_sgrt_radar_system
   hs-source-dirs:
       test
@@ -281,6 +294,7 @@ test-suite gating-check
   type: exitcode-stdio-1.0
   main-is: GatingCheck.hs
   other-modules:
+      Control.UIMathSpec
       Paths_sgrt_radar_system
   hs-source-dirs:
       test/Control
@@ -294,6 +308,7 @@ test-suite watchdog-check
   type: exitcode-stdio-1.0
   main-is: WatchdogCheck.hs
   other-modules:
+      Control.UIMathSpec
       Paths_sgrt_radar_system
   hs-source-dirs:
       test
@@ -309,6 +324,7 @@ test-suite numeric-check
   type: exitcode-stdio-1.0
   main-is: NumericCheck.hs
   other-modules:
+      Control.UIMathSpec
       Paths_sgrt_radar_system
   hs-source-dirs:
       test
@@ -322,6 +338,7 @@ test-suite sentinel-check
   type: exitcode-stdio-1.0
   main-is: SentinelCheck.hs
   other-modules:
+      Control.UIMathSpec
       Paths_sgrt_radar_system
   hs-source-dirs:
       test
@@ -335,6 +352,7 @@ benchmark sgrt-radar-system-bench
   type: exitcode-stdio-1.0
   main-is: LatencyBench.hs
   other-modules:
+      Control.UIMathSpec
       Paths_sgrt_radar_system
   hs-source-dirs:
       bench
@@ -348,6 +366,7 @@ benchmark kalman-bench
   type: exitcode-stdio-1.0
   main-is: KalmanBench.hs
   other-modules:
+      Control.UIMathSpec
       Paths_sgrt_radar_system
   hs-source-dirs:
       bench
@@ -361,6 +380,7 @@ test-suite consumer-integration-check
   type: exitcode-stdio-1.0
   main-is: ConsumerIntegrationCheck.hs
   other-modules:
+      Control.UIMathSpec
       Paths_sgrt_radar_system
   hs-source-dirs:
       test/Hardware
@@ -370,23 +390,6 @@ test-suite consumer-integration-check
     , base >= 4.16 && < 5
     , bytestring ==0.11.5.3
 
-test-suite ui-math-check
-  import: common-options
-  type: exitcode-stdio-1.0
-  main-is: UIMathMain.hs
-  other-modules:
-      Control.UIMathSpec
-      Control.UI.Renderer
-  hs-source-dirs:
-      test
-      app
-  ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
-  build-depends:
-      sgrt-radar-system
-    , base >= 4.16 && < 5
-    , hspec ==2.11.17
-    , GLUT ==2.7.0.16
-    , OpenGL ==3.0.3.0
 
 executable phantom-study
   import: common-options
@@ -457,6 +460,7 @@ benchmark fmcw-bench
   type: exitcode-stdio-1.0
   main-is: FMCWBench.hs
   other-modules:
+      Control.UIMathSpec
       Paths_sgrt_radar_system
   hs-source-dirs:
       bench
@@ -465,3 +469,86 @@ benchmark fmcw-bench
       sgrt-radar-system
     , criterion ==1.6.5.0
     , base >= 4.16 && < 5
+
+executable bolt-optimizer
+  import: common-options
+  main-is: BoltOptimizer.hs
+  hs-source-dirs:
+      tools/performance
+  build-depends:
+      base >= 4.16 && < 5
+    , text
+
+executable generate-synthetic-capture
+  import: common-options
+  main-is: GenerateSyntheticCapture.hs
+  hs-source-dirs:
+      tools/data-generation
+  build-depends:
+      base >= 4.16 && < 5
+    , bytestring ==0.11.5.3
+    , binary ==0.8.9.1
+
+executable generate-complex-capture
+  import: common-options
+  main-is: GenerateComplexCapture.hs
+  hs-source-dirs:
+      tools/data-generation
+  build-depends:
+      base >= 4.16 && < 5
+    , bytestring ==0.11.5.3
+    , binary ==0.8.9.1
+
+test-suite audit-heartbeat-check
+  import: common-options
+  type: exitcode-stdio-1.0
+  main-is: AuditHeartbeatCheck.hs
+  other-modules:
+      Control.UIMathSpec
+      Paths_sgrt_radar_system
+  hs-source-dirs:
+      test/Safety
+  ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
+  build-depends:
+      sgrt-radar-system
+    , base >= 4.16 && < 5
+    , stm ==2.5.1.0
+    , containers ==0.6.7
+    , unix >=2.7 && <2.9
+    , process
+    , vector
+    , template-haskell
+
+test-suite beam-hold-check
+  import: common-options
+  type: exitcode-stdio-1.0
+  main-is: BeamHoldCheck.hs
+  other-modules:
+      Control.UIMathSpec
+      Paths_sgrt_radar_system
+  hs-source-dirs:
+      test/Control
+  ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
+  build-depends:
+      sgrt-radar-system
+    , base >= 4.16 && < 5
+    , stm ==2.5.1.0
+    , unordered-containers
+    , stm
+    , containers ==0.6.7
+
+test-suite latency-verification
+  import: common-options
+  type: exitcode-stdio-1.0
+  main-is: LatencyVerification.hs
+  other-modules:
+      Paths_sgrt_radar_system
+  hs-source-dirs:
+      test
+  ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
+  build-depends:
+      sgrt-radar-system
+    , base >= 4.16 && < 5
+    , containers
+    , unordered-containers
+    , stm
