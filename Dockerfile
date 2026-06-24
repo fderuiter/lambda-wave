@@ -1,5 +1,5 @@
 # Dockerfile for SGRT Radar System
-FROM haskell:9.6.7-slim-bullseye
+FROM haskell:9.6.7
 
 # Install system dependencies
 COPY scripts/setup_env.sh /tmp/setup_env.sh
