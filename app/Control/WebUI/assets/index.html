@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lambda-Wave Monitor</title>
     <link id="favicon" rel="icon" type="image/svg+xml" href="">
+    <link rel="stylesheet" href="a11y.css">
     <style>
         body { font-family: monospace; background: #111; color: #eee; margin: 0; padding: 20px; }
         #beam-status { font-size: 2em; text-align: center; padding: 20px; border-radius: 10px; margin-bottom: 20px; transition: background-color 0.3s ease, color 0.3s ease; }
@@ -47,7 +48,6 @@
         #ts, #pt-count { display: inline-block; text-align: right; font-variant-numeric: tabular-nums; }
         #ts { width: 5ch; }
         #pt-count { width: 4ch; }
-        .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
         canvas:focus-visible { outline: 2px solid #0ff; outline-offset: 2px; }
         #pause-btn { position: relative; background: #333; color: #fff; border: 1px solid #555; padding: 5px 10px; cursor: pointer; border-radius: 4px; font-family: monospace; display: inline-block; margin-top: 10px; transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, transform 0.1s ease; }
         #pause-btn:focus-visible { outline: 2px solid #0ff; outline-offset: 2px; }
@@ -74,12 +74,13 @@
     </style>
 </head>
 <body>
+    <a href="#main-content" class="skip-link">Skip to Main Content</a>
     <noscript>
         <div class="noscript-alert" role="alert">
             JavaScript is required to view the real-time radar stream.
         </div>
     </noscript>
-    <main>
+    <main id="main-content">
         <div style="text-align: right; margin-bottom: 10px;">
             <label for="lang-select" style="color: #0ff; font-family: sans-serif; margin-right: 10px;">Language:</label>
             <select id="lang-select" style="background: #222; color: #eee; border: 1px solid #555; padding: 2px 5px; font-family: sans-serif; margin-right: 20px;">

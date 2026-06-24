@@ -46,6 +46,15 @@ credentialStore = Map.fromList
 indexHtml :: B.ByteString
 indexHtml = $(embedFile "app/Control/WebUI/assets/index.html")
 
+dashboardHtml :: B.ByteString
+dashboardHtml = $(embedFile "app/Control/WebUI/assets/dashboard.html")
+
+dashboardJson :: B.ByteString
+dashboardJson = $(embedFile "app/Control/WebUI/assets/dashboard.json")
+
+a11yCss :: B.ByteString
+a11yCss = $(embedFile "app/Control/WebUI/assets/a11y.css")
+
 -- A session store
 type SessionStore = TVar (Map.Map B.ByteString UTCTime)
 
@@ -78,18 +87,36 @@ httpApp store stateVar req respond = do
     let headers = requestHeaders req
         cookieHeader = lookup "Cookie" headers
         authHeader = lookup "Authorization" headers
+        path = pathInfo req
         
     isValid <- checkSession store cookieHeader
     
     if isValid
-       then respond $ responseLBS status200
-            [ ("Content-Type", "text/html")
-            , ("X-Frame-Options", "DENY")
-            , ("X-Content-Type-Options", "nosniff")
-            , ("Content-Security-Policy", "default-src 'self'; connect-src 'self' wss:; script-src 'self' 'sha256-Yx2ngBSshvkQwqGI5RgkcOB/07Zs/XeH15RZ0L+thHg='; style-src 'self' 'sha256-FcoJ8qmZ8gDC3Xt3m7E1qw2i4QirXs2wG1cbnwmFSyM='")
-            , ("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
-            ]
-            (fromStrict indexHtml)
+       then case path of
+            ["dashboard.html"] -> respond $ responseLBS status200
+                [ ("Content-Type", "text/html")
+                , ("X-Frame-Options", "DENY")
+                , ("X-Content-Type-Options", "nosniff")
+                , ("Content-Security-Policy", "default-src 'self'; connect-src 'self' wss:; script-src 'self' 'sha256-aP6rrcIxmSdZejB774XHCC0sACsHgn5QDDBDIQGx5n8='; style-src 'self' 'sha256-c+Klqm2arsVIfV+hOqaQ785BaCyaTZeUa93cO9/7yMs='")
+                , ("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+                ]
+                (fromStrict dashboardHtml)
+            ["dashboard.json"] -> respond $ responseLBS status200
+                [ ("Content-Type", "application/json")
+                ]
+                (fromStrict dashboardJson)
+            ["a11y.css"] -> respond $ responseLBS status200
+                [ ("Content-Type", "text/css")
+                ]
+                (fromStrict a11yCss)
+            _ -> respond $ responseLBS status200
+                [ ("Content-Type", "text/html")
+                , ("X-Frame-Options", "DENY")
+                , ("X-Content-Type-Options", "nosniff")
+                , ("Content-Security-Policy", "default-src 'self'; connect-src 'self' wss:; script-src 'self' 'sha256-EkErJL/uPo1ZkRym5WlmM6nOSvBTWkEmSaQeZS7WlZw='; style-src 'self' 'sha256-V7fbnrbvmt/RAZmtcdDEi0hpCJzLlyMgrKK0ibIWTKY='")
+                , ("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+                ]
+                (fromStrict indexHtml)
        else case authHeader of
             Just auth | "Basic " `B.isPrefixOf` auth -> do
                 let creds = B.drop 6 auth
