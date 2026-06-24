@@ -67,7 +67,7 @@ jobs:
       - name: Build dependencies with coverage
         run: |
           cabal update
-          echo -e "package sgrt-radar-system\n  coverage: True" >> cabal.project.local
+          printf "package sgrt-radar-system\n  coverage: True\n" >> cabal.project.local
           cabal build --only-dependencies
 
       - name: Verify Dependency Integrity
