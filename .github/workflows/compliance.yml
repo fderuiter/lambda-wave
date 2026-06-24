@@ -1,5 +1,8 @@
 name: IEC 62304 Compliance Pipeline
 
+env:
+  ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
+
 on:
   pull_request:
     branches:
