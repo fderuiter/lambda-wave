@@ -12,6 +12,9 @@ jobs:
     container:
       image: haskell:9.6.7-slim-bullseye
     steps:
+      - name: Install git for checkout
+        run: apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y git
+
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Install system dependencies
