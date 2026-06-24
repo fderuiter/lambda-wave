@@ -5,52 +5,65 @@ import glob
 import re
 
 def main():
-    if len(sys.argv) < 2:
-        print("Usage: scripts/ccr_validation.py <modified_files.txt>")
-        sys.exit(1)
-        
-    with open(sys.argv[1], 'r') as f:
-        modified_files = [line.strip() for line in f if line.strip()]
-        
-    # Requirement 3: Identify "Class C" changes based on file paths
-    # We consider anything in src/Safety/ as a Class C safety-critical file
-    safety_modified = any(f.startswith('src/Safety/') for f in modified_files)
-    
-    # Check if a CCR file was added or updated
-    ccr_files_modified = [f for f in modified_files if f.startswith('docs/ccr/') and f.endswith('.md') and os.path.basename(f) != 'template.md']
-    rmf_modified = any(f == 'rmf.yaml' for f in modified_files)
-
-    # Automated check within the CI pipeline that fails if a safety-critical change is detected without an updated risk analysis
-    if safety_modified and not rmf_modified:
-        print("ERROR: Class C changes detected in 'src/Safety/' but no updated risk analysis (rmf.yaml) found.")
-        print("Please update rmf.yaml with new or updated hazard analysis for this safety-critical change.")
-        sys.exit(1)
-
-    # Requirement 4: Fail if Class C change is detected without a corresponding CCR
-    if safety_modified and not ccr_files_modified:
-        print("ERROR: Class C changes detected in 'src/Safety/' but no CCR file was added or updated in 'docs/ccr/'.")
-        print("Please create a Change Control Record (CCR) using docs/ccr/template.md.")
-        sys.exit(1)
-        
-    if not safety_modified and not ccr_files_modified:
-        print("No Class C (Safety) files modified and no CCRs modified. Skipping CCR validation.")
-        sys.exit(0)
-        
-    valid_hazards = get_valid_hazards()
-    
-    all_valid = True
-    # If CCRs were modified, validate them even if no safety code was touched in this exact commit
-    for ccr in ccr_files_modified:
-        if not os.path.exists(ccr):
-            continue
-        if not validate_ccr(ccr, valid_hazards):
-            all_valid = False
+    try:
+        if len(sys.argv) < 2:
+            print("Usage: scripts/ccr_validation.py <modified_files.txt>")
+            sys.exit(1)
             
-    if not all_valid:
-        print("ERROR: CCR validation failed.")
-        sys.exit(1)
+        with open(sys.argv[1], 'r') as f:
+            modified_files = [line.strip() for line in f if line.strip()]
+            
+        print(f"DEBUG: Modified files read: {modified_files}")
+            
+        # Requirement 3: Identify "Class C" changes based on file paths
+        # We consider anything in src/Safety/ as a Class C safety-critical file
+        safety_modified = any(f.startswith('src/Safety/') for f in modified_files)
+        print(f"DEBUG: safety_modified={safety_modified}")
         
-    print("CCR validation passed successfully.")
+        # Check if a CCR file was added or updated
+        ccr_files_modified = [f for f in modified_files if f.startswith('docs/ccr/') and f.endswith('.md') and os.path.basename(f) != 'template.md']
+        print(f"DEBUG: ccr_files_modified={ccr_files_modified}")
+        rmf_modified = any(f == 'rmf.yaml' for f in modified_files)
+        print(f"DEBUG: rmf_modified={rmf_modified}")
+
+        # Automated check within the CI pipeline that fails if a safety-critical change is detected without an updated risk analysis
+        if safety_modified and not rmf_modified:
+            print("ERROR: Class C changes detected in 'src/Safety/' but no updated risk analysis (rmf.yaml) found.")
+            print("Please update rmf.yaml with new or updated hazard analysis for this safety-critical change.")
+            sys.exit(1)
+
+        # Requirement 4: Fail if Class C change is detected without a corresponding CCR
+        if safety_modified and not ccr_files_modified:
+            print("ERROR: Class C changes detected in 'src/Safety/' but no CCR file was added or updated in 'docs/ccr/'.")
+            print("Please create a Change Control Record (CCR) using docs/ccr/template.md.")
+            sys.exit(1)
+            
+        if not safety_modified and not ccr_files_modified:
+            print("No Class C (Safety) files modified and no CCRs modified. Skipping CCR validation.")
+            sys.exit(0)
+            
+        valid_hazards = get_valid_hazards()
+        print(f"DEBUG: valid_hazards={valid_hazards}")
+        
+        all_valid = True
+        # If CCRs were modified, validate them even if no safety code was touched in this exact commit
+        for ccr in ccr_files_modified:
+            if not os.path.exists(ccr):
+                print(f"DEBUG: {ccr} does not exist.")
+                continue
+            if not validate_ccr(ccr, valid_hazards):
+                all_valid = False
+                
+        if not all_valid:
+            print("ERROR: CCR validation failed.")
+            sys.exit(1)
+            
+        print("CCR validation passed successfully.")
+    except Exception as e:
+        import traceback
+        print(f"ERROR: Exception occurred during validation: {e}")
+        traceback.print_exc()
+        sys.exit(1)
 
 def get_valid_hazards():
     hazards = set()
