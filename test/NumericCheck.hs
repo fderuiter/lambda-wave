@@ -3,7 +3,6 @@ module Main (main) where
 import Control.Exception (try, SomeException)
 import SignalProcessing.Matrix
 import System.Exit (exitSuccess)
-import qualified Data.Vector.Unboxed as U
 
 main :: IO ()
 main = do
@@ -39,7 +38,7 @@ main = do
 
     -- 5. Test Least Squares Mismatch
     let x = fromLists [[1, 2], [3, 4]]
-    let y = Vector $ U.fromList [1] -- Mismatch length
+    let y = [1] -- Mismatch length
     putStrLn "Testing Least Squares Mismatch..."
     resLS <- try $ do
         print $ leastSquares x y
@@ -48,7 +47,7 @@ main = do
         Right _ -> putStrLn "PASS: Least Squares mismatch handled"
 
     -- 6. Test dot
-    let d = dot (Vector $ U.fromList [1, 2, 3]) (Vector $ U.fromList [4, 5, 6])
+    let d = dot ([1, 2, 3]) ([4, 5, 6])
     if d == 32 then putStrLn "PASS: dot product" else putStrLn $ "FAIL: dot product, got " ++ show d
 
     -- 7. Test at (removed)
