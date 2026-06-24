@@ -122,16 +122,20 @@ processFrame translations stateVar frame = do
     let beamBool = case finalBeamState of
             BeamOn -> True
             _      -> False
-    res <- setBeam beamBool
-    case res of
-        Left err -> do
+    res <- setBeam stateVar beamBool
+    
+    -- Explicitly handle the hardware response
+    handleHardwareResponse 
+        (\err -> do
             let msg = "Hardware actuation failed: " ++ show err
             let evt = AuditEvent currTime Critical "Hardware" msg
             atomically $ do
                 s <- readTVar stateVar
                 writeTBQueue (auditQueue s) evt
                 writeTVar stateVar (s { beamState = BeamOff })
-        Right () -> return ()
+        )
+        (\() -> return ())
+        res
 
 -- | Evaluate Gating Decision with Hysteresis and Latency Compensation
 -- Pure function for testability.

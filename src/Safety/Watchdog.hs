@@ -22,11 +22,22 @@ import System.Posix.Files (removeLink)
 import qualified Data.ByteString as B
 import Safety.Crypto (encryptLog)
 
-import Hardware.Control (setBeamChannel, GpioChannel(..))
+import Hardware.Control (setBeamChannel, setBeamChannelDaemon, GpioChannel(..))
+import Hardware.FFI.Bridge (handleHardwareResponse)
+import Hardware.FFI.Common (HardwareResult)
 import Numeric.Kinematics
 
 udsPath :: ProcessID -> String
 udsPath pid = "/tmp/sgrt_heartbeat_" ++ show pid ++ ".sock"
+
+-- | Helper for daemon auditing directly to file
+daemonAudit :: HardwareResult -> IO ()
+daemonAudit res = do
+    now <- getMonotonicTimeNS
+    let auditMsg = show now ++ " [INFO] [SafetyDaemon] Hardware Bridge: " ++ show res ++ "\n"
+    encAudit <- encryptLog auditMsg
+    _ <- try (B.appendFile "session.log" encAudit) :: IO (Either IOException ())
+    return ()
 
 -- | The Watchdog Heartbeat Sender Loop (Runs in Main Process)
 -- Requirement SR-WD-001
@@ -93,7 +104,14 @@ runSafetyDaemon parentPid = do
     bind sock (SockAddrUnix path)
     
     -- Ensure Beam is ON for Watchdog Channel initially
-    _ <- setBeamChannel WatchdogChannel True
+    res <- setBeamChannelDaemon daemonAudit WatchdogChannel True
+    handleHardwareResponse 
+        (\err -> do
+            putStrLn $ "[Safety Daemon] Failed to initialize Watchdog hardware channel: " ++ show err
+            exitWith (ExitFailure 1)
+        )
+        (\() -> return ())
+        res
 
     -- Loop waiting for heartbeats
     let loop = do
@@ -102,9 +120,9 @@ runSafetyDaemon parentPid = do
             let Time timeoutSec = watchdogTimeoutTime (Proxy :: Proxy WatchdogTimeoutMs)
                 -- Add a 5ms grace period to the daemon timeout so the main watchdog has time to log the freeze
                 timeoutUS = round (timeoutSec * 1_000_000) + 5000 :: Int
-            res <- try (timeout timeoutUS $ recv sock 16) :: IO (Either IOException (Maybe BC.ByteString))
+            resSock <- try (timeout timeoutUS $ recv sock 16) :: IO (Either IOException (Maybe BC.ByteString))
             
-            case res of
+            case resSock of
                 Right (Just msg) -> do
                     if msg == BC.pack "HB"
                         then loop
@@ -126,15 +144,19 @@ tripDaemon parentPid = do
     let msg = "!!! SAFETY DAEMON TRIP: Lost Heartbeat. FORCING BEAM OFF."
     putStrLn msg
     -- Dual-Channel Safety: Force Watchdog channel off
-    _ <- setBeamChannel WatchdogChannel False
+    res <- setBeamChannelDaemon daemonAudit WatchdogChannel False
+    handleHardwareResponse 
+        (\err -> putStrLn $ "!!! SAFETY DAEMON: Hardware Actuation Error during TRIP: " ++ show err)
+        (\() -> return ())
+        res
     
     -- Independent Audit Log recording
     now <- getMonotonicTimeNS
     let auditMsg = show now ++ " [CRITICAL] [SafetyDaemon] " ++ msg ++ "\n"
     encAudit <- encryptLog auditMsg
-    res <- try (B.appendFile "session.log" encAudit) :: IO (Either IOException ())
+    resFile <- try (B.appendFile "session.log" encAudit) :: IO (Either IOException ())
     
-    case res of
+    case resFile of
         Left err -> do
             putStrLn $ "!!! SAFETY DAEMON IO ERROR writing session.log: " ++ show err
             hFlush stdout
