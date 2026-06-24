@@ -23,7 +23,9 @@ jobs:
 
 
       - name: Build dependencies
-        run: cabal build --only-dependencies
+        run: |
+          cabal update
+          cabal build --only-dependencies
 
       - name: Build Binary
         run: cabal build
