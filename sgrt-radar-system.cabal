@@ -73,6 +73,7 @@ library
       FFI.RingBuffer.Types
       FFI.RingBuffer.Generated
       Hardware.Control
+      Hardware.FFI.Bridge
       Hardware.Consumer
       Hardware.FFI.Common
       Hardware.Types

@@ -30,6 +30,9 @@ data HardwareError
     | InvalidLength           -- ^ Packet length outside valid range (< 36 or > 1MB)
     | TlvError String         -- ^ TLV parsing error (e.g. invalid type or length)
     | DoSAttackDetected       -- ^ Potential DoS (e.g. max TLV size exceeded)
+    | SystemError Int         -- ^ POSIX System Error (errno)
+    | DriverError String      -- ^ Driver-specific failure
+    | TransientError String   -- ^ Transient resource availability
     deriving (Show, Eq, Generic)
 
 instance NFData HardwareError

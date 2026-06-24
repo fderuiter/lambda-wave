@@ -13,14 +13,19 @@ jobs:
       run:
         shell: bash
     steps:
-      - name: Prepare tooling
-        run: |
-          sudo apt-get update
-          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y python3-yaml
-
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Prepare tooling
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyyaml
+
 
       - uses: haskell-actions/setup@v2
         with:
@@ -45,7 +50,7 @@ jobs:
           fi
           echo "Modified files detected:"
           cat modified_files.txt
-          python3 scripts/ccr_validation.py modified_files.txt
+          python scripts/ccr_validation.py modified_files.txt
           VAL_CODE=$?
           echo "CCR validation exit code: $VAL_CODE"
           if [ $VAL_CODE -ne 0 ]; then
@@ -61,7 +66,12 @@ jobs:
 
 
       - name: Verify Regulatory Sync
-        run: python3 scripts/regulatory_sync.py
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python scripts/regulatory_sync.py
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
 
       - name: Build dependencies with coverage
         run: |
@@ -72,7 +82,7 @@ jobs:
       - name: Verify Dependency Integrity
         run: |
           cabal build --dry-run
-          python3 scripts/verify_integrity.py > integrity_report.txt
+          python scripts/verify_integrity.py > integrity_report.txt
 
       - name: Build with coverage
         run: cabal build
@@ -108,7 +118,7 @@ jobs:
           cat coverage_report.txt
           
           # Parse coverage report with a python script to enforce 90% coverage
-          python3 scripts/enforce_coverage.py coverage_report.txt
+          python scripts/enforce_coverage.py coverage_report.txt
 
       - name: Generate High-Fidelity Coverage Report (HPC HTML)
         if: always()
@@ -141,7 +151,7 @@ jobs:
       - name: Generate Safety Audit Report
         if: always()
         run: |
-          python3 scripts/ccr_reporter.py LATEST
+          python scripts/ccr_reporter.py LATEST
 
       - name: Archive Compliance Report & HPC HTML
         if: always()

@@ -126,7 +126,7 @@ main = do
         exitWith (ExitFailure 1)
 
     -- Requirement 2: verify 'Beam Off' state change
-    unless ("[Hardware] WATCHDOG Channel Set To: OFF" `isInfixOf` combinedOutput) $ do
+    unless ("[Hardware] Daemon WATCHDOG Channel Set To: OFF" `isInfixOf` combinedOutput) $ do
         putStrLn "FAIL: Beam Off command not found in output prior to termination."
         putStrLn $ "OUTPUT:\n" ++ combinedOutput
         exitWith (ExitFailure 1)

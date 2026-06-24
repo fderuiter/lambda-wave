@@ -27,7 +27,7 @@ withTestEnv action = do
 
     -- Setup State
     now <- getMonotonicTimeNS
-    q <- newTBQueueIO 100
+    q <- newTBQueueIO 10000
     let kConfig = KalmanConfig 1.0 1.0
     let st = SystemState [] BeamOff now 0 (Point3D 0 0 0 0 0) Map.empty (initKalman 0 kConfig) q False "en" "BEAM OFF"
     stateVar <- newTVarIO st
@@ -114,7 +114,7 @@ runChildCrash = do
     -- Note: No cleanup here, we assume parent cleans up or file is reused
 
     now <- getMonotonicTimeNS
-    q <- newTBQueueIO 100
+    q <- newTBQueueIO 10000
     let kConfig = KalmanConfig 1.0 1.0
     let st = SystemState [] BeamOff now 0 (Point3D 0 0 0 0 0) Map.empty (initKalman 0 kConfig) q False "en" "BEAM OFF"
     stateVar <- newTVarIO st

@@ -52,7 +52,7 @@ main = do
     -- Use standard Kalman config (same as production default or close to it)
     let kConfig = KalmanConfig 10.0 2.0
     let kState = initKalman targetHeight kConfig
-    q <- newTBQueueIO 100
+    q <- newTBQueueIO 10000
 
     -- Initial State: Beam Off, Empty Points
     let s = SystemState

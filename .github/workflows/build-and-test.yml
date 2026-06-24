@@ -42,6 +42,8 @@ jobs:
         run: cabal bench | tee bench.log || true
 
       - name: Compliance Gate
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: python3 scripts/regulatory_sync.py test.log bench.log
 
       - name: Archive Compliance Report

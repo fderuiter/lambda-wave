@@ -25,6 +25,7 @@ import Data.Config (targetHeight)
 import SignalProcessing.Kalman (initKalman, KalmanConfig(..))
 import qualified FFI.RingBuffer.IO as RingBuffer
 import Hardware.Control (configureRawSerial)
+import Hardware.FFI.Bridge (handleHardwareResponse)
 import Hardware.Consumer (consumerLoop)
 import Safety.Watchdog (watchdogLoop, runSafetyDaemon)
 import Safety.Audit
@@ -111,16 +112,18 @@ runMain = do
     ringBuffer <- RingBuffer.createRingBuffer (4 * 1024 * 1024)
 
     -- Configure Port (Raw Mode) to prevent data corruption
-    res <- configureRawSerial fd
-    case res of
-        Left err -> do
+    res <- configureRawSerial systemState fd
+    handleHardwareResponse
+        (\err -> do
             putStrLn $ "FATAL: Failed to configure serial port: " ++ show err
             exitFailure
-        Right () -> return ()
+        )
+        (\() -> return ())
+        res
 
     -- 2. Hardware Ingestion (Dedicated Thread)
     -- ingestionLoop accepts ForeignPtr
-    _ <- RingBuffer.ingestionLoop ringBuffer fd
+    _ <- RingBuffer.ingestionLoop systemState ringBuffer fd
 
     -- Spawn Safety Daemon
     exePath <- getExecutablePath
