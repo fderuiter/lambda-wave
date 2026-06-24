@@ -16,6 +16,7 @@ jobs:
         run: |
           apt-get update
           DEBIAN_FRONTEND=noninteractive apt-get install -y git python3 ca-certificates python3-yaml
+          git config --system --add safe.directory "*"
           git config --global --add safe.directory "*"
           python3 --version
           git --version
