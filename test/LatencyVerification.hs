@@ -1,5 +1,5 @@
-import qualified Data.HashMap.Strict as HM
 {-# LANGUAGE OverloadedStrings #-}
+import qualified Data.HashMap.Strict as HM
 
 {-|
 Module      : Main
