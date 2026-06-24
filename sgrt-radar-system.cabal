@@ -78,6 +78,7 @@ library
       Hardware.Types
       Safety.Audit
       Safety.Crypto
+      Safety.Token
       Safety.Watchdog
       UI.Presentation
       SignalProcessing.FMCW
@@ -150,7 +151,6 @@ executable sgrt-visualizer-exe
       , memory
       , process
       , time
-      , uuid
       , unordered-containers
       , directory
       , wai-extra
