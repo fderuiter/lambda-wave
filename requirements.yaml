@@ -1,0 +1,158 @@
+requirements:
+  - id: FR-DAQ-001
+    policy: ISO-13485-7.3.2
+    description: Zero-copy data ingestion
+    phase: Phase 2.1
+    module: "`FFI.RingBuffer.IO`, `cbits/src/ring_buffer.cpp`"
+    test: "`test/FFI/RingBuffer/IOSpec.hs`"
+    status: Complete
+  - id: FR-DAQ-002
+    policy: ISO-13485-7.3.2
+    description: Sensor Configuration
+    phase: Phase 2.3
+    module: "`Hardware.Control`, `Data.Config`"
+    test: "`test/Hardware/ControlSpec.hs`"
+    status: Complete
+  - id: FR-DAQ-003
+    policy: ISO-13485-7.3.2
+    description: Packet parser validation
+    phase: Phase 2.2
+    module: "`Hardware.Consumer`"
+    test: "`test/Hardware/ConsumerSpec.hs`, `ConsumerIntegrationCheck.hs`"
+    status: Complete
+  - id: FR-DAQ-004
+    policy: ISO-13485-7.3.2
+    description: Atomic ring buffer management
+    phase: Phase 2.1
+    module: "`FFI.RingBuffer.IO`, `cbits/src/ring_buffer.cpp`"
+    test: "`test/FFI/RingBuffer/IOSpec.hs`"
+    status: Complete
+  - id: FR-DSP-001
+    policy: ISO-13485-7.3.2
+    description: Static Clutter Removal
+    phase: Phase 3.1
+    module: "`SignalProcessing.FMCW`"
+    test: "`test/SignalProcessing/FMCWSpec.hs`"
+    status: Complete
+  - id: FR-DSP-002
+    policy: ISO-13485-7.3.2
+    description: Phase Unwrapping
+    phase: Phase 3.2
+    module: "`SignalProcessing.FMCW`"
+    test: "`test/SignalProcessing/FMCWSpec.hs`"
+    status: Complete
+  - id: FR-DSP-003
+    policy: ISO-13485-7.3.2
+    description: Kalman filter for motion prediction
+    phase: Phase 3.3
+    module: "`SignalProcessing.Kalman`"
+    test: "`test/SignalProcessing/KalmanCheck.hs`, `test/SignalProcessing/PhantomStudy.hs`"
+    status: Complete
+  - id: FR-DSP-004
+    policy: ISO-13485-7.3.2
+    description: Phase Extraction
+    phase: Phase 3.2
+    module: "`SignalProcessing.FMCW`"
+    test: "`test/SignalProcessing/FMCWSpec.hs`"
+    status: Complete
+  - id: FR-GAT-001
+    policy: ISO-13485-7.3.2
+    description: Automatic beam gating
+    phase: Phase 4.2
+    module: "`Control.Gating`"
+    test: "`test/Control/GatingCheck.hs`"
+    status: Complete
+  - id: FR-GAT-002
+    policy: ISO-13485-7.3.2
+    description: Total latency < 50ms
+    phase: Phase 4.2
+    module: "`Control.Gating`, `Main`"
+    test: "`bench/LatencyBench.hs`"
+    status: Complete
+  - id: FR-UI-001
+    policy: ISO-13485-7.3.2
+    description: Real-time visualization
+    phase: Phase 5.1
+    module: "`Control.UI.Renderer`, `Control.Mesher`"
+    test: "`test/Control/UIMathSpec.hs`"
+    status: Complete
+  - id: FR-UI-002
+    policy: ISO-13485-7.3.2
+    description: Visual gating feedback
+    phase: Phase 5.2
+    module: "`Control.UI.Renderer`"
+    test: Visual Inspection
+    status: Complete
+
+  - id: SR-SOUP-001
+    policy: ISO-13485-7.1
+    description: GHC RTS deterministic runtime (locked capabilities)
+    phase: Phase 1.1
+    module: "`app/Main.hs`, `.cabal`"
+    test: "`test/System/RTSSpec.hs`"
+    status: Complete
+  - id: SR-WD-001
+    policy: ISO-13485-7.1
+    description: Watchdog monitors all critical threads
+    phase: Phase 4.1
+    module: "`Safety.Watchdog`"
+    test: "`test/Safety/WatchdogSpec.hs`"
+    status: Complete
+  - id: SR-WD-002
+    policy: ISO-13485-7.1
+    description: Application termination on timeout (100ms)
+    phase: Phase 4.1
+    module: "`Safety.Watchdog`"
+    test: "`test/WatchdogCheck.hs`"
+    status: Complete
+  - id: SR-AUDIT-001
+    policy: ISO-13485-7.1
+    description: Immutable event log
+    phase: Phase 4.3
+    module: "`Safety.Audit`"
+    test: "`test/Safety/AuditCheck.hs`"
+    status: Complete
+
+  - id: PR-ACC-01
+    policy: ISO-13485-7.3.6
+    description: Correlation coefficient > 0.95 vs ground truth
+    phase: Phase 6.1
+    module: "`SignalProcessing.Kalman`, `SignalProcessing.FMCW`"
+    test: "`test/SignalProcessing/PhantomStudy.hs`"
+    status: Incomplete
+
+  - id: MR-001
+    policy: ISO-13485-7.3.2
+    description: FMCW Range Estimation (Equation 1)
+    phase: Phase 3.1
+    module: "`SignalProcessing.FMCW`"
+    test: "`test/SignalProcessing/FMCWSpec.hs`"
+    status: Complete
+  - id: MR-002
+    policy: ISO-13485-7.3.2
+    description: Chirp Z-Transform (Equation 2)
+    phase: Phase 3.1
+    module: "`SignalProcessing.FMCW`"
+    test: "`test/SignalProcessing/FMCWSpec.hs`"
+    status: Complete
+  - id: MR-003
+    policy: ISO-13485-7.3.2
+    description: Standard DFT (Equation 3)
+    phase: Phase 3.1
+    module: "None"
+    test: "None"
+    status: Incomplete
+  - id: MR-004
+    policy: ISO-13485-7.3.2
+    description: Phase Extraction (Equation 4)
+    phase: Phase 3.2
+    module: "`SignalProcessing.FMCW`"
+    test: "`test/SignalProcessing/FMCWSpec.hs`"
+    status: Complete
+  - id: MR-005
+    policy: ISO-13485-7.3.2
+    description: Displacement Calculation (Equation 5)
+    phase: Phase 3.2
+    module: "`SignalProcessing.FMCW`"
+    test: "`test/SignalProcessing/FMCWSpec.hs`"
+    status: Complete

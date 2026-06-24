@@ -13,7 +13,7 @@ approxEq a b epsilon = abs (a - b) < epsilon
 spec :: Spec
 spec = describe "SignalProcessing.FMCW" $ do
 
-    describe "Range Resolution (Equation 1 & Resolution Limit)" $ do
+    describe "Range Resolution (Equation 1 & Requirement MR-001 & Resolution Limit)" $ do
         it "calculates correct resolution for 4GHz bandwidth" $ do
             let bw = 4.0e9 -- 4 GHz
                 resolution = calculateRangeResolution bw
@@ -30,7 +30,7 @@ spec = describe "SignalProcessing.FMCW" $ do
             --   = 533333.33 Hz
             f_fft `shouldSatisfy` (\x -> approxEq x 533333.33 0.1)
 
-    describe "Chirp Z-Transform" $ do
+    describe "Chirp Z-Transform (Requirement MR-002)" $ do
         let params = CZTParams { cztStartFreq = 0
                                , cztBandwidth = 1000
                                , cztSteps = 10
@@ -122,7 +122,7 @@ spec = describe "SignalProcessing.FMCW" $ do
                 maxDiff = maximum (map abs diffs)
             maxDiff `shouldSatisfy` (< 1.0e-10)
 
-    describe "Phase Displacement (Equation 5)" $ do
+    describe "Phase Displacement (Equation 5, Requirement MR-005)" $ do
         it "calculates displacement from phase change correctly" $ do
             let f_min = 77.0e9 -- 77 GHz
                 delta_phi = pi   -- 180 degrees phase shift
@@ -205,4 +205,4 @@ spec = describe "SignalProcessing.FMCW" $ do
                 maxDiff = maximum (map abs diffs)
             maxDiff `shouldSatisfy` (< 1.0e-9)
 
--- Requirement FR-DSP-004
+-- Requirement FR-DSP-004, Requirement MR-004
