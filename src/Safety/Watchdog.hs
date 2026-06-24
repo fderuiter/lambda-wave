@@ -1,3 +1,4 @@
+-- Mitigates Hazard H-SYS-006
 module Safety.Watchdog (watchdogLoop, runSafetyDaemon) where
 
 import Data.Types

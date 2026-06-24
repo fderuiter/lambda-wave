@@ -3,6 +3,7 @@
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE PatternSynonyms #-}
 
+-- Mitigates Hazard H-SYS-004
 module SignalProcessing.Kalman
     ( KalmanState(..)
     , KalmanConfig(..)
