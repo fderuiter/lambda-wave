@@ -89,7 +89,6 @@ library
       
       Numeric.Kinematics
   other-modules:
-      Control.UIMathSpec
       Paths_sgrt_radar_system
   hs-source-dirs:
       src
@@ -109,7 +108,6 @@ executable sgrt-radar-system-exe
   import: common-options
   main-is: Main.hs
   other-modules:
-      Control.UIMathSpec
       Paths_sgrt_radar_system
   hs-source-dirs:
       app
@@ -122,7 +120,6 @@ executable sgrt-visualizer-exe
   import: common-options
   main-is: VisualizerMain.hs
   other-modules:
-      Control.UIMathSpec
       Paths_sgrt_radar_system
   hs-source-dirs:
       app
@@ -136,7 +133,6 @@ executable sgrt-visualizer-exe
       , OpenGL ==3.0.3.0
     cpp-options: -DENABLE_UI
     other-modules:
-      Control.UIMathSpec
         Control.UI.Renderer
         Control.UI.Window
         Control.UI.Input
@@ -157,12 +153,11 @@ executable sgrt-visualizer-exe
       , process
       , time
       , unordered-containers
-    , stm
+      , stm
       , directory
       , wai-extra
     cpp-options: -DENABLE_WEB_UI
     other-modules:
-      Control.UIMathSpec
         Control.WebUI
         Control.WebUI.Types
 
@@ -215,7 +210,6 @@ test-suite hardware-control-check
   type: exitcode-stdio-1.0
   main-is: ControlCheck.hs
   other-modules:
-      Control.UIMathSpec
       Paths_sgrt_radar_system
   hs-source-dirs:
       test/Hardware
@@ -229,7 +223,6 @@ test-suite hardware-consumer-check
   type: exitcode-stdio-1.0
   main-is: ConsumerCheck.hs
   other-modules:
-      Control.UIMathSpec
       Paths_sgrt_radar_system
   hs-source-dirs:
       test/Hardware
@@ -246,7 +239,6 @@ test-suite kalman-verification
   type: exitcode-stdio-1.0
   main-is: KalmanCheck.hs
   other-modules:
-      Control.UIMathSpec
       Paths_sgrt_radar_system
   hs-source-dirs:
       test/SignalProcessing
@@ -260,7 +252,6 @@ test-suite audit-check
   type: exitcode-stdio-1.0
   main-is: AuditCheck.hs
   other-modules:
-      Control.UIMathSpec
       Paths_sgrt_radar_system
   hs-source-dirs:
       test/Safety
@@ -277,7 +268,6 @@ test-suite clinical-hil-validation
   type: exitcode-stdio-1.0
   main-is: ClinicalHILValidation.hs
   other-modules:
-      Control.UIMathSpec
       Paths_sgrt_radar_system
   hs-source-dirs:
       test
@@ -294,7 +284,6 @@ test-suite gating-check
   type: exitcode-stdio-1.0
   main-is: GatingCheck.hs
   other-modules:
-      Control.UIMathSpec
       Paths_sgrt_radar_system
   hs-source-dirs:
       test/Control
@@ -308,7 +297,6 @@ test-suite watchdog-check
   type: exitcode-stdio-1.0
   main-is: WatchdogCheck.hs
   other-modules:
-      Control.UIMathSpec
       Paths_sgrt_radar_system
   hs-source-dirs:
       test
@@ -324,7 +312,6 @@ test-suite numeric-check
   type: exitcode-stdio-1.0
   main-is: NumericCheck.hs
   other-modules:
-      Control.UIMathSpec
       Paths_sgrt_radar_system
   hs-source-dirs:
       test
@@ -338,7 +325,6 @@ test-suite sentinel-check
   type: exitcode-stdio-1.0
   main-is: SentinelCheck.hs
   other-modules:
-      Control.UIMathSpec
       Paths_sgrt_radar_system
   hs-source-dirs:
       test
@@ -352,7 +338,6 @@ benchmark sgrt-radar-system-bench
   type: exitcode-stdio-1.0
   main-is: LatencyBench.hs
   other-modules:
-      Control.UIMathSpec
       Paths_sgrt_radar_system
   hs-source-dirs:
       bench
@@ -366,7 +351,6 @@ benchmark kalman-bench
   type: exitcode-stdio-1.0
   main-is: KalmanBench.hs
   other-modules:
-      Control.UIMathSpec
       Paths_sgrt_radar_system
   hs-source-dirs:
       bench
@@ -380,7 +364,6 @@ test-suite consumer-integration-check
   type: exitcode-stdio-1.0
   main-is: ConsumerIntegrationCheck.hs
   other-modules:
-      Control.UIMathSpec
       Paths_sgrt_radar_system
   hs-source-dirs:
       test/Hardware
@@ -460,7 +443,6 @@ benchmark fmcw-bench
   type: exitcode-stdio-1.0
   main-is: FMCWBench.hs
   other-modules:
-      Control.UIMathSpec
       Paths_sgrt_radar_system
   hs-source-dirs:
       bench
@@ -504,7 +486,6 @@ test-suite audit-heartbeat-check
   type: exitcode-stdio-1.0
   main-is: AuditHeartbeatCheck.hs
   other-modules:
-      Control.UIMathSpec
       Paths_sgrt_radar_system
   hs-source-dirs:
       test/Safety
@@ -524,7 +505,6 @@ test-suite beam-hold-check
   type: exitcode-stdio-1.0
   main-is: BeamHoldCheck.hs
   other-modules:
-      Control.UIMathSpec
       Paths_sgrt_radar_system
   hs-source-dirs:
       test/Control
