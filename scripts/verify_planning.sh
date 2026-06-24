@@ -69,10 +69,10 @@ fi
 ROADMAP_FILE="roadmap.md"
 if [ -f "$ROADMAP_FILE" ]; then
     echo "Verifying milestone names in $ROADMAP_FILE..."
-    if grep -iqE "\*\*([1-9])\.([1-9])\." "$ROADMAP_FILE"; then
+    if grep -iqE '\*\*([1-9])\.([1-9])\.' "$ROADMAP_FILE"; then
         echo "ERROR: Milestone names in roadmap.md may collide with IEC 62304 clauses."
         echo "Found potentially colliding names:"
-        grep -iE "\*\*([1-9])\.([1-9])\." "$ROADMAP_FILE"
+        grep -iE '\*\*([1-9])\.([1-9])\.' "$ROADMAP_FILE"
         exit 1
     fi
 fi

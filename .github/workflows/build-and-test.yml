@@ -11,6 +11,9 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: haskell:9.6.7-slim-bullseye
+    defaults:
+      run:
+        shell: bash
     steps:
       - name: Install git for checkout
         run: |
