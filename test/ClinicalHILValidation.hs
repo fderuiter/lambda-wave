@@ -93,6 +93,10 @@ runHILSimulation name rig duration = do
             }
     var <- newTVarIO s
     
+    _ <- forkIO $ forever $ do
+        _ <- atomically $ readTBQueue q
+        return ()
+        
     expectedStateVar <- newTVarIO False
     _ <- forkIO $ loopbackMonitor expectedStateVar
 
