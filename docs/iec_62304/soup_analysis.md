@@ -25,6 +25,8 @@ Lambda-Wave is an IEC 62304 Class C Medical Software system. The GHC RTS runs in
 ## 4. Anomaly List Assessment
 GHC 9.6.7 is a mature release. Known issues in the GHC issue tracker have been reviewed. No open bugs related to bounded GC or core thread scheduling were identified that affect the specific subset of features used by Lambda-Wave.
 
+Additionally, the base Debian 11.11 image (`haskell:9.6.7-slim-bullseye`) contains a known vulnerability in `libssh2-1` (CVE-2026-55200). This vulnerability is deemed acceptable and ignored by our security scans because the medical device operates in an air-gapped network segment without running an SSH server or client during normal patient operations, making the vulnerable paths unreachable.
+
 ## 5. Justification for Acceptability
 The GHC RTS is deemed acceptable for use in this Class C system because:
 1. The project architecture relies on a minimal subset of RTS features.
