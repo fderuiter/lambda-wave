@@ -14,7 +14,6 @@ module SignalProcessing.Regression
     ) where
 
 import SignalProcessing.Matrix
-import qualified Data.Vector.Unboxed as U
 
 -- | Standard Bi-Quadratic Polynomial
 -- y = b0 + b1*x + b2*x^2 + b3*x^3 + b4*x^4
@@ -39,7 +38,7 @@ solveBiQuadratic :: [Double] -> [Double] -> Maybe BiQuadratic
 solveBiQuadratic x y
     | null x = Nothing
     | otherwise = do
-        coeffsVec <- leastSquares designM (Vector (U.fromList y))
+        coeffsVec <- leastSquares designM y
         case vToList coeffsVec of
             [p0, p1, p2, p3, p4] -> Just $ BiQuadratic p0 p1 p2 p3 p4
             _ -> Nothing
@@ -53,7 +52,7 @@ solveStrictBiQuadratic :: [Double] -> [Double] -> Maybe StrictBiQuadratic
 solveStrictBiQuadratic x y
     | null x = Nothing
     | otherwise = do
-        coeffsVec <- leastSquares designM (Vector (U.fromList y))
+        coeffsVec <- leastSquares designM y
         case vToList coeffsVec of
             [k0, k2, k4] -> Just $ StrictBiQuadratic k0 k2 k4
             _ -> Nothing

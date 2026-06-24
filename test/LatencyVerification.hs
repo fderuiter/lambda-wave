@@ -1,6 +1,4 @@
-import qualified Data.HashMap.Strict as HM
 {-# LANGUAGE OverloadedStrings #-}
-
 {-|
 Module      : Main
 Description : Simulated Latency Verification for IEC 62304 Compliance
@@ -16,6 +14,8 @@ Since physical probing is unavailable in this environment, this verification ser
 a High-Assurance proxy, validating that the software component contributes negligible latency.
 -}
 module Main (main) where
+
+import qualified Data.HashMap.Strict as HM
 
 import Control.Concurrent.STM
 import Control.Monad (forM_)
@@ -59,6 +59,7 @@ main = do
             { currentPoints = []
             , beamState = BeamOff
             , lastFrameTime = t
+            , sequenceNumber = 0
             , isocenter = Point3D 0 0 0 0 0 -- Dummy center
             , threadHeartbeats = Map.empty
             , kalmanState = kState
@@ -93,7 +94,7 @@ main = do
         totalLat = sum results
         avgLat = fromIntegral totalLat / fromIntegral iterations :: Double
         -- 99th Percentile
-        p99Index = floor (0.99 * fromIntegral iterations) :: Int
+        p99Index = floor (0.99 * (fromIntegral iterations :: Double)) :: Int
         p99Lat = case drop p99Index sortedLatencies of
                     [] -> 0
                     (x:_) -> x

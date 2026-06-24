@@ -30,7 +30,6 @@ common common-options
     , binary ==0.8.9.1
     , bytestring ==0.11.5.3
     , unix >=2.7 && <2.9
-    , vector
     , template-haskell
     , deepseq >=1.4.8.0 && <1.5
     , containers ==0.6.7
@@ -43,6 +42,7 @@ common common-options
     , aeson
     , text
     , unordered-containers
+    , stm
   default-language: Haskell2010
 
 flag enable-ui
@@ -88,6 +88,7 @@ library
       SignalProcessing.Kalman
       
       Numeric.Kinematics
+      Numeric.Simple
   other-modules:
       Paths_sgrt_radar_system
   hs-source-dirs:
@@ -153,6 +154,7 @@ executable sgrt-visualizer-exe
       , process
       , time
       , unordered-containers
+      , stm
       , directory
       , wai-extra
     cpp-options: -DENABLE_WEB_UI
@@ -173,7 +175,6 @@ executable watchdog-fault
     , containers ==0.6.7
     , unix >=2.7 && <2.9
     , process
-    , vector
     , template-haskell
 
 test-suite sgrt-radar-system-test
@@ -181,6 +182,7 @@ test-suite sgrt-radar-system-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
+      Control.UIMathSpec
       Paths_sgrt_radar_system
       FFI.RingBuffer.TypesSpec
       FFI.RingBuffer.IOSpec
@@ -258,7 +260,6 @@ test-suite audit-check
       sgrt-radar-system
     , base >= 4.16 && < 5
     , unix >=2.7 && <2.9
-    , vector
     , template-haskell
 
 test-suite clinical-hil-validation
@@ -371,23 +372,6 @@ test-suite consumer-integration-check
     , base >= 4.16 && < 5
     , bytestring ==0.11.5.3
 
-test-suite ui-math-check
-  import: common-options
-  type: exitcode-stdio-1.0
-  main-is: UIMathMain.hs
-  other-modules:
-      Control.UIMathSpec
-      Control.UI.Renderer
-  hs-source-dirs:
-      test
-      app
-  ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
-  build-depends:
-      sgrt-radar-system
-    , base >= 4.16 && < 5
-    , hspec ==2.11.17
-    , GLUT ==2.7.0.16
-    , OpenGL ==3.0.3.0
 
 executable phantom-study
   import: common-options
@@ -417,7 +401,6 @@ executable check-baud
   build-depends:
       base >= 4.16 && < 5
     , unix >=2.7 && <2.9
-    , vector
     , template-haskell
 
 executable check-pty
@@ -428,7 +411,6 @@ executable check-pty
   build-depends:
       base >= 4.16 && < 5
     , unix >=2.7 && <2.9
-    , vector
     , template-haskell
 
 executable check-unix
@@ -439,7 +421,6 @@ executable check-unix
   build-depends:
       base >= 4.16 && < 5
     , unix >=2.7 && <2.9
-    , vector
     , template-haskell
 
 executable test-parse-errors
@@ -466,3 +447,84 @@ benchmark fmcw-bench
       sgrt-radar-system
     , criterion ==1.6.5.0
     , base >= 4.16 && < 5
+
+executable bolt-optimizer
+  import: common-options
+  main-is: BoltOptimizer.hs
+  hs-source-dirs:
+      tools/performance
+  build-depends:
+      base >= 4.16 && < 5
+    , text
+
+executable generate-synthetic-capture
+  import: common-options
+  main-is: GenerateSyntheticCapture.hs
+  hs-source-dirs:
+      tools/data-generation
+  build-depends:
+      base >= 4.16 && < 5
+    , bytestring ==0.11.5.3
+    , binary ==0.8.9.1
+
+executable generate-complex-capture
+  import: common-options
+  main-is: GenerateComplexCapture.hs
+  hs-source-dirs:
+      tools/data-generation
+  build-depends:
+      base >= 4.16 && < 5
+    , bytestring ==0.11.5.3
+    , binary ==0.8.9.1
+
+test-suite audit-heartbeat-check
+  import: common-options
+  type: exitcode-stdio-1.0
+  main-is: AuditHeartbeatCheck.hs
+  other-modules:
+      Paths_sgrt_radar_system
+  hs-source-dirs:
+      test/Safety
+  ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
+  build-depends:
+      sgrt-radar-system
+    , base >= 4.16 && < 5
+    , stm ==2.5.1.0
+    , containers ==0.6.7
+    , unix >=2.7 && <2.9
+    , process
+    , vector
+    , template-haskell
+
+test-suite beam-hold-check
+  import: common-options
+  type: exitcode-stdio-1.0
+  main-is: BeamHoldCheck.hs
+  other-modules:
+      Paths_sgrt_radar_system
+  hs-source-dirs:
+      test/Control
+  ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
+  build-depends:
+      sgrt-radar-system
+    , base >= 4.16 && < 5
+    , stm ==2.5.1.0
+    , unordered-containers
+    , stm
+    , containers ==0.6.7
+
+test-suite latency-verification
+  import: common-options
+  type: exitcode-stdio-1.0
+  main-is: LatencyVerification.hs
+  other-modules:
+      Paths_sgrt_radar_system
+  hs-source-dirs:
+      test
+  ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
+  build-depends:
+      sgrt-radar-system
+    , base >= 4.16 && < 5
+    , containers
+    , unordered-containers
+    , stm

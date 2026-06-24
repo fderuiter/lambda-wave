@@ -34,4 +34,14 @@ This document provides end-to-end traceability between Functional Requirements (
 
 | Req ID | Quality Policy Origin | Description | Source Phase | Module | Verification Test | Status |
 |---|---|---|---|---|---|---|
-| PR-ACC-01 | ISO-13485-7.3.6 | Correlation coefficient > 0.95 vs ground truth | Phase 6.1 | `SignalProcessing.Kalman`, `SignalProcessing.FMCW` | `test/SignalProcessing/PhantomStudy.hs` | ✅ Complete |
+| PR-ACC-01 | ISO-13485-7.3.6 | Correlation coefficient > 0.95 vs ground truth | Phase 6.1 | `SignalProcessing.Kalman`, `SignalProcessing.FMCW` | `test/SignalProcessing/PhantomStudy.hs` | ❌ Incomplete |
+
+## Mathematical Requirements (MR)
+
+| Req ID | Quality Policy Origin | Description | Source Phase | Module | Verification Test | Status |
+|---|---|---|---|---|---|---|
+| MR-001 | ISO-13485-7.3.2 | FMCW Range Estimation (Equation 1) | Phase 3.1 | `SignalProcessing.FMCW` | `test/SignalProcessing/FMCWSpec.hs` | ✅ Complete |
+| MR-002 | ISO-13485-7.3.2 | Chirp Z-Transform (Equation 2) | Phase 3.1 | `SignalProcessing.FMCW` | `test/SignalProcessing/FMCWSpec.hs` | ✅ Complete |
+| MR-003 | ISO-13485-7.3.2 | Standard DFT (Equation 3) | Phase 3.1 | None | None | ❌ Incomplete |
+| MR-004 | ISO-13485-7.3.2 | Phase Extraction (Equation 4) | Phase 3.2 | `SignalProcessing.FMCW` | `test/SignalProcessing/FMCWSpec.hs` | ✅ Complete |
+| MR-005 | ISO-13485-7.3.2 | Displacement Calculation (Equation 5) | Phase 3.2 | `SignalProcessing.FMCW` | `test/SignalProcessing/FMCWSpec.hs` | ✅ Complete |

@@ -1,15 +1,14 @@
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 module Main (main) where
 
 import Control.Concurrent (forkIO, threadDelay, killThread)
 import Control.Concurrent.STM
 import qualified Data.Map.Strict as Map
-import Data.IORef
 import System.Exit (exitFailure, exitSuccess)
 import Data.Time.HighRes (getMonotonicTimeNS)
-import System.IO (openFile, IOMode(..), hClose)
 import System.Posix.Files (removeLink)
-import Control.Exception (try, catch, IOException)
+import Control.Exception (catch, IOException)
 
 import Data.Types
 import Safety.Audit (auditLoop)
@@ -26,6 +25,7 @@ mkState = do
             { currentPoints = []
             , beamState = BeamOff
             , lastFrameTime = 0
+            , sequenceNumber = 0
             , isocenter = Point3D 0 0 0 0 0
             , threadHeartbeats = Map.empty
             , kalmanState = kState
@@ -57,7 +57,7 @@ main = do
     let hbMap = threadHeartbeats s
     now <- getMonotonicTimeNS
 
-    case Map.lookup "Audit" hbMap of
+    _ <- case Map.lookup "Audit" hbMap of
         Nothing -> do
             putStrLn "FAILURE: No heartbeat recorded for Audit thread."
             exitFailure

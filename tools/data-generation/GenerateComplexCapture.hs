@@ -1,10 +1,9 @@
 {-# LANGUAGE OverloadedStrings #-}
-module Main where
+module Main (main) where
 
 import qualified Data.ByteString.Lazy as BL
 import Data.Binary.Put
 import Data.Word
-import System.IO
 import Control.Monad (forM_)
 
 magicPattern :: [Word8]
@@ -63,7 +62,7 @@ generateFrame frameNum = do
 
 main :: IO ()
 main = do
-    let frames = [1..100]
+    let frames = [1..100] :: [Int]
     let putStream = forM_ frames $ \i -> generateFrame (fromIntegral i)
 
     let bytes = runPut putStream
