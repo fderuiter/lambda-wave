@@ -20,7 +20,7 @@ import Data.ByteString (ByteString)
 import Control.Concurrent.STM (newTVarIO, newTBQueueIO, TVar)
 import qualified Data.Map.Strict as Map
 import Data.Types
-import SignalProcessing.Kalman (KalmanState(..), initKalman, KalmanConfig(..))
+import SignalProcessing.Kalman (initKalman, KalmanConfig(..))
 
 createDummyState :: IO (TVar SystemState)
 createDummyState = do
@@ -131,8 +131,8 @@ spec = do
       killThread tid
 
 getBufferStart :: ForeignPtr RingBufferControl -> IO (Ptr CChar)
-getBufferStart fp = withForeignPtr fp $ \p -> do
-    (start, _) <- peekStaticFields p
+getBufferStart fp = withForeignPtr fp $ \p0 -> do
+    (start, _) <- peekStaticFields p0
     return start
 
 writeBytes :: Fd -> ByteString -> IO ()

@@ -22,7 +22,7 @@ import System.Posix.Files (removeLink)
 import qualified Data.ByteString as B
 import Safety.Crypto (encryptLog)
 
-import Hardware.Control (setBeamChannel, setBeamChannelDaemon, GpioChannel(..))
+import Hardware.Control (setBeamChannelDaemon, GpioChannel(..))
 import Hardware.FFI.Bridge (handleHardwareResponse)
 import Hardware.FFI.Common (HardwareResult)
 import Numeric.Kinematics

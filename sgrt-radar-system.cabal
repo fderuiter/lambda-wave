@@ -74,6 +74,7 @@ library
       FFI.RingBuffer.Generated
       Hardware.Control
       Hardware.Consumer
+      Hardware.FFI.Bridge
       Hardware.FFI.Common
       Hardware.Types
       Safety.Audit

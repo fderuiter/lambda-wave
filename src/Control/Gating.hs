@@ -18,6 +18,7 @@ import qualified Data.Map.Strict as Map
 import Control.Monad (when)
 import SignalProcessing.Kalman (KalmanState(..), KalmanConfig(..), pattern V3, predict, update)
 import Hardware.Control (setBeam)
+import Hardware.FFI.Bridge (handleHardwareResponse)
 import Data.I18n (Translations, translateAudit, translateBeamState)
 import qualified Data.Text as T
 import Numeric.Kinematics
