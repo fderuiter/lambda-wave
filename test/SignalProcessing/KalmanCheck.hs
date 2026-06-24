@@ -1,4 +1,6 @@
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE PatternSynonyms #-}
 
 module Main (main) where
 
@@ -19,7 +21,9 @@ testConvergence = do
     let finalState = foldl' (\st (dt, meas) ->
             update meas config (predict dt config st)) startState steps
 
-    let (V3 pos vel _) = x finalState
+    let (pos, vel) = case x finalState of
+            V3 pVal vVal _ -> (pVal, vVal)
+            _ -> (0, 0)
 
     let posOk = abs (pos - 10.0) < 0.1
     let velOk = abs vel < 0.1
@@ -54,7 +58,9 @@ testRMSE = do
     let results = foldl' (\(!st, !accSqErr) (t, meas) ->
             let predSt = predict dt config st
                 updSt  = update meas config predSt
-                (V3 estimPos _ _) = x updSt
+                estimPos = case x updSt of
+                    V3 pVal _ _ -> pVal
+                    _ -> 0.0
                 err = estimPos - trueSignal t
                 errSq = err * err -- ⚡ Bolt Optimization: Replace ** with * for performance
             in (updSt, accSqErr + errSq)
@@ -107,7 +113,10 @@ propSymmetry val =
         -- Run one step
         stPred = predict 0.033 config st
         stUpd  = update val config stPred
-        (M33 (V3 _ p12 p13) (V3 p21 _ p23) (V3 p31 p32 _)) = p stUpd
+        (p12, p13, p21, p23, p31, p32) = case p stUpd of
+            M33 (V3 _ p12Val p13Val) (V3 p21Val _ p23Val) (V3 p31Val p32Val _) ->
+                (p12Val, p13Val, p21Val, p23Val, p31Val, p32Val)
+            _ -> (0, 0, 0, 0, 0, 0)
 
         tol = 1e-10
         sym12 = abs (p12 - p21) < tol
@@ -124,18 +133,24 @@ propLinearity val scaleFactor =
         st = initKalman val config
 
         -- State X
-        (V3 x1 x2 x3) = x st
+        (x1, x2, x3) = case x st of
+            V3 x1Val x2Val x3Val -> (x1Val, x2Val, x3Val)
+            _ -> (0, 0, 0)
 
         -- Scaled State X'
         stScaled = st { x = V3 (scaleFactor*x1) (scaleFactor*x2) (scaleFactor*x3) }
 
         -- Predict(X')
         predScaled = predict dt config stScaled
-        (V3 ps1 ps2 ps3) = x predScaled
+        (ps1, ps2, ps3) = case x predScaled of
+            V3 ps1Val ps2Val ps3Val -> (ps1Val, ps2Val, ps3Val)
+            _ -> (0, 0, 0)
 
         -- Predict(X) * scale
         predNormal = predict dt config st
-        (V3 pn1 pn2 pn3) = x predNormal
+        (pn1, pn2, pn3) = case x predNormal of
+            V3 pn1Val pn2Val pn3Val -> (pn1Val, pn2Val, pn3Val)
+            _ -> (0, 0, 0)
 
         tol = 1e-10
         ok1 = abs (ps1 - scaleFactor*pn1) < tol

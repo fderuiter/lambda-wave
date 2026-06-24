@@ -409,7 +409,8 @@ parseTLVs count = go count []
                     c5 <- G.getFloatle
                     _padding <- G.getRemainingLazyByteString
                     let coeffs = [float2Double c0, float2Double c1, float2Double c2, float2Double c3, float2Double c4, float2Double c5]
-                    return (reconstructPolynomialSurface coeffs)
+                    let pts = reconstructPolynomialSurface coeffs
+                    if null pts then fail "NaN/Inf detected in surface reconstruction" else return pts
 
                 go (n - 1) (points : acc)
             _ -> do

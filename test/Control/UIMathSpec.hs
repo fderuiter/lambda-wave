@@ -4,7 +4,7 @@ module Control.UIMathSpec (spec) where
 import Test.Hspec
 -- Removed unused Control.Monad (unless)
 import GHC.Float (double2Float)
-import Control.UI.Renderer (shouldBeep)
+import UI.Presentation (shouldTriggerAudioAlert)
 import Data.Types (BeamState(..))
 
 -- | Mock types for verification
@@ -91,21 +91,21 @@ spec = describe "Control.UI.Math" $ do
             -- 24.1 < 25.
             angle `shouldSatisfy` (< 35.0) -- Safe margin
 
-    describe "Audio Alert Logic (shouldBeep)" $ do
+    describe "Audio Alert Logic (shouldTriggerAudioAlert)" $ do
         it "beeps when transitioning from BeamHold to BeamOff with alerts enabled" $ do
-            shouldBeep True BeamHold BeamOff `shouldBe` True
+            shouldTriggerAudioAlert True BeamHold BeamOff `shouldBe` True
 
         it "beeps when transitioning from BeamOn to BeamOff with alerts enabled" $ do
-            shouldBeep True BeamOn BeamOff `shouldBe` True
+            shouldTriggerAudioAlert True BeamOn BeamOff `shouldBe` True
 
         it "does not beep when remaining in BeamOff (startup/steady state)" $ do
-            shouldBeep True BeamOff BeamOff `shouldBe` False
+            shouldTriggerAudioAlert True BeamOff BeamOff `shouldBe` False
 
         it "does not beep when transitioning from BeamOff to BeamOn" $ do
-            shouldBeep True BeamOff BeamOn `shouldBe` False
+            shouldTriggerAudioAlert True BeamOff BeamOn `shouldBe` False
 
         it "does not beep on any transition if alerts are disabled" $ do
-            shouldBeep False BeamHold BeamOff `shouldBe` False
-            shouldBeep False BeamOn BeamOff `shouldBe` False
+            shouldTriggerAudioAlert False BeamHold BeamOff `shouldBe` False
+            shouldTriggerAudioAlert False BeamOn BeamOff `shouldBe` False
 
 -- Requirement FR-UI-001

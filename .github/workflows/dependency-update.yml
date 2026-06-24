@@ -8,10 +8,16 @@ on:
 jobs:
   update-dependencies:
     runs-on: ubuntu-latest
-    container:
-      image: haskell:9.6.7
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - uses: haskell-actions/setup@v2
+        with:
+          ghc-version: '9.6.7'
+          cabal-version: 'latest'
 
       - name: Install system dependencies
         run: scripts/setup_env.sh

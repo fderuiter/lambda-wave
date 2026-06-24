@@ -13,7 +13,8 @@ module SignalProcessing.Regression
     , StrictBiQuadratic(..)
     ) where
 
-import Numeric.Simple
+import SignalProcessing.Matrix
+import qualified Data.Vector.Unboxed as U
 
 -- | Standard Bi-Quadratic Polynomial
 -- y = b0 + b1*x + b2*x^2 + b3*x^3 + b4*x^4
@@ -37,17 +38,13 @@ data StrictBiQuadratic = StrictBiQuadratic
 solveBiQuadratic :: [Double] -> [Double] -> Maybe BiQuadratic
 solveBiQuadratic x y
     | null x = Nothing
-    -- ⚡ Bolt Optimization: Removed redundant O(N) `length x /= length y` check
-    -- `leastSquares` inherently validates dimension equality.
     | otherwise = do
-        coeffs <- leastSquares designM y
-        case coeffs of
+        coeffsVec <- leastSquares designM (Vector (U.fromList y))
+        case vToList coeffsVec of
             [p0, p1, p2, p3, p4] -> Just $ BiQuadratic p0 p1 p2 p3 p4
             _ -> Nothing
   where
-    -- ⚡ Bolt: Using explicit multiplication (v2 * v2) instead of (val^4)
-    -- avoids the function overhead of `^` for small integer powers.
-    designM = map (\val -> let v2 = val * val in [1, val, v2, v2 * val, v2 * v2]) x
+    designM = fromLists $ map (\val -> let v2 = val * val in [1, val, v2, v2 * val, v2 * v2]) x
 
 -- | Perform the Regression for "Strict" Bi-Quadratic
 -- y = a*x^4 + b*x^2 + c
@@ -55,33 +52,25 @@ solveBiQuadratic x y
 solveStrictBiQuadratic :: [Double] -> [Double] -> Maybe StrictBiQuadratic
 solveStrictBiQuadratic x y
     | null x = Nothing
-    -- ⚡ Bolt Optimization: Removed redundant O(N) `length x /= length y` check
-    -- `leastSquares` inherently validates dimension equality.
     | otherwise = do
-        coeffs <- leastSquares designM y
-        case coeffs of
+        coeffsVec <- leastSquares designM (Vector (U.fromList y))
+        case vToList coeffsVec of
             [k0, k2, k4] -> Just $ StrictBiQuadratic k0 k2 k4
             _ -> Nothing
   where
-    -- ⚡ Bolt: Using explicit multiplication instead of ^
-    designM = map (\val -> let v2 = val * val in [1, v2, v2 * v2]) x
+    designM = fromLists $ map (\val -> let v2 = val * val in [1, v2, v2 * v2]) x
 
 -- | Predictable TypeClass for polynomials
 class Predictable a where
     -- | Predicts the y value for a given x using the polynomial model.
-    --
-    -- Complexity: O(1) runtime.
-    -- Safety: Total function, handles all inputs gracefully.
     predict :: a -> Double -> Double
 
 instance Predictable BiQuadratic where
     predict (BiQuadratic p0 p1 p2 p3 p4) x =
-        -- ⚡ Bolt: Caching x^2 and using explicit multiplication for x^3 and x^4
         let x2 = x * x
         in p0 + (p1 * x) + (p2 * x2) + (p3 * x2 * x) + (p4 * x2 * x2)
 
 instance Predictable StrictBiQuadratic where
     predict (StrictBiQuadratic k0 k2 k4) x =
-        -- ⚡ Bolt: Caching x^2 and using explicit multiplication
         let x2 = x * x
         in k0 + (k2 * x2) + (k4 * x2 * x2)

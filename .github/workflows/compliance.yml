@@ -9,32 +9,49 @@ on:
 jobs:
   compliance-checks:
     runs-on: ubuntu-latest
-    container:
-      image: haskell:9.6.7
+    defaults:
+      run:
+        shell: bash
     steps:
+      - name: Prepare tooling
+        run: |
+          sudo apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y python3-yaml
+
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Prepare container tooling
-        run: |
-          apt-get update
-          DEBIAN_FRONTEND=noninteractive apt-get install -y git python3 ca-certificates python3-yaml
-          git config --global --add safe.directory "$GITHUB_WORKSPACE"
-          python3 --version
-          git --version
+      - uses: haskell-actions/setup@v2
+        with:
+          ghc-version: '9.6.7'
+          cabal-version: 'latest'
 
       - name: Verify Planning Documents (IEC 62304)
         run: scripts/verify_planning.sh
 
       - name: Validate Change Control Records (CCR)
         run: |
+          set +e
           if [ -n "${{ github.base_ref }}" ]; then
-            git diff --name-only origin/${{ github.base_ref }}...HEAD > modified_files.txt || git show --name-only --format= > modified_files.txt
+            git fetch origin ${{ github.base_ref }} || true
+            git diff --name-only "origin/${{ github.base_ref }}...HEAD" > modified_files.txt
+            if [ $? -ne 0 ]; then
+              echo "git diff failed, falling back to git show"
+              git show --name-only --format= > modified_files.txt
+            fi
           else
             git show --name-only --format= > modified_files.txt
           fi
+          echo "Modified files detected:"
+          cat modified_files.txt
           python3 scripts/ccr_validation.py modified_files.txt
+          VAL_CODE=$?
+          echo "CCR validation exit code: $VAL_CODE"
+          if [ $VAL_CODE -ne 0 ]; then
+            exit 1
+          fi
+          set -e
 
       - name: Run Promotion Validator
         run: scripts/promotion_validator.sh
@@ -48,7 +65,8 @@ jobs:
 
       - name: Build dependencies with coverage
         run: |
-          echo -e "package sgrt-radar-system\n  coverage: True" >> cabal.project.local
+          cabal update
+          printf "package sgrt-radar-system\n  coverage: True\n" >> cabal.project.local
           cabal build --only-dependencies
 
       - name: Verify Dependency Integrity
@@ -72,7 +90,7 @@ jobs:
           
           # Create a combined tix file
           # We will pass all found .tix files to hpc sum
-          TIX_FILES=$(find . -name "*.tix" | grep -v "combined.tix")
+          TIX_FILES=$(find . -name "*.tix" | grep -v "combined.tix" || true)
           if [ -z "$TIX_FILES" ]; then
             echo "No coverage files found!"
             exit 1
@@ -81,8 +99,8 @@ jobs:
           hpc sum $TIX_FILES --union --exclude=Paths_sgrt_radar_system --exclude=Main --output=combined.tix
           
           # We need the mix dir for the library
-          MIX_DIR=$(find dist-newstyle -name "sgrt-radar-system-*-inplace" | grep "mix" | head -n 1)
-          PARENT_DIR=$(dirname $MIX_DIR)
+          MIX_DIR=$(find dist-newstyle -name "sgrt-radar-system-*-inplace" | grep "mix" | head -n 1 || true)
+          PARENT_DIR=$(dirname "$MIX_DIR")
           
           # Generate report for Safety modules
           hpc report combined.tix --srcdir=src --hpcdir=$PARENT_DIR --include=sgrt-radar-system-0.1.0.0-inplace/Safety.Watchdog --include=sgrt-radar-system-0.1.0.0-inplace/Safety.Audit > coverage_report.txt
@@ -95,11 +113,29 @@ jobs:
       - name: Generate High-Fidelity Coverage Report (HPC HTML)
         if: always()
         run: |
-          MIX_DIR=$(find dist-newstyle -name "sgrt-radar-system-*-inplace" | grep "mix" | head -n 1)
-          PARENT_DIR=$(dirname $MIX_DIR)
           if [ -f "combined.tix" ]; then
             mkdir -p hpc_html
-            hpc markup combined.tix --srcdir=src --hpcdir=$PARENT_DIR --destdir=hpc_html
+            HPC_ARGS=""
+            for mix_dir in $(find dist-newstyle -type d -name "mix" 2>/dev/null || true); do
+              if [ -n "$mix_dir" ]; then
+                PARENT=$(dirname "$mix_dir")
+                HPC_ARGS="$HPC_ARGS --hpcdir=$PARENT"
+              fi
+            done
+            
+            SRC_ARGS=""
+            for d in app src test tools bench; do
+              if [ -d "$d" ]; then
+                SRC_ARGS="$SRC_ARGS --srcdir=$d"
+              fi
+            done
+            for autogen_dir in $(find dist-newstyle -type d -name "autogen" 2>/dev/null || true); do
+              if [ -n "$autogen_dir" ]; then
+                SRC_ARGS="$SRC_ARGS --srcdir=$autogen_dir"
+              fi
+            done
+            
+            hpc markup combined.tix $SRC_ARGS $HPC_ARGS --destdir=hpc_html || echo "Warning: Some modules could not be marked up. HTML report may be incomplete."
           fi
 
       - name: Generate Safety Audit Report
