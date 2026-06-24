@@ -75,7 +75,6 @@ library
       Hardware.Control
       Hardware.FFI.Bridge
       Hardware.Consumer
-      Hardware.FFI.Bridge
       Hardware.FFI.Common
       Hardware.Types
       Safety.Audit
