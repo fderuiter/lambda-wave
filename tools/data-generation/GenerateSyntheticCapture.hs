@@ -1,10 +1,9 @@
 {-# LANGUAGE OverloadedStrings #-}
-module Main where
+module Main (main) where
 
 import qualified Data.ByteString.Lazy as BL
 import Data.Binary.Put
 import Data.Word
-import System.IO
 import Control.Monad (forM_)
 
 magicPattern :: [Word8]
@@ -22,11 +21,11 @@ generateFrame frameNum coeffs = do
     -- Magic (8) - done
     putWord32le 0 -- Version (4)
 
-    let payloadSize = 24 -- 6 floats * 4 bytes
-    let tlvHeaderSize = 8
+    let payloadSize = 24 :: Word32 -- 6 floats * 4 bytes
+    let tlvHeaderSize = 8 :: Word32
     let tlvTotalSize = tlvHeaderSize + payloadSize
-    let headerSize = 36 -- 8 magic + 7 * 4 words
-    let totalPacketLen = fromIntegral (headerSize + tlvTotalSize) :: Word32
+    let headerSize = 36 :: Word32 -- 8 magic + 7 * 4 words
+    let totalPacketLen = headerSize + tlvTotalSize
 
     putWord32le totalPacketLen -- TotalPacketLen (4)
     putWord32le 0 -- Platform (4)
@@ -37,13 +36,13 @@ generateFrame frameNum coeffs = do
 
     -- 3. TLV Type 2 (Surface Coefficients)
     putWord32le 2 -- Type 2
-    putWord32le (fromIntegral tlvTotalSize) -- Length (Header + Payload)
+    putWord32le tlvTotalSize -- Length (Header + Payload)
 
     putCoeffs coeffs
 
 main :: IO ()
 main = do
-    let frames = [1..100]
+    let frames = [1..100] :: [Int]
     let putStream = forM_ frames $ \i -> do
             -- Generate a dummy flat surface at z = i
             let coeffs = [fromIntegral i, 0, 0, 0, 0, 0] :: [Float]
