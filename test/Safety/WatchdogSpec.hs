@@ -21,3 +21,4 @@ spec = describe "Safety.Watchdog" $ do
         combinedOutput `shouldNotSatisfy` isInfixOf "SURVIVED"
 
 -- Requirement SR-WD-001
+-- Requirement SR-WD-002

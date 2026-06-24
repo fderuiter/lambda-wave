@@ -109,3 +109,4 @@ spec = describe "Control.UI.Math" $ do
             shouldTriggerAudioAlert False BeamOn BeamOff `shouldBe` False
 
 -- Requirement FR-UI-001
+-- Requirement FR-UI-002
