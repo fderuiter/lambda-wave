@@ -8,7 +8,6 @@ module Control.Mesher (fitPolynomialSurface, reconstructPolynomialSurface) where
 
 import Data.Types
 import SignalProcessing.Matrix
-import qualified Data.Vector.Unboxed as U
 
 -- | Reconstructs a 20x20 3D surface mesh from 6 polynomial coefficients
 -- Model: z = c0 + c1*x + c2*y + c3*x^2 + c4*xy + c5*y^2
@@ -44,6 +43,6 @@ fitPolynomialSurface pts
             y = py p
         in [1, x, y, x * x, x * y, y * y]) pts
 
-    b = Vector $ U.fromList $ map pz pts
+    b = map pz pts
 
 -- Requirement FR-UI-001

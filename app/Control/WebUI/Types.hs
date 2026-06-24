@@ -42,14 +42,11 @@ instance ToJSON Point3D where
         , "snr" .= snr
         ]
 
-instance ToJSON Vector where
-    toJSON v = case vToList v of
-        [x, y, z] -> object ["x" .= x, "y" .= y, "z" .= z]
-        lst -> toJSON lst
-
 instance ToJSON KalmanState where
     toJSON (KalmanState{..}) = object
-        [ "stateVector" .= x
+        [ "stateVector" .= case vToList x of
+            [vx, vy, vz] -> object ["x" .= vx, "y" .= vy, "z" .= vz]
+            lst -> toJSON lst
         ]
 
 instance ToJSON SystemState where
