@@ -12,7 +12,7 @@ import System.Exit (exitFailure, exitSuccess)
 
 import Data.Types
 import Control.Gating (processFrame)
-import SignalProcessing.Kalman (KalmanState(..), pattern V3, pattern M33, KalmanConfig(..), initKalman)
+import SignalProcessing.Kalman (KalmanConfig(..), initKalman)
 import Data.Config (targetHeight)
 
 -- | Dummy State
@@ -46,8 +46,8 @@ main = do
         threadDelay 1000 -- 1ms
         atomically $ modifyTVar' stateVar $ \s -> s { beamState = BeamHold }
 
-    let points = [Point3D 10.0 0 0 0 0]
-    let frame = RadarFrame "" 0 points
+    let pts = [Point3D 10.0 0 0 0 0]
+    let frame = RadarFrame "" 0 pts
 
     consumerThread <- forkIO $ forever $ do
         processFrame HM.empty stateVar frame
