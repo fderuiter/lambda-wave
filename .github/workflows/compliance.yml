@@ -111,13 +111,29 @@ jobs:
       - name: Generate High-Fidelity Coverage Report (HPC HTML)
         if: always()
         run: |
-          MIX_DIR=$(find dist-newstyle -name "sgrt-radar-system-*-inplace" | grep "mix" | head -n 1 || true)
-          if [ -n "$MIX_DIR" ]; then
-            PARENT_DIR=$(dirname "$MIX_DIR")
-            if [ -f "combined.tix" ]; then
-              mkdir -p hpc_html
-              hpc markup combined.tix --srcdir=src --hpcdir=$PARENT_DIR --destdir=hpc_html
-            fi
+          if [ -f "combined.tix" ]; then
+            mkdir -p hpc_html
+            HPC_ARGS=""
+            while IFS= read -r mix_dir; do
+              if [ -n "$mix_dir" ]; then
+                PARENT=$(dirname "$mix_dir")
+                HPC_ARGS="$HPC_ARGS --hpcdir=$PARENT"
+              fi
+            done < <(find dist-newstyle -type d -name "mix" 2>/dev/null || true)
+            
+            SRC_ARGS=""
+            for d in app src test tools bench; do
+              if [ -d "$d" ]; then
+                SRC_ARGS="$SRC_ARGS --srcdir=$d"
+              fi
+            done
+            while IFS= read -r autogen_dir; do
+              if [ -n "$autogen_dir" ]; then
+                SRC_ARGS="$SRC_ARGS --srcdir=$autogen_dir"
+              fi
+            done < <(find dist-newstyle -type d -name "autogen" 2>/dev/null || true)
+            
+            hpc markup combined.tix $SRC_ARGS $HPC_ARGS --destdir=hpc_html || echo "Warning: Some modules could not be marked up. HTML report may be incomplete."
           fi
 
       - name: Generate Safety Audit Report
