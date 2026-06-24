@@ -103,16 +103,10 @@ main() {
 
                 if [ "$skip_security" = false ]; then
                     log_info "Installing security scanning tools (Trivy)..."
-                    $sudo_cmd apt-get install -y --fix-missing --no-install-recommends wget jq
-                    TRIVY_LATEST_URL=$(curl -s https://api.github.com/repos/aquasecurity/trivy/releases/latest | jq -r '.assets[] | select(.name | endswith("Linux-64bit.deb")) | .browser_download_url')
-                    if [ -n "$TRIVY_LATEST_URL" ]; then
-                        wget -qO trivy.deb "$TRIVY_LATEST_URL"
-                        $sudo_cmd apt-get install -y ./trivy.deb
-                        rm trivy.deb
-                    else
-                        log_error "Failed to find Trivy latest release URL"
-                        exit 1
-                    fi
+                    $sudo_cmd apt-get install -y --fix-missing --no-install-recommends wget
+                    wget -qO trivy.deb "https://github.com/aquasecurity/trivy/releases/download/v0.71.2/trivy_0.71.2_Linux-64bit.deb"
+                    $sudo_cmd apt-get install -y ./trivy.deb
+                    rm trivy.deb
                 else
                     log_info "Skipping security scanning tools installation as requested."
                 fi
