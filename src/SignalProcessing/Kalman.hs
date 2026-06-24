@@ -70,30 +70,29 @@ predict dt config state
 update :: Double -> KalmanConfig -> KalmanState -> KalmanState
 update measurement config state
     | isNaN measurement || isInfinite measurement = state
-    | otherwise = KalmanState { x = xNew, p = pNew }
-  where
-    hVec = V3 1 0 0
-    z = measurement
-    rVal = measNoise config
+    | otherwise = case (x state, p state) of
+        (V3 px _ _, M33 (V3 p00 _ _) (V3 p10 _ _) (V3 p20 _ _)) -> 
+            let
+                hVec = V3 1 0 0
+                z = measurement
+                rVal = measNoise config
 
-    (V3 px _ _) = x state
-    y = z - px
+                y = z - px
+                
+                sVal = p00 + rVal
+                col1P = V3 p00 p10 p20
 
-    (M33 (V3 p00 _ _) _ _) = p state
-    sVal = p00 + rVal
+                invS = if abs sVal < 1e-12 then 0 else 1.0 / sVal
+                kVec = scaleV invS col1P
 
-    (M33 (V3 p11 _ _) (V3 p21 _ _) (V3 p31 _ _)) = p state
-    col1P = V3 p11 p21 p31
+                xNew = addV (x state) (scaleV y kVec)
 
-    invS = if abs sVal < 1e-12 then 0 else 1.0 / sVal
-    kVec = scaleV invS col1P
+                khMatFull = outerV kVec hVec
+                iMinusKH = subM ident3 khMatFull
 
-    xNew = addV (x state) (scaleV y kVec)
+                term1 = mmMul iMinusKH (mmMul (p state) (transM iMinusKH))
+                term2 = scaleM rVal (outerV kVec kVec)
 
-    khMatFull = outerV kVec hVec
-    iMinusKH = subM ident3 khMatFull
-
-    term1 = mmMul iMinusKH (mmMul (p state) (transM iMinusKH))
-    term2 = scaleM rVal (outerV kVec kVec)
-
-    pNew = addM term1 term2
+                pNew = addM term1 term2
+            in KalmanState { x = xNew, p = pNew }
+        _ -> state

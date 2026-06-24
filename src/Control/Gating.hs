@@ -1,5 +1,6 @@
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE PatternSynonyms #-}
 -- |
 -- Module      : Control.Gating
 -- Description : Beam gating logic
@@ -145,7 +146,9 @@ evaluateGating target tol hyst latencyTime kState oldBeam =
     let -- Latency Compensation
         -- Predict position at (Now + Latency)
         -- x(t+dt) = x(t) + v(t)*dt + 0.5*a(t)*dt^2
-        (V3 pos vel acc) = x kState
+        (pos, vel, acc) = case x kState of
+            V3 pVal vVal aVal -> (pVal, vVal, aVal)
+            _ -> (0, 0, 0)
         
         posD = Distance pos
         velV = Velocity vel

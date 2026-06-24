@@ -1,5 +1,6 @@
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE PatternSynonyms #-}
 module Main (main) where
 
 import qualified Data.HashMap.Strict as HM
@@ -121,7 +122,9 @@ runHILSimulation name rig duration = do
             let p2eLatencyNs = tMatched - tBefore
             
             let kState = kalmanState st
-            let (V3 estPos _ _) = x kState
+            let estPos = case x kState of
+                    V3 pVal _ _ -> pVal
+                    _ -> 0.0
             
             let bState = beamState st
             let estDelta = abs (estPos - truePos)

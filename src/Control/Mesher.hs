@@ -36,7 +36,7 @@ fitPolynomialSurface :: [Point3D] -> [Double]
 fitPolynomialSurface pts
     | null (drop 5 pts) = replicate 6 0.0 -- Not enough points
     | otherwise = case leastSquares a b of
-        Just v -> vToList v
+        Just vec -> vToList vec
         Nothing -> replicate 6 0.0
   where
     a = fromLists $ map (\p ->
