@@ -125,7 +125,6 @@ The GHC RTS is deemed acceptable for use in this Class C system because:
 - transformers-compat == 0.8
 - unix == 2.8.8.0
 - unordered-containers == 0.2.21
-- uuid-types == 1.0.6.1
 - vector == 0.13.2.0
 - vector-stream == 0.1.0.1
 - witherable == 0.5
@@ -137,3 +136,9 @@ The GHC RTS is deemed acceptable for use in this Class C system because:
 |----------|-----------|---------------------------|-------|
 | Haskell Foundation | GHC RTS | 2025-10-15 | Core compiler |
 | GitHub | Code Hosting | 2025-11-20 | CI/CD |
+
+## 8. Archived Components
+
+| Component | Version | Date Removed | Justification for Removal |
+|-----------|---------|--------------|---------------------------|
+| `uuid` / `uuid-types` | 1.0.6.1 | 2026-06-24 | Removed to reduce SOUP footprint and supply chain risk. Replaced with native token generation utility leveraging existing system entropy. |
