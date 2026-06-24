@@ -1,8 +1,5 @@
 name: Release
 
-env:
-  ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
-
 on:
   push:
     tags:
@@ -11,23 +8,21 @@ on:
 jobs:
   release:
     runs-on: ubuntu-latest
-    container:
-      image: haskell:9.6.7-slim-bullseye
     defaults:
       run:
         shell: bash
     steps:
-      - name: Install git for checkout
-        run: |
-          apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y git
-          git config --global --add safe.directory "*"
-
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - uses: haskell-actions/setup@v2
+        with:
+          ghc-version: '9.6.7'
+          cabal-version: 'latest'
 
       - name: Install system dependencies
         run: |
-          apt-get update
-          apt-get install -y build-essential liblapack-dev libblas-dev
+          sudo apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential liblapack-dev libblas-dev
 
 
       - name: Build dependencies

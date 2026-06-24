@@ -1,8 +1,5 @@
 name: IEC 62304 Compliance Pipeline
 
-env:
-  ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
-
 on:
   pull_request:
     branches:
@@ -12,24 +9,23 @@ on:
 jobs:
   compliance-checks:
     runs-on: ubuntu-latest
-    container:
-      image: haskell:9.6.7-slim-bullseye
     defaults:
       run:
         shell: bash
     steps:
-      - name: Prepare container tooling
+      - name: Prepare tooling
         run: |
-          apt-get update
-          DEBIAN_FRONTEND=noninteractive apt-get install -y git python3 ca-certificates python3-yaml
-          git config --system --add safe.directory "*"
-          git config --global --add safe.directory "*"
-          python3 --version
-          git --version
+          sudo apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y python3-yaml
 
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - uses: haskell-actions/setup@v2
+        with:
+          ghc-version: '9.6.7'
+          cabal-version: 'latest'
 
       - name: Verify Planning Documents (IEC 62304)
         run: scripts/verify_planning.sh

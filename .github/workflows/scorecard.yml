@@ -1,7 +1,4 @@
 name: Scorecards supply-chain security
-env:
-  ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
-
 on:
   branch_protection_rule:
   schedule:
