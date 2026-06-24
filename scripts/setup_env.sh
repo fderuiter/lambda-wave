@@ -105,8 +105,8 @@ main() {
                     log_info "Installing security scanning tools (Trivy)..."
                     $sudo_cmd apt-get install -y --fix-missing --no-install-recommends wget curl
                     
-                    # Fetch latest version without using GitHub API (to prevent rate limits)
-                    TRIVY_VERSION=$(curl -sI https://github.com/aquasecurity/trivy/releases/latest | grep -i "^location:" | awk -F '/' '{print $NF}' | tr -d '\r')
+                    # Fetch hardcoded version to avoid GitHub API rate limits
+                    TRIVY_VERSION="v0.71.2"
                     
                     if [ -n "$TRIVY_VERSION" ]; then
                         # Remove leading 'v' for the file name
