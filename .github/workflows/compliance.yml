@@ -16,7 +16,9 @@ jobs:
       - name: Prepare tooling
         run: |
           sudo apt-get update
-          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y python3-yaml
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y python3-yaml python3-pip
+          pip3 install pyyaml --break-system-packages || true
+
 
       - uses: actions/checkout@v4
         with:
