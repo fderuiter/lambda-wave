@@ -103,11 +103,24 @@ main() {
 
                 if [ "$skip_security" = false ]; then
                     log_info "Installing security scanning tools (Trivy)..."
-                    $sudo_cmd apt-get install -y --fix-missing --no-install-recommends wget apt-transport-https gnupg lsb-release
-                    curl -sL https://aquasecurity.github.io/trivy-repo/deb/public.key | $sudo_cmd gpg --dearmor --yes -o /usr/share/keyrings/trivy.gpg
-                    echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb generic main" | $sudo_cmd tee -a /etc/apt/sources.list.d/trivy.list
-                    $sudo_cmd apt-get update --fix-missing
-                    $sudo_cmd apt-get install -y --fix-missing --no-install-recommends trivy
+                    $sudo_cmd apt-get install -y --fix-missing --no-install-recommends wget curl
+                    
+                    # Fetch hardcoded version to avoid GitHub API rate limits
+                    TRIVY_VERSION="v0.71.2"
+                    
+                    if [ -n "$TRIVY_VERSION" ]; then
+                        # Remove leading 'v' for the file name
+                        TRIVY_VERSION_NO_V="${TRIVY_VERSION#v}"
+                        TRIVY_LATEST_URL="https://github.com/aquasecurity/trivy/releases/download/${TRIVY_VERSION}/trivy_${TRIVY_VERSION_NO_V}_Linux-64bit.deb"
+                        
+                        log_info "Downloading Trivy from $TRIVY_LATEST_URL"
+                        wget -qO trivy.deb "$TRIVY_LATEST_URL"
+                        $sudo_cmd dpkg -i ./trivy.deb || $sudo_cmd apt-get install -f -y
+                        rm -f trivy.deb
+                    else
+                        log_error "Failed to determine Trivy latest release version"
+                        exit 1
+                    fi
                 else
                     log_info "Skipping security scanning tools installation as requested."
                 fi

@@ -45,6 +45,7 @@ import Control.Gating (processFrame)
 import Control.Mesher (reconstructPolynomialSurface)
 import Hardware.Types
 import Hardware.Control (setBeam)
+import Hardware.FFI.Bridge (handleHardwareResponse)
 import Text.Printf (printf)
 
 -- | The Magic Word sequence for TI Millimeter Wave Radar
@@ -113,14 +114,16 @@ consumerLoop translations isPrimary controlFp stateVar = withForeignPtr controlF
                             writeTBQueue (auditQueue st) evt
                             writeTVar stateVar (st { beamState = BeamOff })
                         when isPrimary $ do
-                            res <- setBeam False
-                            case res of
-                                Left err -> do
+                            res <- setBeam stateVar False
+                            handleHardwareResponse
+                                (\err -> do
                                     let evt2 = AuditEvent now Critical "Hardware" ("Actuation Error: " ++ show err)
                                     atomically $ do
                                         st2 <- readTVar stateVar
                                         writeTBQueue (auditQueue st2) evt2
-                                Right () -> return ()
+                                )
+                                (\() -> return ())
+                                res
 
                     -- 3. Create Zero-Copy Lazy ByteString
                     let lbs = createLazyByteString fp bufSize readOff writeOff
@@ -175,14 +178,16 @@ consumerLoop translations isPrimary controlFp stateVar = withForeignPtr controlF
                                 writeTVar stateVar (st { beamState = BeamOff })
 
                             when isPrimary $ do
-                                res <- setBeam False
-                                case res of
-                                    Left errHardware -> do
+                                res <- setBeam stateVar False
+                                handleHardwareResponse
+                                    (\errHardware -> do
                                         let evt2 = AuditEvent now Critical "Hardware" ("Actuation Error: " ++ show errHardware)
                                         atomically $ do
                                             st2 <- readTVar stateVar
                                             writeTBQueue (auditQueue st2) evt2
-                                    Right () -> return ()
+                                    )
+                                    (\() -> return ())
+                                    res
 
                             -- Also print to stderr for immediate feedback during dev
                             hPutStrLn stderr $ "[Consumer] Error: " ++ show err

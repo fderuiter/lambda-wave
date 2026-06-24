@@ -32,7 +32,7 @@ runMain = do
     now <- getMonotonicTimeNS
     let kConfig = KalmanConfig 0.1 0.1
     let kState = initKalman 0.0 kConfig
-    q <- newTBQueueIO 100
+    q <- newTBQueueIO 10000
     -- Initialize with "TestThread" heartbeat = now
     let heartbeats = Map.fromList [("TestThread", now)]
     let initialState = SystemState [] BeamOff now 0 (Point3D 0 0 0 0 0) heartbeats kState q False "en" "BEAM OFF"

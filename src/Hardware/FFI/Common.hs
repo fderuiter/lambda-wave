@@ -38,26 +38,28 @@ data HardwareResult
     | Busy
     | EOF
     | Failure String
-    | PosixError
+    | SystemError Int
+    | DriverError String
+    | TransientError String
     | InvalidConfiguration
     deriving (Show, Eq)
 
-toHardwareResult :: CInt -> HardwareResult
-toHardwareResult 0 = Success
-toHardwareResult (-1) = PosixError
-toHardwareResult (-2) = InvalidConfiguration
-toHardwareResult n 
+toHardwareResult :: Int -> CInt -> HardwareResult
+toHardwareResult _ 0 = Success
+toHardwareResult err (-1) = SystemError err
+toHardwareResult _ (-2) = DriverError "Unsupported baud rate"
+toHardwareResult _ n 
     | n > 0 = PartialData (fromIntegral n)
     | otherwise = Failure ("Unknown failure code: " ++ show n)
 
-toRingBufferResult :: CSsize -> HardwareResult
-toRingBufferResult n
+toRingBufferResult :: Int -> CSsize -> HardwareResult
+toRingBufferResult _ n
     | n > 0 = PartialData (fromIntegral n)
-toRingBufferResult 0 = Busy
-toRingBufferResult (-1) = PosixError
-toRingBufferResult (-2) = EOF
-toRingBufferResult (-3) = Busy
-toRingBufferResult n = Failure ("Unknown ring buffer code: " ++ show n)
+toRingBufferResult _ 0 = TransientError "Busy"
+toRingBufferResult err (-1) = SystemError err
+toRingBufferResult _ (-2) = EOF
+toRingBufferResult _ (-3) = TransientError "Ring buffer busy"
+toRingBufferResult _ n = Failure ("Unknown ring buffer code: " ++ show n)
 
 -- | Generic resource allocator
 allocateManagedResource :: IO (Ptr a) -> FunPtr (Ptr a -> IO ()) -> (Ptr a -> IO ()) -> String -> IO (ForeignPtr a)

@@ -6,6 +6,7 @@ module Hardware.Control (
     configureRawSerial,
     setBeam,
     setBeamChannel,
+    setBeamChannelDaemon,
     GpioChannel(..),
     configureConfigSerial,
     initGpio,
@@ -29,23 +30,18 @@ import System.Posix.Types (Fd(..))
 import Data.Config (uartBaudRate)
 import qualified Data.ByteString as B
 import System.FilePath (isAbsolute, splitDirectories)
+import Control.Concurrent.STM (TVar)
+import Data.Types (SystemState)
 
 import Hardware.Types (HardwareError(..))
 import Hardware.FFI.Common
+import Hardware.FFI.Bridge
 
-initGpio :: IO ()
-initGpio = do
-    res <- c_gpio_init
-    case toHardwareResult res of
-        Success -> return ()
-        _ -> ioError (userError "Failed to initialize GPIO")
+initGpio :: TVar SystemState -> IO (MustHandle ())
+initGpio stateVar = bridgeHardwareCall stateVar "HardwareControl" c_gpio_init
 
-setupWatchdog :: IO ()
-setupWatchdog = do
-    res <- c_gpio_setup_watchdog 27
-    case toHardwareResult res of
-        Success -> return ()
-        _ -> ioError (userError "Failed to setup watchdog")
+setupWatchdog :: TVar SystemState -> IO (MustHandle ())
+setupWatchdog stateVar = bridgeHardwareCall stateVar "HardwareControl" (c_gpio_setup_watchdog 27)
 
 readBeamChannel :: GpioChannel -> IO (Either HardwareError Bool)
 readBeamChannel channel = do
@@ -132,23 +128,19 @@ configureConfigSerial fd = do
         Left ex -> return $ Left $ ConfigurationFailed $ show (ex :: IOException)
         Right () -> return $ Right ()
 
-configureRawSerial :: Fd -> IO (Either HardwareError ())
-configureRawSerial (Fd fd) = do
+configureRawSerial :: TVar SystemState -> Fd -> IO (MustHandle ())
+configureRawSerial stateVar (Fd fd) = do
     let baud = fromIntegral uartBaudRate
-    res <- c_configure_serial_port fd baud
-    case toHardwareResult res of
-        Success -> return $ Right ()
-        _       -> return $ Left $ ConfigurationFailed "Failed"
+    bridgeHardwareCall stateVar "HardwareControl" (c_configure_serial_port fd baud)
 
-setBeam :: Bool -> IO (Either HardwareError ())
-setBeam state = do
-    setBeamChannel LogicChannel state
+setBeam :: TVar SystemState -> Bool -> IO (MustHandle ())
+setBeam stateVar state = setBeamChannel stateVar LogicChannel state
 
 data GpioChannel = LogicChannel | WatchdogChannel
   deriving (Show, Eq)
 
-setBeamChannel :: GpioChannel -> Bool -> IO (Either HardwareError ())
-setBeamChannel channel state = do
+setBeamChannel :: TVar SystemState -> GpioChannel -> Bool -> IO (MustHandle ())
+setBeamChannel stateVar channel state = do
     let pinNum = case channel of
             LogicChannel -> 17
             WatchdogChannel -> 27
@@ -157,18 +149,19 @@ setBeamChannel channel state = do
             LogicChannel -> "LOGIC Channel"
             WatchdogChannel -> "WATCHDOG Channel"
     putStrLn $ "[Hardware] " ++ chanStr ++ " Set To: " ++ stateStr
-    res <- c_gpio_write pinNum (if state then 1 else 0)
-    case toHardwareResult res of
-        Success -> return (Right ())
-        Failure msg -> do
-            putStrLn $ "[Hardware] Failed to set " ++ chanStr ++ ": " ++ msg
-            return (Left (UnknownError msg))
-        PosixError -> do
-            putStrLn $ "[Hardware] PosixError setting " ++ chanStr
-            return (Left ConnectionLost)
-        _ -> do
-            putStrLn $ "[Hardware] Failed to set " ++ chanStr
-            return (Left ConnectionLost)
+    bridgeHardwareCall stateVar "HardwareControl" (c_gpio_write pinNum (if state then 1 else 0))
+
+setBeamChannelDaemon :: (HardwareResult -> IO ()) -> GpioChannel -> Bool -> IO (MustHandle ())
+setBeamChannelDaemon auditFn channel state = do
+    let pinNum = case channel of
+            LogicChannel -> 17
+            WatchdogChannel -> 27
+    let stateStr = if state then "ON" else "OFF"
+    let chanStr = case channel of
+            LogicChannel -> "LOGIC Channel"
+            WatchdogChannel -> "WATCHDOG Channel"
+    putStrLn $ "[Hardware] Daemon " ++ chanStr ++ " Set To: " ++ stateStr
+    bridgeHardwareCallCustom auditFn (c_gpio_write pinNum (if state then 1 else 0))
 
 -- | Configuration interface to adjust the polynomial order on the sensor
 -- This sends a command over the serial port.

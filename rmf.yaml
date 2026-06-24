@@ -108,3 +108,13 @@ hazards:
     occurrence: 2
     detection: 2
     rpn: 12
+
+  - id: H-SYS-008
+    description: Unlogged hardware errors or ignored return codes
+    cause: Silent failures in hardware communication
+    effect: System continues in an unsafe state
+    mitigation: Centralized High-Assurance FFI Bridge with strict return handling
+    severity: 4
+    occurrence: 2
+    detection: 3
+    rpn: 24

@@ -28,6 +28,9 @@ import System.IO (hPutStrLn, stderr)
 import FFI.RingBuffer.Types (getBufferSize)
 import FFI.RingBuffer.Generated (RingBufferControl, c_get_write_offset, c_set_read_offset)
 import Hardware.FFI.Common
+import Hardware.FFI.Bridge
+import Control.Concurrent.STM (TVar)
+import Data.Types (SystemState)
 
 -- | Result of a read operation from the Ring Buffer / UART uses HardwareResult
 -- via the shared Hardware.FFI.Common module.
@@ -54,17 +57,9 @@ attachRingBuffer size = do
 
 -- | Wrapper for read_from_uart
 -- Enforces type-safe error handling via HardwareResult ADT.
---
--- C++ Return Codes Mapping:
--- * > 0 : Bytes successfully read
--- * 0   : Buffer Logic Full (Busy) -> Mapped to Busy
--- * -2  : EOF (Device Disconnected) -> Mapped to EOF
--- * -3  : EAGAIN (No Data) -> Mapped to Busy
--- * -1  : Critical Error -> Mapped to PosixError
-readFromUart :: ForeignPtr RingBufferControl -> Fd -> IO HardwareResult
-readFromUart fp (Fd fd) = withForeignPtr fp $ \ptr -> do
-    bytesRead <- c_read_from_uart ptr fd
-    return (toRingBufferResult bytesRead)
+readFromUart :: TVar SystemState -> ForeignPtr RingBufferControl -> Fd -> IO HardwareResult
+readFromUart stateVar fp (Fd fd) = withForeignPtr fp $ \ptr -> do
+    bridgeRingBufferCall stateVar "RingBuffer" (c_read_from_uart ptr fd)
 
 -- | Wrapper for get_write_offset
 getWriteOffset :: ForeignPtr RingBufferControl -> IO Int
@@ -87,28 +82,38 @@ setReadOffset fp off = do
 -- The loop terminates if read_from_uart returns ReadError or ReadEOF.
 -- If it returns ReadBusy (Full or No Data), we pause briefly and retry.
 -- Accepts ForeignPtr to ensure the buffer is not freed while thread is running.
-ingestionLoop :: ForeignPtr RingBufferControl -> Fd -> IO ThreadId
-ingestionLoop fp fd = forkOS loop
+ingestionLoop :: TVar SystemState -> ForeignPtr RingBufferControl -> Fd -> IO ThreadId
+ingestionLoop stateVar fp fd = forkOS loop
   where
     loop = safeLoop `catch` \e -> do
         hPutStrLn stderr $ "CRITICAL FAILURE in Ingestion Thread: " ++ show (e :: SomeException)
-        -- We terminate the thread, but at least we logged it.
+        triggerShutdown stateVar "CRITICAL FAILURE in Ingestion Thread"
         return ()
 
     safeLoop = do
-        result <- readFromUart fp fd
+        result <- readFromUart stateVar fp fd
         case result of
-            PosixError -> hPutStrLn stderr "CRITICAL FAILURE: readFromUart returned error. Ingestion thread TERMINATING."
-            InvalidConfiguration -> hPutStrLn stderr "CRITICAL FAILURE: readFromUart returned invalid configuration. Ingestion thread TERMINATING."
-            Failure _ -> hPutStrLn stderr "CRITICAL FAILURE: readFromUart returned unknown failure. Ingestion thread TERMINATING."
+            SystemError err -> do
+                hPutStrLn stderr $ "CRITICAL FAILURE: readFromUart returned POSIX error: " ++ show err
+                triggerShutdown stateVar "UART POSIX Error"
+            InvalidConfiguration -> do
+                hPutStrLn stderr "CRITICAL FAILURE: readFromUart returned invalid configuration. Ingestion thread TERMINATING."
+                triggerShutdown stateVar "UART Invalid Config"
+            DriverError err -> do
+                hPutStrLn stderr $ "CRITICAL FAILURE: readFromUart returned driver error: " ++ err
+                triggerShutdown stateVar "UART Driver Error"
+            Failure err -> do
+                hPutStrLn stderr $ "CRITICAL FAILURE: readFromUart returned unknown failure: " ++ err
+                triggerShutdown stateVar "UART Unknown Failure"
             EOF -> do
                 hPutStrLn stderr "Ingestion Thread: Device Disconnected (EOF). Terminating."
-                return ()
-            Busy -> do
+                triggerShutdown stateVar "UART EOF"
+            TransientError _ -> do
                 threadDelay 1000 -- 1ms pause if full or empty
                 loop
             PartialData _ -> loop
             Success -> loop
+            Busy -> loop
 
 -- Requirement FR-DAQ-001
 
