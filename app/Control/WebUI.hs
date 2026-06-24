@@ -19,13 +19,8 @@ import Network.WebSockets (ServerApp, acceptRequest, rejectRequest, sendTextData
 import Data.ByteString.Lazy (fromStrict)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as BC
-import System.Posix.IO.ByteString (fdRead)
 import Data.Bits (xor, (.|.))
 import Data.List (foldl')
-import System.Posix.IO (openFd, closeFd, OpenMode(ReadOnly), defaultFileFlags, OpenFileFlags(..))
-import System.Posix.Files (getFdStatus, isCharacterDevice)
-import Control.Exception (bracket)
-import Text.Printf (printf)
 import System.Process (callCommand)
 import System.Directory (doesFileExist)
 import Data.Time.Clock (getCurrentTime, addUTCTime, UTCTime)
@@ -38,6 +33,7 @@ import Data.IORef (newIORef, readIORef, writeIORef)
 import Data.ByteArray.Encoding (convertFromBase, Base(Base64))
 import Crypto.Hash (hash, SHA256(..), Digest)
 import UI.Presentation (shouldTriggerAudioAlert)
+import Safety.Token (generateToken)
 
 -- Provisioned credential map (username -> hashed password)
 credentialStore :: Map.Map B.ByteString (Digest SHA256)
@@ -85,21 +81,6 @@ runWebUI stateVar = do
            let tSettings = tlsSettings "cert.pem" "key.pem"
            
            runTLS tSettings settings $ websocketsOr defaultConnectionOptions (wsApp store stateVar) (httpApp store stateVar)
-
-generateToken :: IO B.ByteString
-generateToken = do
-    tokenBytes <- bracket
-#if MIN_VERSION_unix(2,8,0)
-                    (openFd "/dev/urandom" ReadOnly defaultFileFlags{creat=Nothing})
-#else
-                    (openFd "/dev/urandom" ReadOnly Nothing defaultFileFlags)
-#endif
-                    closeFd $ \fd -> do
-                        stat <- getFdStatus fd
-                        if not (isCharacterDevice stat)
-                            then error "Security Violation - /dev/urandom is not a character device"
-                            else fdRead fd 16
-    return $ BC.pack (concatMap (printf "%02x") (B.unpack tokenBytes))
 
 httpApp :: SessionStore -> TVar SystemState -> Application
 httpApp store stateVar req respond = do
