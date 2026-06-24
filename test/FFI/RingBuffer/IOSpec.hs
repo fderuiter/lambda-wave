@@ -17,6 +17,28 @@ import Control.Monad (void)
 import Data.Word (Word8)
 import qualified Data.ByteString as B
 import Data.ByteString (ByteString)
+import Control.Concurrent.STM (newTVarIO, newTBQueueIO, TVar)
+import qualified Data.Map.Strict as Map
+import Data.Types
+import SignalProcessing.Kalman (KalmanState(..), initKalman, KalmanConfig(..))
+
+createDummyState :: IO (TVar SystemState)
+createDummyState = do
+    auditQ <- newTBQueueIO 100
+    let kState = initKalman 0.0 (KalmanConfig 1.0 1.0)
+    newTVarIO $ SystemState
+        { currentPoints = []
+        , beamState = BeamOff
+        , lastFrameTime = 0
+        , sequenceNumber = 0
+        , isocenter = Point3D 0 0 0 0 0
+        , threadHeartbeats = Map.empty
+        , kalmanState = kState
+        , auditQueue = auditQ
+        , audioAlertEnabled = False
+        , activeLanguage = "en"
+        , localizedBeamState = ""
+        }
 
 spec :: Spec
 spec = do
@@ -36,7 +58,8 @@ spec = do
       wOff <- getWriteOffset ptr
       wOff `shouldBe` 0
 
-      tid <- ingestionLoop ptr readFd
+      dummyState <- createDummyState
+      tid <- ingestionLoop dummyState ptr readFd
 
       let dataToWrite = "Hello, RingBuffer! This is a test string to verify ingestion...." :: ByteString
       writeBytes writeFd dataToWrite
@@ -59,7 +82,8 @@ spec = do
       let totalBytes = 1_000_000 :: Int
 
       ptr <- createRingBuffer bufSz
-      tid <- ingestionLoop ptr readFd
+      dummyState <- createDummyState
+      tid <- ingestionLoop dummyState ptr readFd
 
       producerDone <- newEmptyMVar
       _ <- forkIO $ do

@@ -18,6 +18,7 @@ import Data.Types
 import Data.Config (targetHeight, gatingTolerance)
 import SignalProcessing.Kalman (initKalman, KalmanConfig(..), pattern V3, KalmanState(..))
 import Control.Gating (processFrame)
+import Hardware.FFI.Bridge (handleHardwareResponse)
 import Hardware.Control (initGpio, setupWatchdog, readBeamChannel, GpioChannel(..))
 
 respiratoryWaveform :: Double -> Double
@@ -42,8 +43,14 @@ main = do
     putStrLn "============================================================"
     putStrLn "   IEC 62304 VALIDATION: CLINICAL HIL VALIDATION            "
     putStrLn "============================================================"
-    initGpio
-    setupWatchdog
+    
+    dummyQ <- newTBQueueIO 100
+    dummyVar <- newTVarIO (SystemState [] BeamOff 0 0 (Point3D 0 0 0 0 0) Map.empty (initKalman targetHeight (KalmanConfig 1000.0 2.0)) dummyQ False "en" "BEAM OFF")
+    
+    res1Init <- initGpio dummyVar
+    handleHardwareResponse (\_ -> return ()) (\_ -> return ()) res1Init
+    res2Init <- setupWatchdog dummyVar
+    handleHardwareResponse (\_ -> return ()) (\_ -> return ()) res2Init
     
     putStrLn "\n--- Scenario 1: Clinical Safety Commissioning (Breathing & Hardware Jitter) ---"
     (res1, lats1) <- runHILSimulation "Breathing" (RigConfig respiratoryWaveform (\t pos -> pos + 0.1 * sin (10*t))) 10.0
