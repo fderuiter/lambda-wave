@@ -1,4 +1,6 @@
 {-# LANGUAGE CPP #-}
+-- | Native token generation to replace SOUP dependencies.
+-- Mitigates Hazard H-SYS-007
 module Safety.Token (generateToken) where
 
 import Control.Exception (bracket)
