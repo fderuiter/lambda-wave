@@ -8,19 +8,27 @@ on:
 jobs:
   release:
     runs-on: ubuntu-latest
-    container:
-      image: haskell:9.6.7
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
+      - uses: haskell-actions/setup@v2
+        with:
+          ghc-version: '9.6.7'
+          cabal-version: 'latest'
+
       - name: Install system dependencies
         run: |
-          apt-get update
-          apt-get install -y build-essential liblapack-dev libblas-dev
+          sudo apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential liblapack-dev libblas-dev
 
 
       - name: Build dependencies
-        run: cabal build --only-dependencies
+        run: |
+          cabal update
+          cabal build --only-dependencies
 
       - name: Build Binary
         run: cabal build

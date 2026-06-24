@@ -1,9 +1,11 @@
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE PatternSynonyms #-}
 module Main (main) where
 
 import System.Exit (exitFailure, exitSuccess)
 import Control.Monad () -- kept as suggested if instances needed, otherwise remove. But warning said redundant. Remove it.
-import SignalProcessing.Kalman (KalmanState(..), V3(..), M33(..))
+import SignalProcessing.Kalman (KalmanState(..), pattern V3, pattern M33)
 import Data.Types (BeamState(..))
 import qualified Control.Gating as Gating
 import Numeric.Kinematics

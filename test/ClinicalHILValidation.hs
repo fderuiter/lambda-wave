@@ -1,4 +1,6 @@
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE PatternSynonyms #-}
 module Main (main) where
 
 import qualified Data.HashMap.Strict as HM
@@ -14,7 +16,7 @@ import Data.List (sort)
 
 import Data.Types
 import Data.Config (targetHeight, gatingTolerance)
-import SignalProcessing.Kalman (initKalman, KalmanConfig(..), V3(..), KalmanState(..))
+import SignalProcessing.Kalman (initKalman, KalmanConfig(..), pattern V3, KalmanState(..))
 import Control.Gating (processFrame)
 import Hardware.Control (initGpio, setupWatchdog, readBeamChannel, GpioChannel(..))
 
@@ -120,7 +122,9 @@ runHILSimulation name rig duration = do
             let p2eLatencyNs = tMatched - tBefore
             
             let kState = kalmanState st
-            let (V3 estPos _ _) = x kState
+            let estPos = case x kState of
+                    V3 pVal _ _ -> pVal
+                    _ -> 0.0
             
             let bState = beamState st
             let estDelta = abs (estPos - truePos)

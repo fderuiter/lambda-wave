@@ -1,3 +1,4 @@
+{-# LANGUAGE PatternSynonyms #-}
 import qualified Data.HashMap.Strict as HM
 {-# LANGUAGE BangPatterns #-}
 module Main (main) where
@@ -11,7 +12,7 @@ import System.Exit (exitFailure, exitSuccess)
 
 import Data.Types
 import Control.Gating (processFrame)
-import SignalProcessing.Kalman (KalmanState(..), V3(..), M33(..), KalmanConfig(..), initKalman)
+import SignalProcessing.Kalman (KalmanState(..), pattern V3, pattern M33, KalmanConfig(..), initKalman)
 import Data.Config (targetHeight)
 
 -- | Dummy State

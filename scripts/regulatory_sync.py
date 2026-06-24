@@ -174,8 +174,9 @@ def check_supplier_risk_assessments():
 
 def check_security_posture():
     errors = []
+    import shutil
     # 1. Check if Trivy is installed
-    if subprocess.call(["which", "trivy"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL) != 0:
+    if shutil.which("trivy") is None:
         errors.append("Trivy is not installed. Security posture checks cannot be performed.")
         return errors
         

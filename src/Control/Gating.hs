@@ -1,4 +1,6 @@
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE PatternSynonyms #-}
 -- |
 -- Module      : Control.Gating
 -- Description : Beam gating logic
@@ -14,7 +16,7 @@ import Data.Time.HighRes (getMonotonicTimeNS)
 import Data.List (foldl')
 import qualified Data.Map.Strict as Map
 import Control.Monad (when)
-import SignalProcessing.Kalman (KalmanState(..), KalmanConfig(..), V3(..), predict, update)
+import SignalProcessing.Kalman (KalmanState(..), KalmanConfig(..), pattern V3, predict, update)
 import Hardware.Control (setBeam)
 import Data.I18n (Translations, translateAudit, translateBeamState)
 import qualified Data.Text as T
@@ -144,7 +146,9 @@ evaluateGating target tol hyst latencyTime kState oldBeam =
     let -- Latency Compensation
         -- Predict position at (Now + Latency)
         -- x(t+dt) = x(t) + v(t)*dt + 0.5*a(t)*dt^2
-        (V3 pos vel acc) = x kState
+        (pos, vel, acc) = case x kState of
+            V3 pVal vVal aVal -> (pVal, vVal, aVal)
+            _ -> (0, 0, 0)
         
         posD = Distance pos
         velV = Velocity vel

@@ -103,7 +103,11 @@ main() {
 
                 if [ "$skip_security" = false ]; then
                     log_info "Installing security scanning tools (Trivy)..."
-                    curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | $sudo_cmd sh -s -- -b /usr/local/bin
+                    $sudo_cmd apt-get install -y --fix-missing --no-install-recommends wget apt-transport-https gnupg lsb-release
+                    wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | $sudo_cmd gpg --dearmor --yes -o /usr/share/keyrings/trivy.gpg
+                    echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb generic main" | $sudo_cmd tee -a /etc/apt/sources.list.d/trivy.list
+                    $sudo_cmd apt-get update --fix-missing
+                    $sudo_cmd apt-get install -y --fix-missing --no-install-recommends trivy
                 else
                     log_info "Skipping security scanning tools installation as requested."
                 fi

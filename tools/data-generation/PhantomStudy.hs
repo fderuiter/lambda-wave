@@ -71,7 +71,7 @@ main = do
     let (_, estimatesRev) = foldl' (\(!st, !acc) (_, z) ->
             let predSt = predict dt config st
                 updSt  = update z config predSt
-                (V3 pos _ _) = x updSt
+                pos = case x updSt of { V3 pVal _ _ -> pVal; _ -> 0.0 }
             in (updSt, pos : acc)
             ) (startState, []) measurements
 
