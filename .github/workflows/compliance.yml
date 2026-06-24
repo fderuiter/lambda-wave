@@ -66,7 +66,12 @@ jobs:
 
 
       - name: Verify Regulatory Sync
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: python scripts/regulatory_sync.py
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
 
       - name: Build dependencies with coverage
         run: |
