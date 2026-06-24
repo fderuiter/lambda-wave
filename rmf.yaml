@@ -98,3 +98,13 @@ hazards:
     occurrence: 2
     detection: 1
     rpn: 4
+
+  - id: H-SYS-007
+    description: Weak session token generation
+    cause: Low entropy or predictable source
+    effect: Session hijacking or identifier collision
+    mitigation: Use native cryptographically secure random number generation or high-entropy system sources in Safety.Token
+    severity: 3
+    occurrence: 2
+    detection: 2
+    rpn: 12
