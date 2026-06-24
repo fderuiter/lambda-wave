@@ -9,7 +9,7 @@ jobs:
   update-dependencies:
     runs-on: ubuntu-latest
     container:
-      image: haskell:9.6.7-slim-bullseye
+      image: haskell:9.6.7-slim-bookworm
     defaults:
       run:
         shell: bash
