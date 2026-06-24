@@ -42,7 +42,9 @@ instance ToJSON Point3D where
         ]
 
 instance ToJSON Vector where
-    toJSON v = let [x, y, z] = vToList v in object ["x" .= x, "y" .= y, "z" .= z]
+    toJSON v = case vToList v of
+        [x, y, z] -> object ["x" .= x, "y" .= y, "z" .= z]
+        lst -> toJSON lst
 
 instance ToJSON KalmanState where
     toJSON (KalmanState{..}) = object
