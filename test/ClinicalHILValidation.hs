@@ -44,7 +44,7 @@ main = do
     putStrLn "   IEC 62304 VALIDATION: CLINICAL HIL VALIDATION            "
     putStrLn "============================================================"
     
-    dummyQ <- newTBQueueIO 100
+    dummyQ <- newTBQueueIO 10000
     dummyVar <- newTVarIO (SystemState [] BeamOff 0 0 (Point3D 0 0 0 0 0) Map.empty (initKalman targetHeight (KalmanConfig 1000.0 2.0)) dummyQ False "en" "BEAM OFF")
     
     res1Init <- initGpio dummyVar
@@ -78,7 +78,7 @@ loopbackMonitor expectedStateVar = forever $ do
 runHILSimulation :: String -> RigConfig -> Double -> IO (Bool, [Double])
 runHILSimulation name rig duration = do
     startT <- getMonotonicTimeNS
-    q <- newTBQueueIO 100
+    q <- newTBQueueIO 10000
     
     let s = SystemState
             { currentPoints = []
