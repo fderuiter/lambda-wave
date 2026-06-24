@@ -103,8 +103,8 @@ main() {
 
                 if [ "$skip_security" = false ]; then
                     log_info "Installing security scanning tools (Trivy)..."
-                    $sudo_cmd apt-get install -y --fix-missing --no-install-recommends wget
-                    TRIVY_LATEST_URL=$(curl -s https://api.github.com/repos/aquasecurity/trivy/releases/latest | grep browser_download_url | grep Linux-64bit.deb | grep -v sigstore | cut -d '"' -f 4)
+                    $sudo_cmd apt-get install -y --fix-missing --no-install-recommends wget jq
+                    TRIVY_LATEST_URL=$(curl -s https://api.github.com/repos/aquasecurity/trivy/releases/latest | jq -r '.assets[] | select(.name | endswith("Linux-64bit.deb")) | .browser_download_url')
                     if [ -n "$TRIVY_LATEST_URL" ]; then
                         wget -qO trivy.deb "$TRIVY_LATEST_URL"
                         $sudo_cmd apt-get install -y ./trivy.deb
