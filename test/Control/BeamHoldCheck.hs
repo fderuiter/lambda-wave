@@ -51,6 +51,7 @@ main = do
 
     consumerThread <- forkIO $ forever $ do
         processFrame HM.empty stateVar frame
+        threadDelay 1000
 
     replicateM_ 100 $ do
         threadDelay 10000 -- 10ms
