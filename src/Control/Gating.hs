@@ -7,6 +7,14 @@
 --
 -- Evaluates real-time motion states and determines whether the therapeutic
 -- beam should be active, utilizing hysteresis and latency compensation.
+--
+-- ⚠️ SAFETY-CRITICAL
+--
+-- = Failure Mode
+-- Beam remains ON during patient motion, delivering incorrect radiation dose.
+--
+-- = Mitigation
+-- Hysteresis with conservative thresholds and latency compensation are applied.
 module Control.Gating (processFrame, evaluateGating) where
 
 import Data.Types
