@@ -14,6 +14,8 @@ module Data.Config (
     uartBaudRate
 ) where
 
+import Hardware.Manifest (systemLatencyMs, framePeriodicityMs, dataBaudRate)
+
 -- | System Configuration Constants
 
 -- | Hardware settings
@@ -40,17 +42,16 @@ targetHeight :: Double
 targetHeight = 10.0 -- mm (Example target)
 
 -- | The estimated latency of the system in nanoseconds
--- System latency compensation value (50ms).
 systemLatencyNS :: Double
-systemLatencyNS = 50_000_000 -- 50ms in nanoseconds
+systemLatencyNS = fromIntegral systemLatencyMs * 1_000_000
 
 -- | Safety
 watchdogTimeoutNS :: Integer
-watchdogTimeoutNS = 100 * 1000 * 1000 -- 100ms in nanoseconds
+watchdogTimeoutNS = fromIntegral framePeriodicityMs * 1_000_000
 
 -- | Serial Port
 uartBaudRate :: Int
-uartBaudRate = 921600
+uartBaudRate = dataBaudRate
 
 -- Requirement FR-DAQ-002
 -- Hazard H-SYS-005: Config file error

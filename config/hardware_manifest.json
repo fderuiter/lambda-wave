@@ -1,0 +1,14 @@
+{
+  "baud_rates": {
+    "config": 115200,
+    "data": 921600
+  },
+  "gpio_pins": {
+    "watchdog": 27,
+    "logic": 17
+  },
+  "timing": {
+    "frame_periodicity_ms": 100,
+    "system_latency_ms": 50
+  }
+}
