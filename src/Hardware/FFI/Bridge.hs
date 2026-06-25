@@ -2,6 +2,7 @@
 {-# LANGUAGE StrictData #-}
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+-- Mitigates Hazard H-SYS-008
 module Hardware.FFI.Bridge (
     MustHandle,
     executeBridgeCall,

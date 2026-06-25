@@ -16,6 +16,10 @@ def main():
     # We consider anything in src/Safety/ as a Class C safety-critical file
     safety_modified = any(f.startswith('src/Safety/') for f in modified_files)
     
+    # Check for manual overrides of automated Traceability Matrix
+    if 'docs/iec_62304/traceability_matrix.md' in modified_files:
+        print("AUDIT EXCEPTION: Manual override of the automated Traceability Matrix detected.")
+    
     # Check if a CCR file was added or updated
     ccr_files_modified = [f for f in modified_files if f.startswith('docs/ccr/') and f.endswith('.md') and os.path.basename(f) != 'template.md']
     rmf_modified = any(f == 'rmf.yaml' for f in modified_files)
