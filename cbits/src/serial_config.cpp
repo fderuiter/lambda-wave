@@ -4,6 +4,7 @@
 #include <errno.h>
 #include <cstring>
 #include <cstdio>
+#include "hardware_manifest.h"
 
 extern "C" {
 
@@ -14,31 +15,12 @@ int configure_serial_port(int fd, int baud_rate) {
     }
 
     speed_t speed;
-    switch (baud_rate) {
-        case 9600: speed = B9600; break;
-        case 19200: speed = B19200; break;
-        case 38400: speed = B38400; break;
-        case 57600: speed = B57600; break;
-        case 115200: speed = B115200; break;
-        case 230400: speed = B230400; break;
-        case 460800: speed = B460800; break;
-#ifdef B921600
-        case 921600: speed = B921600; break;
-#endif
-#ifdef B1000000
-        case 1000000: speed = B1000000; break;
-#endif
-#ifdef B1500000
-        case 1500000: speed = B1500000; break;
-#endif
-#ifdef B3000000
-        case 3000000: speed = B3000000; break;
-#endif
-        default:
-             // Fallback or error?
-             // If the standard macro is missing, we can try to set it manually or return error.
-             // For strict safety, return error if not supported.
-             return -2; // Specific error for unsupported baud rate
+    if (baud_rate == MANIFEST_CONFIG_BAUD) {
+        speed = MANIFEST_CONFIG_BAUD_MACRO;
+    } else if (baud_rate == MANIFEST_DATA_BAUD) {
+        speed = MANIFEST_DATA_BAUD_MACRO;
+    } else {
+        return -2; // Specific error for unsupported baud rate
     }
 
     cfsetospeed(&tty, speed);

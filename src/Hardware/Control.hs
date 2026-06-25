@@ -28,6 +28,7 @@ import System.Posix.IO.ByteString (fdWrite)
 import System.Posix.Files (getFdStatus, isCharacterDevice)
 import System.Posix.Types (Fd(..))
 import Data.Config (uartBaudRate)
+import Hardware.Manifest (watchdogPin, logicPin, configBaudRate)
 import qualified Data.ByteString as B
 import System.FilePath (isAbsolute, splitDirectories)
 import Control.Concurrent.STM (TVar)
@@ -41,13 +42,13 @@ initGpio :: TVar SystemState -> IO (MustHandle ())
 initGpio stateVar = bridgeHardwareCall stateVar "HardwareControl" c_gpio_init
 
 setupWatchdog :: TVar SystemState -> IO (MustHandle ())
-setupWatchdog stateVar = bridgeHardwareCall stateVar "HardwareControl" (c_gpio_setup_watchdog 27)
+setupWatchdog stateVar = bridgeHardwareCall stateVar "HardwareControl" (c_gpio_setup_watchdog (fromIntegral watchdogPin))
 
 readBeamChannel :: GpioChannel -> IO (Either HardwareError Bool)
 readBeamChannel channel = do
     let pinNum = case channel of
-            LogicChannel -> 17
-            WatchdogChannel -> 27
+            LogicChannel -> fromIntegral logicPin
+            WatchdogChannel -> fromIntegral watchdogPin
     val <- c_gpio_read pinNum
     case val of
         0 -> return (Right False)
@@ -120,8 +121,16 @@ configureSensor configPath portPath = do
 configureConfigSerial :: Fd -> IO (Either HardwareError ())
 configureConfigSerial fd = do
     result <- try $ do
+        let termBaud = case configBaudRate of
+                115200 -> B115200
+                9600   -> B9600
+                19200  -> B19200
+                38400  -> B38400
+                57600  -> B57600
+                230400 -> B230400
+                _      -> error "Unsupported config baud rate"
         attrs <- getTerminalAttributes fd
-        let cfgAttrs = attrs `withInputSpeed` B115200 `withOutputSpeed` B115200
+        let cfgAttrs = attrs `withInputSpeed` termBaud `withOutputSpeed` termBaud
         setTerminalAttributes fd cfgAttrs Immediately
         return ()
     case result of
@@ -142,8 +151,8 @@ data GpioChannel = LogicChannel | WatchdogChannel
 setBeamChannel :: TVar SystemState -> GpioChannel -> Bool -> IO (MustHandle ())
 setBeamChannel stateVar channel state = do
     let pinNum = case channel of
-            LogicChannel -> 17
-            WatchdogChannel -> 27
+            LogicChannel -> fromIntegral logicPin
+            WatchdogChannel -> fromIntegral watchdogPin
     let stateStr = if state then "ON" else "OFF"
     let chanStr = case channel of
             LogicChannel -> "LOGIC Channel"
@@ -154,8 +163,8 @@ setBeamChannel stateVar channel state = do
 setBeamChannelDaemon :: (HardwareResult -> IO ()) -> GpioChannel -> Bool -> IO (MustHandle ())
 setBeamChannelDaemon auditFn channel state = do
     let pinNum = case channel of
-            LogicChannel -> 17
-            WatchdogChannel -> 27
+            LogicChannel -> fromIntegral logicPin
+            WatchdogChannel -> fromIntegral watchdogPin
     let stateStr = if state then "ON" else "OFF"
     let chanStr = case channel of
             LogicChannel -> "LOGIC Channel"

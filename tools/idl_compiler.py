@@ -96,5 +96,60 @@ def generate_haskell(data, out_hs):
 if __name__ == '__main__':
     with open(sys.argv[1]) as f:
         data = json.load(f)
-    generate_cxx(data, sys.argv[2], sys.argv[3])
-    generate_haskell(data, sys.argv[4])
+    if 'structs' in data:
+        generate_cxx(data, sys.argv[2], sys.argv[3])
+        generate_haskell(data, sys.argv[4])
+    elif 'baud_rates' in data:
+        # Hardware manifest path
+        out_hdr = sys.argv[2]
+        out_hs = sys.argv[3]
+        cfg_path = sys.argv[4]
+        
+        # Validation
+        pins = list(data["gpio_pins"].values())
+        if len(pins) != len(set(pins)):
+            sys.exit("Error: Duplicate GPIO pin assignments.")
+        for p in pins:
+            if p < 0 or p >= 54:
+                sys.exit(f"Error: Invalid GPIO pin {p}.")
+                
+        # Generate C++ header
+        with open(out_hdr, 'w') as f:
+            f.write("#ifndef HARDWARE_MANIFEST_H\n")
+            f.write("#define HARDWARE_MANIFEST_H\n\n")
+            f.write("#include <termios.h>\n\n")
+            f.write(f"#define MANIFEST_WATCHDOG_PIN {data['gpio_pins']['watchdog']}\n")
+            f.write(f"#define MANIFEST_LOGIC_PIN {data['gpio_pins']['logic']}\n")
+            f.write(f"#define MANIFEST_CONFIG_BAUD {data['baud_rates']['config']}\n")
+            f.write(f"#define MANIFEST_CONFIG_BAUD_MACRO B{data['baud_rates']['config']}\n")
+            f.write(f"#define MANIFEST_DATA_BAUD {data['baud_rates']['data']}\n")
+            f.write(f"#define MANIFEST_DATA_BAUD_MACRO B{data['baud_rates']['data']}\n")
+            f.write("#endif\n")
+            
+        # Generate Haskell module
+        with open(out_hs, 'w') as f:
+            f.write("{-# LANGUAGE DataKinds #-}\n")
+            f.write("module Hardware.Manifest where\n\n")
+            f.write("import GHC.TypeLits (Nat)\n\n")
+            f.write(f"watchdogPin :: Int\nwatchdogPin = {data['gpio_pins']['watchdog']}\n\n")
+            f.write(f"logicPin :: Int\nlogicPin = {data['gpio_pins']['logic']}\n\n")
+            f.write(f"configBaudRate :: Int\nconfigBaudRate = {data['baud_rates']['config']}\n\n")
+            f.write(f"dataBaudRate :: Int\ndataBaudRate = {data['baud_rates']['data']}\n\n")
+            f.write(f"framePeriodicityMs :: Int\nframePeriodicityMs = {data['timing']['frame_periodicity_ms']}\n\n")
+            f.write(f"systemLatencyMs :: Int\nsystemLatencyMs = {data['timing']['system_latency_ms']}\n\n")
+            f.write(f"type WatchdogTimeoutMs = {data['timing']['frame_periodicity_ms']}\n\n")
+            f.write(f"type SystemLatencyMs = {data['timing']['system_latency_ms']}\n")
+
+        # Update radar cfg file
+        with open(cfg_path, 'r') as f:
+            lines = f.readlines()
+        with open(cfg_path, 'w') as f:
+            for line in lines:
+                if line.startswith("frameCfg"):
+                    parts = line.strip().split()
+                    if len(parts) >= 6:
+                        parts[5] = str(data['timing']['frame_periodicity_ms'])
+                    f.write(" ".join(parts) + "\n")
+                else:
+                    f.write(line)
+

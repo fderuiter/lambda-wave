@@ -47,6 +47,7 @@ module Numeric.Kinematics
 
 import GHC.TypeLits
 import Data.Proxy
+import Hardware.Manifest (WatchdogTimeoutMs, SystemLatencyMs)
 
 -- Core Types (Requirement 1)
 -- Newtypes ensure zero runtime overhead (Constraints & Guardrails)
@@ -167,14 +168,6 @@ instance ScalarMultiply Acceleration where
 instance ScalarMultiply Time where
     s |* (Time t) = Time (s * t)
     (Time t) *| s = Time (s * t)
-
--- Type-level assertions
-type SystemLatencyMs = 50
-#ifdef SANDBOX
-type WatchdogTimeoutMs = 120000
-#else
-type WatchdogTimeoutMs = 100
-#endif
 
 -- | Type-level constraint ensuring WatchdogTimeout > SystemLatency
 type AssertWatchdogSafe w l = (CmpNat w l ~ 'GT)

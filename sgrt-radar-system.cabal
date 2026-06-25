@@ -76,6 +76,7 @@ library
       Hardware.FFI.Bridge
       Hardware.Consumer
       Hardware.FFI.Common
+      Hardware.Manifest
       Hardware.Types
       Safety.Audit
       Safety.Crypto
