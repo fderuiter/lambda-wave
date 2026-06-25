@@ -51,12 +51,8 @@ main = do
     -- Clean up previous run
     _ <- try (removeFile "session.log") :: IO (Either SomeException ())
 
-    -- Get the path to the executable
-    (_, binPathStr, _) <- readProcessWithExitCode "cabal" ["list-bin", "watchdog-fault"] ""
-    let binPath = head (lines binPathStr)
-
     -- Run the fault injection executable directly
-    (_exitCode, stdout, stderr) <- readProcessWithExitCode binPath [] ""
+    (_exitCode, stdout, stderr) <- readProcessWithExitCode "watchdog-fault" [] ""
     
     let combinedOutput = stdout ++ stderr
     let linesOutput = lines combinedOutput
