@@ -65,13 +65,8 @@ jobs:
         run: scripts/setup_env.sh
 
 
-      - name: Verify Regulatory Sync
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: python scripts/regulatory_sync.py
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
+      - name: Generate Traceability Matrix
+        run: python tools/qa/compliance_engine.py
 
       - name: Build dependencies with coverage
         run: |
@@ -91,7 +86,12 @@ jobs:
         run: cabal build watchdog-fault
 
       - name: Run Safety-Critical Tests and Generate Coverage
-        run: cabal test sgrt-radar-system-test watchdog-check audit-check
+        run: cabal test all | tee test_log.txt
+
+      - name: Verify Regulatory Sync
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python scripts/regulatory_sync.py test_log.txt
 
       - name: Calculate and Enforce Coverage
         run: |
@@ -164,3 +164,5 @@ jobs:
             safety_audit_report.txt
             integrity_report.txt
             regulatory_evidence_report.md
+            docs/iec_62304/traceability_matrix.md
+            HIL_Validation_Report.pdf

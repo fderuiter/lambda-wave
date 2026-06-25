@@ -6,7 +6,7 @@ import json
 from datetime import datetime
 
 # Regex for tags
-REQ_REGEX = re.compile(r'\b((?:FR|SR|PR)-[A-Z0-9]+-\d+)\b')
+REQ_REGEX = re.compile(r'\b((?:FR|SR|PR|MR)(?:-[A-Z0-9]+)*-\d+)\b')
 
 def get_compiler_version():
     try:
