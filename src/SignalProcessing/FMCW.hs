@@ -29,6 +29,7 @@ module SignalProcessing.FMCW
 
 import Data.Complex
 import Data.List (foldl')
+import SignalProcessing.Matrix (normSq, scaleAndAddV, subV, scaleV, dotGen)
 
 -- | Equation (1) (Requirement MR-001): Verified
 -- Calculate the beat frequency from a target range.
@@ -95,18 +96,9 @@ chirpZTransform params x_n = map calculateBin [0 .. cztSteps params - 1]
 
             -- Summation: sum(x[n] * exp(i * theta_step * n))
             -- ⚡ Bolt Optimization: Avoid O(N) trigonometric evaluations by using a constant phase multiplier
-            -- ⚡ Bolt Optimization: Unpack Complex into strict Double arguments to avoid O(N) intermediate allocations
-            !wR = realPart w
-            !wI = imagPart w
-            summation !accR !accI _ _ [] = accR :+ accI
-            summation !accR !accI !termR !termI ((vR :+ vI):rest) =
-                let !newAccR  = accR + (vR * termR - vI * termI)
-                    !newAccI  = accI + (vR * termI + vI * termR)
-                    !newTermR = termR * wR - termI * wI
-                    !newTermI = termR * wI + termI * wR
-                in summation newAccR newAccI newTermR newTermI rest
+            -- ⚡ Bolt Optimization: Use generalized dot product primitive to handle on-the-fly generation of operands
         in
-            summation 0.0 0.0 1.0 0.0 x_n
+            dotGen x_n (1.0 :+ 0.0) (* w)
 
 -- | Equation (4) (Requirement MR-004): Verified
 -- Extract the phase from the complex value at the peak index.
@@ -202,31 +194,16 @@ applyStaticClutterRemoval config prevMean input =
             !alphaC = alpha :+ 0
             !oneMinusAlphaC = (1.0 - alpha) :+ 0
 
-            -- Process bins with strict tail-recursive fold
-            (revMeans, revOutputs) = foldl' processBin ([], []) (zip prevMean input)
-              where
-                processBin (!accMeans, !accOutputs) (!p, !i) =
-                    let !m = oneMinusAlphaC * p + alphaC * i
-                        !o = i - m
-                    in (m : accMeans, o : accOutputs)
-        in (reverse revMeans, reverse revOutputs)
+            !means = scaleAndAddV oneMinusAlphaC prevMean alphaC input
+            !outputs = subV input means
+        in (means, outputs)
   where
-    calculateMotionMetric prevs inputs = foldl' accumMetric 0.0 (zip prevs inputs)
-      where
-        accumMetric !acc (!p, !i) =
-            let !dr = realPart i - realPart p
-                !di = imagPart i - imagPart p
-                !magSq = dr * dr + di * di
-            in acc + magSq
+    calculateMotionMetric prevs inputs = normSq (subV inputs prevs)
 
     goInit inputs =
-        let (revMeans, revOutputs) = foldl' initBin ([], []) inputs
-              where
-                initBin (!accMeans, !accOutputs) !i =
-                    let !m = i
-                        !o = 0 :+ 0
-                    in (m : accMeans, o : accOutputs)
-        in (reverse revMeans, reverse revOutputs)
+        let !means = inputs
+            !outputs = scaleV (0 :+ 0) inputs
+        in (means, outputs)
 
 -- Requirement FR-DSP-004
 
