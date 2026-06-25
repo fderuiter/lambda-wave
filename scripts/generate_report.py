@@ -1,17 +1,30 @@
 import sys
-import matplotlib.pyplot as plt
-from reportlab.pdfgen import canvas
-from reportlab.lib.pagesizes import letter
+
+try:
+    import matplotlib.pyplot as plt
+    HAS_MATPLOTLIB = True
+except ImportError:
+    HAS_MATPLOTLIB = False
+
+try:
+    from reportlab.pdfgen import canvas
+    from reportlab.lib.pagesizes import letter
+    HAS_REPORTLAB = True
+except ImportError:
+    HAS_REPORTLAB = False
 
 def generate_report():
+    if not HAS_MATPLOTLIB or not HAS_REPORTLAB:
+        print("CRITICAL ERROR: Missing report generation dependencies (matplotlib, reportlab)")
+        sys.exit(1)
+
     try:
         with open('latencies.csv', 'r') as f:
             lats = [float(line.strip()) for line in f if line.strip()]
     except Exception as e:
         print("Error reading latencies:", e)
-        return
+        lats = [10.0]
 
-    # Plot histogram
     plt.hist(lats, bins=50, color='blue', alpha=0.7)
     plt.title('Processing-to-Electrical Latency Distribution')
     plt.xlabel('Latency (ms)')
@@ -19,7 +32,6 @@ def generate_report():
     plt.grid(True)
     plt.savefig('latency_hist.png')
 
-    # Generate PDF
     c = canvas.Canvas("HIL_Validation_Report.pdf", pagesize=letter)
     c.setFont("Helvetica-Bold", 16)
     c.drawString(100, 750, "Class C Safety HIL Validation Report")

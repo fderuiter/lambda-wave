@@ -5,7 +5,7 @@ import SignalProcessing.Kalman (initKalman, KalmanConfig(..))
 import Safety.Audit (auditLoop)
 import Control.Concurrent (forkIO, threadDelay, killThread)
 import Control.Concurrent.STM
-import System.Posix.Files (fileExist, removeLink, getFileStatus, fileSize)
+import System.Posix.Files (fileExist, removeLink)
 import System.Posix.Process (forkProcess, executeFile, getProcessStatus, exitImmediately)
 import System.Exit (ExitCode(ExitFailure))
 import qualified Data.Map.Strict as Map
@@ -16,11 +16,12 @@ import Control.Exception (try, IOException)
 import System.Environment (getArgs, getExecutablePath)
 import qualified Data.ByteString as B
 import Safety.Crypto (decryptLog)
+import System.IO (stderr, hPutStrLn)
 
--- | Test Setup
-withTestEnv :: (TVar SystemState -> TBQueue AuditEvent -> FilePath -> IO Bool) -> IO Bool
-withTestEnv action = do
-    let logPath = "test_audit.log"
+-- | Test Setup with unique prefix to avoid parallel run conflicts
+withTestEnv :: String -> (TVar SystemState -> TBQueue AuditEvent -> FilePath -> IO Bool) -> IO Bool
+withTestEnv prefix action = do
+    let logPath = "test_audit_" ++ prefix ++ ".log"
     -- Cleanup previous
     cleanup logPath
     cleanup (logPath ++ ".bak")
@@ -35,7 +36,7 @@ withTestEnv action = do
     -- Run Action
     result <- action stateVar q logPath
 
-    -- Cleanup (only on success, keep on fail for debug)
+    -- Cleanup (only on success)
     when result $ do
         cleanup logPath
         cleanup (logPath ++ ".bak")
@@ -49,138 +50,102 @@ withTestEnv action = do
 testBasicLogging :: IO Bool
 testBasicLogging = do
     putStr "Test 1: Basic Logging... "
-    withTestEnv $ \stateVar q logPath -> do
-        -- Fork Audit Loop
+    withTestEnv "basic" $ \stateVar q logPath -> do
         tid <- forkIO $ auditLoop stateVar logPath
-
-        -- Send Event
         now <- getMonotonicTimeNS
         atomically $ writeTBQueue q (AuditEvent now Info "Test" "Hello World")
 
-        -- Wait for processing
-        threadDelay 200_000 -- 200ms
+        -- Wait for file creation
+        let waitFile 0 = return False
+            waitFile n = do
+                threadDelay 200_000
+                e <- fileExist logPath
+                if e then return True else waitFile (n - 1)
+
+        _ <- waitFile (20 :: Int)
+        threadDelay 500_000 -- Extra time for write
 
         killThread tid
-        -- Allow time for handle cleanup
-        threadDelay 100_000
+        threadDelay 200_000
 
-        -- Verify File Content
-        -- Use strict IO or ensure handle is closed.
-        rawContent <- B.readFile logPath
-        case decryptLog rawContent of
-            Right content -> do
-                let ok = "Hello World" `isInfixOf` content
-                if ok
-                   then putStrLn "PASS" >> return True
-                   else putStrLn ("FAIL: Content was " ++ show content) >> return False
-            Left err -> do
-                putStrLn ("FAIL: Decryption error: " ++ err)
-                return False
+        exists <- fileExist logPath
+        if not exists
+           then putStrLn "FAIL (No log)" >> return False
+           else do
+               rawContent <- B.readFile logPath
+               case decryptLog rawContent of
+                   Right content -> do
+                       let ok = "Hello World" `isInfixOf` content
+                       if ok then putStrLn "PASS" >> return True else putStrLn "FAIL (Content)" >> return False
+                   Left _ -> putStrLn "FAIL (Decrypt)" >> return False
 
 testLogRotation :: IO Bool
 testLogRotation = do
     putStr "Test 2: Log Rotation (>10MB)... "
-    withTestEnv $ \stateVar q logPath -> do
+    withTestEnv "rotation" $ \stateVar q logPath -> do
         tid <- forkIO $ auditLoop stateVar logPath
-
-        let chunk = replicate (1024 * 1024) 'A' -- 1MB chunk
+        let chunk = replicate (1024 * 1024) 'A'
         now <- getMonotonicTimeNS
 
         forM_ ([1..11] :: [Int]) $ \_ -> do
             atomically $ writeTBQueue q (AuditEvent now Info "Test" chunk)
-            threadDelay 500_000 -- Wait 0.5s for each chunk to be processed
+            threadDelay 50_000
 
-        -- Debug: Check Size
-        stat <- getFileStatus logPath
-        putStrLn $ "DEBUG: Current Log Size: " ++ show (fileSize stat)
+        let waitRotation n = do
+                threadDelay 500_000
+                rotated <- fileExist (logPath ++ ".bak")
+                if rotated then return True else if n > 0 then waitRotation (n - 1) else return False
 
-        -- Send trigger event
-        atomically $ writeTBQueue q (AuditEvent now Info "Test" "Trigger")
-        threadDelay 1_000_000
-
-        -- Check if .bak exists
-        rotated <- fileExist (logPath ++ ".bak")
-
+        ok <- waitRotation (20 :: Int)
         killThread tid
+        threadDelay 200_000
 
-        if rotated
+        if ok
            then putStrLn "PASS" >> return True
            else putStrLn "FAIL (.bak file not found)" >> return False
 
 runChildCrash :: IO ()
 runChildCrash = do
-    -- Minimal setup for child process
-    let logPath = "test_audit_crash.log"
-    -- Note: No cleanup here, we assume parent cleans up or file is reused
-
+    let logPath = "test_audit_crash_proc.log"
     now <- getMonotonicTimeNS
     q <- newTBQueueIO 10000
     let kConfig = KalmanConfig 1.0 1.0
     let st = SystemState [] BeamOff now 0 (Point3D 0 0 0 0 0) Map.empty (initKalman 0 kConfig) q False "en" "BEAM OFF"
     stateVar <- newTVarIO st
-
     _ <- forkIO $ auditLoop stateVar logPath
-
     atomically $ writeTBQueue q (AuditEvent now Critical "Test" "CRASH_EVENT_CRIT")
     atomically $ writeTBQueue q (AuditEvent now Warning "Test" "CRASH_EVENT_WARN")
-    threadDelay 100_000
+    threadDelay 200_000
     exitImmediately (ExitFailure 99)
 
 testCrashRecovery :: IO Bool
 testCrashRecovery = do
     putStr "Test 3: Crash Recovery (Immediate Flush)... "
-    let logPath = "test_audit_crash.log"
-    cleanup logPath
+    let logPath = "test_audit_crash_proc.log"
+    e <- fileExist logPath
+    when e (removeLink logPath)
 
     exePath <- getExecutablePath
-
-    -- Safe Fork/Exec: Replace process image to avoid threaded RTS issues in child
-    pid <- forkProcess $ do
-        executeFile exePath False ["--child-crash"] Nothing
-
-    -- Wait for child
+    pid <- forkProcess $ executeFile exePath False ["--child-crash"] Nothing
     _ <- getProcessStatus True False pid
 
-    -- Verify Log
     res <- try $ B.readFile logPath :: IO (Either IOException B.ByteString)
     case res of
-        Left _ -> do
-            putStrLn "FAIL (Log file not found or unreadable)"
-            return False
-        Right rawContent -> do
-            case decryptLog rawContent of
-                Right content -> do
-                    let ok1 = "CRASH_EVENT_CRIT" `isInfixOf` content
-                    let ok2 = "CRASH_EVENT_WARN" `isInfixOf` content
-                    if ok1 && ok2
-                        then do
-                            putStrLn "PASS"
-                            cleanup logPath
-                            return True
-                        else do
-                            putStrLn ("FAIL: Content was " ++ show content)
-                            cleanup logPath
-                            return False
-                Left err -> do
-                    putStrLn ("FAIL: Decryption error: " ++ err)
-                    cleanup logPath
-                    return False
-  where
-    cleanup f = do
-        e <- fileExist f
-        when e (removeLink f)
+        Left _ -> putStrLn "FAIL (No log)" >> return False
+        Right rawContent -> case decryptLog rawContent of
+            Right content -> do
+                let ok = "CRASH_EVENT_CRIT" `isInfixOf` content && "CRASH_EVENT_WARN" `isInfixOf` content
+                if ok then putStrLn "PASS" >> return True else putStrLn "FAIL" >> return False
+            Left _ -> putStrLn "FAIL (Decrypt)" >> return False
 
 testIOException :: IO Bool
 testIOException = do
     putStr "Test 4: IO Exception Recovery... "
-    withTestEnv $ \stateVar q _logPath -> do
-        -- Use "." as logPath to cause is a directory error
+    withTestEnv "ioerr" $ \stateVar q _logPath -> do
         tid <- forkIO $ auditLoop stateVar "."
-
         now <- getMonotonicTimeNS
         atomically $ writeTBQueue q (AuditEvent now Info "Test" "Fail")
         threadDelay 200_000
-
         killThread tid
         putStrLn "PASS"
         return True
@@ -199,5 +164,6 @@ main = do
 
             if p1 && p2 && p3 && p4
                then putStrLn "VERIFICATION PASSED"
-               else fail "VERIFICATION FAILED"
--- Requirement SR-AUDIT-001
+               else do
+                   hPutStrLn stderr $ "RESULTS: p1=" ++ show p1 ++ ", p2=" ++ show p2 ++ ", p3=" ++ show p3 ++ ", p4=" ++ show p4
+                   fail "VERIFICATION FAILED"
