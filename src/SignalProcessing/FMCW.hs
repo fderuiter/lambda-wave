@@ -28,7 +28,6 @@ module SignalProcessing.FMCW
     ) where
 
 import Data.Complex
-import Data.List (foldl')
 import SignalProcessing.Matrix (normSq, scaleAndAddV, subV, scaleV, dotGen)
 
 -- | Equation (1) (Requirement MR-001): Verified
