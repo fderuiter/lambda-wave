@@ -44,8 +44,9 @@ graph TB
 
     WD -.->|Monitors| GL
     WD -.->|Monitors| FMCW
-    GL -->|Log Event| AL
-    GPIO -->|Beam Status| AL
+    GL -->|AuditEvent| AQ((Audit Queue))
+    AQ --> AL
+    GPIO -->|Beam Status| AQ
 
     SIO <-->|UART| Sensor[TI IWR6843ISK Sensor]
     GPIO -->|TTL| LINAC[Linear Accelerator]
@@ -138,11 +139,19 @@ Safety-critical logic that ensures the radiation beam is only active when the pa
 ```mermaid
 flowchart TD
     subgraph "Gating Loop (Control.Gating)"
-        Input[Filtered State] --> Tol{Within Tolerance?}
-        Tol -->|Yes| B_ON[Beam ENABLE]
-        Tol -->|No| B_OFF[Beam DISABLE]
-        B_ON --> Hys{Hysteresis Check}
-        B_OFF --> Hys
+        Input[Filtered State] --> NanCheck{Is NaN or Inf?}
+        NanCheck -->|Yes| B_OFF[Beam DISABLE]
+        NanCheck -->|No| SelectBranch{Previous Beam State?}
+
+        SelectBranch -->|BeamOff| TolCheckOn{Error < Tolerance?}
+        SelectBranch -->|BeamOn| TolCheckOff{Error < Tolerance + Hysteresis?}
+        SelectBranch -->|BeamHold| B_HOLD[Maintain BeamHold]
+
+        TolCheckOn -->|Yes| B_ON[Beam ENABLE]
+        TolCheckOn -->|No| B_OFF
+
+        TolCheckOff -->|Yes| B_ON
+        TolCheckOff -->|No| B_OFF
     end
 
     subgraph "Watchdog Loop (Safety.Watchdog)"
@@ -189,7 +198,12 @@ classDiagram
         +String component
         +String message
     }
-    SystemState "1" *-- "n" AuditEvent
+    class AuditLogger {
+        +encryptLog()
+        +rotateLog()
+    }
+    SystemState ..> AuditEvent : produces
+    AuditLogger ..> AuditEvent : consumes via TBQueue boundary
 ```
 
 ### 3.6 UI: Presentation Layer
