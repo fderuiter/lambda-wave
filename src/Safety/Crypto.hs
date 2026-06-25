@@ -1,4 +1,15 @@
 {-# LANGUAGE OverloadedStrings #-}
+-- |
+-- Module      : Safety.Crypto
+-- Description : Cryptographic functions for safety logs
+--
+-- ⚠️ SAFETY-CRITICAL
+--
+-- = Failure Mode
+-- If encryption fails or keys are exposed, sensitive patient data in logs could be compromised.
+--
+-- = Mitigation
+-- Uses AES256 with randomly generated IVs per encryption operation, ensuring semantic security.
 module Safety.Crypto (encryptLog, decryptLog, encryptWebsocket, decryptWebsocket) where
 
 import Crypto.Cipher.AES (AES256)

@@ -51,10 +51,29 @@ import Hardware.Manifest (WatchdogTimeoutMs, SystemLatencyMs)
 
 -- Core Types (Requirement 1)
 -- Newtypes ensure zero runtime overhead (Constraints & Guardrails)
+-- | Physical Distance.
+-- Units: Meters or Millimeters depending on context.
+-- Range constraints: Must be positive for physical lengths (>= 0).
 newtype Distance = Distance Double deriving (Show, Eq, Ord)
+
+-- | Physical Velocity.
+-- Units: Meters per second (m/s).
+-- Range constraints: Can be negative or positive.
 newtype Velocity = Velocity Double deriving (Show, Eq, Ord)
+
+-- | Physical Acceleration.
+-- Units: Meters per second squared (m/s^2).
+-- Range constraints: Can be negative or positive.
 newtype Acceleration = Acceleration Double deriving (Show, Eq, Ord)
+
+-- | Time duration.
+-- Units: Seconds (s).
+-- Range constraints: Must be non-negative (>= 0).
 newtype Time = Time Double deriving (Show, Eq, Ord)
+
+-- | Frequency.
+-- Units: Hertz (Hz).
+-- Range constraints: Must be non-negative (>= 0).
 newtype Frequency = Frequency Double deriving (Show, Eq, Ord)
 
 -- Unit Explicit Types for Conversions

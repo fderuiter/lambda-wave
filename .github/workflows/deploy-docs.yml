@@ -33,6 +33,9 @@ jobs:
       - name: Update package index
         run: cabal update
 
+      - name: Check Safety Documentation
+        run: ./tools/check-docs.sh
+
       - name: Generate Haddock Documentation
         run: cabal haddock --haddock-html --haddock-options="--odir=docs_output/"
 
