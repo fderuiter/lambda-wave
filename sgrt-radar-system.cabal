@@ -205,6 +205,8 @@ test-suite sgrt-radar-system-test
     , binary ==0.8.9.1
     , process
     , directory
+  build-tool-depends:
+      sgrt-radar-system:watchdog-fault
 
 test-suite hardware-control-check
   import: common-options
@@ -306,6 +308,8 @@ test-suite watchdog-check
     , base >= 4.16 && < 5
     , process
     , directory
+  build-tool-depends:
+      sgrt-radar-system:watchdog-fault
 
 test-suite numeric-check
   import: common-options
