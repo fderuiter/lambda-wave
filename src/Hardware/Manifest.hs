@@ -1,7 +1,15 @@
 {-# LANGUAGE DataKinds #-}
-module Hardware.Manifest where
+module Hardware.Manifest (
+    watchdogPin,
+    logicPin,
+    configBaudRate,
+    dataBaudRate,
+    framePeriodicityMs,
+    systemLatencyMs,
+    WatchdogTimeoutMs,
+    SystemLatencyMs
+) where
 
-import GHC.TypeLits (Nat)
 
 watchdogPin :: Int
 watchdogPin = 27
