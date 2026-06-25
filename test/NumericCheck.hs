@@ -47,8 +47,8 @@ main = do
         Right _ -> putStrLn "PASS: Least Squares mismatch handled"
 
     -- 6. Test dot
-    let d = dot ([1, 2, 3]) ([4, 5, 6])
-    if d == 32 then putStrLn "PASS: dot product" else putStrLn $ "FAIL: dot product, got " ++ show d
+    let d = dot ([1, 2, 3] :: [Double]) ([4, 5, 6] :: [Double])
+    if d == (32 :: Double) then putStrLn "PASS: dot product" else putStrLn $ "FAIL: dot product, got " ++ show d
 
     -- 7. Test at (removed)
     putStrLn "PASS: at function (removed)"
