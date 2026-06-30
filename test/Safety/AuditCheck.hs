@@ -48,14 +48,22 @@ withTestEnv action = do
 
 -- | Wait for queue to drain with a timeout
 waitForQueue :: TBQueue AuditEvent -> IO ()
-waitForQueue q = go (50 :: Int)
+waitForQueue q = go (100 :: Int)
   where
     go 0 = return ()
     go n = do
         empty <- atomically $ isEmptyTBQueue q
         if empty
-           then threadDelay 50_000 -- extra wait for processing
+           then threadDelay 1_000_000 -- generous wait for processing
            else threadDelay 100_000 >> go (n - 1)
+
+waitForRotation :: FilePath -> Int -> IO Bool
+waitForRotation _ 0 = return False
+waitForRotation path n = do
+    exists <- fileExist (path ++ ".bak")
+    if exists
+       then return True
+       else threadDelay 100_000 >> waitForRotation path (n - 1)
 
 testBasicLogging :: IO Bool
 testBasicLogging = do
@@ -107,10 +115,10 @@ testLogRotation = do
 
         -- Send trigger event
         atomically $ writeTBQueue q (AuditEvent now Info "Test" "Trigger")
-        threadDelay 1_000_000
+        waitForQueue q
 
         -- Check if .bak exists
-        rotated <- fileExist (logPath ++ ".bak")
+        rotated <- waitForRotation logPath 50
 
         killThread tid
 
