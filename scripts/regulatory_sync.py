@@ -46,9 +46,11 @@ def parse_soup():
     if os.path.exists(soup_path):
         with open(soup_path, "r") as f:
             content = f.read()
-            m = re.search(r'\*\*Version:\*\*\s*([\d\.]+)', content)
+            m = re.search(r'\*\*Version:\*\*\s*(.+)', content)
             if m:
-                version = m.group(1)
+                v = m.group(1).strip()
+                v = re.sub(r'<!--.*?-->', '', v).strip()
+                version = v
     return version
 
 def get_soup_dependencies():
@@ -64,7 +66,9 @@ def get_soup_dependencies():
                     if line.startswith("- "):
                         parts = line[2:].split(" == ")
                         if len(parts) == 2:
-                            deps[parts[0].strip()] = parts[1].strip()
+                            ver_str = parts[1].strip()
+                            ver_str = re.sub(r'<!--.*?-->', '', ver_str).strip()
+                            deps[parts[0].strip()] = ver_str
     return deps
 
 def sync_soup_dependencies(freeze_deps):
