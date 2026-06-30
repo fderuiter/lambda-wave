@@ -32,6 +32,11 @@ jobs:
       - name: Build dependencies
         run: cabal build --only-dependencies
 
+      - name: Run Code Optimization
+        run: |
+          cabal build bolt-optimizer
+          find src/ -type f -name "*.hs" | xargs cabal run bolt-optimizer --
+
       - name: Build
         run: cabal build
 
