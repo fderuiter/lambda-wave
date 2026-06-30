@@ -24,13 +24,22 @@ import Data.Types
 import Data.Config (targetHeight)
 import SignalProcessing.Kalman (initKalman, KalmanConfig(..))
 import qualified FFI.RingBuffer.IO as RingBuffer
-import Hardware.Control (configureRawSerial)
+import Hardware.Control (configureRawSerial, configureSensorWithRetry)
 import Hardware.FFI.Bridge (handleHardwareResponse)
 import Hardware.Consumer (consumerLoop)
 import Safety.Watchdog (watchdogLoop, runSafetyDaemon)
 import Safety.Audit
 import Data.Time.HighRes (getMonotonicTimeNS)
 import Data.I18n (loadTranslations)
+import Data.Aeson (decode, FromJSON(..), (.:), withObject)
+
+data HardwareManifest = HardwareManifest
+    { manifestMountingOffset :: Double }
+    deriving (Show)
+
+instance FromJSON HardwareManifest where
+    parseJSON = withObject "HardwareManifest" $ \v -> HardwareManifest
+        <$> v .: "mounting_offset_mm"
 
 main :: IO ()
 main = do
@@ -72,6 +81,7 @@ runMain = do
           , audioAlertEnabled = audioAlerts
           , activeLanguage = "en"
           , localizedBeamState = "BEAM OFF"
+          , calibrationStatus = CalibrationUnverified
           }
 
     systemState <- newTVarIO initialState
@@ -103,7 +113,29 @@ runMain = do
                     return f
 
     fd <- openAndValidatePort "sensor port" sensorPort
-    _cliFd <- openAndValidatePort "CLI port" cliPort
+    -- We don't open the cliPort here, we let configureSensor do it securely to avoid FD leaks
+    -- _cliFd <- openAndValidatePort "CLI port" cliPort
+
+    -- Parse Hardware Manifest for Mounting Offset
+    manifestBytes <- BL.readFile "config/hardware_manifest.json"
+    mountingOffset <- case decode manifestBytes of
+        Just m -> return (manifestMountingOffset m)
+        Nothing -> do
+            putStrLn "FATAL: Failed to parse protected configuration file: hardware_manifest.json"
+            exitFailure
+
+    putStrLn $ "Loaded physical mounting offset: " ++ show mountingOffset ++ " mm"
+
+    -- Sensor Configuration Handshake
+    putStrLn "Starting Sensor Calibration Handshake..."
+    configRes <- configureSensorWithRetry 3 "config/ti_iwr6843isk/sgrt_profile.cfg" cliPort
+    case configRes of
+        Left err -> do
+            putStrLn $ "Hardware Handshake Failed: " ++ show err
+            atomically $ modifyTVar' systemState $ \s -> s { calibrationStatus = CalibrationInvalid }
+        Right () -> do
+            putStrLn "Hardware Handshake Successful. Sensor Calibrated."
+            atomically $ modifyTVar' systemState $ \s -> s { calibrationStatus = CalibrationValid }
 
     -- 1. Setup Ring Buffer (4MB)
     -- We use the new FFI.RingBuffer.IO directly.
@@ -131,7 +163,7 @@ runMain = do
     _daemonPid <- forkProcess $ executeFile exePath False ["--safety-daemon", show myPid] Nothing
 
     -- 3. Consumer/Parser (Dedicated Thread)
-    _ <- forkOS $ consumerLoop translations True ringBuffer systemState
+    _ <- forkOS $ consumerLoop mountingOffset translations True ringBuffer systemState
 
     -- 3. Safety Watchdog Heartbeat Sender (High Priority Thread)
     _ <- forkOS $ watchdogLoop systemState
@@ -186,6 +218,7 @@ streamData fd stateVar = do
                   , tpAudioAlertEnabled = audioAlertEnabled state
                   , tpActiveLanguage = activeLanguage state
                   , tpLocalizedBeamState = localizedBeamState state
+                  , tpCalibrationStatus = calibrationStatus state
                   }
             let payload = BL.toStrict (encode packet)
             let len = fromIntegral (B.length payload) :: Word32

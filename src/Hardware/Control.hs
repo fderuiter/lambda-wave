@@ -15,6 +15,9 @@ module Hardware.Control (
     setPolynomialOrder
 ) where
 
+import qualified Foreign.Marshal.Alloc
+import qualified Foreign.Ptr
+import qualified System.Posix.Types
 import Control.Monad (forM_)
 import Control.Concurrent (threadDelay)
 import qualified Data.ByteString.Char8 as BC
@@ -24,7 +27,7 @@ import Data.List (dropWhileEnd)
 import System.IO (withFile, IOMode(ReadMode))
 import System.Posix.Terminal
 import System.Posix.IO (openFd, closeFd, OpenMode(ReadWrite), defaultFileFlags)
-import System.Posix.IO.ByteString (fdWrite)
+import System.Posix.IO.ByteString (fdWrite, fdRead)
 import System.Posix.Files (getFdStatus, isCharacterDevice)
 import System.Posix.Types (Fd(..))
 import Data.Config (uartBaudRate)
@@ -108,16 +111,41 @@ configureSensor configPath portPath = do
                                         Left (ConfigurationFailed err) -> ioError (userError err)
                                         Left err -> ioError (userError $ show err)
                                         Right () -> do
-                                            forM_ commands $ \cmd -> do
-                                                let packet = BC.pack (cmd ++ "\n")
-                                                bytesSent <- fdWrite fd packet
-                                                if fromIntegral bytesSent < BC.length packet
-                                                    then ioError (userError "Failed to send")
-                                                    else threadDelay 100000
+                                            let handshakeLoop [] = return ()
+                                                handshakeLoop (cmd:cmds) = do
+                                                    let packet = BC.pack (cmd ++ "\n")
+                                                    bytesSent <- fdWrite fd packet
+                                                    if fromIntegral bytesSent < BC.length packet
+                                                        then ioError (userError "Failed to send")
+                                                        else do
+                                                            ackResult <- readUntilDone fd B.empty
+                                                            if not ackResult
+                                                                then ioError (userError $ "Handshake failed on command: " ++ cmd)
+                                                                else do
+                                                                    threadDelay 10000 -- 10ms
+                                                                    handshakeLoop cmds
+                                            handshakeLoop commands
                         )
                     case result of
                         Left ex -> return (Left $ ConfigurationFailed $ show (ex :: IOException))
                         Right _ -> return (Right ())
+
+readUntilDone :: Fd -> B.ByteString -> IO Bool
+readUntilDone fd acc = Foreign.Marshal.Alloc.allocaBytes 128 $ \ptr -> do
+    countRes <- try (System.Posix.IO.fdReadBuf fd (Foreign.Ptr.castPtr ptr) 128) :: IO (Either IOException System.Posix.Types.ByteCount)
+    case countRes of
+        Left _ -> return False
+        Right 0 -> return True -- Assume EOF/Mock success
+        Right count -> do
+            bs <- B.packCStringLen (Foreign.Ptr.castPtr ptr, fromIntegral count)
+            let newAcc = B.append acc bs
+            if "Done" `B.isInfixOf` newAcc
+                then return True
+                else if "Error" `B.isInfixOf` newAcc
+                    then return False
+                    else if B.length newAcc > 4096
+                        then return False -- Prevent unbounded memory growth
+                        else readUntilDone fd newAcc
 
 configureConfigSerial :: Fd -> IO (Either HardwareError ())
 configureConfigSerial fd = do

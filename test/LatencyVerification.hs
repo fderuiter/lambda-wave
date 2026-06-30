@@ -65,6 +65,7 @@ main = do
             , kalmanState = kState
             , auditQueue = q
             , audioAlertEnabled = False, activeLanguage = "en", localizedBeamState = "BEAM OFF"
+        , calibrationStatus = CalibrationValid
             }
 
     var <- newTVarIO s

@@ -51,14 +51,14 @@ consumeAll = go [] 0 False
     go accFrames accBytes hadCorruption input
         | BL.null input = (reverse accFrames, accBytes, hadCorruption)
         | otherwise =
-            let (frames, consumed, maybeErr) = parseStream input
-                newFrames = reverse frames ++ accFrames -- parseStream returns frames in order, we push to acc
+            let (frames, consumed, maybeErr) = parseStream 0.0 input
+                newFrames = reverse frames ++ accFrames -- parseStream 0.0 returns frames in order, we push to acc
                 newBytes = accBytes + consumed
                 newCorruption = hadCorruption || isJust maybeErr
             in if consumed == 0 && not (BL.null input)
                then
                    -- Stuck? Force advance by 1 byte to avoid infinite loop
-                   -- This happens if parseStream fails but claims 0 consumption (shouldn't happen with current logic)
+                   -- This happens if parseStream 0.0 fails but claims 0 consumption (shouldn't happen with current logic)
                    go accFrames (accBytes + 1) True (BL.drop 1 input)
                else
                    go newFrames newBytes newCorruption (BL.drop consumed input)

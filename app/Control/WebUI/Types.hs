@@ -65,4 +65,5 @@ instance ToJSON SystemState where
         , "heartbeats" .= threadHeartbeats
         , "audioAlertEnabled" .= audioAlertEnabled
         , "activeLanguage" .= activeLanguage
+        , "calibrationStatus" .= show calibrationStatus
         ]

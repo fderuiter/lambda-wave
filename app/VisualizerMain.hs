@@ -56,6 +56,7 @@ main = do
           , auditQueue = auditQ
           , audioAlertEnabled = False
           , activeLanguage = "en"
+          , calibrationStatus = CalibrationUnverified
           , localizedBeamState = "BEAM OFF"
           }
 
@@ -133,6 +134,7 @@ readData fd stateVar = do
                                 , audioAlertEnabled = tpAudioAlertEnabled packet
                                 , activeLanguage = tpActiveLanguage packet
                                 , localizedBeamState = tpLocalizedBeamState packet
+                                , calibrationStatus = tpCalibrationStatus packet
                                 }
                             loop
     loop

@@ -66,8 +66,8 @@ maxTLVSize = 65536
 -- * Updates 'SystemState'.
 -- * Logs errors to 'auditQueue'.
 
-consumerLoop :: Translations -> Bool -> ForeignPtr RingBufferControl -> TVar SystemState -> IO ()
-consumerLoop translations isPrimary controlFp stateVar = withForeignPtr controlFp $ \controlPtr -> do
+consumerLoop :: Double -> Translations -> Bool -> ForeignPtr RingBufferControl -> TVar SystemState -> IO ()
+consumerLoop mountingOffset translations isPrimary controlFp stateVar = withForeignPtr controlFp $ \controlPtr -> do
     -- Read initial control block (non-atomic for immutable fields)
     -- We use a dedicated peek to avoid reading atomic offsets (0, 8) which could race.
     (ptrStart, rawSize) <- peekStaticFields controlPtr
@@ -136,7 +136,7 @@ consumerLoop translations isPrimary controlFp stateVar = withForeignPtr controlF
                     -- from the current snapshot. A robust implementation would maintain
                     -- the decoder state across loops.
 
-                    let (frames, bytesConsumed, maybeErr) = parseStream lbs
+                    let (frames, bytesConsumed, maybeErr) = parseStream mountingOffset lbs
 
                     -- Check for Busy Loop Condition:
                     -- If we consumed 0 bytes and have no error, it means we are stuck
@@ -282,10 +282,10 @@ skipToMagicWord = go 0
 -- Returns the frames, the total bytes consumed, and an optional error.
 -- Uses incremental parsing to handle partial frames safely.
 -- Optimization: Pre-scans for Magic Word to skip garbage efficiently.
-parseStream :: BL.ByteString -> ([RadarFrame], Int64, Maybe HardwareError)
-parseStream input =
+parseStream :: Double -> BL.ByteString -> ([RadarFrame], Int64, Maybe HardwareError)
+parseStream mountingOffset input =
     let (skipped, cleanInput) = skipToMagicWord input
-        (frames, consumed, err) = parseLoop (G.runGetIncremental getRadarFrame) (BL.toChunks cleanInput) 0
+        (frames, consumed, err) = parseLoop (G.runGetIncremental (getRadarFrame mountingOffset)) (BL.toChunks cleanInput) 0
     in (frames, skipped + consumed, err)
   where
     parseLoop decoder chunks !totalConsumed =
@@ -296,7 +296,7 @@ parseStream input =
                 -- 'unused' is the part of the LAST chunk that wasn't used.
                 -- We need to proceed with 'unused' + remaining 'chunks'.
                 let !newTotal = totalConsumed + consumed
-                    nextDecoder = G.runGetIncremental getRadarFrame
+                    nextDecoder = G.runGetIncremental (getRadarFrame mountingOffset)
                     -- We need to construct the input for the next step.
                     -- 'unused' is a ByteString.
                     (frames, finalConsumed, err) = if B.null unused
@@ -328,8 +328,8 @@ parseStream input =
                         parseLoop (k (Just c)) cs totalConsumed
 
 -- | Parser for a single Radar Frame
-getRadarFrame :: G.Get RadarFrame
-getRadarFrame = do
+getRadarFrame :: Double -> G.Get RadarFrame
+getRadarFrame mountingOffset = do
     rawHeader <- B.copy <$> G.lookAhead (G.getByteString 36)
 
     -- 1. Scan for Magic Word
@@ -363,7 +363,7 @@ getRadarFrame = do
     -- 🛡️ SECURITY FIX: Enforce boundary for the whole TLV block to prevent out-of-bounds reads
     -- P1-002: TLV Parser DoS
     let tlvBlockLen = fromIntegral (totalLen - 36)
-    points <- G.isolate tlvBlockLen $ parseTLVs (fromIntegral numTLVs)
+    points <- G.isolate tlvBlockLen $ parseTLVs mountingOffset (fromIntegral numTLVs)
 
     -- SENTINEL SAFETY NOTE: We keep 'header' empty or must copy it.
     -- Holding a ByteString pointing to the Ring Buffer (ForeignPtr) while
@@ -372,8 +372,8 @@ getRadarFrame = do
     return $ RadarFrame rawHeader frameNum points
 
 -- | Parse TLVs (Tail Recursive)
-parseTLVs :: Int -> G.Get [Point3D]
-parseTLVs count = go count []
+parseTLVs :: Double -> Int -> G.Get [Point3D]
+parseTLVs mountingOffset count = go count []
   where
     go 0 acc = return (concat $ reverse acc)
     go n acc = do
@@ -396,7 +396,7 @@ parseTLVs count = go count []
                     let numPoints = payloadLen `div` 16
 
                     -- Read the points
-                    pts <- getPoints numPoints
+                    pts <- getPoints mountingOffset numPoints
 
                     -- Explicitly consume any remaining bytes to satisfy G.isolate strictness
                     _padding <- G.getRemainingLazyByteString
@@ -414,7 +414,8 @@ parseTLVs count = go count []
                     c5 <- G.getFloatle
                     _padding <- G.getRemainingLazyByteString
                     let coeffs = [float2Double c0, float2Double c1, float2Double c2, float2Double c3, float2Double c4, float2Double c5]
-                    let pts = reconstructPolynomialSurface coeffs
+                    let rawPts = reconstructPolynomialSurface coeffs
+                    let pts = map (\p -> p { pz = pz p + mountingOffset }) rawPts
                     if null pts then fail "NaN/Inf detected in surface reconstruction" else return pts
 
                 go (n - 1) (points : acc)
@@ -427,13 +428,13 @@ parseTLVs count = go count []
                     return ()
                 go (n - 1) acc
 
-getPoints :: Int -> G.Get [Point3D]
-getPoints count = go count []
+getPoints :: Double -> Int -> G.Get [Point3D]
+getPoints mountingOffset count = go count []
   where
     go 0 acc = return (reverse acc)
     go n acc = do
         p <- getPoint
-        go (n - 1) (toPoint3D p : acc)
+        go (n - 1) (toPoint3D mountingOffset p : acc)
 
 getPoint :: G.Get Point
 getPoint = do
@@ -442,11 +443,11 @@ getPoint = do
     z <- G.getFloatle
     Point x y z <$> G.getFloatle
 
-toPoint3D :: Point -> Point3D
-toPoint3D Point{..} = Point3D
+toPoint3D :: Double -> Point -> Point3D
+toPoint3D mountingOffset Point{..} = Point3D
     { px = float2Double px'
     , py = float2Double py'
-    , pz = float2Double pz'
+    , pz = float2Double pz' + mountingOffset
     , v  = float2Double v'
     , snr = 0.0 -- Not in Type 1
     }
