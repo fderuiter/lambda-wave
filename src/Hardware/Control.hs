@@ -36,6 +36,7 @@ import Data.Types (SystemState)
 
 import Hardware.Types (HardwareError(..))
 import Hardware.FFI.Common
+import qualified Hardware.FFI.Common as Common
 import Hardware.FFI.Bridge
 
 initGpio :: TVar SystemState -> IO (MustHandle ())
@@ -44,16 +45,16 @@ initGpio stateVar = bridgeHardwareCall stateVar "HardwareControl" c_gpio_init
 setupWatchdog :: TVar SystemState -> IO (MustHandle ())
 setupWatchdog stateVar = bridgeHardwareCall stateVar "HardwareControl" (c_gpio_setup_watchdog (fromIntegral watchdogPin))
 
-readBeamChannel :: GpioChannel -> IO (Either HardwareError Bool)
-readBeamChannel channel = do
+readBeamChannel :: TVar SystemState -> GpioChannel -> IO (MustHandle Bool)
+readBeamChannel stateVar channel = do
     let pinNum = case channel of
             LogicChannel -> fromIntegral logicPin
             WatchdogChannel -> fromIntegral watchdogPin
-    val <- c_gpio_read pinNum
-    case val of
-        0 -> return (Right False)
-        1 -> return (Right True)
-        _ -> return (Left ConnectionLost)
+    bridgeHardwareQuery stateVar "HardwareControl" (c_gpio_read pinNum) $ \val ->
+        case val of
+            0 -> (Common.Success, Right False)
+            1 -> (Common.Success, Right True)
+            _ -> (Common.Failure "Connection Lost", Left ConnectionLost)
 
 parseConfig :: String -> [String]
 parseConfig = filter (not . null) . map clean . lines

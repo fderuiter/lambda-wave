@@ -9,6 +9,7 @@ module Hardware.FFI.Bridge (
     bridgeHardwareCall,
     bridgeHardwareCallCustom,
     bridgeRingBufferCall,
+    bridgeHardwareQuery,
     handleHardwareResponse,
     triggerShutdown
 ) where
@@ -123,3 +124,11 @@ bridgeRingBufferCall stateVar comp c_call = do
     let res = toRingBufferResult (fromIntegral err) ret
     auditHardwareEvent stateVar comp res
     return res
+
+-- | High-speed fast path for status queries. No retry delay. Returns typed data.
+bridgeHardwareQuery :: TVar SystemState -> String -> IO CInt -> (CInt -> (HardwareResult, Either HardwareError a)) -> IO (MustHandle a)
+bridgeHardwareQuery stateVar comp c_call parser = do
+    ret <- c_call
+    let (res, parsed) = parser ret
+    auditHardwareEvent stateVar comp res
+    return $ MustHandle parsed
