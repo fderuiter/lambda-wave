@@ -41,7 +41,7 @@ main = do
     putStrLn $ "Input Size: " ++ show (BL.length input)
 
     -- Run Parser
-    let (frames, consumed, corrupted) = parseStream input
+    let (frames, consumed, corrupted) = parseStream 0.0 input
 
     putStrLn $ "Parser finished. Consumed: " ++ show consumed ++ ", Corrupted: " ++ show corrupted
 

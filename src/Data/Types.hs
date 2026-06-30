@@ -12,6 +12,7 @@ module Data.Types (
     Point3D(..),
     Point(..),
     BeamState(..),
+    CalibrationStatus(..),
     SystemState(..),
     RadarFrame(..),
     Severity(..),
@@ -90,6 +91,13 @@ data BeamState = BeamOn | BeamOff | BeamHold -- Hold is manual override
 instance NFData BeamState where
   rnf bs = bs `seq` ()
 
+-- | Hardware Calibration Status
+data CalibrationStatus = CalibrationUnverified | CalibrationValid | CalibrationInvalid
+  deriving (Show, Eq, Generic, Binary)
+
+instance NFData CalibrationStatus where
+  rnf cs = cs `seq` ()
+
 -- | The Global State shared across threads via STM
 data SystemState = SystemState
   { currentPoints :: [Point3D]
@@ -103,12 +111,13 @@ data SystemState = SystemState
   , audioAlertEnabled :: Bool -- ^ Feature toggle for Audio Alerts (P2-002)
   , activeLanguage :: String
   , localizedBeamState :: String
+  , calibrationStatus :: CalibrationStatus -- ^ Real-time safety monitoring of hardware calibration health
   }
 
 instance NFData SystemState where
-  rnf (SystemState pts bs t sn iso hb ks aq ae lang locbs) = 
+  rnf (SystemState pts bs t sn iso hb ks aq ae lang locbs cs) = 
       rnf pts `seq` rnf bs `seq` rnf t `seq` rnf sn `seq` rnf iso `seq` 
-      rnf hb `seq` rnf ks `seq` aq `seq` rnf ae `seq` rnf lang `seq` rnf locbs
+      rnf hb `seq` rnf ks `seq` aq `seq` rnf ae `seq` rnf lang `seq` rnf locbs `seq` rnf cs
 
 -- | Raw parsed structure from the sensor
 data RadarFrame = RadarFrame
@@ -131,4 +140,5 @@ data TelemetryPacket = TelemetryPacket
   , tpAudioAlertEnabled :: Bool
   , tpActiveLanguage :: String
   , tpLocalizedBeamState :: String
+  , tpCalibrationStatus :: CalibrationStatus
   } deriving (Show, Generic, Binary)

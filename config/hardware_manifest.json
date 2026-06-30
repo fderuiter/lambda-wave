@@ -10,5 +10,6 @@
   "timing": {
     "frame_periodicity_ms": 100,
     "system_latency_ms": 50
-  }
+  },
+  "mounting_offset_mm": 50.0
 }

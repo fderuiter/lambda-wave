@@ -59,7 +59,7 @@ spec = do
             garbage = BL.pack (replicate 10 0xFF)
             input = garbage <> payload
 
-            (frames, consumed, err) = parseStream input
+            (frames, consumed, err) = parseStream 0.0 input
 
         length frames `shouldBe` 1
         case frames of
@@ -82,7 +82,7 @@ spec = do
             frame = P.runPut (magic >> header) -- 36 bytes
 
         let input = frame <> partialMagic
-        let (frames, consumed, err) = parseStream input
+        let (frames, consumed, err) = parseStream 0.0 input
 
         length frames `shouldBe` 1
         -- Should consume the frame (36) but NOT the partial magic (4)
@@ -122,7 +122,7 @@ spec = do
             -- Append another frame to verify alignment is maintained
             payload2 = payload <> payload
 
-            (frames, consumed, err) = parseStream payload2
+            (frames, consumed, err) = parseStream 0.0 payload2
 
         -- Should parse both frames
         length frames `shouldBe` 2
@@ -132,7 +132,7 @@ spec = do
 
     it "Fuzz Testing: Handles random garbage without crashing" $ property $ \bytes -> do
         let input = BL.fromStrict (B.pack bytes)
-            (frames, consumed, err) = parseStream input
+            (frames, consumed, err) = parseStream 0.0 input
 
         -- We don't expect it to crash.
         if BL.null input
@@ -156,10 +156,10 @@ spec = do
 
             payload = P.runPut (magic >> header)
 
-            -- We expect parseStream to fail on this
-            (frames, consumed, err) = parseStream payload
+            -- We expect parseStream 0.0 to fail on this
+            (frames, consumed, err) = parseStream 0.0 payload
 
-        -- Should return InvalidLength (which is what "Invalid Packet Length" maps to in parseStream)
+        -- Should return InvalidLength (which is what "Invalid Packet Length" maps to in parseStream 0.0)
         case err of
             Just InvalidLength -> return ()
             Just (ParseError _) -> return () -- Acceptable if mapped differently
@@ -206,7 +206,7 @@ spec = do
 
             payload = P.runPut (magic >> header >> unknownTlv >> validTlv)
 
-            (frames, consumed, err) = parseStream payload
+            (frames, consumed, err) = parseStream 0.0 payload
 
         err `shouldBe` Nothing
         length frames `shouldBe` 1
@@ -234,7 +234,7 @@ spec = do
                  -- Payload not needed as it should fail immediately
 
              payload = P.runPut (magic >> header >> tlv)
-             (frames, consumed, err) = parseStream payload
+             (frames, consumed, err) = parseStream 0.0 payload
 
          err `shouldBe` Just DoSAttackDetected
          length frames `shouldBe` 0

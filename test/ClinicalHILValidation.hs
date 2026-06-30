@@ -88,6 +88,7 @@ runHILSimulation name rig duration = do
             , kalmanState = initKalman targetHeight (KalmanConfig 1000.0 2.0)
             , auditQueue = q
             , audioAlertEnabled = False, activeLanguage = "en", localizedBeamState = "BEAM OFF"
+        , calibrationStatus = CalibrationValid
             }
     var <- newTVarIO s
     
