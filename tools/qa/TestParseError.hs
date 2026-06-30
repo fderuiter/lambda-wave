@@ -20,7 +20,7 @@ main = do
             P.putWord32le 0; P.putWord32le 80; P.putWord32le 0; P.putWord32le 1
             P.putWord32le 0; P.putWord32le 2; P.putWord32le 0
         payload = P.runPut (magic >> hdr >> unknownTlv >> validTlv)
-        (frames, consumed, err) = parseStream payload
+        (frames, consumed, err) = parseStream 0.0 payload
     print frames
     print consumed
     print err
