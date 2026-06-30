@@ -1,6 +1,6 @@
 # Lambda-Wave: Purpose, Architecture & Technical Overview
 
-**Version:** 0.1.0.0  
+**Version:** <!-- METADATA:project_version -->0.1.0.0<!-- /METADATA:project_version -->  
 **Last Updated:** January 2026  
 **Classification:** Safety-Critical Medical Software (IEC 62304 Class C)
 

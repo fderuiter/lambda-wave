@@ -15,6 +15,9 @@ jobs:
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
+      - name: Validate Documentation Metadata
+        run: python3 scripts/sync_metadata.py --check
+
       - uses: haskell-actions/setup@v2
         with:
           ghc-version: '9.6.7'

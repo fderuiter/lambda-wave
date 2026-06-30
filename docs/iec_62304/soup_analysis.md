@@ -5,7 +5,7 @@
 **Note:** For vulnerabilities in SOUP, please refer to our [Security Policy](../../SECURITY.md).
 
 **SOUP Item:** Glasgow Haskell Compiler Runtime System (GHC RTS)
-**Version:** 9.6.7
+**Version:** <!-- METADATA:ghc_version -->9.6.7<!-- /METADATA:ghc_version -->
 **Purpose:** Provides memory management (Garbage Collection), thread scheduling, and runtime services for the Lambda-Wave application.
 
 ## 1. Description and Purpose
@@ -23,16 +23,16 @@ Lambda-Wave is an IEC 62304 Class C Medical Software system. The GHC RTS runs in
 *Note: For the complete, structured Risk Management File containing full quantitative FMEA metrics (Severity, Occurrence, Detection, RPN) and traceability to software components, please refer to `rmf.yaml` in the repository root. This is managed via the `tools/safety_risk_suite.py` CLI.*
 
 ## 4. Anomaly List Assessment
-GHC 9.6.7 is a mature release. Known issues in the GHC issue tracker have been reviewed. No open bugs related to bounded GC or core thread scheduling were identified that affect the specific subset of features used by Lambda-Wave.
+GHC <!-- METADATA:ghc_version -->9.6.7<!-- /METADATA:ghc_version --> is a mature release. Known issues in the GHC issue tracker have been reviewed. No open bugs related to bounded GC or core thread scheduling were identified that affect the specific subset of features used by Lambda-Wave.
 
-Additionally, the base Debian 11.11 image (`haskell:9.6.7-slim-bullseye`) contains a known vulnerability in `libssh2-1` (CVE-2026-55200) and kernel vulnerabilities in `linux-libc-dev` (CVE-2026-46064, CVE-2026-46068, CVE-2026-46069, CVE-2026-46075, CVE-2026-46122). These vulnerabilities are deemed acceptable and ignored by our security scans because the medical device operates in an air-gapped network segment without running an SSH server or client, and the kernel vulnerabilities in headers do not affect the statically compiled binaries or the running system since the system kernel is managed externally by the OS layer, making the vulnerable paths unreachable.
+Additionally, the base Debian 11.11 image (`haskell:<!-- METADATA:ghc_version -->9.6.7<!-- /METADATA:ghc_version -->-slim-bullseye`) contains a known vulnerability in `libssh2-1` (CVE-2026-55200) and kernel vulnerabilities in `linux-libc-dev` (CVE-2026-46064, CVE-2026-46068, CVE-2026-46069, CVE-2026-46075, CVE-2026-46122). These vulnerabilities are deemed acceptable and ignored by our security scans because the medical device operates in an air-gapped network segment without running an SSH server or client, and the kernel vulnerabilities in headers do not affect the statically compiled binaries or the running system since the system kernel is managed externally by the OS layer, making the vulnerable paths unreachable.
 
 ## 5. Justification for Acceptability
 The GHC RTS is deemed acceptable for use in this Class C system because:
 1. The project architecture relies on a minimal subset of RTS features.
 2. The "hot path" processing avoids heap allocations, neutralizing the primary source of RTS non-determinism (Garbage Collection).
 3. The system implements an independent, external safety watchdog to detect and mitigate any complete RTS failures or lockups.
-4. GHC 9.6.7 has been heavily battle-tested in industrial contexts, and the specific RTS flags (`-N2 -qa -l`) provide predictable affinity behavior.
+4. GHC <!-- METADATA:ghc_version -->9.6.7<!-- /METADATA:ghc_version --> has been heavily battle-tested in industrial contexts, and the specific RTS flags (`-N2 -qa -l`) provide predictable affinity behavior.
 
 ## 6. Pinned Library Dependencies
 <!-- AUTOMATED-DEPENDENCIES-START -->
@@ -74,7 +74,7 @@ The GHC RTS is deemed acceptable for use in this Class C system because:
 - filepath == 1.4.301.0
 - fixed == 0.3
 - ghc-bignum == 1.3
-- ghc-boot-th == 9.6.7
+- ghc-boot-th == <!-- METADATA:ghc_version -->9.6.7<!-- /METADATA:ghc_version -->
 - ghc-prim == 0.10.0
 - half == 0.3.3
 - hashable == 1.5.1.0
