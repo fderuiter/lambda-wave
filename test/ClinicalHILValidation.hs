@@ -64,16 +64,14 @@ main = do
     generatePdfReport (lats1 ++ lats2)
     putStrLn "\nAll HIL Validation Scenarios Completed Successfully."
 
-loopbackMonitor :: TVar Bool -> IO ()
-loopbackMonitor expectedStateVar = forever $ do
+loopbackMonitor :: TVar SystemState -> TVar Bool -> IO ()
+loopbackMonitor stateVar expectedStateVar = forever $ do
     expected <- readTVarIO expectedStateVar
-    actualRes <- readBeamChannel LogicChannel
-    let match = case actualRes of
-            Right actual -> expected == actual
-            Left _       -> False
-    if not match
-        then threadDelay 10
-        else threadDelay 100
+    actualResH <- readBeamChannel stateVar LogicChannel
+    handleHardwareResponse 
+        (\_ -> threadDelay 10)
+        (\actual -> if expected == actual then threadDelay 100 else threadDelay 10)
+        actualResH
 
 runHILSimulation :: String -> RigConfig -> Double -> IO (Bool, [Double])
 runHILSimulation name rig duration = do
@@ -98,7 +96,7 @@ runHILSimulation name rig duration = do
         return ()
         
     expectedStateVar <- newTVarIO False
-    _ <- forkIO $ loopbackMonitor expectedStateVar
+    _ <- forkIO $ loopbackMonitor var expectedStateVar
 
     let dtSec = 0.033 :: Double
     let steps = floor (duration / dtSec) :: Int
@@ -121,10 +119,11 @@ runHILSimulation name rig duration = do
             atomically $ writeTVar expectedStateVar expectedBool
             
             let waitMatch = do
-                    actualRes <- readBeamChannel LogicChannel
-                    let isMatch = case actualRes of
-                            Right actual -> actual == expectedBool
-                            Left _       -> False
+                    actualResH <- readBeamChannel var LogicChannel
+                    isMatch <- handleHardwareResponse
+                        (\_ -> return False)
+                        (\actual -> return (actual == expectedBool))
+                        actualResH
                     if isMatch
                         then getMonotonicTimeNS
                         else waitMatch
