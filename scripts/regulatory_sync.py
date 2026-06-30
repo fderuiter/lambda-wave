@@ -49,7 +49,7 @@ def parse_soup():
             m = re.search(r'\*\*Version:\*\*\s*(.+)', content)
             if m:
                 v = m.group(1).strip()
-                v = re.sub(r'<!--.*?-->', '', v).strip()
+                v = re.sub(r'<!--.*?-->', '', v, flags=re.DOTALL).strip()
                 version = v
     return version
 
@@ -67,7 +67,7 @@ def get_soup_dependencies():
                         parts = line[2:].split(" == ")
                         if len(parts) == 2:
                             ver_str = parts[1].strip()
-                            ver_str = re.sub(r'<!--.*?-->', '', ver_str).strip()
+                            ver_str = re.sub(r'<!--.*?-->', '', ver_str, flags=re.DOTALL).strip()
                             deps[parts[0].strip()] = ver_str
     return deps
 
