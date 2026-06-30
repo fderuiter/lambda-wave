@@ -15,10 +15,6 @@ module Hardware.Control (
     setPolynomialOrder
 ) where
 
-import qualified Foreign.Marshal.Alloc
-import qualified Foreign.Ptr
-import qualified System.Posix.Types
-import Control.Monad (forM_)
 import Control.Concurrent (threadDelay)
 import qualified Data.ByteString.Char8 as BC
 import Control.Exception (try, IOException, bracket)
@@ -131,21 +127,21 @@ configureSensor configPath portPath = do
                         Right _ -> return (Right ())
 
 readUntilDone :: Fd -> B.ByteString -> IO Bool
-readUntilDone fd acc = Foreign.Marshal.Alloc.allocaBytes 128 $ \ptr -> do
-    countRes <- try (System.Posix.IO.fdReadBuf fd (Foreign.Ptr.castPtr ptr) 128) :: IO (Either IOException System.Posix.Types.ByteCount)
-    case countRes of
+readUntilDone fd acc = do
+    readRes <- try (fdRead fd 128) :: IO (Either IOException B.ByteString)
+    case readRes of
         Left _ -> return False
-        Right 0 -> return True -- Assume EOF/Mock success
-        Right count -> do
-            bs <- B.packCStringLen (Foreign.Ptr.castPtr ptr, fromIntegral count)
-            let newAcc = B.append acc bs
-            if "Done" `B.isInfixOf` newAcc
-                then return True
-                else if "Error" `B.isInfixOf` newAcc
-                    then return False
-                    else if B.length newAcc > 4096
-                        then return False -- Prevent unbounded memory growth
-                        else readUntilDone fd newAcc
+        Right bs
+            | B.null bs -> return True -- Assume EOF/Mock success
+            | otherwise -> do
+                let newAcc = B.append acc bs
+                if "Done" `B.isInfixOf` newAcc
+                    then return True
+                    else if "Error" `B.isInfixOf` newAcc
+                        then return False
+                        else if B.length newAcc > 4096
+                            then return False -- Prevent unbounded memory growth
+                            else readUntilDone fd newAcc
 
 configureConfigSerial :: Fd -> IO (Either HardwareError ())
 configureConfigSerial fd = do

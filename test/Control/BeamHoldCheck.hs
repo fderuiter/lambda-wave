@@ -31,6 +31,7 @@ mkState bs = do
         , kalmanState = kState
         , auditQueue = q
         , audioAlertEnabled = False, activeLanguage = "en", localizedBeamState = "BEAM OFF"
+        , calibrationStatus = CalibrationValid
         }
 
 main :: IO ()
