@@ -1,6 +1,6 @@
 # Lambda-Wave Build Guide
 
-**Version:** 0.1.0.0  
+**Version:** <!-- METADATA:project_version -->0.1.0.0<!-- /METADATA:project_version -->  
 **Last Updated:** January 2026
 
 ---
@@ -57,7 +57,7 @@ The build system is designed for safety-critical development with:
 **Required Tools:**
 ```bash
 # Haskell toolchain
-- GHC 9.4+ (Haskell compiler)
+- GHC <!-- METADATA:ghc_version -->9.6.7<!-- /METADATA:ghc_version -->+ (Haskell compiler)
 - Cabal 3.6+ (build tool)
 - Stack (optional alternative to Cabal)
 
@@ -223,16 +223,16 @@ wsl --install -d Ubuntu-20.04
 **Option A: GHCup (Recommended)**
 ```bash
 curl --proto '=https' --tlsv1.2 -sSf https://get-ghcup.haskell.org | sh
-ghcup install ghc 9.4.8
+ghcup install ghc <!-- METADATA:ghc_version -->9.6.7<!-- /METADATA:ghc_version -->
 ghcup install cabal 3.10.1.0
-ghcup set ghc 9.4.8
+ghcup set ghc <!-- METADATA:ghc_version -->9.6.7<!-- /METADATA:ghc_version -->
 ghcup set cabal 3.10.1.0
 ```
 
 **Option B: System Package Manager**
 ```bash
 # Ubuntu/Debian
-sudo apt-get install ghc-9.4 cabal-install
+sudo apt-get install ghc-<!-- METADATA:ghc_version -->9.6.7<!-- /METADATA:ghc_version --> cabal-install
 
 # Fedora/RHEL
 sudo dnf install ghc cabal-install
@@ -313,7 +313,7 @@ cabal build --ghc-options="-O2"
 
 ### Standard Docker Build
 
-The Dockerfile uses a specific SHA-256 digest for the base image (`haskell:9.4.7`) to ensure build determinism (P1-002).
+The Dockerfile uses a specific SHA-256 digest for the base image (`haskell:<!-- METADATA:ghc_version -->9.6.7<!-- /METADATA:ghc_version -->`) to ensure build determinism (P1-002).
 
 ```bash
 # Build image
@@ -337,11 +337,11 @@ To update the base image (e.g., for security patches), follow this procedure (SO
 
 1.  Pull the new image tag locally to verify it:
     ```bash
-    docker pull haskell:9.4.7
+    docker pull haskell:<!-- METADATA:ghc_version -->9.6.7<!-- /METADATA:ghc_version -->
     ```
 2.  Inspect the image to get the specific SHA-256 digest:
     ```bash
-    docker inspect --format='{{index .RepoDigests 0}}' haskell:9.4.7
+    docker inspect --format='{{index .RepoDigests 0}}' haskell:<!-- METADATA:ghc_version -->9.6.7<!-- /METADATA:ghc_version -->
     ```
     Ensure the output is in the format `haskell@sha256:...`.
 3.  Update the `Dockerfile` `FROM` instruction with the new digest.
@@ -369,13 +369,13 @@ The Dockerfile uses multi-stage builds for efficiency:
 
 ```dockerfile
 # Stage 1: Build dependencies (cached layer)
-FROM haskell:9.4 as deps
+FROM haskell:<!-- METADATA:ghc_version -->9.6.7<!-- /METADATA:ghc_version --> as deps
 WORKDIR /build
 COPY sgrt-radar-system.cabal cabal.project ./
 RUN cabal update && cabal build --only-dependencies
 
 # Stage 2: Build application
-FROM haskell:9.4 as build
+FROM haskell:<!-- METADATA:ghc_version -->9.6.7<!-- /METADATA:ghc_version --> as build
 WORKDIR /build
 COPY --from=deps /root/.cabal /root/.cabal
 COPY . .
@@ -653,7 +653,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     container:
-      image: haskell:9.8  # Note: Project supports GHC 9.4+, CI uses 9.8
+      image: haskell:<!-- METADATA:ghc_version -->9.6.7<!-- /METADATA:ghc_version -->  # Note: Project supports GHC <!-- METADATA:ghc_version -->9.6.7<!-- /METADATA:ghc_version -->+, CI uses <!-- METADATA:ghc_version -->9.6.7<!-- /METADATA:ghc_version -->
     steps:
       - uses: actions/checkout@v3
       - name: Install system dependencies
@@ -670,7 +670,7 @@ jobs:
 
 **Triggers:** Pull requests to develop or main  
 **Purpose:** Full build and test verification  
-**Note:** CI uses GHC 9.8 for testing, but the project is compatible with GHC 9.4+
+**Note:** CI uses GHC <!-- METADATA:ghc_version -->9.6.7<!-- /METADATA:ghc_version --> for testing, but the project is compatible with GHC <!-- METADATA:ghc_version -->9.6.7<!-- /METADATA:ghc_version -->+
 
 #### Release Workflow (.github/workflows/release.yml)
 
@@ -706,7 +706,7 @@ jobs:
 hlint src/ app/ test/
 
 # Run build locally (mimics CI)
-docker run -v $(pwd):/app -w /app haskell:9.8 sh -c "
+docker run -v $(pwd):/app -w /app haskell:<!-- METADATA:ghc_version -->9.6.7<!-- /METADATA:ghc_version --> sh -c "
   cabal update && \
   cabal build --only-dependencies && \
   cabal build && \
@@ -778,8 +778,8 @@ sudo chmod 666 /dev/ttyUSB0
 ghc --version
 
 # Install correct version with GHCup
-ghcup install ghc 9.4.8
-ghcup set ghc 9.4.8
+ghcup install ghc <!-- METADATA:ghc_version -->9.6.7<!-- /METADATA:ghc_version -->
+ghcup set ghc <!-- METADATA:ghc_version -->9.6.7<!-- /METADATA:ghc_version -->
 
 # Verify
 ghc --version

@@ -35,6 +35,9 @@ jobs:
       - name: Verify Planning Documents (IEC 62304)
         run: scripts/verify_planning.sh
 
+      - name: Validate Documentation Metadata
+        run: python scripts/sync_metadata.py --check
+
       - name: Validate Change Control Records (CCR)
         run: |
           set +e

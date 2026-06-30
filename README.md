@@ -136,15 +136,15 @@ See [Quick Start Guide](docs/QUICKSTART.md) for detailed instructions.
 - **Hardware I/O:** C++ (zero-copy, low latency)
 - **Signal Processing:** FMCW radar, Chirp Z-Transform, Kalman filtering
 - **Visualization:** OpenGL/GLUT
-- **Build System:** Cabal + GHC 9.4+
+- **Build System:** Cabal + GHC <!-- METADATA:ghc_version -->9.6.7<!-- /METADATA:ghc_version -->+
 - **Testing:** Hspec + QuickCheck (property-based testing)
 
 ---
 
 ## 📊 Current Status
 
-**Version:** 0.1.0.0 (Beta)  
-**Phase:** Phase 3 - Signal Processing Core  
+**Version:** <!-- METADATA:project_version -->0.1.0.0<!-- /METADATA:project_version --> (Beta)  
+**Phase:** <!-- METADATA:project_status -->Phase 3 - Signal Processing Core (In Progress)<!-- /METADATA:project_status -->  
 **Lines of Code:** ~1,287 (Haskell + tests)
 
 ### Implementation Progress

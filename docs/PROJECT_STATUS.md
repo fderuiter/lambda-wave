@@ -1,8 +1,8 @@
 # Lambda-Wave Project Status
 
 **Last Updated:** January 2026  
-**Version:** 0.1.0.0  
-**Status:** Phase 3 - Signal Processing Core (In Progress)
+**Version:** <!-- METADATA:project_version -->0.1.0.0<!-- /METADATA:project_version -->  
+**Status:** <!-- METADATA:project_status -->Phase 3 - Signal Processing Core (In Progress)<!-- /METADATA:project_status -->
 
 ---
 
@@ -45,7 +45,7 @@ Lambda-Wave (formerly SGRT Radar System) is a safety-critical Surface Guided Rad
 - **Status:** PARTIAL - Docker build works, but not pinned to digest
 - **Requirements:** Reproducible builds
 - **Implementation:** 
-  - `Dockerfile` using `haskell:9.4` base image
+  - `Dockerfile` using `haskell:<!-- METADATA:ghc_version -->9.6.7<!-- /METADATA:ghc_version -->` base image
   - System dependencies installed via `scripts/setup_env.sh`
 - **Pending:** Pin to specific SHA-256 digest for deterministic builds
 
@@ -211,7 +211,7 @@ Lambda-Wave (formerly SGRT Radar System) is a safety-critical Surface Guided Rad
 ## Dependencies & External Components
 
 ### Core Dependencies
-- **GHC:** 9.4+ (Haskell compiler)
+- **GHC:** <!-- METADATA:ghc_version -->9.6.7<!-- /METADATA:ghc_version -->+ (Haskell compiler)
 - **hmatrix:** Matrix operations for signal processing
 - **stm:** Software Transactional Memory for thread coordination
 - **clock:** High-precision timing
