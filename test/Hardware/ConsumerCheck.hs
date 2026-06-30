@@ -64,7 +64,7 @@ testFindsMagicWord = do
         payload = P.runPut (magic >> testHeader >> tlv)
         garbage = BL.pack (replicate 10 0xFF)
         input = garbage <> payload
-        (frames, consumed, err) = parseStream input
+        (frames, consumed, err) = parseStream 0.0 input
 
     let pointCheck = case frames of
             (f:_) -> length (Data.Types.points f) == 2
@@ -85,7 +85,7 @@ testPartialFrames = do
             P.putWord32le 0; P.putWord32le 0; P.putWord32le 0
         frame = P.runPut (magic >> hdr)
     let input = frame <> partialMagic
-    let (frames, consumed, err) = parseStream input
+    let (frames, consumed, err) = parseStream 0.0 input
 
     assert "Handles partial frames" $
         length frames == 1 &&
@@ -107,7 +107,7 @@ testPaddedTLVs = do
             P.putFloatle x; P.putFloatle y; P.putFloatle z; P.putFloatle vel
         payload = P.runPut (magic >> testHeader >> tlv)
         payload2 = payload <> payload
-        (frames, consumed, err) = parseStream payload2
+        (frames, consumed, err) = parseStream 0.0 payload2
 
     assert "Handles Padded TLVs" $
         length frames == 2 &&
@@ -122,7 +122,7 @@ testFuzzGarbage = do
   where
     check bytes = do
         let input = BL.fromStrict (B.pack bytes)
-            (_, consumed, err) = parseStream input
+            (_, consumed, err) = parseStream 0.0 input
         if BL.null input
            then unless (consumed == 0 && err == Nothing) $ do
                 putStrLn "FAIL: Empty input consumed bytes or returned error"
@@ -138,7 +138,7 @@ testFuzzInvalid = do
             P.putWord32le 0; P.putWord32le 10; P.putWord32le 0; P.putWord32le 0
             P.putWord32le 0; P.putWord32le 0; P.putWord32le 0
         payload = P.runPut (magic >> hdr)
-        (_, _, err) = parseStream payload
+        (_, _, err) = parseStream 0.0 payload
 
     assert "Detects corruption" $
         case err of
@@ -162,7 +162,7 @@ testUnknownTLVs = do
             P.putWord32le 0; P.putWord32le 80; P.putWord32le 0; P.putWord32le 1
             P.putWord32le 0; P.putWord32le 2; P.putWord32le 0
         payload = P.runPut (magic >> hdr >> unknownTlv >> validTlv)
-        (frames, consumed, err) = parseStream payload
+        (frames, consumed, err) = parseStream 0.0 payload
 
     let pointCheck = case frames of
             (f:_) -> length (Data.Types.points f) == 1
@@ -183,7 +183,7 @@ testDoSAttack = do
         tlv = do
             P.putWord32le 1; P.putWord32le 70000
         payload = P.runPut (magic >> hdr >> tlv)
-        (frames, _, err) = parseStream payload
+        (frames, _, err) = parseStream 0.0 payload
 
     assert "Detects DoS Attack" $
         err == Just DoSAttackDetected &&

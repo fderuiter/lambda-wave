@@ -97,10 +97,13 @@ processFrame translations stateVar frame = do
             proposedBeamState = evaluateGating targetD tolD hystD latencyT newKState currentBeam
 
         -- Safety: If current state is BeamHold, we MUST respect it.
+        -- If calibration is not valid, we MUST block the beam (BeamOff).
         -- Otherwise, we transition to the proposed state.
         let resolvedBeamState = if currentBeam == BeamHold
                                 then BeamHold
-                                else proposedBeamState
+                                else if calibrationStatus s /= CalibrationValid
+                                     then BeamOff
+                                     else proposedBeamState
 
         -- Log Beam Change (only if resolved state is different from what we read initially or updated)
         -- We compare against 'currentBeam' to log transitions that happen NOW.
