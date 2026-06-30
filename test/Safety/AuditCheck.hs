@@ -46,6 +46,17 @@ withTestEnv action = do
         e <- fileExist f
         when e (removeLink f)
 
+-- | Wait for queue to drain with a timeout
+waitForQueue :: TBQueue AuditEvent -> IO ()
+waitForQueue q = go (50 :: Int)
+  where
+    go 0 = return ()
+    go n = do
+        empty <- atomically $ isEmptyTBQueue q
+        if empty
+           then threadDelay 50_000 -- extra wait for processing
+           else threadDelay 100_000 >> go (n - 1)
+
 testBasicLogging :: IO Bool
 testBasicLogging = do
     putStr "Test 1: Basic Logging... "
@@ -58,7 +69,7 @@ testBasicLogging = do
         atomically $ writeTBQueue q (AuditEvent now Info "Test" "Hello World")
 
         -- Wait for processing
-        threadDelay 200_000 -- 200ms
+        waitForQueue q
 
         killThread tid
         -- Allow time for handle cleanup
@@ -123,7 +134,7 @@ runChildCrash = do
 
     atomically $ writeTBQueue q (AuditEvent now Critical "Test" "CRASH_EVENT_CRIT")
     atomically $ writeTBQueue q (AuditEvent now Warning "Test" "CRASH_EVENT_WARN")
-    threadDelay 100_000
+    waitForQueue q
     exitImmediately (ExitFailure 99)
 
 testCrashRecovery :: IO Bool
@@ -179,7 +190,7 @@ testIOException = do
 
         now <- getMonotonicTimeNS
         atomically $ writeTBQueue q (AuditEvent now Info "Test" "Fail")
-        threadDelay 200_000
+        waitForQueue q
 
         killThread tid
         putStrLn "PASS"
