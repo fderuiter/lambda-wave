@@ -12,14 +12,14 @@ data Token = Ident String
            deriving (Show, Eq)
 
 isOpChar :: Char -> Bool
-isOpChar c = c `elem` "!#$%&*+./<=>?@\\^|-~:"
+isOpChar c = c `elem` ("!#$%&*+./<=>?@\\^|-~:" :: String)
 
 lexToken :: String -> (Token, String)
 lexToken [] = error "empty"
 lexToken (c:cs)
   | isSpace c = let (sp, rest) = span isSpace (c:cs) in (Space sp, rest)
   | isAlpha c || c == '_' = let (idStr, rest) = span (\x -> isAlphaNum x || x == '_') (c:cs) in (Ident idStr, rest)
-  | c `elem` "().," = (Punct c, cs)
+  | c `elem` ("().," :: String) = (Punct c, cs)
   | isOpChar c = let (op, rest) = span isOpChar (c:cs) in (Op op, rest)
   | otherwise = (Other c, cs)
 
