@@ -357,7 +357,7 @@ docker build --no-cache -t lambda-wave .
 **Symptom:**
 ```
 cabal: Could not resolve dependencies:
-[__0] trying: sgrt-radar-system-0.1.0.0 (user goal)
+[__0] trying: sgrt-radar-system-<!-- METADATA:project_version -->0.1.0.0<!-- /METADATA:project_version --> (user goal)
 [__1] unknown package: vector
 ```
 
