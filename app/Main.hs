@@ -38,8 +38,8 @@ data HardwareManifest = HardwareManifest
     deriving (Show)
 
 instance FromJSON HardwareManifest where
-    parseJSON = withObject "HardwareManifest" $ \v -> HardwareManifest
-        <$> v .: "mounting_offset_mm"
+    parseJSON = withObject "HardwareManifest" $ \obj -> HardwareManifest
+        <$> obj .: "mounting_offset_mm"
 
 main :: IO ()
 main = do

@@ -24,6 +24,17 @@ import Hardware.Consumer (consumerLoop)
 import FFI.RingBuffer.IO (attachRingBuffer)
 import FFI.RingBuffer.Types (RingBufferControl)
 import Data.I18n (loadTranslations)
+import Data.Aeson (FromJSON(..), (.:), withObject)
+import qualified Data.Aeson as A
+import System.Exit (exitFailure)
+
+data HardwareManifest = HardwareManifest
+    { manifestMountingOffset :: Double }
+    deriving (Show)
+
+instance FromJSON HardwareManifest where
+    parseJSON = withObject "HardwareManifest" $ \obj -> HardwareManifest
+        <$> obj .: "mounting_offset_mm"
 
 #ifdef ENABLE_UI
 import Control.UI.Window (initWindow)
@@ -39,6 +50,13 @@ main :: IO ()
 main = do
     putStrLn "Starting Visualizer..."
     
+    manifestBytes <- BL.readFile "config/hardware_manifest.json"
+    mountingOffset <- case A.decode manifestBytes of
+        Just m -> return (manifestMountingOffset m)
+        Nothing -> do
+            putStrLn "FATAL: Failed to parse protected configuration file: hardware_manifest.json"
+            exitFailure
+
     let kConfig = KalmanConfig { procNoise = 10.0, measNoise = 2.0 }
     let initialKState = initKalman targetHeight kConfig
     auditQ <- newTBQueueIO 1000 -- Dummy queue
@@ -72,7 +90,7 @@ main = do
         Left err -> putStrLn $ "Warning: Could not attach to shared ring buffer: " ++ show err
         Right ringBuffer -> do
             putStrLn "Attached to Shared Ring Buffer."
-            _ <- forkOS $ consumerLoop translations False ringBuffer systemState
+            _ <- forkOS $ consumerLoop mountingOffset translations False ringBuffer systemState
             return ()
 
     -- 2. Web UI (Optional)
