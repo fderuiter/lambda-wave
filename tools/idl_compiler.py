@@ -149,7 +149,6 @@ if __name__ == '__main__':
             f.write("    WatchdogTimeoutMs,\n")
             f.write("    SystemLatencyMs\n")
             f.write(") where\n\n")
-            f.write("import GHC.TypeLits (Nat)\n\n")
             f.write(f"watchdogPin :: Int\nwatchdogPin = {data['gpio_pins']['watchdog']}\n\n")
             f.write(f"logicPin :: Int\nlogicPin = {data['gpio_pins']['logic']}\n\n")
             f.write(f"configBaudRate :: Int\nconfigBaudRate = {data['baud_rates']['config']}\n\n")
