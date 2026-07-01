@@ -128,26 +128,30 @@ processFrame translations stateVar frame = do
         return resolvedBeamState
 
     -- 7. Hardware Actuation
-    -- Only set beam if state changed to avoid UART spam (optimization)
-    -- But safety says "Refresh always"?
-    -- Let's set it always for now to ensure fail-safe (if hardware resets).
+    -- Only set beam if state changed to avoid UART spam and excessive logging.
     let beamBool = case finalBeamState of
             BeamOn -> True
             _      -> False
-    res <- setBeam stateVar beamBool
     
-    -- Explicitly handle the hardware response
-    handleHardwareResponse 
-        (\err -> do
-            let msg = "Hardware actuation failed: " ++ show err
-            let evt = AuditEvent currTime Critical "Hardware" msg
-            atomically $ do
-                s <- readTVar stateVar
-                writeTBQueue (auditQueue s) evt
-                writeTVar stateVar (s { beamState = BeamOff })
-        )
-        (\() -> return ())
-        res
+    prevState <- atomically $ do
+        s <- readTVar stateVar
+        return (beamState s)
+
+    when (prevState /= finalBeamState) $ do
+        res <- setBeam stateVar beamBool
+        
+        -- Explicitly handle the hardware response
+        handleHardwareResponse 
+            (\err -> do
+                let msg = "Hardware actuation failed: " ++ show err
+                let evt = AuditEvent currTime Critical "Hardware" msg
+                atomically $ do
+                    s <- readTVar stateVar
+                    writeTBQueue (auditQueue s) evt
+                    writeTVar stateVar (s { beamState = BeamOff })
+            )
+            (\() -> return ())
+            res
 
 -- | Evaluate Gating Decision with Hysteresis and Latency Compensation
 -- Pure function for testability.
