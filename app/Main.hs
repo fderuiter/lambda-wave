@@ -1,7 +1,8 @@
 {-# LANGUAGE CPP #-}
 module Main (main) where
 
-import Control.Concurrent (forkOS, setNumCapabilities, threadDelay, forkIO)
+import Control.Concurrent (setNumCapabilities, threadDelay)
+import Safety.Thread (forkSafetyThread, forkSafetyThreadOS, ThreadShutdownAction(..))
 import Control.Concurrent.STM
 import Control.Exception (try, IOException)
 import System.Environment (lookupEnv, getArgs, getExecutablePath)
@@ -25,7 +26,7 @@ import Data.Config (targetHeight)
 import SignalProcessing.Kalman (initKalman, KalmanConfig(..))
 import qualified FFI.RingBuffer.IO as RingBuffer
 import Hardware.Control (configureRawSerial, configureSensorWithRetry)
-import Hardware.FFI.Bridge (handleHardwareResponse)
+import Hardware.FFI.Bridge (handleHardwareResponse, triggerShutdown)
 import Hardware.Consumer (consumerLoop)
 import Safety.Watchdog (watchdogLoop, runSafetyDaemon)
 import Safety.Audit
@@ -163,17 +164,21 @@ runMain = do
     _daemonPid <- forkProcess $ executeFile exePath False ["--safety-daemon", show myPid] Nothing
 
     -- 3. Consumer/Parser (Dedicated Thread)
-    _ <- forkOS $ consumerLoop mountingOffset translations True ringBuffer systemState
+    _ <- forkSafetyThreadOS (ShutdownSystem $ triggerShutdown systemState) "ConsumerLoop" $ 
+        consumerLoop mountingOffset translations True ringBuffer systemState
 
     -- 3. Safety Watchdog Heartbeat Sender (High Priority Thread)
-    _ <- forkOS $ watchdogLoop systemState
+    _ <- forkSafetyThreadOS (ShutdownSystem $ triggerShutdown systemState) "WatchdogLoop" $ 
+        watchdogLoop systemState
 
     -- 4. Audit Logging
-    _ <- forkOS $ auditLoop systemState "session.log"
+    _ <- forkSafetyThreadOS (ShutdownSystem $ triggerShutdown systemState) "AuditLoop" $ 
+        auditLoop systemState "session.log"
 
     -- 5. IPC Sender to Visualizer
     putStrLn "Starting IPC Telemetry Stream..."
-    _ <- forkIO $ ipcSenderLoop systemState
+    _ <- forkSafetyThread (ShutdownSystem $ triggerShutdown systemState) "IPCSenderLoop" $ 
+        ipcSenderLoop systemState
 
     putStrLn "System Armed. SafetyCore is running."
     

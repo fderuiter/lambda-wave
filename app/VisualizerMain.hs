@@ -1,7 +1,8 @@
 {-# LANGUAGE CPP #-}
 module Main (main) where
 
-import Control.Concurrent (threadDelay, forkOS)
+import Control.Concurrent (threadDelay)
+import Safety.Thread (forkSafetyThread, forkSafetyThreadOS, ThreadShutdownAction(..))
 import Control.Concurrent.STM
 import Control.Exception (try, IOException)
 import System.Posix.IO (openFd, OpenMode(..), defaultFileFlags, OpenFileFlags(..), fdReadBuf)
@@ -81,7 +82,8 @@ main = do
     systemState <- newTVarIO initialState
 
     -- 1. Start IPC Receiver
-    _ <- forkOS $ ipcReceiverLoop systemState
+    _ <- forkSafetyThreadOS (LogOnly putStrLn) "IPCReceiverLoop" $ 
+        ipcReceiverLoop systemState
 
     -- 1b. Attach to Shared Ring Buffer and run Consumer (Visualizer Side)
     -- The SafetyCore creates the buffer (4MB). We attach to it.
@@ -90,13 +92,15 @@ main = do
         Left err -> putStrLn $ "Warning: Could not attach to shared ring buffer: " ++ show err
         Right ringBuffer -> do
             putStrLn "Attached to Shared Ring Buffer."
-            _ <- forkOS $ consumerLoop mountingOffset translations False ringBuffer systemState
+            _ <- forkSafetyThreadOS (LogOnly putStrLn) "VisualizerConsumerLoop" $ 
+                consumerLoop mountingOffset translations False ringBuffer systemState
             return ()
 
     -- 2. Web UI (Optional)
 #ifdef ENABLE_WEB_UI
     putStrLn "Starting Web UI..."
-    _ <- forkIO $ runWebUI systemState
+    _ <- forkSafetyThread (LogOnly putStrLn) "WebUILoop" $ 
+        runWebUI systemState
 #endif
 
     -- 3. OpenGL UI (Optional, must be Main Thread if used)
