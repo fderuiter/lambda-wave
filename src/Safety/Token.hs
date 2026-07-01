@@ -6,9 +6,10 @@ module Safety.Token (generateToken) where
 import Control.Exception (bracket)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as BC
-import System.Posix.IO (openFd, closeFd, OpenMode(ReadOnly), defaultFileFlags, OpenFileFlags(..))
+import System.Posix.IO (openFd, closeFd, OpenMode(ReadOnly), defaultFileFlags, OpenFileFlags(..), fdReadBuf)
 import System.Posix.Files (getFdStatus, isCharacterDevice)
-import System.Posix.IO.ByteString (fdRead)
+import Foreign.Marshal.Alloc (allocaBytes)
+import Foreign.Ptr (castPtr)
 import Text.Printf (printf)
 
 generateToken :: IO B.ByteString
@@ -23,5 +24,7 @@ generateToken = do
                         stat <- getFdStatus fd
                         if not (isCharacterDevice stat)
                             then error "Security Violation - /dev/urandom is not a character device"
-                            else fdRead fd 16
+                            else allocaBytes 16 $ \ptr -> do
+                                bytesRead <- fdReadBuf fd ptr 16
+                                B.packCStringLen (castPtr ptr, fromIntegral bytesRead)
     return $ BC.pack (concatMap (printf "%02x") (B.unpack tokenBytes))
