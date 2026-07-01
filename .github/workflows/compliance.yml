@@ -35,6 +35,9 @@ jobs:
       - name: Verify Planning Documents (IEC 62304)
         run: scripts/verify_planning.sh
 
+      - name: Verify Process Boundaries and IPC Architecture
+        run: python scripts/check_process_boundaries.py
+
       - name: Validate Documentation Metadata
         run: python scripts/sync_metadata.py --check
 

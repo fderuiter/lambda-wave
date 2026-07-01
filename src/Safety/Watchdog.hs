@@ -92,6 +92,13 @@ watchdogLoop stateVar = (`catch` \e -> do putStrLn $ "WATCHDOG CRASHED: " ++ sho
         threadDelay 2000 -- Check every 2ms
 
 -- | Runs the independent Safety Daemon process
+-- Process Boundary: Safety Daemon
+-- Requirement: SR-IPC-001
+-- IPC Mechanism: AF_UNIX Datagram Socket
+-- Failure Mode: Socket file exists from previous crash, preventing bind.
+-- Mitigation: Daemon attempts to remove link before binding.
+-- Failure Mode: Main process hangs and cannot send heartbeat via socket.
+-- Mitigation: Daemon implements strict receive timeout and forces hardware shutdown via triggerDaemon.
 runSafetyDaemon :: ProcessID -> IO ()
 runSafetyDaemon parentPid = do
     putStrLn "[Safety Daemon] Started and monitoring parent process."
