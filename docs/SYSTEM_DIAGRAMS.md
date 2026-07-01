@@ -154,10 +154,11 @@ flowchart TD
         TolCheckOff -->|No| B_OFF
     end
 
-    subgraph "Watchdog Loop (Safety.Watchdog)"
-        Timer[10ms Timer] --> Check{Last Frame < 100ms?}
+    subgraph "Watchdog Daemon (Safety.Watchdog)"
+        Timer[10ms Timer] --> Check{Last Heartbeat < 100ms?}
         Check -->|No| KILL[EMERGENCY SHUTDOWN]
         Check -->|Yes| Timer
+        Socket[AF_UNIX Socket] -.->|Receives Heartbeat| Check
     end
 ```
 
@@ -212,7 +213,7 @@ The visualization layer uses OpenGL to provide real-time feedback to the clinica
 
 ```mermaid
 graph TD
-    ST[System State] -->|STM Read| RP[Render Process]
+    ST[System State] -->|Shared Memory & POSIX FIFOs| RP[Standalone Visualizer Process]
     RP -->|OpenGL Commands| GL_C[Graphics Canvas]
     GL_C -->|User Interaction| ST
 ```

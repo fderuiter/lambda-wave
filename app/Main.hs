@@ -158,7 +158,12 @@ runMain = do
     -- ingestionLoop accepts ForeignPtr
     _ <- RingBuffer.ingestionLoop systemState ringBuffer fd
 
-    -- Spawn Safety Daemon
+    -- Process Boundary: Safety Daemon Spawning
+    -- Requirement: SR-IPC-001
+    -- Justification: Safety Daemon is spawned as a separate process to ensure it survives if the main process hangs or crashes.
+    -- IPC Mechanism: AF_UNIX socket for heartbeat monitoring.
+    -- Failure Mode: Socket exhaustion or permission denied during daemon startup.
+    -- Mitigation: Parent validates daemon PID and checks early hardware setup response. Daemon kills parent if socket binding fails.
     exePath <- getExecutablePath
     myPid <- getProcessID
     _daemonPid <- forkProcess $ executeFile exePath False ["--safety-daemon", show myPid] Nothing
@@ -186,6 +191,10 @@ runMain = do
     forever $ threadDelay 1000000
 
 -- | IPC Sender Loop using a POSIX FIFO with O_NONBLOCK
+-- Requirement: SR-IPC-001
+-- IPC Mechanism: POSIX FIFO (Named Pipe)
+-- Failure Mode: Reader (Visualizer) crashes or falls behind, causing the FIFO buffer to fill up.
+-- Mitigation: O_NONBLOCK is used. If the buffer is full (EAGAIN), the writer catches the exception, drops the frame, and continues operating without blocking the main safety loop.
 ipcSenderLoop :: TVar SystemState -> IO ()
 ipcSenderLoop stateVar = do
     let pipePath = "/tmp/sgrt_telemetry.fifo"

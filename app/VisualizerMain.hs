@@ -89,6 +89,10 @@ main = do
         ipcReceiverLoop systemState
 
     -- 1b. Attach to Shared Ring Buffer and run Consumer (Visualizer Side)
+    -- Requirement: SR-IPC-001
+    -- IPC Mechanism: Shared Memory (Ring Buffer)
+    -- Failure Mode: Memory corruption or concurrent write issues from the SafetyCore.
+    -- Mitigation: Lock-free atomic offset updates in the C++ layer ensure safe cross-process reads without blocking the producer.
     -- The SafetyCore creates the buffer (4MB). We attach to it.
     ringBufferRes <- try (attachRingBuffer (4 * 1024 * 1024)) :: IO (Either IOException (ForeignPtr RingBufferControl))
     case ringBufferRes of
@@ -117,6 +121,11 @@ main = do
     forever $ threadDelay 1000000
 #endif
 
+-- | IPC Receiver Loop using a POSIX FIFO
+-- Requirement: SR-IPC-001
+-- IPC Mechanism: POSIX FIFO (Named Pipe)
+-- Failure Mode: Writer (SafetyCore) crashes or restarts, breaking the pipe.
+-- Mitigation: Visualizer loop catches EOF/errors and reopens the FIFO cleanly without crashing.
 ipcReceiverLoop :: TVar SystemState -> IO ()
 ipcReceiverLoop stateVar = do
     let pipePath = "/tmp/sgrt_telemetry.fifo"
