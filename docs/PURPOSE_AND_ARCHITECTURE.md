@@ -219,19 +219,11 @@ sequenceDiagram
 
 ### Core Innovation: Phase-Based mmWave Tracking
 
-Traditional radar systems use **amplitude** of reflections to estimate range. This is limited by the FFT resolution:
+Traditional radar systems use **amplitude** of reflections to estimate range.
 
-$$
-\Delta R_{FFT} = \frac{c}{2B} = \frac{3 \times 10^8}{2 \times 4 \times 10^9} = 3.75 \text{ cm}
-$$
+**Lambda-Wave uses phase** of the complex signal for **sub-millimeter** tracking.
 
-**Lambda-Wave uses phase** of the complex signal for **sub-millimeter** tracking:
-
-$$
-d = \frac{\lambda_{min} \cdot \Delta \phi}{4\pi} = \frac{c}{4\pi f_{min}} \cdot \Delta \phi
-$$
-
-At 77 GHz, $\lambda \approx 3.9$ mm, giving theoretical precision of ~0.1 mm for phase-based motion tracking.
+For full mathematical derivations of FFT range resolution and phase-based theoretical precision ($\sim 0.1$ mm), please refer to [Mathematical Constants](reference/mathematical_constants.md).
 
 ### Mathematical Foundation
 
@@ -240,45 +232,16 @@ Lambda-Wave implements the validated algorithms from:
 > **Bressler et al.** "Millimeter wave-based patient setup verification and motion tracking during radiotherapy" *Medical Physics*, 2024
 
 **Key Algorithms:**
+(For the full mathematical equations, refer to [Mathematical Constants](reference/mathematical_constants.md))
 
 1. **Chirp Z-Transform (CZT):** Zoom FFT for precise range estimation
-   ```
-   X_{k,CZT} = Σ x_n · e^{-i 2π n (f₀ + B·k/K) / fₛ}
-   ```
-
 2. **Phase Unwrapping:** Handle 2π discontinuities in respiratory signal
-   ```
-   φ_unwrapped[n] = φ[n] + 2π·m[n]  where m tracks wrap count
-   ```
-
 3. **Kalman Filtering:** State estimation with process/measurement noise
-   ```
-   State: [position, velocity, acceleration]ᵀ
-   ```
-
 4. **Polynomial Regression:** Virtual surface mesh fitting
-   ```
-   z = a₀ + a₁x + a₂y + a₃x² + a₄xy + a₅y²
-   ```
 
 ### Hardware: TI IWR6843ISK Specifications
 
-**Frequency-Modulated Continuous Wave (FMCW) Radar:**
-- **Frequency Range:** 77-81 GHz (4 GHz bandwidth)
-- **Output Power:** 12 dBm per TX antenna
-- **Antennas:** 3 TX, 4 RX (12 virtual channels via MIMO)
-- **ADC:** 16-bit, up to 12.5 MSPS
-- **Field of View:** ±60° azimuth, ±20° elevation
-- **Range Resolution:** 3.75 cm (standard FFT), <1 mm (CZT + phase)
-- **Velocity Resolution:** 0.025 m/s
-- **Update Rate:** Up to 100 Hz (configurable)
-
-**Physical Interface:**
-- **Data Port:** USB-UART (921,600 baud max)
-- **Config Port:** USB-UART (115,200 baud)
-- **Power:** 5V USB or external 5V DC
-
-**Configuration:** `.cfg` file loaded at startup (see `config/ti_iwr6843isk/sgrt_profile.cfg`)
+For full radar parameter details (frequency band, MIMO config, throughput limits, and resolution), please refer to the authoritative [Hardware Specifications](reference/hardware_specs.md).
 
 ### Data Processing Pipeline
 
@@ -461,7 +424,7 @@ atomically $ do
 
 **Haskell Heap:**
 - Managed by GHC runtime (garbage collector)
-- Tuned for low latency: `-N2 -qa` (affinity), `-A32m` (nursery size)
+- Tuned for low latency (see [Hardware Specifications](reference/hardware_specs.md) for required GHC RTS flags)
 - Monitoring: `-s` flag reports GC statistics
 
 **C Heap (Ring Buffer):**

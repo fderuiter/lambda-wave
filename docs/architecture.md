@@ -76,13 +76,11 @@ To comply with IEC 62304 traceability and validation requirements, all auxiliary
 ### Core Configuration Files
 *   **`sgrt-radar-system.cabal`**: Defines build instructions, package dependencies (`hmatrix`, `stm`, `clock`, `binary`), and links to C++ FFI code in `cbits/`.
 *   **`cabal.project`**: Locks exact dependency versions to ensure reproducible builds across environments.
-*   **`config/ti_iwr6843isk/sgrt_profile.cfg`**: Contains chirp parameters for the TI IWR6843ISK sensor.
+*   **`config/ti_iwr6843isk/sgrt_profile.cfg`**: Contains chirp parameters for the TI IWR6843ISK sensor (see [Hardware Specifications](reference/hardware_specs.md) for full config details).
 *   **`Dockerfile`**: encapsulating the build environment including GHC, GCC/Clang, and the TI SDK.
 
 **Hardware Constraints:**
-The physical connection setup (documented in README) must adhere to specific limits:
-*   Interface: XDS110 USB-to-UART.
-*   Baud Rate Limit: 921,600 baud.
+The physical connection setup (documented in README) must adhere to specific limits defined in the [Hardware Specifications](reference/hardware_specs.md).
 
 ### Linter & Formatter Strategy
 *   **Haskell:**
