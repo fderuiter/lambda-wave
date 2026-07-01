@@ -1,7 +1,16 @@
 {-# LANGUAGE OverloadedStrings #-}
 -- |
--- Scaffolded Hardware Integration: Template
+-- SAFETY-CRITICAL Scaffolded Hardware Integration: Template
 -- 
+-- = Failure Mode
+-- TODO: Document what happens when this hardware fails.
+--
+-- = Mitigation
+-- TODO: Explain how the system handles the failure mode.
+--
+-- = Audit Events
+-- TODO: List the audit events triggered by this hardware interaction.
+--
 -- Implements exception-safe resource allocation, asynchronous exception masking,
 -- and FFI safety patterns.
 module Hardware.Template (

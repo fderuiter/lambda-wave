@@ -9,8 +9,17 @@ def generate_haskell_scaffold(sensor_name):
     
     hs_code = f"""{{-# LANGUAGE OverloadedStrings #-}}
 -- |
--- Scaffolded Hardware Integration: {{sensor_name}}
+-- SAFETY-CRITICAL Scaffolded Hardware Integration: {{sensor_name}}
 -- 
+-- = Failure Mode
+-- TODO: Document what happens when this hardware fails.
+--
+-- = Mitigation
+-- TODO: Explain how the system handles the failure mode.
+--
+-- = Audit Events
+-- TODO: List the audit events triggered by this hardware interaction.
+--
 -- Implements exception-safe resource allocation, asynchronous exception masking,
 -- and FFI safety patterns.
 module Hardware.{{sensor_name}} (

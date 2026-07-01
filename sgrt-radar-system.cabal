@@ -92,7 +92,7 @@ library
       
       Numeric.Kinematics
       Numeric.Simple
-  other-modules:
+
       Paths_sgrt_radar_system
   hs-source-dirs:
       src
@@ -111,7 +111,7 @@ library
 executable sgrt-radar-system-exe
   import: common-options
   main-is: Main.hs
-  other-modules:
+
       Paths_sgrt_radar_system
   hs-source-dirs:
       app
@@ -123,7 +123,7 @@ executable sgrt-radar-system-exe
 executable sgrt-visualizer-exe
   import: common-options
   main-is: VisualizerMain.hs
-  other-modules:
+
       Paths_sgrt_radar_system
   hs-source-dirs:
       app
@@ -136,7 +136,7 @@ executable sgrt-visualizer-exe
         GLUT ==2.7.0.16
       , OpenGL ==3.0.3.0
     cpp-options: -DENABLE_UI
-    other-modules:
+  
         Control.UI.Renderer
         Control.UI.Window
         Control.UI.Input
@@ -161,7 +161,7 @@ executable sgrt-visualizer-exe
       , directory
       , wai-extra
     cpp-options: -DENABLE_WEB_UI
-    other-modules:
+  
         Control.WebUI
         Control.WebUI.Types
 
@@ -184,7 +184,7 @@ test-suite sgrt-radar-system-test
   import: common-options
   type: exitcode-stdio-1.0
   main-is: Spec.hs
-  other-modules:
+
       Control.UIMathSpec
       Paths_sgrt_radar_system
       FFI.RingBuffer.TypesSpec
@@ -214,7 +214,7 @@ test-suite hardware-control-check
   import: common-options
   type: exitcode-stdio-1.0
   main-is: ControlCheck.hs
-  other-modules:
+
       Paths_sgrt_radar_system
   hs-source-dirs:
       test/Hardware
@@ -227,7 +227,7 @@ test-suite hardware-consumer-check
   import: common-options
   type: exitcode-stdio-1.0
   main-is: ConsumerCheck.hs
-  other-modules:
+
       Paths_sgrt_radar_system
   hs-source-dirs:
       test/Hardware
@@ -243,7 +243,7 @@ test-suite kalman-verification
   import: common-options
   type: exitcode-stdio-1.0
   main-is: KalmanCheck.hs
-  other-modules:
+
       Paths_sgrt_radar_system
   hs-source-dirs:
       test/SignalProcessing
@@ -256,7 +256,7 @@ test-suite audit-check
   import: common-options
   type: exitcode-stdio-1.0
   main-is: AuditCheck.hs
-  other-modules:
+
       Paths_sgrt_radar_system
   hs-source-dirs:
       test/Safety
@@ -271,7 +271,7 @@ test-suite clinical-hil-validation
   import: common-options
   type: exitcode-stdio-1.0
   main-is: ClinicalHILValidation.hs
-  other-modules:
+
       Paths_sgrt_radar_system
   hs-source-dirs:
       test
@@ -287,7 +287,7 @@ test-suite gating-check
   import: common-options
   type: exitcode-stdio-1.0
   main-is: GatingCheck.hs
-  other-modules:
+
       Paths_sgrt_radar_system
   hs-source-dirs:
       test/Control
@@ -300,7 +300,7 @@ test-suite watchdog-check
   import: common-options
   type: exitcode-stdio-1.0
   main-is: WatchdogCheck.hs
-  other-modules:
+
       Paths_sgrt_radar_system
   hs-source-dirs:
       test
@@ -317,7 +317,7 @@ test-suite numeric-check
   import: common-options
   type: exitcode-stdio-1.0
   main-is: NumericCheck.hs
-  other-modules:
+
       Paths_sgrt_radar_system
   hs-source-dirs:
       test
@@ -330,7 +330,7 @@ test-suite sentinel-check
   import: common-options
   type: exitcode-stdio-1.0
   main-is: SentinelCheck.hs
-  other-modules:
+
       Paths_sgrt_radar_system
   hs-source-dirs:
       test
@@ -343,7 +343,7 @@ benchmark sgrt-radar-system-bench
   import: common-options
   type: exitcode-stdio-1.0
   main-is: LatencyBench.hs
-  other-modules:
+
       Paths_sgrt_radar_system
   hs-source-dirs:
       bench
@@ -356,7 +356,7 @@ benchmark kalman-bench
   import: common-options
   type: exitcode-stdio-1.0
   main-is: KalmanBench.hs
-  other-modules:
+
       Paths_sgrt_radar_system
   hs-source-dirs:
       bench
@@ -369,7 +369,7 @@ test-suite consumer-integration-check
   import: common-options
   type: exitcode-stdio-1.0
   main-is: ConsumerIntegrationCheck.hs
-  other-modules:
+
       Paths_sgrt_radar_system
   hs-source-dirs:
       test/Hardware
@@ -445,7 +445,7 @@ benchmark fmcw-bench
   import: common-options
   type: exitcode-stdio-1.0
   main-is: FMCWBench.hs
-  other-modules:
+
       Paths_sgrt_radar_system
   hs-source-dirs:
       bench
@@ -488,7 +488,7 @@ test-suite audit-heartbeat-check
   import: common-options
   type: exitcode-stdio-1.0
   main-is: AuditHeartbeatCheck.hs
-  other-modules:
+
       Paths_sgrt_radar_system
   hs-source-dirs:
       test/Safety
@@ -507,7 +507,7 @@ test-suite beam-hold-check
   import: common-options
   type: exitcode-stdio-1.0
   main-is: BeamHoldCheck.hs
-  other-modules:
+
       Paths_sgrt_radar_system
   hs-source-dirs:
       test/Control
@@ -524,7 +524,7 @@ test-suite latency-verification
   import: common-options
   type: exitcode-stdio-1.0
   main-is: LatencyVerification.hs
-  other-modules:
+
       Paths_sgrt_radar_system
   hs-source-dirs:
       test
@@ -544,4 +544,4 @@ test-suite hardware-template-check
   build-depends:
       base >=4.7 && <5
     , sgrt-radar-system
-  other-modules:
+
