@@ -21,7 +21,7 @@ module FFI.RingBuffer.IO
 
 import Foreign.ForeignPtr (ForeignPtr, withForeignPtr)
 import System.Posix.Types (Fd(..))
-import Control.Exception (throwIO, catch, SomeException)
+import Control.Exception (throwIO)
 import Control.Concurrent (ThreadId, threadDelay)
 import Safety.Thread (forkSafetyThreadOS, ThreadShutdownAction(..))
 import Control.Monad (when)
