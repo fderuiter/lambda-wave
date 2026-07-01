@@ -541,4 +541,3 @@ test-suite latency-verification
     , unordered-containers
     , stm
 
-
