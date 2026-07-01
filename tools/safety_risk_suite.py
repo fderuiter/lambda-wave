@@ -157,6 +157,43 @@ def cmd_check_docs(args):
         valid_ids.add(h['id'])
 
     failed = False
+
+    # Check Master Spec
+    spec_path = Path('/app/docs/ffi_master_spec.md')
+    if not spec_path.exists():
+        print("Error: ffi_master_spec.md not found.")
+        failed = True
+    else:
+        with open(spec_path, 'r') as f:
+            spec_content = f.read()
+        match = re.search(r'```yaml\n(.*?)\n```', spec_content, re.DOTALL)
+        if match:
+            master_spec = yaml.safe_load(match.group(1)).get('ffi_functions', {})
+            # Read bridge layer mapping
+            common_hs_path = '/app/src/Hardware/FFI/Common.hs'
+            if os.path.exists(common_hs_path):
+                with open(common_hs_path, 'r') as f:
+                    common_hs = f.read()
+                
+                for func, data in master_spec.items():
+                    for ret_code, ret_info in data.get('return_codes', {}).items():
+                        # Verify audit event is present
+                        if not ret_info.get('audit_event'):
+                            print(f"Error: Missing audit_event for {func} return code {ret_code}")
+                            failed = True
+                        
+                        # Verify mapping exists in Common.hs (simplified check)
+                        hr = ret_info.get('hardware_result')
+                        # It should map in Common.hs, either in toHardwareResult or toRingBufferResult
+                        if hr and hr not in common_hs:
+                            print(f"Error: Documented return code {ret_code} mapping {hr} not found in bridge layer.")
+                            failed = True
+            else:
+                print("Error: /app/src/Hardware/FFI/Common.hs not found.")
+                failed = True
+        else:
+            print("Error: No YAML block found in master spec.")
+            failed = True
     
     req_regex = re.compile(r'\b((?:FR|SR|PR|MR)(?:-[A-Z0-9]+)*-\d+)\b')
     hazard_regex = re.compile(r'\b(H-[A-Z0-9\-]+)\b')
@@ -169,13 +206,19 @@ def cmd_check_docs(args):
                     with open(fpath, 'r', encoding='utf-8', errors='ignore') as f:
                         content = f.read()
                         
-                    if "SAFETY-CRITICAL" in content:
+                    is_ffi_module = 'Hardware/FFI' in fpath and file.endswith('.hs')
+                    is_safety_critical = "SAFETY-CRITICAL" in content
+                    
+                    if is_safety_critical or is_ffi_module:
                         print(f"Checking {fpath}...")
                         if not re.search(r'=\s*Failure Mode', content):
                             print(f"Error: Missing '= Failure Mode' in {fpath}")
                             failed = True
                         if not re.search(r'=\s*Mitigation', content):
                             print(f"Error: Missing '= Mitigation' in {fpath}")
+                            failed = True
+                        if is_ffi_module and not re.search(r'=\s*Audit Events', content):
+                            print(f"Error: Missing '= Audit Events' in {fpath}")
                             failed = True
                             
                         reqs_found = req_regex.findall(content)
