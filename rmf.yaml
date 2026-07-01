@@ -128,3 +128,14 @@ hazards:
     occurrence: 2
     detection: 2
     rpn: 20
+
+  - id: H-SYS-010
+    description: IPC Failure
+    cause: Process boundary communication failure or socket exists
+    effect: Safety daemon fails to start or loses heartbeat
+    mitigation: Remove socket link before bind, enforce strict receive timeouts
+    severity: 5
+    occurrence: 2
+    detection: 2
+    rpn: 20
+
