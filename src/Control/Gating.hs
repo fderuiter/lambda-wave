@@ -1,20 +1,5 @@
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE PatternSynonyms #-}
--- |
--- Module      : Control.Gating
--- Description : Beam gating logic
---
--- Evaluates real-time motion states and determines whether the therapeutic
--- beam should be active, utilizing hysteresis and latency compensation.
---
--- ⚠️ SAFETY-CRITICAL
---
--- = Failure Mode
--- Beam remains ON during patient motion, delivering incorrect radiation dose.
---
--- = Mitigation
--- Hysteresis with conservative thresholds and latency compensation are applied.
 module Control.Gating (processFrame, evaluateGating) where
 
 import Data.Types
@@ -29,6 +14,7 @@ import Hardware.Control (setBeam)
 import Hardware.FFI.Bridge (handleHardwareResponse)
 import Data.I18n (Translations, translateAudit, translateBeamState)
 import qualified Data.Text as T
+import Safety.Result (SafetyResult(..))
 import Numeric.Kinematics
     ( Distance(..)
     , Velocity(..)
@@ -37,76 +23,55 @@ import Numeric.Kinematics
     , SystemLatencyMs
     , KinematicMultiply(..)
     , ScalarMultiply(..)
+    , KinematicMath(..)
     , systemLatencyTime
     , Proxy(..)
     )
 
--- | Kalman Configuration
--- Process Noise (Q): System agility (how fast we expect breathing to change)
--- Measurement Noise (R): Sensor noise
 kConfig :: KalmanConfig
 kConfig = KalmanConfig
-    { procNoise = 10.0 -- High agility for breathing
-    , measNoise = 2.0  -- 2mm noise estimate
+    { procNoise = 10.0
+    , measNoise = 2.0
     }
 
-
--- | The main logic function called every frame
 processFrame :: Translations -> TVar SystemState -> RadarFrame -> IO ()
 processFrame translations stateVar frame = do
     currTime <- getMonotonicTimeNS
 
     let pts = points frame
 
-    -- 1. Read Previous State
     oldSystemState <- readTVarIO stateVar
     let lastTime = lastFrameTime oldSystemState
         oldKState = kalmanState oldSystemState
 
-    -- 2. Calculate DT (Seconds)
     let dtNS = if currTime > lastTime then currTime - lastTime else 0
         dtSec = fromIntegral dtNS / 1_000_000_000.0
 
-    -- 3. Measurement (Average Height)
-    -- Optimize: Strict fold
     let (!totalHeight, !count) = foldl' (\(!sumH, !cnt) pt -> (sumH + pz pt, cnt + 1)) (0.0, 0 :: Int) pts
 
-    -- 4. Kalman Filter Step
-    -- Predict
     let predState = predict dtSec kConfig oldKState
 
-    -- Update (only if we have measurements)
     let newKState = if count > 0
             then let meas = totalHeight / fromIntegral count
                  in update meas kConfig predState
-            else predState -- Coasting (Dead Reckoning) if signal lost
+            else predState
 
-    -- 6. Update System State & Resolve Final Beam State
     finalBeamState <- atomically $ do
         s <- readTVar stateVar
         let currentBeam = beamState s
 
-        -- 5. Gating Logic
-        -- Note: We calculate based on 'currentBeam' inside the transaction.
-        -- This ensures that if the UI thread released BeamHold or modified the state concurrently,
-        -- we use the fresh state as the basis for hysteresis and transition logic.
         let latencyT = systemLatencyTime (Proxy :: Proxy SystemLatencyMs)
             targetD  = Distance targetHeight
             tolD     = Distance gatingTolerance
             hystD    = Distance hysteresisMargin
             proposedBeamState = evaluateGating targetD tolD hystD latencyT newKState currentBeam
 
-        -- Safety: If current state is BeamHold, we MUST respect it.
-        -- If calibration is not valid, we MUST block the beam (BeamOff).
-        -- Otherwise, we transition to the proposed state.
         let resolvedBeamState = if currentBeam == BeamHold
                                 then BeamHold
                                 else if calibrationStatus s /= CalibrationValid
                                      then BeamOff
                                      else proposedBeamState
 
-        -- Log Beam Change (only if resolved state is different from what we read initially or updated)
-        -- We compare against 'currentBeam' to log transitions that happen NOW.
         when (resolvedBeamState /= currentBeam) $ do
              let msg = translateAudit translations (T.pack $ activeLanguage s) currentBeam resolvedBeamState
                  sev = if resolvedBeamState == BeamHold || currentBeam == BeamHold then Warning else Info
@@ -114,7 +79,6 @@ processFrame translations stateVar frame = do
 
         let locStr = T.unpack $ translateBeamState translations (T.pack $ activeLanguage s) resolvedBeamState
 
-        -- Update State
         writeTVar stateVar $! s
             { currentPoints = pts
             , beamState = resolvedBeamState
@@ -127,8 +91,6 @@ processFrame translations stateVar frame = do
 
         return resolvedBeamState
 
-    -- 7. Hardware Actuation
-    -- Only set beam if state changed to avoid UART spam and excessive logging.
     let beamBool = case finalBeamState of
             BeamOn -> True
             _      -> False
@@ -140,7 +102,6 @@ processFrame translations stateVar frame = do
     when (prevState /= finalBeamState) $ do
         res <- setBeam stateVar beamBool
         
-        -- Explicitly handle the hardware response
         handleHardwareResponse 
             (\err -> do
                 let msg = "Hardware actuation failed: " ++ show err
@@ -153,19 +114,9 @@ processFrame translations stateVar frame = do
             (\() -> return ())
             res
 
--- | Evaluate Gating Decision with Hysteresis and Latency Compensation
--- Pure function for testability.
-evaluateGating :: Distance    -- ^ Target Height (Distance)
-               -> Distance    -- ^ Tolerance (Distance)
-               -> Distance    -- ^ Hysteresis Margin (Distance)
-               -> Time        -- ^ System Latency
-               -> KalmanState -- ^ Current Filter State
-               -> BeamState   -- ^ Previous Beam State
-               -> BeamState   -- ^ New Beam State
+evaluateGating :: Distance -> Distance -> Distance -> Time -> KalmanState -> BeamState -> BeamState
 evaluateGating target tol hyst latencyTime kState oldBeam =
-    let -- Latency Compensation
-        -- Predict position at (Now + Latency)
-        -- x(t+dt) = x(t) + v(t)*dt + 0.5*a(t)*dt^2
+    let 
         (pos, vel, acc) = case x kState of
             V3 pVal vVal aVal -> (pVal, vVal, aVal)
             _ -> (0, 0, 0)
@@ -174,28 +125,23 @@ evaluateGating target tol hyst latencyTime kState oldBeam =
         velV = Velocity vel
         accA = Acceleration acc
 
-        -- Check for NaN/Inf
         invalid = isNaN pos || isNaN vel || isInfinite pos || isInfinite vel
-
-        term1 = velV |*| latencyTime
-        term2 = 0.5 |* (((accA |*| latencyTime) :: Velocity) |*| latencyTime)
-        predPos = posD + term1 + term2
-
-        err = abs (predPos - target)
-
-        -- Thresholds
-        -- ON Threshold: Tolerance
-        -- OFF Threshold: Tolerance + Hysteresis
-        onLimit = tol
-        offLimit = tol + hyst
-
-    in if invalid
-       then BeamOff
-       else case oldBeam of
-            BeamOff -> if err < onLimit then BeamOn else BeamOff
-            BeamOn  -> if err < offLimit then BeamOn else BeamOff
-            BeamHold -> BeamHold -- Manual override persists
-
--- Requirement FR-GAT-001
-
--- Requirement FR-GAT-002
+    in if invalid then BeamOff else
+       case (velV |*| latencyTime) :: SafetyResult Distance of
+           Fault _ -> BeamOff
+           Safe term1 ->
+               case (accA |*| latencyTime) :: SafetyResult Velocity of
+                   Fault _ -> BeamOff
+                   Safe vAcc ->
+                       case (vAcc |*| latencyTime) :: SafetyResult Distance of
+                           Fault _ -> BeamOff
+                           Safe term2Raw ->
+                               let term2 = 0.5 |* term2Raw
+                                   predPos = posD |+| term1 |+| term2
+                                   err = kAbs (predPos |-| target)
+                                   onLimit = tol
+                                   offLimit = tol |+| hyst
+                               in case oldBeam of
+                                    BeamOff -> if err < onLimit then BeamOn else BeamOff
+                                    BeamOn  -> if err < offLimit then BeamOn else BeamOff
+                                    BeamHold -> BeamHold

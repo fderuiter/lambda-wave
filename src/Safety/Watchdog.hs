@@ -1,4 +1,4 @@
--- Mitigates Hazard H-SYS-006
+{-# LANGUAGE ScopedTypeVariables #-}
 module Safety.Watchdog (watchdogLoop, runSafetyDaemon) where
 
 import Data.Types
@@ -21,6 +21,7 @@ import System.Timeout (timeout)
 import System.Posix.Files (removeLink)
 import qualified Data.ByteString as B
 import Safety.Crypto (encryptLog)
+import Safety.Result (SafetyResult(..))
 
 import Hardware.Control (setBeamChannelDaemon, GpioChannel(..))
 import Hardware.FFI.Bridge (handleHardwareResponse)
@@ -30,19 +31,19 @@ import Numeric.Kinematics
 udsPath :: ProcessID -> String
 udsPath pid = "/tmp/sgrt_heartbeat_" ++ show pid ++ ".sock"
 
--- | Helper for daemon auditing directly to file
 daemonAudit :: HardwareResult -> IO ()
 daemonAudit res = do
     now <- getMonotonicTimeNS
     let auditMsg = show now ++ " [INFO] [SafetyDaemon] Hardware Bridge: " ++ show res ++ "\n"
-    encAudit <- encryptLog auditMsg
-    _ <- try (B.appendFile "session.log" encAudit) :: IO (Either IOException ())
-    return ()
+    encRes <- encryptLog auditMsg
+    case encRes of
+        Safe encAudit -> do
+            _ <- try (B.appendFile "session.log" encAudit) :: IO (Either IOException ())
+            return ()
+        Fault e -> do
+            putStrLn $ "!!! SAFETY DAEMON: Crypto Fault in audit: " ++ e
+            return ()
 
--- | The Watchdog Heartbeat Sender Loop (Runs in Main Process)
--- Requirement SR-WD-001
--- Evaluates thread heartbeats. If everything is fine, it sends a heartbeat to the Daemon.
--- If any thread is frozen, it stops sending heartbeats, causing the Daemon to trip.
 watchdogLoop :: TVar SystemState -> IO ()
 watchdogLoop stateVar = (`catch` \e -> do putStrLn $ "WATCHDOG CRASHED: " ++ show (e :: SomeException); hFlush stdout) $ do
     putStrLn "WATCHDOG LOOP START"
@@ -58,22 +59,17 @@ watchdogLoop stateVar = (`catch` \e -> do putStrLn $ "WATCHDOG CRASHED: " ++ sho
         state <- readTVarIO stateVar
         let heartbeats = threadHeartbeats state
 
-        -- Check all monitored threads
         let isHealthy = all (\(_, lastTime) -> (now - lastTime) <= timeoutNS) (Map.toList heartbeats)
 
         if isHealthy && not (Map.null heartbeats)
             then do
-                putStrLn $ "DEBUG WATCHDOG HEALTHY: now=" ++ show now
-                hFlush stdout
-                -- Send heartbeat
+                -- putStrLn $ "DEBUG WATCHDOG HEALTHY: now=" ++ show now
+                -- hFlush stdout
                 _ <- try (sendTo sock (BC.pack "HB") addr) :: IO (Either IOException Int)
                 return ()
             else do
-                -- Find frozen threads for logging BEFORE sending TRIP, because daemon will kill us immediately
                 forM_ (Map.toList heartbeats) $ \(threadName, lastTime) -> do
                     let diff = now - lastTime
-                    putStrLn $ "DEBUG WATCHDOG: diff=" ++ show diff
-                    hFlush stdout
                     when (diff > timeoutNS) $ do
                         let msg = "Thread '" ++ threadName ++ "' FROZEN (Age: " ++ show diff ++ "ns)."
                         atomically $ do
@@ -85,25 +81,21 @@ watchdogLoop stateVar = (`catch` \e -> do putStrLn $ "WATCHDOG CRASHED: " ++ sho
                         hFlush stdout
                         threadDelay 1000
 
-                -- Explicitly send TRIP message to daemon to guarantee <110ms response time
                 _ <- try (sendTo sock (BC.pack "TRIP") addr) :: IO (Either IOException Int)
                 return ()
                 
-        threadDelay 2000 -- Check every 2ms
+        threadDelay 2000
 
--- | Runs the independent Safety Daemon process
 runSafetyDaemon :: ProcessID -> IO ()
 runSafetyDaemon parentPid = do
     putStrLn "[Safety Daemon] Started and monitoring parent process."
     
     let path = udsPath parentPid
-    -- Ensure clean socket
     _ <- try (removeLink path) :: IO (Either IOException ())
     
     sock <- socket AF_UNIX Datagram 0
     bind sock (SockAddrUnix path)
     
-    -- Ensure Beam is ON for Watchdog Channel initially
     res <- setBeamChannelDaemon daemonAudit WatchdogChannel True
     handleHardwareResponse 
         (\err -> do
@@ -113,12 +105,8 @@ runSafetyDaemon parentPid = do
         (\() -> return ())
         res
 
-    -- Loop waiting for heartbeats
     let loop = do
-            -- Receive with timeout
-            -- timeout takes microseconds.
             let Time timeoutSec = watchdogTimeoutTime (Proxy :: Proxy WatchdogTimeoutMs)
-                -- Add a 5ms grace period to the daemon timeout so the main watchdog has time to log the freeze
                 timeoutUS = round (timeoutSec * 1_000_000) + 5000 :: Int
             resSock <- try (timeout timeoutUS $ recv sock 16) :: IO (Either IOException (Maybe BC.ByteString))
             
@@ -138,33 +126,32 @@ runSafetyDaemon parentPid = do
     
     loop
 
--- Requirement SR-WD-002
 tripDaemon :: ProcessID -> IO ()
 tripDaemon parentPid = do
     let msg = "!!! SAFETY DAEMON TRIP: Lost Heartbeat. FORCING BEAM OFF."
     putStrLn msg
-    -- Dual-Channel Safety: Force Watchdog channel off
     res <- setBeamChannelDaemon daemonAudit WatchdogChannel False
     handleHardwareResponse 
         (\err -> putStrLn $ "!!! SAFETY DAEMON: Hardware Actuation Error during TRIP: " ++ show err)
         (\() -> return ())
         res
     
-    -- Independent Audit Log recording
     now <- getMonotonicTimeNS
     let auditMsg = show now ++ " [CRITICAL] [SafetyDaemon] " ++ msg ++ "\n"
-    encAudit <- encryptLog auditMsg
-    resFile <- try (B.appendFile "session.log" encAudit) :: IO (Either IOException ())
+    encRes <- encryptLog auditMsg
     
-    case resFile of
-        Left err -> do
-            putStrLn $ "!!! SAFETY DAEMON IO ERROR writing session.log: " ++ show err
-            hFlush stdout
-            _ <- try (B.appendFile "fallback_audit.log" encAudit) :: IO (Either IOException ())
-            return ()
-        Right () -> return ()
-    
-    -- Terminate main application process
+    case encRes of
+        Safe encAudit -> do
+            resFile <- try (B.appendFile "session.log" encAudit) :: IO (Either IOException ())
+            case resFile of
+                Left err -> do
+                    putStrLn $ "!!! SAFETY DAEMON IO ERROR writing session.log: " ++ show err
+                    hFlush stdout
+                    _ <- try (B.appendFile "fallback_audit.log" encAudit) :: IO (Either IOException ())
+                    return ()
+                Right () -> return ()
+        Fault e -> putStrLn $ "!!! SAFETY DAEMON: Crypto Fault writing audit: " ++ e
+
     putStrLn $ "!!! SAFETY DAEMON: Terminating Parent PID " ++ show parentPid
     hFlush stdout
     
@@ -172,6 +159,3 @@ tripDaemon parentPid = do
     
     exitWith (ExitFailure 1)
 
--- Hazard H-SYS-001: Beam ON during motion
--- Hazard H-SYS-003: Latency spike
--- Hazard H-SOUP-004: Deadlocks

@@ -1,15 +1,4 @@
 {-# LANGUAGE OverloadedStrings #-}
--- |
--- Module      : Safety.Crypto
--- Description : Cryptographic functions for safety logs
---
--- ⚠️ SAFETY-CRITICAL
---
--- = Failure Mode
--- If encryption fails or keys are exposed, sensitive patient data in logs could be compromised.
---
--- = Mitigation
--- Uses AES256 with randomly generated IVs per encryption operation, ensuring semantic security.
 module Safety.Crypto (encryptLog, decryptLog, encryptWebsocket, decryptWebsocket) where
 
 import Crypto.Cipher.AES (AES256)
@@ -19,6 +8,7 @@ import Crypto.Random (getRandomBytes)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as BC
 import Data.ByteArray.Encoding (convertToBase, convertFromBase, Base(Base64))
+import Safety.Result (SafetyResult(..))
 
 key :: B.ByteString
 key = BC.pack "01234567890123456789012345678901"
@@ -29,14 +19,14 @@ processBytes iv pt =
         CryptoPassed c -> Right $ ctrCombine c iv pt
         CryptoFailed e -> Left ("Cipher init failed: " ++ show e)
 
-encryptIO :: B.ByteString -> IO B.ByteString
+encryptIO :: B.ByteString -> IO (SafetyResult B.ByteString)
 encryptIO pt = do
     ivBytes <- getRandomBytes 16
     case makeIV ivBytes of
         Just iv -> case processBytes iv pt of
-            Right ct -> return (B.append ivBytes ct)
-            Left e   -> error ("Encryption failed: " ++ e)
-        Nothing -> error "Failed to generate IV"
+            Right ct -> return (Safe (B.append ivBytes ct))
+            Left e   -> return (Fault ("Encryption failed: " ++ e))
+        Nothing -> return (Fault "Failed to generate IV")
 
 decryptPure :: B.ByteString -> Either String B.ByteString
 decryptPure bs =
@@ -48,10 +38,12 @@ decryptPure bs =
                 Just iv -> processBytes iv ct
                 Nothing -> Left "Invalid IV"
 
-encryptLog :: String -> IO B.ByteString
+encryptLog :: String -> IO (SafetyResult B.ByteString)
 encryptLog str = do
-    enc <- encryptIO (BC.pack str)
-    return $ convertToBase Base64 enc `B.append` "\n"
+    encRes <- encryptIO (BC.pack str)
+    case encRes of
+        Safe enc -> return (Safe (convertToBase Base64 enc `B.append` "\n"))
+        Fault e -> return (Fault e)
 
 decryptLog :: B.ByteString -> Either String String
 decryptLog bs = do
@@ -65,9 +57,8 @@ decryptLog bs = do
             Right pt -> Right (BC.unpack pt)
             Left e   -> Left e
 
-encryptWebsocket :: B.ByteString -> IO B.ByteString
+encryptWebsocket :: B.ByteString -> IO (SafetyResult B.ByteString)
 encryptWebsocket = encryptIO
 
 decryptWebsocket :: B.ByteString -> Either String B.ByteString
 decryptWebsocket = decryptPure
-

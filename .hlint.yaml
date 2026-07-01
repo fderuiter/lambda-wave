@@ -1,2 +1,4 @@
 - ignore: {name: Use camelCase}
 - ignore: {name: Reduce duplication}
+- error: {lhs: error, name: "Avoid error in safety-critical code"}
+- error: {lhs: undefined, name: "Avoid undefined in safety-critical code"}

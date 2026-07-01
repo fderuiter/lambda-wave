@@ -78,6 +78,7 @@ library
       Hardware.FFI.Common
       Hardware.Manifest
       Hardware.Types
+      Safety.Result
       Safety.Audit
       Safety.Crypto
       Safety.Token
