@@ -83,6 +83,7 @@ library
       Hardware.Consumer
       Hardware.FFI.Common
       Hardware.Manifest
+      Hardware.Template
       Hardware.Types
       Safety.Audit
       Safety.Crypto
@@ -540,3 +541,13 @@ test-suite latency-verification
     , containers
     , unordered-containers
     , stm
+
+test-suite hardware-template-check
+  import: common-options
+  type: exitcode-stdio-1.0
+  main-is: TemplateCheck.hs
+  hs-source-dirs: test/Hardware
+  build-depends:
+      base >=4.7 && <5
+    , sgrt-radar-system
+  other-modules:

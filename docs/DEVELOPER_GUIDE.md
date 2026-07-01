@@ -18,6 +18,7 @@ This guide provides developers with essential information about code structure, 
 7. [Safety-Critical Code](#safety-critical-code)
 8. [Debugging Tips](#debugging-tips)
 9. [Common Tasks](#common-tasks)
+10. [Hardware Integration & FFI Safety Framework](#hardware-integration--ffi-safety-framework)
 
 ---
 
@@ -549,6 +550,56 @@ cabal build --ghc-options="-g"
 See [TODO.md](../TODO.md) Release Checklist section
 
 ---
+
+---
+
+## 10. Hardware Integration & FFI Safety Framework
+
+When adding new hardware components or sensors, you must adhere strictly to our safety framework to prevent memory leaks and asynchronous exception hazards. The framework provides a centralized set of resource managers, result wrappers, and audit helpers.
+
+### 10.1 Scaffold Generator
+
+To minimize manual memory management errors, use the provided scaffold tool when integrating new sensors.
+```bash
+python3 tools/generate_hardware_scaffold.py <SensorName>
+```
+This generates a template (`src/Hardware/<SensorName>.hs`) and a memory-leak test suite (`test/Hardware/<SensorName>Check.hs`). The generated code includes built-in exception-safe resource allocations by default.
+
+### 10.2 Resource Lifecycles & Managers
+
+The framework enforces two primary patterns for handling C memory and lifecycle bounds:
+
+1. **New Creation (The Bracket Pattern):**
+   When allocating temporary resources, always use `Control.Exception.bracket` alongside `mask_` and `uninterruptibleMask_`. This guarantees that your cleanup logic (e.g., `free`) runs even if an asynchronous exception is raised immediately after allocation.
+
+   ```haskell
+   withSensor :: (Ptr () -> IO a) -> IO a
+   withSensor = bracket allocate free
+     where
+       allocate = mask_ $ c_create_sensor
+       free ptr = uninterruptibleMask_ $ c_destroy_sensor ptr
+   ```
+
+2. **Attachment to Existing Memory (ForeignPtr):**
+   If memory is shared or needs its lifecycle managed by the Haskell Garbage Collector, attach a finalizer via `ForeignPtr`.
+
+   ```haskell
+   attachSensor :: Ptr () -> IO (ForeignPtr ())
+   attachSensor existingPtr = do
+       attached <- c_attach_sensor existingPtr
+       newForeignPtr c_destroy_sensor_fun_ptr attached
+   ```
+
+### 10.3 Result Wrappers and the FFI Bridge
+
+To prevent dropped return values and unhandled states, all FFI boundary calls **must** be routed through the `BridgeCall` module (`Hardware.FFI.Bridge`). The bridge transforms C-level errors into the `MustHandle` result wrapper, guaranteeing that logic cannot proceed without addressing potential failures.
+
+- **`bridgeHardwareCall` / `bridgeHardwareCallCustom`**: Use these to execute FFI routines safely. They automatically hook into the Safety Audit log.
+- **`MustHandle`**: An explicit wrapper over `Either HardwareError a`. You must use `handleHardwareResponse` to extract the value and define handlers for both the success and error branches.
+
+### 10.4 Automated Compliance
+
+To maintain 100% adoption and zero memory-safety violations, automated PR checklists now require confirmation of `MustHandle` and `BridgeCall` usage for all hardware FFI additions.
 
 ## 📚 Additional Resources
 
