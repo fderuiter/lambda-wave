@@ -81,7 +81,7 @@ testBasicLogging = do
 
         killThread tid
         -- Allow time for handle cleanup
-        threadDelay 100_000
+        threadDelay 1_000_000
 
         -- Verify File Content
         -- Use strict IO or ensure handle is closed.
