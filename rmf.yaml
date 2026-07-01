@@ -118,3 +118,13 @@ hazards:
     occurrence: 2
     detection: 3
     rpn: 24
+
+  - id: H-SYS-009
+    description: Silent thread failure
+    cause: Unhandled exception in background thread
+    effect: Zombie processes leaving system in undefined state
+    mitigation: Unified safety thread supervisor triggers global shutdown
+    severity: 5
+    occurrence: 2
+    detection: 2
+    rpn: 20
