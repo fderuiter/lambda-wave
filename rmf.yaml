@@ -103,7 +103,7 @@ hazards:
     description: Weak session token generation
     cause: Low entropy or predictable source
     effect: Session hijacking or identifier collision
-    mitigation: Use native cryptographically secure random number generation or high-entropy system sources in Safety.Token
+    mitigation: Use native cryptographically secure random number generation (e.g., /dev/urandom) with memory-safe raw binary parsing in Safety.Token
     severity: 3
     occurrence: 2
     detection: 2
