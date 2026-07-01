@@ -74,7 +74,7 @@ initialize{{sensor_name}} = do
     print(f"Generated {hs_path}")
     
     # Generate test
-    test_code = f"""module Hardware.{{sensor_name}}Check (main) where
+    test_code = f"""module Main (main) where
 
 import Hardware.{{sensor_name}}
 import System.Mem (performGC)
