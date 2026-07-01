@@ -75,6 +75,7 @@ main = do
           , isocenter = Point3D 0 0 0 0 0
           , threadHeartbeats = Map.empty
           , kalmanState = initialKState
+          , mtiState = []
           , auditQueue = auditQ
           , audioAlertEnabled = False
           , activeLanguage = "en"

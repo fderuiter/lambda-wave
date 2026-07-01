@@ -25,6 +25,8 @@ import Data.List (foldl')
 import qualified Data.Map.Strict as Map
 import Control.Monad (when)
 import SignalProcessing.Kalman (KalmanState(..), KalmanConfig(..), pattern V3, predict, update)
+import SignalProcessing.FMCW (applyStaticClutterRemoval, mkMTIConfig)
+import Data.Complex (Complex(..), realPart)
 import Hardware.Control (setBeam)
 import Hardware.FFI.Bridge (handleHardwareResponse)
 import Data.I18n (Translations, translateAudit, translateBeamState)
@@ -76,10 +78,13 @@ processFrame translations stateVar frame = do
     let predState = predict dtSec kConfig oldKState
 
     -- Update (only if we have measurements)
-    let newKState = if count > 0
+    let (newMtiState, newKState) = if count > 0
             then let meas = totalHeight / fromIntegral count
-                 in update meas kConfig predState
-            else predState -- Coasting (Dead Reckoning) if signal lost
+                     mtiConfig = either error id $ mkMTIConfig 0.1 0.9 1.0
+                     (mtiState', outputs) = applyStaticClutterRemoval mtiConfig (mtiState oldSystemState) [meas :+ 0.0]
+                     filteredMeas = realPart (head outputs)
+                 in (mtiState', update filteredMeas kConfig predState)
+            else (mtiState oldSystemState, predState) -- Coasting (Dead Reckoning) if signal lost
 
     -- 6. Update System State & Resolve Final Beam State
     finalBeamState <- atomically $ do
@@ -122,6 +127,7 @@ processFrame translations stateVar frame = do
             , sequenceNumber = seqNum frame
             , threadHeartbeats = Map.insert "Gating" currTime (threadHeartbeats s)
             , kalmanState = newKState
+            , mtiState = newMtiState
             , localizedBeamState = locStr
             }
 
@@ -175,7 +181,7 @@ evaluateGating target tol hyst latencyTime kState oldBeam =
         accA = Acceleration acc
 
         -- Check for NaN/Inf
-        invalid = isNaN pos || isNaN vel || isInfinite pos || isInfinite vel
+        invalid = isNaN pos || isNaN vel || isNaN acc || isInfinite pos || isInfinite vel || isInfinite acc
 
         term1 = velV |*| latencyTime
         term2 = 0.5 |* (((accA |*| latencyTime) :: Velocity) |*| latencyTime)
