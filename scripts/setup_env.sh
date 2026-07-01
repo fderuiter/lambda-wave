@@ -99,6 +99,7 @@ main() {
                     lsb-release \
                     python3-matplotlib \
                     python3-reportlab \
+                    python3-yaml \
                     git
 
                 if [ "$skip_security" = false ]; then
