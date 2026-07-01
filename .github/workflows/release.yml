@@ -5,6 +5,10 @@ on:
     tags:
       - 'v*'
 
+permissions:
+  contents: write
+  id-token: write
+
 jobs:
   release:
     runs-on: ubuntu-latest
@@ -13,6 +17,25 @@ jobs:
         shell: bash
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Pin Dockerfile Base Image
+        run: |
+          IMAGE=$(awk '/^FROM/ {print $2}' Dockerfile)
+          docker pull $IMAGE
+          DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' $IMAGE | cut -d'@' -f2)
+          if [ -z "$DIGEST" ]; then
+            echo "Failed to find digest for $IMAGE"
+            exit 1
+          fi
+          sed -i "s|^FROM ${IMAGE}.*|FROM ${IMAGE}@${DIGEST}|" Dockerfile
+          echo "Pinned Dockerfile to $DIGEST"
+
+      - name: Verify Dockerfile Pinning
+        run: |
+          if ! grep -q "@sha256:" Dockerfile; then
+            echo "Error: Dockerfile is not pinned to a SHA-256 digest."
+            exit 1
+          fi
 
       - uses: haskell-actions/setup@v2
         with:
@@ -23,7 +46,6 @@ jobs:
         run: |
           sudo apt-get update
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential liblapack-dev libblas-dev
-
 
       - name: Build dependencies
         run: |
@@ -55,13 +77,32 @@ jobs:
           cp $(cabal list-bin sgrt-radar-system-exe) release/sgrt-radar-system
           cd release
           sha256sum sgrt-radar-system > sgrt-radar-system.sha256
+          cd ..
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v3.5.0
+
+      - name: Sign Binary
+        run: |
+          cosign sign-blob --yes --output-signature release/sgrt-radar-system.sig release/sgrt-radar-system
+          if [ ! -f "release/sgrt-radar-system.sig" ]; then
+            echo "Error: Signature file not found."
+            exit 1
+          fi
+
+      - name: Audit Log (21 CFR Part 11)
+        run: |
+          python3 scripts/sign_document.py release/sgrt-radar-system --user "${{ github.actor }}"
+
+      - name: Bundle Release
+        run: |
+          # Copy Dockerfile into bundle just to have the pinned version? 
+          # The instructions: "A single ZIP or Tarball is produced containing the binary, its signature, and the compliance manifest."
+          tar -czvf sgrt-radar-system-release.tar.gz release/sgrt-radar-system release/sgrt-radar-system.sha256 release/sgrt-radar-system.sig docs/qms/audit_log.json regulatory_evidence_report.md Dockerfile
 
       - name: Create Release
         uses: softprops/action-gh-release@de2c0eb89ae2a093876385947365aca7b0e5f844 # v1
         with:
-          files: |
-            release/sgrt-radar-system
-            release/sgrt-radar-system.sha256
-            regulatory_evidence_report.md
+          files: sgrt-radar-system-release.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
