@@ -199,11 +199,14 @@ sequenceDiagram
 ### Cross-Cutting Concerns
 
 #### Safety Layer
-**Purpose:** Continuous system health monitoring  
-**Components:**
-- **Watchdog Thread** (`Safety.Watchdog`): Detects thread deadlocks/hangs
+**Purpose:** Continuous system health monitoring and configuration verification
+
+**Dynamic Safety-Critical Logic (Active Production Monitoring):**
+- **Watchdog Daemon** (`Safety.Watchdog`): Detects thread deadlocks/hangs
 - **Audit Logger** (`Safety.Audit`): Immutable event log
-- **RTS Monitoring** (`System.RTSSpec`): Garbage collector pause tracking
+
+**Static Configuration/Verification (Testing):**
+- **RTS Capability Checks** (`test/System/RTSSpec.hs`): Garbage collector pause tracking verification
 
 **Failure Modes:**
 - **Thread Timeout:** If processing thread doesn't check in → KILL APPLICATION
