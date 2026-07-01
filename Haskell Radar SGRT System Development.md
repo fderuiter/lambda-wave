@@ -44,7 +44,7 @@ In the TDM scheme, the three TX antennas fire sequentially in repeating frames.
 * **Chirp 1**: TX2 fires. The signal is received by all 4 RX antennas.  
 * **Chirp 2**: TX3 fires. The signal is received by all 4 RX antennas.
 
-This sequence creates a virtual array of $N\_{TX} \\times N\_{RX} \= 12$ virtual elements.2 The physical geometry of the ISK antenna board arranges these virtual elements in an L-shaped pattern (or similar non-linear arrangement), which provides the spatial diversity necessary to calculate the Angle of Arrival (AoA) in both $\\theta$ (azimuth) and $\\phi$ (elevation). Without this Elevation capability, the radar would collapse the patient's 3D chest volume into a 2D accumulation, making it impossible to distinguish chest expansion from abdominal movement or patient rotation.2
+This sequence creates a virtual array of 12 virtual elements (see [Hardware Specifications](docs/reference/hardware_specs.md) for formulas).2 The physical geometry of the ISK antenna board arranges these virtual elements in an L-shaped pattern (or similar non-linear arrangement), which provides the spatial diversity necessary to calculate the Angle of Arrival (AoA) in both $\\theta$ (azimuth) and $\\phi$ (elevation). Without this Elevation capability, the radar would collapse the patient's 3D chest volume into a 2D accumulation, making it impossible to distinguish chest expansion from abdominal movement or patient rotation.2
 
 ### **2.2 Interface Bottlenecks: The XDS110 Limitation**
 
@@ -53,13 +53,7 @@ The sensor communicates with the host PC via the XDS110 USB-to-UART bridge. This
 1. **User UART (115200 baud)**: Used for configuring the sensor (sending the chirp profile).  
 2. **Data UART (921600 baud)**: Used for streaming the processed point cloud (TLV packets).
 
-The 921,600 baud rate imposes a hard physical constraint on the system's throughput.
-
-$$\\text{Throughput} \\approx \\frac{921,600 \\text{ bits/s}}{10 \\text{ bits/byte (8N1 overhead)}} \\approx 92 \\text{ KB/s}$$
-
-A rich point cloud containing X, Y, Z coordinates, Doppler velocity, and SNR intensity typically requires 16-20 bytes per point.
-
-$$\\frac{92,000 \\text{ bytes/s}}{20 \\text{ bytes/point}} \\approx 4,600 \\text{ points/s}$$
+The 921,600 baud rate imposes a hard physical constraint on the system's throughput. For detailed throughput and data limit calculations, see [Hardware Specifications](docs/reference/hardware_specs.md).
 
 At a target frame rate of 20 Hz (sufficient for respiratory monitoring), the system can support a maximum of roughly 230 points per frame. This limitation is critical: it confirms that the system cannot rely on a high-density "Lidar-like" scan. Instead, it receives a sparse cloud of \~100-200 reliable points reflected from the patient's skin. This hardware constraint necessitates the algorithmic sophistication of Layer 3 (Surface Meshing), where a mathematical surface is fitted to this sparse data to generate a high-fidelity visualization.
 
