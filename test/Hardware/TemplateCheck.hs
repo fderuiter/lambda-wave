@@ -1,6 +1,6 @@
-module Hardware.{sensor_name}Check (main) where
+module Main (main) where
 
-import Hardware.{sensor_name}
+import Hardware.Template
 import System.Mem (performGC)
 import Control.Monad (replicateM_)
 import Foreign.Ptr (nullPtr)
@@ -10,11 +10,11 @@ main :: IO ()
 main = do
     -- Test memory leak safety of bracket pattern
     replicateM_ 1000 $ do
-        with{sensor_name} $ \_ -> return ()
+        withTemplate $ \_ -> return ()
     
     -- Test memory leak safety of ForeignPtr pattern
     replicateM_ 1000 $ do
-        _ <- attach{sensor_name} nullPtr
+        _ <- attachTemplate nullPtr
         return ()
     
     performGC
