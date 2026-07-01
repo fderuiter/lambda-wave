@@ -5,7 +5,6 @@ import yaml
 import re
 import argparse
 from pathlib import Path
-from fpdf import FPDF
 
 RMF_PATH = Path('/app/rmf.yaml')
 SRC_DIRS = ['/app/src', '/app/test', '/app/app', '/app/cbits']
@@ -142,6 +141,61 @@ def cmd_gap(args):
     else:
         print("GAP ANALYSIS REPORT: No gaps found. All hazards are mitigated in code.")
 
+def cmd_check_docs(args):
+    print("Checking safety-critical modules for mandatory documentation sections...")
+    req_path = Path('/app/requirements.yaml')
+    valid_ids = set()
+    if req_path.exists():
+        with open(req_path, 'r') as f:
+            data = yaml.safe_load(f)
+            reqs = data.get('requirements', [])
+            for r in reqs:
+                valid_ids.add(r['id'])
+                
+    hazards = load_rmf()
+    for h in hazards:
+        valid_ids.add(h['id'])
+
+    failed = False
+    
+    req_regex = re.compile(r'\b((?:FR|SR|PR|MR)(?:-[A-Z0-9]+)*-\d+)\b')
+    hazard_regex = re.compile(r'\b(H-[A-Z0-9\-]+)\b')
+    
+    for d in SRC_DIRS:
+        for root, dirs, files in os.walk(d):
+            for file in files:
+                if file.endswith(('.hs', '.cpp', '.h', '.c', '.hpp', '.cc', '.cxx')):
+                    fpath = os.path.join(root, file)
+                    with open(fpath, 'r', encoding='utf-8', errors='ignore') as f:
+                        content = f.read()
+                        
+                    if "SAFETY-CRITICAL" in content:
+                        print(f"Checking {fpath}...")
+                        if not re.search(r'=\s*Failure Mode', content):
+                            print(f"Error: Missing '= Failure Mode' in {fpath}")
+                            failed = True
+                        if not re.search(r'=\s*Mitigation', content):
+                            print(f"Error: Missing '= Mitigation' in {fpath}")
+                            failed = True
+                            
+                        reqs_found = req_regex.findall(content)
+                        hazards_found = hazard_regex.findall(content)
+                        
+                        for req in reqs_found:
+                            if req not in valid_ids:
+                                print(f"Error: Non-existent requirement ID referenced: {req} in {fpath}")
+                                failed = True
+                        for haz in hazards_found:
+                            if haz not in valid_ids:
+                                print(f"Error: Non-existent hazard ID referenced: {haz} in {fpath}")
+                                failed = True
+
+    if failed:
+        print("Documentation check failed: Mandatory safety sections missing or invalid IDs.")
+        sys.exit(1)
+        
+    print("Documentation check passed: All safety-critical modules have required sections and valid IDs.")
+
 def main():
     parser = argparse.ArgumentParser(description="Integrated Safety & Risk Suite")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -173,6 +227,7 @@ def main():
 
     subparsers.add_parser("verify", help="Verify all hazards are referenced in codebase")
     subparsers.add_parser("gap", help="Gap analysis for missing codebase references")
+    subparsers.add_parser("check-docs", help="Check documentation structure in safety-critical files")
 
     args = parser.parse_args()
     if args.command == "add":
@@ -187,6 +242,8 @@ def main():
         cmd_verify(args)
     elif args.command == "gap":
         cmd_gap(args)
+    elif args.command == "check-docs":
+        cmd_check_docs(args)
 
 if __name__ == "__main__":
     main()
