@@ -1,3 +1,4 @@
+-- DO NOT EDIT: This file is auto-generated from the hardware manifest.
 {-# LANGUAGE DataKinds #-}
 module Hardware.Manifest (
     watchdogPin,
@@ -6,10 +7,12 @@ module Hardware.Manifest (
     dataBaudRate,
     framePeriodicityMs,
     systemLatencyMs,
+    mountingOffsetMm,
     WatchdogTimeoutMs,
     SystemLatencyMs
 ) where
 
+import GHC.TypeLits (Nat)
 
 watchdogPin :: Int
 watchdogPin = 27
@@ -28,6 +31,9 @@ framePeriodicityMs = 100
 
 systemLatencyMs :: Int
 systemLatencyMs = 50
+
+mountingOffsetMm :: Double
+mountingOffsetMm = 50.0
 
 type WatchdogTimeoutMs = 100
 

@@ -100,6 +100,12 @@ if __name__ == '__main__':
         generate_cxx(data, sys.argv[2], sys.argv[3])
         generate_haskell(data, sys.argv[4])
     elif 'baud_rates' in data:
+        # Validation for required fields
+        required_keys = ['baud_rates', 'gpio_pins', 'timing', 'mounting_offset_mm']
+        for key in required_keys:
+            if key not in data:
+                sys.exit(f"Error: Missing required hardware field '{key}' in manifest.")
+
         # Hardware manifest path
         out_hdr = sys.argv[2]
         out_hs = sys.argv[3]
@@ -115,6 +121,7 @@ if __name__ == '__main__':
                 
         # Generate C++ header
         with open(out_hdr, 'w') as f:
+            f.write("// DO NOT EDIT: This file is auto-generated from the hardware manifest.\n")
             f.write("#ifndef HARDWARE_MANIFEST_H\n")
             f.write("#define HARDWARE_MANIFEST_H\n\n")
             f.write("#include <termios.h>\n\n")
@@ -124,12 +131,24 @@ if __name__ == '__main__':
             f.write(f"#define MANIFEST_CONFIG_BAUD_MACRO B{data['baud_rates']['config']}\n")
             f.write(f"#define MANIFEST_DATA_BAUD {data['baud_rates']['data']}\n")
             f.write(f"#define MANIFEST_DATA_BAUD_MACRO B{data['baud_rates']['data']}\n")
+            f.write(f"#define MANIFEST_MOUNTING_OFFSET_MM {data['mounting_offset_mm']}\n")
             f.write("#endif\n")
             
         # Generate Haskell module
         with open(out_hs, 'w') as f:
+            f.write("-- DO NOT EDIT: This file is auto-generated from the hardware manifest.\n")
             f.write("{-# LANGUAGE DataKinds #-}\n")
-            f.write("module Hardware.Manifest where\n\n")
+            f.write("module Hardware.Manifest (\n")
+            f.write("    watchdogPin,\n")
+            f.write("    logicPin,\n")
+            f.write("    configBaudRate,\n")
+            f.write("    dataBaudRate,\n")
+            f.write("    framePeriodicityMs,\n")
+            f.write("    systemLatencyMs,\n")
+            f.write("    mountingOffsetMm,\n")
+            f.write("    WatchdogTimeoutMs,\n")
+            f.write("    SystemLatencyMs\n")
+            f.write(") where\n\n")
             f.write("import GHC.TypeLits (Nat)\n\n")
             f.write(f"watchdogPin :: Int\nwatchdogPin = {data['gpio_pins']['watchdog']}\n\n")
             f.write(f"logicPin :: Int\nlogicPin = {data['gpio_pins']['logic']}\n\n")
@@ -137,6 +156,7 @@ if __name__ == '__main__':
             f.write(f"dataBaudRate :: Int\ndataBaudRate = {data['baud_rates']['data']}\n\n")
             f.write(f"framePeriodicityMs :: Int\nframePeriodicityMs = {data['timing']['frame_periodicity_ms']}\n\n")
             f.write(f"systemLatencyMs :: Int\nsystemLatencyMs = {data['timing']['system_latency_ms']}\n\n")
+            f.write(f"mountingOffsetMm :: Double\nmountingOffsetMm = {data['mounting_offset_mm']}\n\n")
             f.write(f"type WatchdogTimeoutMs = {data['timing']['frame_periodicity_ms']}\n\n")
             f.write(f"type SystemLatencyMs = {data['timing']['system_latency_ms']}\n")
 
