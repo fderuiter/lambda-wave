@@ -2,7 +2,10 @@
 module Main (main) where
 
 import Control.Concurrent (threadDelay)
-import Safety.Thread (forkSafetyThread, forkSafetyThreadOS, ThreadShutdownAction(..))
+import Safety.Thread (forkSafetyThreadOS, ThreadShutdownAction(..))
+#ifdef ENABLE_WEB_UI
+import Safety.Thread (forkSafetyThread)
+#endif
 import Control.Concurrent.STM
 import Control.Exception (try, IOException)
 import System.Posix.IO (openFd, OpenMode(..), defaultFileFlags, OpenFileFlags(..), fdReadBuf)
