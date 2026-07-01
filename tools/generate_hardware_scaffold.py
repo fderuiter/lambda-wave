@@ -25,8 +25,6 @@ import Foreign.Ptr (Ptr, FunPtr)
 import Foreign.ForeignPtr (ForeignPtr, newForeignPtr)
 import Foreign.Marshal.Alloc (mallocBytes, free, finalizerFree)
 import Hardware.FFI.Bridge (MustHandle, bridgeHardwareCallCustom)
-import Hardware.Types (HardwareError(..))
-import Hardware.FFI.Common (HardwareResult(..))
 import Foreign.C.Types (CInt)
 
 -- | Dummy FFI stand-ins for scaffolding
