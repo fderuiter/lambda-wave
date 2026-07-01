@@ -80,6 +80,7 @@ library
       Hardware.Types
       Safety.Audit
       Safety.Crypto
+      Safety.Thread
       Safety.Token
       Safety.Watchdog
       UI.Presentation

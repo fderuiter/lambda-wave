@@ -4,7 +4,8 @@
 
 module Control.WebUI (runWebUI) where
 
-import Control.Concurrent (threadDelay, forkIO)
+import Control.Concurrent (threadDelay)
+import Safety.Thread (forkSafetyThread, ThreadShutdownAction(..))
 import Control.Concurrent.STM
 import Control.Monad (forever, void)
 import Data.Aeson (encode, decode, FromJSON(..), withObject, (.:))
@@ -209,7 +210,7 @@ wsApp store stateVar pending = do
         then do
             conn <- acceptRequest pending
             withPingThread conn 10 (return ()) $ do
-                _ <- forkIO $ do
+                _ <- forkSafetyThread (LogOnly putStrLn) "WebUIStream" $ do
                     prevStateRef <- newIORef BeamOff
                     forever $ do
                         state <- readTVarIO stateVar

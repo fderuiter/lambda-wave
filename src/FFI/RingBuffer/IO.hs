@@ -22,7 +22,8 @@ module FFI.RingBuffer.IO
 import Foreign.ForeignPtr (ForeignPtr, withForeignPtr)
 import System.Posix.Types (Fd(..))
 import Control.Exception (throwIO, catch, SomeException)
-import Control.Concurrent (forkOS, ThreadId, threadDelay)
+import Control.Concurrent (ThreadId, threadDelay)
+import Safety.Thread (forkSafetyThreadOS, ThreadShutdownAction(..))
 import Control.Monad (when)
 import System.IO (hPutStrLn, stderr)
 import FFI.RingBuffer.Types (getBufferSize)
@@ -83,14 +84,9 @@ setReadOffset fp off = do
 -- If it returns ReadBusy (Full or No Data), we pause briefly and retry.
 -- Accepts ForeignPtr to ensure the buffer is not freed while thread is running.
 ingestionLoop :: TVar SystemState -> ForeignPtr RingBufferControl -> Fd -> IO ThreadId
-ingestionLoop stateVar fp fd = forkOS loop
+ingestionLoop stateVar fp fd = forkSafetyThreadOS (ShutdownSystem $ triggerShutdown stateVar) "IngestionLoop" loop
   where
-    loop = safeLoop `catch` \e -> do
-        hPutStrLn stderr $ "CRITICAL FAILURE in Ingestion Thread: " ++ show (e :: SomeException)
-        triggerShutdown stateVar "CRITICAL FAILURE in Ingestion Thread"
-        return ()
-
-    safeLoop = do
+    loop = do
         result <- readFromUart stateVar fp fd
         case result of
             SystemError err -> do
