@@ -112,6 +112,13 @@ requirements:
     module: "`Safety.Audit`"
     test: "`test/Safety/AuditCheck.hs`"
     status: Complete
+  - id: SR-IPC-001
+    policy: ISO-13485-7.1
+    description: Process boundary isolation; all IPC heartbeats are monitored by the safety daemon
+    phase: Phase 4.4
+    module: "`Safety.Watchdog`, `app/Main.hs`, `app/VisualizerMain.hs`"
+    test: Visual Inspection
+    status: Complete
 
   - id: PR-ACC-01
     policy: ISO-13485-7.3.6

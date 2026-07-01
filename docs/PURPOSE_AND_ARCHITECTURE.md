@@ -415,16 +415,16 @@ graph LR
     C -->|FFI| D[Parser Haskell]
     D -->|STM TVar| E[Processing Thread]
     E -->|STM TVar| F[Gating Logic]
-    E -->|STM TVar| G[UI Renderer]
+    E -->|POSIX FIFOs & Shared Memory| G[Standalone Visualizer]
     F -->|GPIO/TTL| H[LINAC Control]
     E -->|File I/O| I[Audit Log]
-    J[Watchdog] -.->|monitors| E
+    J[Watchdog Daemon] -.->|AF_UNIX Heartbeat Monitor| E
     J -.->|timeout| K[Kill App]
 ```
 
 ### Thread Architecture
 
-**Main Thread:**
+**Main Process Architecture:**
 ```haskell
 main :: IO ()
 main = do
@@ -434,10 +434,11 @@ main = do
     
     forkOS $ ingestionLoop ringBuffer fd    -- Dedicated thread
     forkOS $ consumerLoop ringBuffer state  -- Dedicated thread
-    forkOS $ watchdogLoop state             -- Dedicated thread
     forkOS $ auditLoop state "session.log"  -- Dedicated thread
     
-    renderLoop state  -- Main thread (OpenGL requires main thread)
+    -- Spawn independent processes for UI and Safety monitoring
+    spawnProcess "visualizer" ["--shm-id", shmId]
+    spawnProcess "watchdog-daemon" ["--socket", sockPath]
 ```
 
 **Thread Communication:** Software Transactional Memory (STM)
@@ -582,21 +583,25 @@ evaluateGating state tol
 
 ### 5. Watchdog (`Safety.Watchdog`)
 
-**Purpose:** Detect and respond to thread failures
+**Purpose:** Detect and respond to system failures from an isolated daemon process
 
 **Implementation:**
 ```haskell
-watchdogLoop :: TVar SystemState -> IO ()
-watchdogLoop stateVar = forever $ do
-    now <- getTime Monotonic
-    lastUpdate <- atomically $ lastFrameTime <$> readTVar stateVar
-    let delta = diffTimeSpec now lastUpdate
-    when (delta > timeout) $ do
-        logError "Watchdog timeout - killing application"
-        exitFailure
-    threadDelay 10000  -- Check every 10 ms
-  where
-    timeout = TimeSpec 0 100_000_000  -- 100 ms
+watchdogDaemon :: FilePath -> IO ()
+watchdogDaemon sockPath = do
+    sock <- socket AF_UNIX Stream defaultProtocol
+    bind sock (SockAddrUnix sockPath)
+    listen sock 1
+    
+    forever $ do
+        (conn, _) <- accept sock
+        -- Monitor AF_UNIX socket for heartbeats
+        result <- timeout 100_000_000 (receiveHeartbeat conn) -- 100 ms
+        case result of
+            Nothing -> do
+                logError "Watchdog timeout - missing heartbeat! Killing application."
+                exitEmergencyShutdown
+            Just _ -> return ()
 ```
 
 ---
