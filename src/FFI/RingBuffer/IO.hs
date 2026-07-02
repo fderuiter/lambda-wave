@@ -17,6 +17,8 @@ module FFI.RingBuffer.IO
     , ingestionLoop
     , getWriteOffset
     , setReadOffset
+    , calculateAvailableReadBytes
+    , calculateNextReadOffset
     ) where
 
 import Foreign.ForeignPtr (ForeignPtr, withForeignPtr)
@@ -27,7 +29,7 @@ import Safety.Thread (forkSafetyThreadOS, ThreadShutdownAction(..))
 import Control.Monad (when)
 import System.IO (hPutStrLn, stderr)
 import FFI.RingBuffer.Types (getBufferSize)
-import FFI.RingBuffer.Generated (RingBufferControl, c_get_write_offset, c_set_read_offset)
+import FFI.RingBuffer.Generated (RingBufferControl, c_get_write_offset, c_set_read_offset, c_calculate_available_read_bytes, c_calculate_next_read_offset)
 import Hardware.FFI.Common
 import Hardware.FFI.Bridge
 import Control.Concurrent.STM (TVar)
@@ -78,6 +80,18 @@ setReadOffset fp off = do
     when (off >= bufSize) $
         throwIO (userError $ "Offset " ++ show off ++ " exceeds buffer size " ++ show bufSize)
     withForeignPtr fp $ \ptr -> c_set_read_offset ptr (fromIntegral off)
+
+-- | Wrapper for calculating available bytes
+calculateAvailableReadBytes :: Int -> Int -> Int -> IO Int
+calculateAvailableReadBytes readOff writeOff bufSize = do
+    res <- c_calculate_available_read_bytes (fromIntegral readOff) (fromIntegral writeOff) (fromIntegral bufSize)
+    return (fromIntegral res)
+
+-- | Wrapper for calculating next read offset
+calculateNextReadOffset :: Int -> Int -> Int -> IO Int
+calculateNextReadOffset readOff consumed bufSize = do
+    res <- c_calculate_next_read_offset (fromIntegral readOff) (fromIntegral consumed) (fromIntegral bufSize)
+    return (fromIntegral res)
 
 -- | Ingestion Thread: Spawns a bound thread that loops calling read_from_uart.
 -- The loop terminates if read_from_uart returns ReadError or ReadEOF.

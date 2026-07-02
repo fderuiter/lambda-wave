@@ -39,7 +39,7 @@ import Data.Time.HighRes (getMonotonicTimeNS)
 import Data.Maybe (isJust)
 
 import FFI.RingBuffer.Types (RingBufferControl(..), peekStaticFields)
-import FFI.RingBuffer.IO (getWriteOffset, setReadOffset)
+import FFI.RingBuffer.IO (getWriteOffset, setReadOffset, calculateAvailableReadBytes, calculateNextReadOffset)
 import Data.Types
 import Control.Gating (processFrame)
 import Control.Mesher (reconstructPolynomialSurface)
@@ -95,10 +95,8 @@ consumerLoop mountingOffset translations isPrimary controlFp stateVar = withFore
                     threadDelay 1000 -- 1ms
                     loop readOff
                 else do
-                    -- 2. Calculate available data
-                    let availableBytes = if writeOff >= readOff
-                                         then writeOff - readOff
-                                         else bufSize - readOff + writeOff
+                    -- 2. Calculate available data (FFI Single Authority)
+                    availableBytes <- calculateAvailableReadBytes readOff writeOff bufSize
                     let saturation = fromIntegral availableBytes / fromIntegral bufSize :: Double
 
                     when (saturation >= 0.90) $ do
@@ -222,7 +220,7 @@ consumerLoop mountingOffset translations isPrimary controlFp stateVar = withFore
 
                     -- SENTINEL SAFETY CHECK: Ensure we don't pass negative offset
                     let safeConsumed = max 0 (fromIntegral bytesConsumed)
-                    let newReadOff = (readOff + safeConsumed) `rem` bufSize
+                    newReadOff <- calculateNextReadOffset readOff safeConsumed bufSize
 
                     -- 8. Notify Producer (Release Semantics)
                     -- We must update the shared read offset so the producer can reclaim space

@@ -111,11 +111,11 @@ ssize_t read_from_uart(RingBufferControl* handle, int uart_fd) {
     size_t available_contiguous;
 
     if (read_offset > current_offset) {
-        available_contiguous = read_offset - current_offset - 1;
+        available_contiguous = read_offset - current_offset - BUFFER_GAP;
     } else {
         size_t space_to_end = size - current_offset;
         if (read_offset == 0) {
-            available_contiguous = space_to_end - 1;
+            available_contiguous = space_to_end - BUFFER_GAP;
         } else {
             available_contiguous = space_to_end;
         }

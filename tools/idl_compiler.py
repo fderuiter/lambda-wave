@@ -11,6 +11,11 @@ def generate_cxx(data, out_hdr, out_src):
         f.write("#include <cstddef>\n")
         f.write("#include <cstdint>\n\n")
         
+        if 'constants' in data:
+            for k, v in data['constants'].items():
+                f.write(f"#define {k} {v}\n")
+            f.write("\n")
+
         for struct in data['structs']:
             f.write(f"struct {struct['name']} {{\n")
             if 'alignas' in struct:
@@ -41,6 +46,10 @@ def generate_cxx(data, out_hdr, out_src):
                 if field['type'] == 'atomic_size_t':
                     f.write(f"size_t get_{field['name']}({struct['name']}* handle);\n")
                     f.write(f"void set_{field['name']}({struct['name']}* handle, size_t val);\n")
+        
+        f.write("size_t calculate_available_read_bytes(size_t read_offset, size_t write_offset, size_t buffer_size);\n")
+        f.write("size_t calculate_next_read_offset(size_t read_offset, size_t consumed, size_t buffer_size);\n")
+        
         f.write('}\n')
         f.write("#endif\n")
 
@@ -58,11 +67,31 @@ def generate_cxx(data, out_hdr, out_src):
                     f.write(f"    if (!handle) return;\n")
                     f.write(f"    handle->{field['name']}.store(val, std::memory_order_release);\n")
                     f.write(f"}}\n")
+        
+        f.write("size_t calculate_available_read_bytes(size_t read_offset, size_t write_offset, size_t buffer_size) {\n")
+        f.write("    if (write_offset >= read_offset) {\n")
+        f.write("        return write_offset - read_offset;\n")
+        f.write("    } else {\n")
+        f.write("        return buffer_size - read_offset + write_offset;\n")
+        f.write("    }\n")
+        f.write("}\n\n")
+
+        f.write("size_t calculate_next_read_offset(size_t read_offset, size_t consumed, size_t buffer_size) {\n")
+        f.write("    return (read_offset + consumed) % buffer_size;\n")
+        f.write("}\n")
+        
         f.write('}\n')
 
 def generate_haskell(data, out_hs):
     with open(out_hs, 'w') as f:
         exports = []
+        if 'constants' in data:
+            for k in data['constants'].keys():
+                # Convert BUFFER_GAP to bufferGap
+                words = k.lower().split('_')
+                hs_name = words[0] + ''.join(w.capitalize() for w in words[1:])
+                exports.append(hs_name)
+        
         for struct in data['structs']:
             exports.append(f"{struct['name']}(..)")
             for field in struct['fields']:
@@ -70,9 +99,19 @@ def generate_haskell(data, out_hs):
                     exports.append(f"c_get_{field['name']}")
                     exports.append(f"c_set_{field['name']}")
                     
+        exports.append("c_calculate_available_read_bytes")
+        exports.append("c_calculate_next_read_offset")
+        
         f.write(f"module FFI.RingBuffer.Generated ({', '.join(exports)}) where\n\n")
         f.write("import Foreign.C.Types\n")
         f.write("import Foreign.Ptr\n\n")
+        
+        if 'constants' in data:
+            for k, v in data['constants'].items():
+                words = k.lower().split('_')
+                hs_name = words[0] + ''.join(w.capitalize() for w in words[1:])
+                f.write(f"{hs_name} :: Int\n")
+                f.write(f"{hs_name} = {v}\n\n")
         
         for struct in data['structs']:
             f.write(f"data {struct['name']} = {struct['name']}\n")
@@ -92,6 +131,12 @@ def generate_haskell(data, out_hs):
                     f.write(f"    c_get_{field['name']} :: Ptr {struct['name']} -> IO CSize\n")
                     f.write(f"foreign import ccall unsafe \"set_{field['name']}\"\n")
                     f.write(f"    c_set_{field['name']} :: Ptr {struct['name']} -> CSize -> IO ()\n\n")
+
+        f.write("foreign import ccall unsafe \"calculate_available_read_bytes\"\n")
+        f.write("    c_calculate_available_read_bytes :: CSize -> CSize -> CSize -> IO CSize\n\n")
+        
+        f.write("foreign import ccall unsafe \"calculate_next_read_offset\"\n")
+        f.write("    c_calculate_next_read_offset :: CSize -> CSize -> CSize -> IO CSize\n\n")
 
 if __name__ == '__main__':
     with open(sys.argv[1]) as f:
