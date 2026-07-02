@@ -81,6 +81,7 @@ main = do
           , activeLanguage = "en"
           , calibrationStatus = CalibrationUnverified
           , localizedBeamState = "BEAM OFF"
+          , displayPreset = StandardPreset
           }
 
     systemState <- newTVarIO initialState
