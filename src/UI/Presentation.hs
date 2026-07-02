@@ -38,4 +38,4 @@ scaleKalmanStateToMeters ks =
 
 shouldTriggerAudioAlert :: Bool -> BeamState -> BeamState -> Bool
 shouldTriggerAudioAlert audioEnabled prevState currentState =
-    audioEnabled && prevState /= BeamOff && currentState == BeamOff
+    audioEnabled && prevState /= currentState
