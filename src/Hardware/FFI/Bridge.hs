@@ -77,17 +77,19 @@ auditHardwareEvent stateVar comp res = do
     
     -- "Failure to log an event to the audit system results in a controlled system shutdown."
     -- We can try to write to the TBQueue. If it's full, or we hit an exception, we shutdown.
-    writeRes <- try $ atomically $ do
+    writeSuccess <- atomically $ do
         s <- readTVar stateVar
         let q = auditQueue s
         full <- isFullTBQueue q
         if full 
-            then error "Audit queue full" 
-            else writeTBQueue q evt
+            then return False
+            else do
+                writeTBQueue q evt
+                return True
 
-    case writeRes of
-        Left (_ :: SomeException) -> triggerShutdown stateVar "Audit logging failed"
-        Right _ -> return ()
+    if not writeSuccess
+        then triggerShutdown stateVar "Audit logging failed"
+        else return ()
 
 -- | Automated retry logic for recoverable errors like transient serial port disconnects.
 executeBridgeCall :: (HardwareResult -> IO ()) -> IO HardwareResult -> IO (MustHandle ())

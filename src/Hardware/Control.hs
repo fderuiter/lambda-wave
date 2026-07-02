@@ -146,18 +146,21 @@ readUntilDone fd acc = do
 configureConfigSerial :: Fd -> IO (Either HardwareError ())
 configureConfigSerial fd = do
     result <- try $ do
-        let termBaud = case configBaudRate of
-                115200 -> B115200
-                9600   -> B9600
-                19200  -> B19200
-                38400  -> B38400
-                57600  -> B57600
-                230400 -> B230400
-                _      -> error "Unsupported config baud rate"
-        attrs <- getTerminalAttributes fd
-        let cfgAttrs = attrs `withInputSpeed` termBaud `withOutputSpeed` termBaud
-        setTerminalAttributes fd cfgAttrs Immediately
-        return ()
+        let mTermBaud = case configBaudRate of
+                115200 -> Just B115200
+                9600   -> Just B9600
+                19200  -> Just B19200
+                38400  -> Just B38400
+                57600  -> Just B57600
+                230400 -> Just B230400
+                _      -> Nothing
+        case mTermBaud of
+            Nothing -> ioError (userError "Unsupported config baud rate")
+            Just termBaud -> do
+                attrs <- getTerminalAttributes fd
+                let cfgAttrs = attrs `withInputSpeed` termBaud `withOutputSpeed` termBaud
+                setTerminalAttributes fd cfgAttrs Immediately
+                return ()
     case result of
         Left ex -> return $ Left $ ConfigurationFailed $ show (ex :: IOException)
         Right () -> return $ Right ()
