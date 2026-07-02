@@ -22,6 +22,8 @@ import Text.Printf (printf)
 import Data.Char (isControl)
 import qualified Data.ByteString as B
 import Safety.Crypto (encryptLog)
+import Safety.Result (SafetyResult(..))
+import Hardware.FFI.Bridge (triggerShutdown)
 
 -- | Signals why the inner loop exited
 data LoopResult = RotationNeeded
@@ -100,16 +102,22 @@ processEvents stateVar queue h = go
                                 (show (severity evt))
                                 (sanitize $ component evt)
                                 (sanitize $ message evt)
-                enc <- encryptLog (entry ++ "\n")
-                B.hPut h enc
+                encRes <- encryptLog (entry ++ "\n")
+                case encRes of
+                    Safe enc -> do
+                        B.hPut h enc
 
-                -- 4. Critical Flush (Safety)
-                when (severity evt == Critical || severity evt == Warning) $ hFlush h
+                        -- 4. Critical Flush (Safety)
+                        when (severity evt == Critical || severity evt == Warning) $ hFlush h
 
-                -- 5. Rotation Check
-                let !newSize = currentSize + fromIntegral (B.length enc)
-                if newSize > 10 * 1024 * 1024 -- 10MB limit
-                    then return RotationNeeded
-                    else go newSize
+                        -- 5. Rotation Check
+                        let !newSize = currentSize + fromIntegral (B.length enc)
+                        if newSize > 10 * 1024 * 1024 -- 10MB limit
+                            then return RotationNeeded
+                            else go newSize
+                    Unsafe msg -> do
+                        hPutStrLn stderr $ "CRITICAL ENCRYPTION FAILURE: " ++ msg
+                        triggerShutdown stateVar ("CRITICAL ENCRYPTION FAILURE: " ++ msg)
+                        return RotationNeeded
 
 -- Requirement SR-AUDIT-001

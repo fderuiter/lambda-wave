@@ -38,6 +38,7 @@ import Numeric.Kinematics
     , Time(..)
     , SystemLatencyMs
     , KinematicMultiply(..)
+    , KinematicMath(..)
     , ScalarMultiply(..)
     , systemLatencyTime
     , Proxy(..)
@@ -212,15 +213,15 @@ evaluateGating target tol hyst latencyTime kState oldBeam =
 
         term1 = velV |*| latencyTime
         term2 = 0.5 |* (((accA |*| latencyTime) :: Velocity) |*| latencyTime)
-        predPos = posD + term1 + term2
+        predPos = posD |+| term1 |+| term2
 
-        err = abs (predPos - target)
+        err = kabs (predPos |-| target)
 
         -- Thresholds
         -- ON Threshold: Tolerance
         -- OFF Threshold: Tolerance + Hysteresis
         onLimit = tol
-        offLimit = tol + hyst
+        offLimit = tol |+| hyst
 
     in if invalid
        then BeamOff

@@ -21,6 +21,7 @@ import System.Timeout (timeout)
 import System.Posix.Files (removeLink)
 import qualified Data.ByteString as B
 import Safety.Crypto (encryptLog)
+import Safety.Result (SafetyResult(..))
 
 import Hardware.Control (setBeamChannelDaemon, GpioChannel(..))
 import Hardware.FFI.Bridge (handleHardwareResponse)
@@ -35,9 +36,12 @@ daemonAudit :: HardwareResult -> IO ()
 daemonAudit res = do
     now <- getMonotonicTimeNS
     let auditMsg = show now ++ " [INFO] [SafetyDaemon] Hardware Bridge: " ++ show res ++ "\n"
-    encAudit <- encryptLog auditMsg
-    _ <- try (B.appendFile "session.log" encAudit) :: IO (Either IOException ())
-    return ()
+    encAuditRes <- encryptLog auditMsg
+    case encAuditRes of
+        Safe encAudit -> do
+            _ <- try (B.appendFile "session.log" encAudit) :: IO (Either IOException ())
+            return ()
+        Unsafe msg -> putStrLn $ "!!! SAFETY DAEMON ENCRYPTION FAILURE: " ++ msg
 
 -- | The Watchdog Heartbeat Sender Loop (Runs in Main Process)
 -- Requirement SR-WD-001
@@ -160,16 +164,18 @@ tripDaemon parentPid = do
     -- Independent Audit Log recording
     now <- getMonotonicTimeNS
     let auditMsg = show now ++ " [CRITICAL] [SafetyDaemon] " ++ msg ++ "\n"
-    encAudit <- encryptLog auditMsg
-    resFile <- try (B.appendFile "session.log" encAudit) :: IO (Either IOException ())
-    
-    case resFile of
-        Left err -> do
-            putStrLn $ "!!! SAFETY DAEMON IO ERROR writing session.log: " ++ show err
-            hFlush stdout
-            _ <- try (B.appendFile "fallback_audit.log" encAudit) :: IO (Either IOException ())
-            return ()
-        Right () -> return ()
+    encAuditRes <- encryptLog auditMsg
+    case encAuditRes of
+        Safe encAudit -> do
+            resFile <- try (B.appendFile "session.log" encAudit) :: IO (Either IOException ())
+            case resFile of
+                Left err -> do
+                    putStrLn $ "!!! SAFETY DAEMON IO ERROR writing session.log: " ++ show err
+                    hFlush stdout
+                    _ <- try (B.appendFile "fallback_audit.log" encAudit) :: IO (Either IOException ())
+                    return ()
+                Right () -> return ()
+        Unsafe _ -> return ()
     
     -- Terminate main application process
     putStrLn $ "!!! SAFETY DAEMON: Terminating Parent PID " ++ show parentPid

@@ -38,6 +38,7 @@ module Numeric.Kinematics
     , systemLatencyTime
     , watchdogTimeoutTime
       -- * Classes
+    , KinematicMath(..)
     , KinematicMultiply(..)
     , KinematicDivide(..)
     , ScalarMultiply(..)
@@ -48,6 +49,7 @@ module Numeric.Kinematics
 import GHC.TypeLits
 import Data.Proxy
 import Hardware.Manifest (WatchdogTimeoutMs, SystemLatencyMs)
+import Safety.Result (SafetyResult(..))
 
 -- Core Types (Requirement 1)
 -- Newtypes ensure zero runtime overhead (Constraints & Guardrails)
@@ -108,47 +110,52 @@ secondsToNs :: Seconds -> Nanoseconds
 secondsToNs (Seconds s) = Nanoseconds (s * 1_000_000_000.0)
 
 -- Basic Add/Sub for same types
-instance Num Distance where
-    (Distance a) + (Distance b) = Distance (a + b)
-    (Distance a) - (Distance b) = Distance (a - b)
-    (Distance _) * (Distance _) = error "Cannot multiply Distance by Distance"
-    abs (Distance a) = Distance (abs a)
-    signum (Distance a) = Distance (signum a)
-    fromInteger i = Distance (fromInteger i)
+class KinematicMath a where
+    (|+|) :: a -> a -> a
+    (|-|) :: a -> a -> a
+    kabs  :: a -> a
 
-instance Num Velocity where
-    (Velocity a) + (Velocity b) = Velocity (a + b)
-    (Velocity a) - (Velocity b) = Velocity (a - b)
-    (Velocity _) * (Velocity _) = error "Cannot multiply Velocity by Velocity"
-    abs (Velocity a) = Velocity (abs a)
-    signum (Velocity a) = Velocity (signum a)
-    fromInteger i = Velocity (fromInteger i)
+instance KinematicMath Distance where
+    (Distance a) |+| (Distance b) = Distance (a + b)
+    (Distance a) |-| (Distance b) = Distance (a - b)
+    kabs (Distance a) = Distance (abs a)
 
-instance Num Acceleration where
-    (Acceleration a) + (Acceleration b) = Acceleration (a + b)
-    (Acceleration a) - (Acceleration b) = Acceleration (a - b)
-    (Acceleration _) * (Acceleration _) = error "Cannot multiply Acceleration by Acceleration"
-    abs (Acceleration a) = Acceleration (abs a)
-    signum (Acceleration a) = Acceleration (signum a)
-    fromInteger i = Acceleration (fromInteger i)
+instance KinematicMath Velocity where
+    (Velocity a) |+| (Velocity b) = Velocity (a + b)
+    (Velocity a) |-| (Velocity b) = Velocity (a - b)
+    kabs (Velocity a) = Velocity (abs a)
 
-instance Num Time where
-    (Time a) + (Time b) = Time (a + b)
-    (Time a) - (Time b) = Time (a - b)
-    (Time _) * (Time _) = error "Cannot multiply Time by Time"
-    abs (Time a) = Time (abs a)
-    signum (Time a) = Time (signum a)
-    fromInteger i = Time (fromInteger i)
+instance KinematicMath Acceleration where
+    (Acceleration a) |+| (Acceleration b) = Acceleration (a + b)
+    (Acceleration a) |-| (Acceleration b) = Acceleration (a - b)
+    kabs (Acceleration a) = Acceleration (abs a)
 
-instance Fractional Distance where
-    (Distance _) / (Distance _) = error "Cannot divide Distance by Distance"
-    fromRational r = Distance (fromRational r)
+instance KinematicMath Time where
+    (Time a) |+| (Time b) = Time (a + b)
+    (Time a) |-| (Time b) = Time (a - b)
+    kabs (Time a) = Time (abs a)
 
 class KinematicMultiply a b c where
     (|*|) :: a -> b -> c
 
 class KinematicDivide a b c where
     (|/|) :: a -> b -> c
+
+-- Invalid kinematics operations return the mandatory safety type rather than throwing an exception.
+instance KinematicMultiply Distance Distance (SafetyResult Distance) where
+    _ |*| _ = Unsafe "Cannot multiply Distance by Distance"
+
+instance KinematicMultiply Velocity Velocity (SafetyResult Velocity) where
+    _ |*| _ = Unsafe "Cannot multiply Velocity by Velocity"
+
+instance KinematicMultiply Acceleration Acceleration (SafetyResult Acceleration) where
+    _ |*| _ = Unsafe "Cannot multiply Acceleration by Acceleration"
+
+instance KinematicMultiply Time Time (SafetyResult Time) where
+    _ |*| _ = Unsafe "Cannot multiply Time by Time"
+
+instance KinematicDivide Distance Distance (SafetyResult Distance) where
+    _ |/| _ = Unsafe "Cannot divide Distance by Distance"
 
 instance KinematicMultiply Velocity Time Distance where
     (Velocity v) |*| (Time t) = Distance (v * t)

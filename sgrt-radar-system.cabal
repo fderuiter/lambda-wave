@@ -86,6 +86,7 @@ library
       Hardware.Types
       Safety.Audit
       Safety.Crypto
+      Safety.Result
       Safety.Thread
       Safety.Token
       Safety.Watchdog

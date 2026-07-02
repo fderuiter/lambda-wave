@@ -35,6 +35,7 @@ import Data.ByteArray.Encoding (convertFromBase, Base(Base64))
 import Crypto.Hash (hash, SHA256(..), Digest)
 import UI.Presentation (shouldTriggerAudioAlert)
 import Safety.Token (generateToken)
+import Safety.Result (SafetyResult(..))
 
 -- Provisioned credential map (username -> hashed password)
 credentialStore :: Map.Map B.ByteString (Digest SHA256)
@@ -133,18 +134,24 @@ httpApp store stateVar req respond = do
                         
                         if isValidUser
                             then do
-                                token <- generateToken
-                                now <- getCurrentTime
-                                let expiry = addUTCTime 1800 now -- 30 minutes
-                                atomically $ modifyTVar' store (Map.insert token expiry)
-                                
-                                logAuthEvent stateVar ("Login successful for user " ++ BC.unpack user) True
-                                
-                                respond $ responseLBS status302
-                                    [ ("Set-Cookie", "session=" <> token <> "; HttpOnly; Secure; SameSite=Strict; Path=/")
-                                    , ("Location", "/")
-                                    ]
-                                    ""
+                                tokenRes <- generateToken
+                                case tokenRes of
+                                    Safe token -> do
+                                        now <- getCurrentTime
+                                        let expiry = addUTCTime 1800 now -- 30 minutes
+                                        atomically $ modifyTVar' store (Map.insert token expiry)
+                                        
+                                        logAuthEvent stateVar ("Login successful for user " ++ BC.unpack user) True
+                                        
+                                        respond $ responseLBS status302
+                                            [ ("Set-Cookie", "session=" <> token <> "; HttpOnly; Secure; SameSite=Strict; Path=/")
+                                            , ("Location", "/")
+                                            ]
+                                            ""
+                                    Unsafe msg -> do
+                                        logAuthEvent stateVar ("Token generation failed: " ++ msg) False
+                                        -- It's not a real-time safety loop, we just reject the login.
+                                        respond $ responseLBS status500 [] "Internal Server Error"
                             else do
                                 logAuthEvent stateVar "Login failed" False
                                 respond401 respond
