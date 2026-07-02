@@ -1,3 +1,4 @@
+// DO NOT EDIT: This file is auto-generated from the hardware manifest.
 #ifndef HARDWARE_MANIFEST_H
 #define HARDWARE_MANIFEST_H
 
@@ -9,4 +10,5 @@
 #define MANIFEST_CONFIG_BAUD_MACRO B115200
 #define MANIFEST_DATA_BAUD 921600
 #define MANIFEST_DATA_BAUD_MACRO B921600
+#define MANIFEST_MOUNTING_OFFSET_MM 50.0
 #endif
