@@ -16,8 +16,8 @@ reconstructPolynomialSurface coeffs = case coeffs of
     [c0, c1, c2, c3, c4, c5] ->
         let pts = [ Point3D x y z 0.0 0.0
                   | xi <- [0..19 :: Int]
-                  , yi <- [0..19 :: Int]
                   , let x = -100.0 + (fromIntegral xi * 200.0 / 19.0)
+                  , yi <- [0..19 :: Int]
                   , let y = -100.0 + (fromIntegral yi * 200.0 / 19.0)
                   , let z = c0 + c1 * x + c2 * y + c3 * x * x + c4 * x * y + c5 * y * y
                   ]

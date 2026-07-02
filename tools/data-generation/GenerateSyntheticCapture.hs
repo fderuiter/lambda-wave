@@ -10,7 +10,7 @@ magicPattern :: [Word8]
 magicPattern = [1, 2, 3, 4, 5, 6, 7, 8]
 
 putCoeffs :: [Float] -> Put
-putCoeffs coeffs = mapM_ putFloatle coeffs
+putCoeffs = mapM_ putFloatle
 
 generateFrame :: Word32 -> [Float] -> Put
 generateFrame frameNum coeffs = do
