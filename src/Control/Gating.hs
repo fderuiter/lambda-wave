@@ -25,6 +25,8 @@ import Data.List (foldl')
 import qualified Data.Map.Strict as Map
 import Control.Monad (when)
 import SignalProcessing.Kalman (KalmanState(..), KalmanConfig(..), pattern V3, predict, update)
+import SignalProcessing.FMCW (applyStaticClutterRemoval, mkMTIConfig)
+import Data.Complex (Complex(..))
 import Hardware.Control (setBeam)
 import Hardware.FFI.Bridge (handleHardwareResponse)
 import Data.I18n (Translations, translateAudit, translateBeamState)
@@ -49,6 +51,22 @@ kConfig = KalmanConfig
     { procNoise = 10.0 -- High agility for breathing
     , measNoise = 2.0  -- 2mm noise estimate
     }
+
+-- | MTI filter base learning rate (α_base): used during active motion.
+-- Must satisfy 0 ≤ mtiAlphaBase ≤ mtiAlphaMax ≤ 1.
+-- A lower value gives more inertia to the clutter mean estimate. (FR-DSP-004)
+mtiAlphaBaseVal :: Double
+mtiAlphaBaseVal = 0.1
+
+-- | MTI filter maximum learning rate (α_max): used when the scene is static.
+-- Higher value allows faster adaptation of the clutter baseline. (FR-DSP-004)
+mtiAlphaMaxVal :: Double
+mtiAlphaMaxVal = 0.9
+
+-- | MTI motion variance threshold: separates static from dynamic scenes.
+-- Scene variance below this value triggers the faster α_max adaptation path.
+mtiThresholdVal :: Double
+mtiThresholdVal = 1.0
 
 
 -- | The main logic function called every frame
@@ -76,10 +94,24 @@ processFrame translations stateVar frame = do
     let predState = predict dtSec kConfig oldKState
 
     -- Update (only if we have measurements)
-    let newKState = if count > 0
-            then let meas = totalHeight / fromIntegral count
-                 in update meas kConfig predState
-            else predState -- Coasting (Dead Reckoning) if signal lost
+    -- Runs in IO so that MTI config errors can be surfaced via the audit queue.
+    (newMtiState, newKState) <- if count > 0
+            then do
+                let meas = totalHeight / fromIntegral count
+                case mkMTIConfig mtiAlphaBaseVal mtiAlphaMaxVal mtiThresholdVal of
+                    Left err -> do
+                        -- Config validation failed: log a warning and fall back to
+                        -- the unfiltered measurement so gating is not silently degraded.
+                        let evt = AuditEvent currTime Warning "Gating" ("MTI config error: " ++ err)
+                        atomically $ writeTBQueue (auditQueue oldSystemState) evt
+                        return (mtiState oldSystemState, update meas kConfig predState)
+                    Right mtiConfig ->
+                        -- Run the MTI filter to advance state, but feed the raw average
+                        -- height (not the high-pass output) into the Kalman update so the
+                        -- absolute position is preserved and the first-frame zero issue is avoided.
+                        let (mtiState', _) = applyStaticClutterRemoval mtiConfig (mtiState oldSystemState) [meas :+ 0.0] -- second tuple element is MTI high-pass output; intentionally ignored, using raw scalar meas for Kalman update
+                        in  return (mtiState', update meas kConfig predState)
+            else return (mtiState oldSystemState, predState) -- Coasting (Dead Reckoning) if signal lost
 
     -- 6. Update System State & Resolve Final Beam State
     finalBeamState <- atomically $ do
@@ -122,6 +154,7 @@ processFrame translations stateVar frame = do
             , sequenceNumber = seqNum frame
             , threadHeartbeats = Map.insert "Gating" currTime (threadHeartbeats s)
             , kalmanState = newKState
+            , mtiState = newMtiState
             , localizedBeamState = locStr
             }
 
@@ -175,7 +208,7 @@ evaluateGating target tol hyst latencyTime kState oldBeam =
         accA = Acceleration acc
 
         -- Check for NaN/Inf
-        invalid = isNaN pos || isNaN vel || isInfinite pos || isInfinite vel
+        invalid = isNaN pos || isNaN vel || isNaN acc || isInfinite pos || isInfinite vel || isInfinite acc
 
         term1 = velV |*| latencyTime
         term2 = 0.5 |* (((accA |*| latencyTime) :: Velocity) |*| latencyTime)
