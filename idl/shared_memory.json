@@ -1,4 +1,7 @@
 {
+  "constants": {
+    "ring_buffer_gap": 1
+  },
   "structs": [
     {
       "name": "RingBufferControl",

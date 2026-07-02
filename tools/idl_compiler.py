@@ -4,12 +4,15 @@ import json
 import os
 
 def generate_cxx(data, out_hdr, out_src):
+    gap_val = data.get('constants', {}).get('ring_buffer_gap', 1)
+    
     with open(out_hdr, 'w') as f:
         f.write("#ifndef RING_BUFFER_CONTROL_H\n")
         f.write("#define RING_BUFFER_CONTROL_H\n\n")
         f.write("#include <atomic>\n")
         f.write("#include <cstddef>\n")
         f.write("#include <cstdint>\n\n")
+        f.write(f"#define RING_BUFFER_GAP {gap_val}\n\n")
         
         for struct in data['structs']:
             f.write(f"struct {struct['name']} {{\n")
@@ -41,6 +44,8 @@ def generate_cxx(data, out_hdr, out_src):
                 if field['type'] == 'atomic_size_t':
                     f.write(f"size_t get_{field['name']}({struct['name']}* handle);\n")
                     f.write(f"void set_{field['name']}({struct['name']}* handle, size_t val);\n")
+            f.write(f"size_t rb_available_data({struct['name']}* handle, size_t current_read_offset);\n")
+            f.write(f"size_t rb_next_read_offset({struct['name']}* handle, size_t current_read_offset, size_t consumed_bytes);\n")
         f.write('}\n')
         f.write("#endif\n")
 
@@ -58,9 +63,28 @@ def generate_cxx(data, out_hdr, out_src):
                     f.write(f"    if (!handle) return;\n")
                     f.write(f"    handle->{field['name']}.store(val, std::memory_order_release);\n")
                     f.write(f"}}\n")
+            
+            f.write(f"size_t rb_available_data({struct['name']}* handle, size_t current_read_offset) {{\n")
+            f.write(f"    if (!handle) return 0;\n")
+            f.write(f"    size_t write_off = handle->write_offset.load(std::memory_order_acquire);\n")
+            f.write(f"    size_t size = handle->buffer_size;\n")
+            f.write(f"    if (write_off >= current_read_offset) {{\n")
+            f.write(f"        return write_off - current_read_offset;\n")
+            f.write(f"    }} else {{\n")
+            f.write(f"        return size - current_read_offset + write_off;\n")
+            f.write(f"    }}\n")
+            f.write(f"}}\n\n")
+
+            f.write(f"size_t rb_next_read_offset({struct['name']}* handle, size_t current_read_offset, size_t consumed_bytes) {{\n")
+            f.write(f"    if (!handle) return current_read_offset;\n")
+            f.write(f"    size_t size = handle->buffer_size;\n")
+            f.write(f"    return (current_read_offset + consumed_bytes) % size;\n")
+            f.write(f"}}\n")
         f.write('}\n')
 
 def generate_haskell(data, out_hs):
+    gap_val = data.get('constants', {}).get('ring_buffer_gap', 1)
+    
     with open(out_hs, 'w') as f:
         exports = []
         for struct in data['structs']:
@@ -69,10 +93,14 @@ def generate_haskell(data, out_hs):
                 if field['type'] == 'atomic_size_t':
                     exports.append(f"c_get_{field['name']}")
                     exports.append(f"c_set_{field['name']}")
+            exports.append("c_rb_available_data")
+            exports.append("c_rb_next_read_offset")
+        exports.append("ringBufferGap")
                     
         f.write(f"module FFI.RingBuffer.Generated ({', '.join(exports)}) where\n\n")
         f.write("import Foreign.C.Types\n")
         f.write("import Foreign.Ptr\n\n")
+        f.write(f"ringBufferGap :: CSize\nringBufferGap = {gap_val}\n\n")
         
         for struct in data['structs']:
             f.write(f"data {struct['name']} = {struct['name']}\n")
@@ -92,6 +120,11 @@ def generate_haskell(data, out_hs):
                     f.write(f"    c_get_{field['name']} :: Ptr {struct['name']} -> IO CSize\n")
                     f.write(f"foreign import ccall unsafe \"set_{field['name']}\"\n")
                     f.write(f"    c_set_{field['name']} :: Ptr {struct['name']} -> CSize -> IO ()\n\n")
+                    
+            f.write(f"foreign import ccall unsafe \"rb_available_data\"\n")
+            f.write(f"    c_rb_available_data :: Ptr {struct['name']} -> CSize -> IO CSize\n")
+            f.write(f"foreign import ccall unsafe \"rb_next_read_offset\"\n")
+            f.write(f"    c_rb_next_read_offset :: Ptr {struct['name']} -> CSize -> CSize -> IO CSize\n\n")
 
 if __name__ == '__main__':
     with open(sys.argv[1]) as f:
@@ -149,7 +182,6 @@ if __name__ == '__main__':
             f.write("    WatchdogTimeoutMs,\n")
             f.write("    SystemLatencyMs\n")
             f.write(") where\n\n")
-            f.write("import GHC.TypeLits (Nat)\n\n")
             f.write(f"watchdogPin :: Int\nwatchdogPin = {data['gpio_pins']['watchdog']}\n\n")
             f.write(f"logicPin :: Int\nlogicPin = {data['gpio_pins']['logic']}\n\n")
             f.write(f"configBaudRate :: Int\nconfigBaudRate = {data['baud_rates']['config']}\n\n")
