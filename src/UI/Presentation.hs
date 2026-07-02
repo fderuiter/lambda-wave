@@ -9,7 +9,7 @@ module UI.Presentation (
 
 import Data.Types (BeamState(..), Point3D(..))
 import SignalProcessing.Kalman (KalmanState(..), pattern V3)
-import Numeric.Kinematics (Millimeters(..), Meters(..), mmToMeters)
+import Numeric.Kinematics (Millimeters(..), Meters(..), mmToMeters, MillimetersPerSecond(..), MetersPerSecond(..), mmPerSToMetersPerS, MillimetersPerSecondSquared(..), MetersPerSecondSquared(..), mmPerS2ToMetersPerS2)
 
 data BeamDisplayInfo = BeamDisplayInfo
     { bdiColorHex   :: String
@@ -35,7 +35,9 @@ scaleKalmanStateToMeters ks =
     let (pos, vel, acc) = case x ks of
             V3 pVal vVal aVal -> (pVal, vVal, aVal)
             _ -> (0, 0, 0)
-    in ks { x = V3 (let Meters m = mmToMeters (Millimeters pos) in m) (let Meters m = mmToMeters (Millimeters vel) in m) (let Meters m = mmToMeters (Millimeters acc) in m) }
+    in ks { x = V3 (let Meters m = mmToMeters (Millimeters pos) in m)
+                   (let MetersPerSecond m = mmPerSToMetersPerS (MillimetersPerSecond vel) in m)
+                   (let MetersPerSecondSquared m = mmPerS2ToMetersPerS2 (MillimetersPerSecondSquared acc) in m) }
 
 shouldTriggerAudioAlert :: Bool -> BeamState -> BeamState -> Bool
 shouldTriggerAudioAlert audioEnabled prevState currentState =

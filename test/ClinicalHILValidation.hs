@@ -15,6 +15,7 @@ import Control.Monad (forever)
 import Data.List (sort)
 
 import Data.Types
+import Numeric.Kinematics (Nanoseconds(..), Milliseconds(..), nsToMs)
 import Data.Config (targetHeight, gatingTolerance)
 import Hardware.Manifest (systemLatencyMs)
 import SignalProcessing.Kalman (initKalman, KalmanConfig(..), pattern V3, KalmanState(..))
@@ -87,6 +88,7 @@ runHILSimulation name rig duration = do
             , isocenter = Point3D 0 0 0 0 0
             , threadHeartbeats = Map.empty
             , kalmanState = initKalman targetHeight (KalmanConfig 1000.0 2.0)
+            , mtiState = []
             , auditQueue = q
             , audioAlertEnabled = False, activeLanguage = "en", localizedBeamState = "BEAM OFF"
         , calibrationStatus = CalibrationValid
@@ -151,7 +153,7 @@ runHILSimulation name rig duration = do
     let falsePositives = length breaches
     
     let maxDelta = maximum [ estDelta | (_, _, _, _, _, estDelta) <- results ]
-    let p2eLatencies = [ fromIntegral l / 1000000.0 | (_, _, _, _, l, _) <- results ] :: [Double]
+    let p2eLatencies = [ let Milliseconds ms = nsToMs (Nanoseconds (fromIntegral l)) in ms | (_, _, _, _, l, _) <- results ] :: [Double]
     let sortedLats = sort p2eLatencies
     let p99Idx = floor ((fromIntegral (length sortedLats) :: Double) * 0.99) :: Int
     let p99Lat = sortedLats !! p99Idx

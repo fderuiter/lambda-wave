@@ -29,6 +29,7 @@ mkState bs = do
         , isocenter = Point3D 0 0 0 0 0
         , threadHeartbeats = Map.empty
         , kalmanState = kState
+        , mtiState = []
         , auditQueue = q
         , audioAlertEnabled = False, activeLanguage = "en", localizedBeamState = "BEAM OFF"
         , calibrationStatus = CalibrationValid

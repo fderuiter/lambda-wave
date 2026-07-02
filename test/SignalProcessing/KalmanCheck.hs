@@ -192,6 +192,7 @@ testVerificationBridge = do
     let stPred = predict 1.0 config stInit
     let (pos, vel, acc) = case x stPred of
             V3 pVal vVal aVal -> (pVal, vVal, aVal)
+            _ -> (0, 0, 0)
 
     let posOk = abs (pos - 4.0) < 1e-9
     let velOk = abs (vel - 6.0) < 1e-9

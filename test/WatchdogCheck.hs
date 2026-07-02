@@ -10,7 +10,7 @@ import Data.Maybe (mapMaybe)
 import Control.Exception (try, SomeException)
 import qualified Data.ByteString as B
 import Safety.Crypto (decryptLog)
-import Numeric.Kinematics (Nanoseconds(..), Milliseconds(..), nsToSeconds, secondsToMs)
+import Numeric.Kinematics (Nanoseconds(..), Milliseconds(..), nsToMs)
 
 -- Extract all digits from a string prefix
 takeDigits :: String -> String
@@ -35,7 +35,7 @@ parseAge line = do
     let rest = drop (idx + length prefix) line
     let digits = takeDigits rest
     val <- readMaybe digits :: Maybe Double
-    return (secondsToMs (nsToSeconds (Nanoseconds val)))
+    return (nsToMs (Nanoseconds val))
 
 findSubstrIndex :: String -> String -> Maybe Int
 findSubstrIndex substr str = go str 0
@@ -117,7 +117,7 @@ main = do
             exitWith (ExitFailure 1)
 
     let responseNs = fromIntegral (tripNs - stallStartNs) :: Double
-    let Milliseconds responseTimeMs = secondsToMs (nsToSeconds (Nanoseconds responseNs))
+    let Milliseconds responseTimeMs = nsToMs (Nanoseconds responseNs)
     putStrLn $ "System responded in " ++ show responseTimeMs ++ " ms"
 
     unless (responseTimeMs <= 110.0) $ do

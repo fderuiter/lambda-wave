@@ -7,7 +7,7 @@ import Control.Exception (bracket)
 import Control.Monad (foldM)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as BC
-import System.Posix.IO (openFd, closeFd, OpenMode(ReadOnly), defaultFileFlags, fdReadBuf)
+import System.Posix.IO (openFd, closeFd, OpenMode(ReadOnly), defaultFileFlags, fdReadBuf, OpenFileFlags(..))
 import System.Posix.Files (getFdStatus, isCharacterDevice)
 import System.Posix.Types (Fd)
 import Foreign.Marshal.Alloc (allocaBytes)

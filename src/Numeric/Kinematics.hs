@@ -25,6 +25,10 @@ module Numeric.Kinematics
     , Milliseconds(..)
     , Hertz(..)
     , Gigahertz(..)
+    , MillimetersPerSecond(..)
+    , MetersPerSecond(..)
+    , MillimetersPerSecondSquared(..)
+    , MetersPerSecondSquared(..)
       -- * Conversions
     , distanceToMeters
     , metersToDistance
@@ -32,8 +36,12 @@ module Numeric.Kinematics
     , secondsToTime
     , mmToMeters
     , metersToMm
+    , mmPerSToMetersPerS
+    , mmPerS2ToMetersPerS2
     , nsToSeconds
     , secondsToNs
+    , nsToMs
+    , msToNs
     , msToSeconds
     , secondsToMs
     , hzToFrequency
@@ -94,6 +102,10 @@ newtype Seconds = Seconds Double deriving (Show, Eq, Ord)
 newtype Milliseconds = Milliseconds Double deriving (Show, Eq, Ord)
 newtype Hertz = Hertz Double deriving (Show, Eq, Ord)
 newtype Gigahertz = Gigahertz Double deriving (Show, Eq, Ord)
+newtype MillimetersPerSecond = MillimetersPerSecond Double deriving (Show, Eq, Ord)
+newtype MetersPerSecond = MetersPerSecond Double deriving (Show, Eq, Ord)
+newtype MillimetersPerSecondSquared = MillimetersPerSecondSquared Double deriving (Show, Eq, Ord)
+newtype MetersPerSecondSquared = MetersPerSecondSquared Double deriving (Show, Eq, Ord)
 
 -- Conversions
 distanceToMeters :: Distance -> Meters
@@ -114,11 +126,23 @@ mmToMeters (Millimeters mm) = Meters (mm / 1000.0)
 metersToMm :: Meters -> Millimeters
 metersToMm (Meters m) = Millimeters (m * 1000.0)
 
+mmPerSToMetersPerS :: MillimetersPerSecond -> MetersPerSecond
+mmPerSToMetersPerS (MillimetersPerSecond mm) = MetersPerSecond (mm / 1000.0)
+
+mmPerS2ToMetersPerS2 :: MillimetersPerSecondSquared -> MetersPerSecondSquared
+mmPerS2ToMetersPerS2 (MillimetersPerSecondSquared mm) = MetersPerSecondSquared (mm / 1000.0)
+
 nsToSeconds :: Nanoseconds -> Seconds
 nsToSeconds (Nanoseconds ns) = Seconds (ns / 1_000_000_000.0)
 
 secondsToNs :: Seconds -> Nanoseconds
 secondsToNs (Seconds s) = Nanoseconds (s * 1_000_000_000.0)
+
+nsToMs :: Nanoseconds -> Milliseconds
+nsToMs (Nanoseconds ns) = Milliseconds (ns / 1_000_000.0)
+
+msToNs :: Milliseconds -> Nanoseconds
+msToNs (Milliseconds ms) = Nanoseconds (ms * 1_000_000.0)
 
 msToSeconds :: Milliseconds -> Seconds
 msToSeconds (Milliseconds ms) = Seconds (ms / 1000.0)
