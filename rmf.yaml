@@ -168,3 +168,13 @@ hazards:
     occurrence: 2
     detection: 2
     rpn: 16
+
+  - id: H-SYS-011
+    description: Web stack vulnerability (SOUP)
+    cause: Complex web stack and JavaScript libraries
+    effect: Potential unauthorized access or network-induced jitter
+    mitigation: Removal of web stack; integration of native C++ HUD bypassing network delivery
+    severity: 4
+    occurrence: 2
+    detection: 2
+    rpn: 16
