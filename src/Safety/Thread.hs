@@ -14,6 +14,9 @@ data ThreadShutdownAction
     = ShutdownSystem (String -> IO ()) 
     | LogOnly (String -> IO ())
 
+-- Hazard H-SYS-009: Silent thread failure
+-- Mitigation: Unified safety thread supervisor triggers global shutdown
+
 -- | Spawns a standard Haskell lightweight thread (green thread) wrapped with safety checks.
 forkSafetyThread :: ThreadShutdownAction -> String -> IO () -> IO ThreadId
 forkSafetyThread action name io = forkIO (wrapSafety action name io)

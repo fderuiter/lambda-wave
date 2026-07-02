@@ -84,6 +84,30 @@ requirements:
     test: Visual Inspection
     status: Complete
 
+  - id: SR-UI-001
+    policy: IEC-62366-5.1, IEC-62304-5.1.1
+    description: Multi-modal encoding (color, shape, and symbol) for safety-critical states
+    phase: Phase 5.3
+    module: "`app/Control/UI/Renderer.hs`, `app/Control/WebUI.hs`"
+    test: Visual Inspection
+    status: Complete
+
+  - id: FR-UI-003
+    policy: IEC-62366-5.1
+    description: Structural navigation, assistive technology hooks, and skip-links
+    phase: Phase 5.3
+    module: "`app/Control/WebUI.hs`"
+    test: Visual Inspection
+    status: Complete
+
+  - id: SR-UI-002
+    policy: IEC-62366-5.1
+    description: Formal usability verification checklist for visual inspections
+    phase: Phase 5.3
+    module: "`docs/qms/usability_checklist.md`"
+    test: Visual Inspection
+    status: Complete
+
   - id: SR-SOUP-001
     policy: ISO-13485-7.1
     description: GHC RTS deterministic runtime (locked capabilities)

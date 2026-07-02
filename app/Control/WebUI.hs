@@ -51,12 +51,17 @@ indexHtml :: B.ByteString
 indexHtml = $(embedFile "app/Control/WebUI/assets/index.html")
 
 dashboardHtml :: B.ByteString
+-- Requirement FR-UI-003: Structural navigation and skip-links in Dashboard
+-- Hazard H-USE-001: Operator misses system pause
+-- Hazard H-USE-002: Operator confused by language
+-- Hazard H-USE-003: Clinician misidentifies safety-critical state due to visual impairment
 dashboardHtml = $(embedFile "app/Control/WebUI/assets/dashboard.html")
 
 dashboardJson :: B.ByteString
 dashboardJson = $(embedFile "app/Control/WebUI/assets/dashboard.json")
 
 a11yCss :: B.ByteString
+-- Requirement SR-UI-001: Accessibility and UI contrast via CSS
 a11yCss = $(embedFile "app/Control/WebUI/assets/a11y.css")
 
 -- A session store

@@ -158,3 +158,13 @@ hazards:
     occurrence: 2
     detection: 2
     rpn: 12
+
+  - id: H-USE-003
+    description: Clinician misidentifies safety-critical state due to visual impairment
+    cause: Reliance on single-modal (color-only) visual cues or inaccessible UI
+    effect: Incorrect operation during critical medical procedures
+    mitigation: Multi-modal encoding (color, shape, symbol) for critical states and structural navigation (SR-UI-001, FR-UI-003, SR-UI-002).
+    severity: 4
+    occurrence: 2
+    detection: 2
+    rpn: 16
