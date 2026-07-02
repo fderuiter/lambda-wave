@@ -1,0 +1,32 @@
+constants:
+  ring_buffer_gap: 1
+
+structs:
+  - name: RingBufferControl
+    alignas: 64
+    fields:
+      - name: write_offset
+        type: atomic_size_t
+      - name: read_offset
+        type: atomic_size_t
+      - name: buffer_offset
+        type: size_t
+      - name: buffer_size
+        type: size_t
+
+baud_rates:
+  config: 115200
+  data: 921600
+
+gpio_pins:
+  watchdog: 27
+  logic: 17
+
+timing:
+  frame_periodicity_ms: 100
+  system_latency_ms: 50
+
+mounting_offset_mm: 50.0
+
+sensors:
+  - name: Radar
