@@ -36,7 +36,9 @@ jobs:
         run: sudo apt-get install -y clang-format
 
       - name: Run clang-format
-        run: find cbits -name "*.c" -o -name "*.h" -o -name "*.cpp" -o -name "*.hpp" | xargs clang-format -n -Werror
+        run: |
+          find cbits -name "*.c" -o -name "*.h" -o -name "*.cpp" -o -name "*.hpp" | xargs clang-format -n -Werror
+          clang-format -n -Werror app/Control/UI/hud.cpp
 
       - name: Check Reference Docs Narrative
         run: ./scripts/check_reference_narrative.py
