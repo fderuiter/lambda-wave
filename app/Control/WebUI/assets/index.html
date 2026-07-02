@@ -122,6 +122,9 @@
         function togglePause() {
             if (pauseBtn.getAttribute('aria-disabled') === 'true') return;
             isPaused = !isPaused;
+            if (ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ pause: isPaused }));
+            }
             pauseBtn.innerHTML = (isPaused ? 'Resume Trace' : 'Pause Trace') + ' <kbd aria-hidden="true">Space</kbd>';
             srAnnouncer.textContent = isPaused ? 'Trace paused' : 'Trace resumed';
 
