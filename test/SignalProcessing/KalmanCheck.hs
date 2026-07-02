@@ -199,7 +199,7 @@ testVerificationBridge = do
 
     if posOk && velOk && accOk
         then putStrLn "PASS" >> return True
-        else putStrLn "FAIL (3rd-Order Kinematic Invariants Violated by Implementation)" >> return False
+        else putStrLn (printf "FAIL (3rd-Order Kinematic Invariants Violated: pos=%.6f expected=4.0, vel=%.6f expected=6.0, acc=%.6f expected=4.0)" pos vel acc) >> return False
 
 main :: IO ()
 main = do

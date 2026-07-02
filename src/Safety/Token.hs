@@ -4,6 +4,7 @@
 module Safety.Token (generateToken) where
 
 import Control.Exception (bracket)
+import Control.Monad (foldM)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as BC
 import System.Posix.IO (openFd, closeFd, OpenMode(ReadOnly), defaultFileFlags, OpenFileFlags(..), fdReadBuf)
@@ -17,15 +18,17 @@ import Text.Printf (printf)
 -- | Read exactly 16 bytes into @buf@, retrying on short reads.
 -- Returns the number of bytes accumulated.
 readExact16 :: Fd -> Ptr CChar -> IO Int
-readExact16 fd buf = go 0
+readExact16 fd buf = fmap fst $ foldM step (0 :: Int, False) [1 .. (16 :: Int)]
   where
-    go n
-      | n >= 16 = return n
+    step (n, done) _
+      | done || n >= 16 = return (n, True)
       | otherwise = do
           r <- fdReadBuf fd (buf `plusPtr` n) (fromIntegral (16 - n))
           if r <= 0
-              then return n
-              else go (n + fromIntegral r)
+              then return (n, True)
+              else
+                  let n' = n + fromIntegral r
+                  in return (n', n' >= 16)
 
 generateToken :: IO B.ByteString
 generateToken = do
