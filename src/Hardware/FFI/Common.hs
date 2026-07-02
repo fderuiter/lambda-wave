@@ -1,3 +1,13 @@
+-- |
+-- = Failure Mode
+-- C++ hardware errors translating incorrectly could mask critical hardware faults.
+--
+-- = Mitigation
+-- Maps integer returns strictly to Haskell typed results. Unrecognized values default to Failure.
+-- Mitigates Hazard H-SYS-008
+--
+-- = Audit Events
+-- Mappings are enforced by the linter against the ffi_master_spec.md specification.
 module Hardware.FFI.Common (
     HardwareResult(..),
     toHardwareResult,
