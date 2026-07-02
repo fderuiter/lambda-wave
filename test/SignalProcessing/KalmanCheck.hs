@@ -7,7 +7,6 @@ module Main (main) where
 import SignalProcessing.Kalman
 import Data.List (foldl')
 import Text.Printf (printf)
--- Removed Control.Monad import
 
 -- | Test Convergence on Static Signal
 testConvergence :: IO Bool
@@ -175,6 +174,33 @@ testProperties = do
         then putStrLn "PASS" >> return True
         else putStrLn "FAIL" >> return False
 
+-- | Verification Bridge: Directly verify 3rd-order kinematic model invariants.
+-- These properties are derived from the documented PVA state-transition model
+-- and must hold regardless of any reformatting of the reference documentation.
+testVerificationBridge :: IO Bool
+testVerificationBridge = do
+    putStr "Test 5: 3rd-Order Kinematic Invariants... "
+    let config = KalmanConfig 0.1 0.1
+        st0 = initKalman 0.0 config
+
+    -- Invariant: given x = [pos=0, vel=2, acc=4] and dt=1s, the prediction
+    -- must satisfy the constant-acceleration kinematic equations:
+    --   pos' = pos + vel*dt + 0.5*acc*dt^2 = 0 + 2 + 2  = 4.0
+    --   vel' = vel + acc*dt                = 2 + 4      = 6.0
+    --   acc' = acc                                       = 4.0
+    let stInit = st0 { x = V3 0.0 2.0 4.0 }
+    let stPred = predict 1.0 config stInit
+    let (pos, vel, acc) = case x stPred of
+            V3 pVal vVal aVal -> (pVal, vVal, aVal)
+
+    let posOk = abs (pos - 4.0) < 1e-9
+    let velOk = abs (vel - 6.0) < 1e-9
+    let accOk = abs (acc - 4.0) < 1e-9
+
+    if posOk && velOk && accOk
+        then putStrLn "PASS" >> return True
+        else putStrLn (printf "FAIL (3rd-Order Kinematic Invariants Violated: pos=%.6f expected=4.0, vel=%.6f expected=6.0, acc=%.6f expected=4.0)" pos vel acc) >> return False
+
 main :: IO ()
 main = do
     putStrLn "=== Kalman Filter Verification (P0-001) ==="
@@ -182,9 +208,10 @@ main = do
     p2 <- testRMSE
     p3 <- testSafety
     p4 <- testProperties
+    p5 <- testVerificationBridge
 
     putStrLn "-------------------------------------------"
-    if p1 && p2 && p3 && p4
+    if p1 && p2 && p3 && p4 && p5
         then putStrLn "VERIFICATION PASSED"
         else fail "VERIFICATION FAILED"
 

@@ -30,6 +30,7 @@ import GHC.Generics (Generic)
 import Data.Binary (Binary)
 
 import SignalProcessing.Kalman (KalmanState(..))
+import Data.Complex (Complex)
 
 -- | Severity Levels for Audit Logs
 data Severity = Info | Warning | Critical
@@ -106,7 +107,11 @@ data SystemState = SystemState
   , sequenceNumber :: Word32  -- ^ Monotonic sequence counter for visual safety (cite:source6)
   , isocenter :: Point3D      -- Calibration zero
   , threadHeartbeats :: Map String Word64 -- Heartbeats for Watchdog
-  , kalmanState :: KalmanState -- ^ Filtered state (Position, Velocity, Accel)
+  , kalmanState :: KalmanState            -- ^ Current Kalman filter state (position, velocity, acceleration; metres/s)
+  , mtiState :: [Complex Double]
+      -- ^ MTI\/EMA clutter filter state (one complex value per range bin).
+      -- Empty list before the first radar frame is processed; after the first
+      -- frame its length equals the number of range bins in that frame.
   , auditQueue :: TBQueue AuditEvent -- ^ High-performance event queue
   , audioAlertEnabled :: Bool -- ^ Feature toggle for Audio Alerts (P2-002)
   , activeLanguage :: String
@@ -115,9 +120,9 @@ data SystemState = SystemState
   }
 
 instance NFData SystemState where
-  rnf (SystemState pts bs t sn iso hb ks aq ae lang locbs cs) = 
+  rnf (SystemState pts bs t sn iso hb ks mti aq ae lang locbs cs) = 
       rnf pts `seq` rnf bs `seq` rnf t `seq` rnf sn `seq` rnf iso `seq` 
-      rnf hb `seq` rnf ks `seq` aq `seq` rnf ae `seq` rnf lang `seq` rnf locbs `seq` rnf cs
+      rnf hb `seq` rnf ks `seq` rnf mti `seq` aq `seq` rnf ae `seq` rnf lang `seq` rnf locbs `seq` rnf cs
 
 -- | Raw parsed structure from the sensor
 data RadarFrame = RadarFrame

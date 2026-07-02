@@ -28,10 +28,15 @@ $$ A = \begin{bmatrix} 1 & x_1 & y_1 & x_1^2 & y_1^2 & x_1 y_1 \\ 1 & x_2 & y_2 
 
 ## Filtering & Tracking
 
-### Constant Velocity Kalman Filter State Matrix
+### 3rd-Order Kalman Filter State Matrix
 State vector ($\mathbf{x}_k$):
-$$ \mathbf{x}_k = [ \text{position}, \text{velocity} ]^T $$
+$$ \mathbf{x}_k = [ \text{position}, \text{velocity}, \text{acceleration} ]^T $$
 Prediction step matrix:
-$$ \hat{\mathbf{x}}_{k|k-1} = \begin{bmatrix} 1 & \Delta t \\ 0 & 1 \end{bmatrix} \hat{\mathbf{x}}_{k-1} $$
+$$ \hat{\mathbf{x}}_{k|k-1} = \begin{bmatrix} 1 & \Delta t & 0.5 \Delta t^2 \\ 0 & 1 & \Delta t \\ 0 & 0 & 1 \end{bmatrix} \hat{\mathbf{x}}_{k-1} $$
+
+### Joseph Form Covariance Update
+To maintain numerical stability and ensure the covariance matrix remains positive semi-definite, the Joseph form update is used:
+$$ P_k = (I - K_k H) P_{k|k-1} (I - K_k H)^T + K_k R K_k^T $$
+
 Gating Signal calculation:
-$$ \text{GatingSignal} = \text{position}_k + \text{velocity}_k \times 0.05 \text{s} $$
+$$ \text{GatingSignal} = \text{position}_k + \text{velocity}_k \times 0.05 \text{s} + 0.5 \times \text{acceleration}_k \times (0.05 \text{s})^2 $$
