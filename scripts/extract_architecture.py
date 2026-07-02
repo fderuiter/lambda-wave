@@ -22,7 +22,7 @@ def extract_docstrings(directory):
             for line in lines:
                 if line.lstrip().startswith('-- |'):
                     if in_doc:
-                        docstrings.append((os.path.relpath(path, '/app'), '\n'.join(current_doc)))
+                        docstrings.append((os.path.relpath(path, os.getcwd()), '\n'.join(current_doc)))
                     in_doc = True
                     # Remove '-- |'
                     text = line.lstrip()[4:]
@@ -37,12 +37,12 @@ def extract_docstrings(directory):
                     current_doc.append(text)
                 else:
                     if in_doc:
-                        docstrings.append((os.path.relpath(path, '/app'), '\n'.join(current_doc)))
+                        docstrings.append((os.path.relpath(path, os.getcwd()), '\n'.join(current_doc)))
                         in_doc = False
                         current_doc = []
             
             if in_doc:
-                docstrings.append((os.path.relpath(path, '/app'), '\n'.join(current_doc)))
+                docstrings.append((os.path.relpath(path, os.getcwd()), '\n'.join(current_doc)))
                 
     return docstrings
 
@@ -160,8 +160,9 @@ def main():
     
     dirs_to_scan = ['src/Numeric', 'src/SignalProcessing', 'src/FFI']
     all_docstrings = []
+    repo_root = os.getcwd()
     for d in dirs_to_scan:
-        path = os.path.join('/app', d)
+        path = os.path.join(repo_root, d)
         if os.path.exists(path):
             all_docstrings.extend(extract_docstrings(path))
             
@@ -172,7 +173,7 @@ def main():
         
     new_content = generate_markdown(valid_docs)
     
-    doc_path = '/app/Haskell Radar SGRT System Development.md'
+    doc_path = os.path.join(repo_root, 'Haskell Radar SGRT System Development.md')
     update_document(doc_path, new_content, check_only=args.check)
 
 if __name__ == "__main__":
