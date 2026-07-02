@@ -1,5 +1,6 @@
 constants:
   ring_buffer_gap: 1
+  operating_frequency_ghz: 60.0
 
 structs:
   - name: RingBufferControl

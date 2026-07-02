@@ -171,6 +171,10 @@ def generate_manifest(data, out_hdr, out_hs, cfg_path):
         f.write(f"#define MANIFEST_DATA_BAUD {data['baud_rates']['data']}\n")
         f.write(f"#define MANIFEST_DATA_BAUD_MACRO B{data['baud_rates']['data']}\n")
         f.write(f"#define MANIFEST_MOUNTING_OFFSET_MM {data['mounting_offset_mm']}\n")
+        
+        freq = data.get('constants', {}).get('operating_frequency_ghz', 77.0)
+        f.write(f"#define MANIFEST_OPERATING_FREQUENCY_GHZ {freq}\n")
+        
         f.write("#endif\n")
         
     with open(out_hs, 'w') as f:
@@ -184,6 +188,7 @@ def generate_manifest(data, out_hdr, out_hs, cfg_path):
         f.write("    framePeriodicityMs,\n")
         f.write("    systemLatencyMs,\n")
         f.write("    mountingOffsetMm,\n")
+        f.write("    operatingFrequencyGhz,\n")
         f.write("    WatchdogTimeoutMs,\n")
         f.write("    SystemLatencyMs\n")
         f.write(") where\n\n")
@@ -194,6 +199,10 @@ def generate_manifest(data, out_hdr, out_hs, cfg_path):
         f.write(f"framePeriodicityMs :: Int\nframePeriodicityMs = {data['timing']['frame_periodicity_ms']}\n\n")
         f.write(f"systemLatencyMs :: Int\nsystemLatencyMs = {data['timing']['system_latency_ms']}\n\n")
         f.write(f"mountingOffsetMm :: Double\nmountingOffsetMm = {data['mounting_offset_mm']}\n\n")
+        
+        freq = data.get('constants', {}).get('operating_frequency_ghz', 77.0)
+        f.write(f"operatingFrequencyGhz :: Double\noperatingFrequencyGhz = {freq}\n\n")
+        
         f.write(f"type WatchdogTimeoutMs = {data['timing']['frame_periodicity_ms']}\n\n")
         f.write(f"type SystemLatencyMs = {data['timing']['system_latency_ms']}\n")
 
@@ -331,6 +340,26 @@ main = do
     with open(test_path, "w") as f:
         f.write(test_code)
 
+def sync_docs(data):
+    freq = data.get('constants', {}).get('operating_frequency_ghz', 77.0)
+    import re
+    pattern = re.compile(r'<!-- MANIFEST:operating_frequency_ghz -->(.*?)<!-- /MANIFEST:operating_frequency_ghz -->')
+    def replacer(match):
+        # We can format the frequency as an integer if it has no decimal part to match '60' or '77'
+        val = int(freq) if freq == int(freq) else freq
+        return f"<!-- MANIFEST:operating_frequency_ghz -->{val}<!-- /MANIFEST:operating_frequency_ghz -->"
+    
+    for root, _, files in os.walk("docs"):
+        for file in files:
+            if file.endswith(".md"):
+                filepath = os.path.join(root, file)
+                with open(filepath, 'r') as f:
+                    content = f.read()
+                new_content = pattern.sub(replacer, content)
+                if new_content != content:
+                    with open(filepath, 'w') as f:
+                        f.write(new_content)
+
 def generate_all_sensors(data, cbits_include_dir, hs_src_dir, hs_test_dir):
     sensors = data.get('sensors', [])
     for sensor in sensors:
@@ -378,6 +407,7 @@ def main():
         generate_hs_idl(data, args.out_hs)
     elif args.command == "manifest":
         generate_manifest(data, args.out_hdr, args.out_hs, args.out_cfg)
+        sync_docs(data)
     elif args.command == "sensors":
         generate_all_sensors(data, args.cbits_include_dir, args.hs_src_dir, args.hs_test_dir)
     elif args.command == "all":
@@ -388,6 +418,7 @@ def main():
             generate_manifest(data, args.man_out_hdr, args.man_out_hs, args.man_out_cfg)
         if 'sensors' in data:
             generate_all_sensors(data, args.cbits_include_dir, args.hs_src_dir, args.hs_test_dir)
+        sync_docs(data)
 
 if __name__ == '__main__':
     main()

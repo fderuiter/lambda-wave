@@ -1,4 +1,7 @@
 {
+  "constants": {
+    "operating_frequency_ghz": 60.0
+  },
   "baud_rates": {
     "config": 115200,
     "data": 921600

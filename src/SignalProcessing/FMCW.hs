@@ -140,7 +140,7 @@ unwrapPhase (x:xs) = x : go x 0.0 xs
 --
 -- Complexity: O(1) runtime.
 -- Safety: Total function, handles all inputs gracefully.
-calculateDisplacement :: Frequency -- ^ f_min: Start frequency of the chirp (Hz) (e.g. 77e9)
+calculateDisplacement :: Frequency -- ^ f_min: Start frequency of the chirp (Hz) (e.g. 60e9)
                       -> Double -- ^ Delta Phi: Phase change (radians)
                       -> Distance -- ^ Displacement d (m)
 calculateDisplacement f_min delta_phi = ((delta_phi |* c) :: Velocity) |/| (((4 * pi) |* f_min) :: Frequency) :: Distance

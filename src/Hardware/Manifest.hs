@@ -8,6 +8,7 @@ module Hardware.Manifest (
     framePeriodicityMs,
     systemLatencyMs,
     mountingOffsetMm,
+    operatingFrequencyGhz,
     WatchdogTimeoutMs,
     SystemLatencyMs
 ) where
@@ -32,6 +33,9 @@ systemLatencyMs = 50
 
 mountingOffsetMm :: Double
 mountingOffsetMm = 50.0
+
+operatingFrequencyGhz :: Double
+operatingFrequencyGhz = 60.0
 
 type WatchdogTimeoutMs = 100
 

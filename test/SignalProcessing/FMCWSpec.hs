@@ -5,6 +5,7 @@ import Test.Hspec
 import Data.Complex
 import SignalProcessing.FMCW
 import Numeric.Kinematics
+import Hardware.Manifest (operatingFrequencyGhz)
 import Control.Monad (zipWithM_)
 
 -- Helper for float comparison
@@ -125,15 +126,12 @@ spec = describe "SignalProcessing.FMCW" $ do
 
     describe "Phase Displacement (Equation 5, Requirement MR-005)" $ do
         it "calculates displacement from phase change correctly" $ do
-            let f_min = Frequency 77.0e9 -- 77 GHz
+            let f_min = Frequency (operatingFrequencyGhz * 1e9)
                 delta_phi = pi   -- 180 degrees phase shift
                 Distance d = calculateDisplacement f_min delta_phi
 
                 -- d = (c * delta_phi) / (4 * pi * f_min)
-                -- d = (3e8 * pi) / (4 * pi * 77e9)
-                -- d = 3e8 / (4 * 77e9)
-                -- d = 3 / 308 meters ~= 0.00974 m ~= 0.97 mm
-                expected = 3.0e8 / (4.0 * 77.0e9)
+                expected = 3.0e8 / (4.0 * (operatingFrequencyGhz * 1e9))
 
             d `shouldBe` expected
 

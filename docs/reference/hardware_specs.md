@@ -2,7 +2,7 @@
 
 ## Sensor Platform: TI IWR6843ISK
 
-*   **Frequency Band:** 77-81 GHz mmWave
+*   **Frequency Band:** <!-- MANIFEST:operating_frequency_ghz -->60<!-- /MANIFEST:operating_frequency_ghz --> GHz mmWave
 *   **Operating Bandwidth (B):** Up to 4 GHz
 *   **Antenna Configuration (MIMO):** 3 TX, 4 RX antennas
 *   **Virtual Array Elements:** $N_{TX} \times N_{RX} = 12$ virtual elements

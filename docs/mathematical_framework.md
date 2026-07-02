@@ -92,7 +92,7 @@ d = \frac{c \cdot \Delta \phi}{4\pi f_{min}} = \frac{\lambda_{min} \cdot \Delta 
 $$
 
 **Verification of Constants:**
-* $f_{min}$: The starting frequency of the chirp (77 GHz).
+* $f_{min}$: The starting frequency of the chirp (<!-- MANIFEST:operating_frequency_ghz -->60<!-- /MANIFEST:operating_frequency_ghz --> GHz).
 * $4\pi$: This factor correctly accounts for the round-trip path of the radar signal. A displacement of $\lambda/2$ results in a round-trip path change of $\lambda$, which corresponds to a full $2\pi$ phase cycle.
 
 ---
