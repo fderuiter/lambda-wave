@@ -108,7 +108,7 @@ main = do
 #ifdef ENABLE_WEB_UI
     putStrLn "Starting Web UI..."
     _ <- forkSafetyThread (LogOnly putStrLn) "WebUILoop" $ 
-        runWebUI systemState
+        runWebUI systemState translations
 #endif
 
     -- 3. OpenGL UI (Optional, must be Main Thread if used)

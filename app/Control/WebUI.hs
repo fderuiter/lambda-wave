@@ -8,7 +8,7 @@ import Control.Concurrent (threadDelay)
 import Safety.Thread (forkSafetyThread, ThreadShutdownAction(..))
 import Control.Concurrent.STM
 import Control.Monad (forever, void)
-import Data.Aeson (encode, decode, FromJSON(..), withObject, (.:))
+import Data.Aeson (encode, decode, FromJSON(..), withObject, (.:), (.:?))
 import Data.FileEmbed (embedFile)
 import Network.HTTP.Types (status200, status401, status302)
 import Network.Wai
@@ -36,6 +36,8 @@ import Crypto.Hash (hash, SHA256(..), Digest)
 import UI.Presentation (shouldTriggerAudioAlert)
 import Safety.Token (generateToken)
 import Safety.Result (SafetyResult(..))
+import Data.I18n (Translations, translate)
+import qualified Data.Text as T
 
 -- Provisioned credential map (username -> hashed password)
 credentialStore :: Map.Map B.ByteString (Digest SHA256)
@@ -60,8 +62,8 @@ a11yCss = $(embedFile "app/Control/WebUI/assets/a11y.css")
 -- A session store
 type SessionStore = TVar (Map.Map B.ByteString UTCTime)
 
-runWebUI :: TVar SystemState -> IO ()
-runWebUI stateVar = do
+runWebUI :: TVar SystemState -> Translations -> IO ()
+runWebUI stateVar translations = do
     -- Ensure certificates exist
     certExists <- doesFileExist "cert.pem"
     keyExists <- doesFileExist "key.pem"
@@ -82,10 +84,10 @@ runWebUI stateVar = do
            let settings = setServerName "" $ setPort 8443 $ setHost "127.0.0.1" defaultSettings
            let tSettings = tlsSettings "cert.pem" "key.pem"
            
-           runTLS tSettings settings $ websocketsOr defaultConnectionOptions (wsApp store stateVar) (httpApp store stateVar)
+           runTLS tSettings settings $ websocketsOr defaultConnectionOptions (wsApp store stateVar translations) (httpApp store stateVar translations)
 
-httpApp :: SessionStore -> TVar SystemState -> Application
-httpApp store stateVar req respond = do
+httpApp :: SessionStore -> TVar SystemState -> Translations -> Application
+httpApp store stateVar translations req respond = do
     let headers = requestHeaders req
         cookieHeader = lookup "Cookie" headers
         authHeader = lookup "Authorization" headers
@@ -141,7 +143,11 @@ httpApp store stateVar req respond = do
                                         let expiry = addUTCTime 1800 now -- 30 minutes
                                         atomically $ modifyTVar' store (Map.insert token expiry)
                                         
-                                        logAuthEvent stateVar ("Login successful for user " ++ BC.unpack user) True
+                                        state <- readTVarIO stateVar
+                                        let lang = T.pack (activeLanguage state)
+                                        let successMsgTemplate = T.unpack $ translate translations lang "AuthSuccess" "Login successful for user %s"
+                                        let successMsg = replaceOne "%s" (BC.unpack user) successMsgTemplate
+                                        logAuthEvent stateVar successMsg True
                                         
                                         respond $ responseLBS status302
                                             [ ("Set-Cookie", "session=" <> token <> "; HttpOnly; Secure; SameSite=Strict; Path=/")
@@ -149,16 +155,36 @@ httpApp store stateVar req respond = do
                                             ]
                                             ""
                                     Unsafe msg -> do
+                                        state <- readTVarIO stateVar
+                                        let lang = T.pack (activeLanguage state)
                                         logAuthEvent stateVar ("Token generation failed: " ++ msg) False
                                         -- It's not a real-time safety loop, we just reject the login.
                                         respond $ responseLBS status500 [] "Internal Server Error"
                             else do
-                                logAuthEvent stateVar "Login failed" False
+                                state <- readTVarIO stateVar
+                                let lang = T.pack (activeLanguage state)
+                                let failedMsg = T.unpack $ translate translations lang "AuthFailed" "Login failed"
+                                logAuthEvent stateVar failedMsg False
                                 respond401 respond
                     Left _ -> do
-                        logAuthEvent stateVar "Login failed: invalid encoding" False
+                        state <- readTVarIO stateVar
+                        let lang = T.pack (activeLanguage state)
+                        let invalidMsg = T.unpack $ translate translations lang "AuthFailedInvalid" "Login failed: invalid encoding"
+                        logAuthEvent stateVar invalidMsg False
                         respond401 respond
             _ -> respond401 respond
+
+replaceOne :: String -> String -> String -> String
+replaceOne needle replacement haystack =
+    case span (not . startsWith needle) (tails haystack) of
+        (_, []) -> haystack
+        (before, _:_) -> concatMap head before ++ replacement ++ drop (length needle) (concat (take 1 (drop (length before) (tails haystack))))
+  where
+    startsWith n h = take (length n) h == n
+    tails [] = []
+    tails s@(_:xs) = s : tails xs
+    head (x:_) = [x]
+    head [] = []
 
 respond401 :: (Response -> IO ResponseReceived) -> IO ResponseReceived
 respond401 respond = respond $ responseLBS status401
@@ -199,13 +225,18 @@ checkSession store cookieHeader = case cookieHeader of
                         return True
                     _ -> return False
 
-data LangRequest = LangRequest { reqLang :: String }
+data ClientRequest = ClientRequest
+    { reqLang :: Maybe String
+    , reqPause :: Maybe Bool
+    }
 
-instance FromJSON LangRequest where
-    parseJSON = withObject "LangRequest" $ \v -> LangRequest <$> v .: "lang"
+instance FromJSON ClientRequest where
+    parseJSON = withObject "ClientRequest" $ \v -> ClientRequest
+        <$> v .:? "lang"
+        <*> v .:? "pause"
 
-wsApp :: SessionStore -> TVar SystemState -> ServerApp
-wsApp store stateVar pending = do
+wsApp :: SessionStore -> TVar SystemState -> Translations -> ServerApp
+wsApp store stateVar translations pending = do
     let headers = WS.requestHeaders (pendingRequest pending)
         origin = lookup "Origin" headers
         cookie = lookup "Cookie" headers
@@ -230,8 +261,24 @@ wsApp store stateVar pending = do
                         threadDelay 33000
                 forever $ do
                     msg <- WS.receiveData conn
-                    let parsed = decode msg :: Maybe LangRequest
+                    let parsed = decode msg :: Maybe ClientRequest
                     case parsed of
-                        Just lr -> atomically $ modifyTVar' stateVar (\s -> s { activeLanguage = reqLang lr })
+                        Just req -> do
+                            case reqLang req of
+                                Just l -> atomically $ modifyTVar' stateVar (\s -> s { activeLanguage = l })
+                                Nothing -> return ()
+                            case reqPause req of
+                                Just p -> do
+                                    now <- getMonotonicTimeNS
+                                    state <- readTVarIO stateVar
+                                    let lang = T.pack (activeLanguage state)
+                                    let msgKey = if p then "AuditOperatorPause" else "AuditOperatorResume"
+                                    let defaultMsg = if p then "Operator paused trace" else "Operator resumed trace"
+                                    let localizedMsg = T.unpack $ translate translations lang msgKey (T.pack defaultMsg)
+                                    let q = auditQueue state
+                                    atomically $ do
+                                        full <- isFullTBQueue q
+                                        if not full then writeTBQueue q (AuditEvent now Info "Operator" localizedMsg) else return ()
+                                Nothing -> return ()
                         Nothing -> return ()
         else rejectRequest pending "Untrusted Origin or Invalid Token"
