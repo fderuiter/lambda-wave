@@ -1,7 +1,7 @@
 # Lambda-Wave Quality Manual
 
 ## 1. Scope
-This Quality Manual describes the Quality Management System (QMS) established by Lambda-Wave to meet the requirements of ISO 13485 and FDA 21 CFR Part 820.
+This Quality Manual describes the Quality Management System (QMS) established by Lambda-Wave to meet the requirements of ISO 13485, FDA 21 CFR Part 820, IEC 62304 (Software Lifecycle Processes), and IEC 62366 (Application of Usability Engineering).
 
 ## 2. Quality Policy
 Lambda-Wave is committed to providing safe and effective medical software. Our Quality Policy is to maintain the highest standards of safety and compliance through continuous improvement and automated governance.

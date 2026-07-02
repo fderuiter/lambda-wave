@@ -194,6 +194,7 @@ runMain = do
 
 -- | IPC Sender Loop using a POSIX FIFO with O_NONBLOCK
 -- Requirement: SR-IPC-001
+-- Hazard H-SYS-010: IPC Failure
 -- IPC Mechanism: POSIX FIFO (Named Pipe)
 -- Failure Mode: Reader (Visualizer) crashes or falls behind, causing the FIFO buffer to fill up.
 -- Mitigation: O_NONBLOCK is used. If the buffer is full (EAGAIN), the writer catches the exception, drops the frame, and continues operating without blocking the main safety loop.
