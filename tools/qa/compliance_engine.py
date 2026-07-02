@@ -71,6 +71,35 @@ def search_tag_in_dirs(root, dirs, tag):
                             return True
     return False
 
+def get_architecture_links(req_id, arch_doc_path):
+    if not os.path.exists(arch_doc_path):
+        return "N/A"
+    
+    with open(arch_doc_path, 'r', encoding='utf-8') as f:
+        content = f.read()
+        
+    start_marker = "<!-- ARCHITECTURE-START -->"
+    end_marker = "<!-- ARCHITECTURE-END -->"
+    
+    start_idx = content.find(start_marker)
+    end_idx = content.find(end_marker)
+    
+    if start_idx == -1 or end_idx == -1:
+        return "N/A"
+        
+    arch_content = content[start_idx:end_idx]
+    
+    sections = arch_content.split('### Extracted from `')
+    links = []
+    for section in sections[1:]:
+        title = section.split('`', 1)[0]
+        if req_id in section:
+            links.append(f"[`{title}`](../../Haskell Radar SGRT System Development.md)")
+            
+    if links:
+        return "<br>".join(links)
+    return "N/A"
+
 def generate_markdown(requirements, root_dir):
     md_path = os.path.join(root_dir, "docs/iec_62304/traceability_matrix.md")
     
@@ -92,15 +121,18 @@ def generate_markdown(requirements, root_dir):
         ("Mathematical Requirements (MR)", mrs)
     ]
     
+    arch_doc_path = os.path.join(root_dir, "Haskell Radar SGRT System Development.md")
+    
     for title, reqs in sections:
         if not reqs:
             continue
         lines.append(f"## {title}\n")
-        lines.append("| Req ID | Quality Policy Origin | Description | Source Phase | Module | Verification Test | Status |")
-        lines.append("|---|---|---|---|---|---|---|")
+        lines.append("| Req ID | Quality Policy Origin | Description | Source Phase | Module | Architecture Section | Verification Test | Status |")
+        lines.append("|---|---|---|---|---|---|---|---|")
         for req in reqs:
+            arch_links = get_architecture_links(req['id'], arch_doc_path)
             status_str = f"✅ {req['status']}" if req['status'] == 'Complete' else f"❌ {req['status']}"
-            lines.append(f"| {req['id']} | {req['policy']} | {req['description']} | {req['phase']} | {req['module']} | {req['test']} | {status_str} |")
+            lines.append(f"| {req['id']} | {req['policy']} | {req['description']} | {req['phase']} | {req['module']} | {arch_links} | {req['test']} | {status_str} |")
         lines.append("")
         
     with open(md_path, 'w', encoding='utf-8') as f:

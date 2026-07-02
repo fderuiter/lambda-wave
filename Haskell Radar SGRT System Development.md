@@ -185,3 +185,39 @@ $$A \= \\begin{bmatrix} 1 & x\_1 & y\_1 & x\_1^2 & y\_1^2 & x\_1 y\_1 \\\\ 1 & x
 10. Understanding the Out of Box Demo Data Output Frame Header \- TI E2E, accessed December 15, 2025, [https://e2e.ti.com/cfs-file/\_\_key/communityserver-discussions-components-files/1023/understand\_5F00\_OOB\_5F00\_output.pdf](https://e2e.ti.com/cfs-file/__key/communityserver-discussions-components-files/1023/understand_5F00_OOB_5F00_output.pdf)  
 11. haskell/attoparsec: A fast Haskell library for parsing ByteStrings \- GitHub, accessed December 15, 2025, [https://github.com/haskell/attoparsec](https://github.com/haskell/attoparsec)  
 12. attoparsec or parsec in haskell \- Stack Overflow, accessed December 15, 2025, [https://stackoverflow.com/questions/19208231/attoparsec-or-parsec-in-haskell](https://stackoverflow.com/questions/19208231/attoparsec-or-parsec-in-haskell)
+
+## Auto-Generated Architecture
+<!-- ARCHITECTURE-START -->
+### Extracted from `src/Numeric/Kinematics.hs`
+
+3rd-Order Math Model for Kinematic Tracking.
+
+This module implements the core kinematic equations (position, velocity, acceleration)
+for tracking patient surface motion during radiation therapy.
+
+Failure Modes:
+* Numerical instability during rapid acceleration spikes (e.g., coughing).
+* Integer overflow in nanosecond time delta calculations.
+
+Mitigations:
+* Saturating arithmetic applied to all derivative calculations.
+* Strong typing prevents mixing of mismatched physical units (e.g., Millimeters vs Meters).
+
+Traceability: MR-001, MR-005
+
+### Extracted from `src/FFI/RingBuffer/IO.hs`
+
+High-assurance FFI Bridge Logic for RingBuffer.
+
+The FFI bridge guarantees memory safety when interfacing between Haskell and C++ drivers.
+
+Failure Modes:
+* Buffer overflow if consumer falls behind producer.
+* FFI boundary corruption during context switch.
+
+Mitigations:
+* Strict read/write offset tracking using atomic memory operations.
+* Hard boundary bounds-checking enforced by `enforce_bounds.py`.
+
+Traceability: FR-DAQ-001, FR-DAQ-004
+<!-- ARCHITECTURE-END -->
