@@ -52,6 +52,22 @@ kConfig = KalmanConfig
     , measNoise = 2.0  -- 2mm noise estimate
     }
 
+-- | MTI filter base learning rate (α_base): used during active motion.
+-- Must satisfy 0 ≤ mtiAlphaBase ≤ mtiAlphaMax ≤ 1.
+-- A lower value gives more inertia to the clutter mean estimate. (FR-DSP-004)
+mtiAlphaBaseVal :: Double
+mtiAlphaBaseVal = 0.1
+
+-- | MTI filter maximum learning rate (α_max): used when the scene is static.
+-- Higher value allows faster adaptation of the clutter baseline. (FR-DSP-004)
+mtiAlphaMaxVal :: Double
+mtiAlphaMaxVal = 0.9
+
+-- | MTI motion variance threshold: separates static from dynamic scenes.
+-- Scene variance below this value triggers the faster α_max adaptation path.
+mtiThresholdVal :: Double
+mtiThresholdVal = 1.0
+
 
 -- | The main logic function called every frame
 processFrame :: Translations -> TVar SystemState -> RadarFrame -> IO ()
@@ -82,7 +98,7 @@ processFrame translations stateVar frame = do
     (newMtiState, newKState) <- if count > 0
             then do
                 let meas = totalHeight / fromIntegral count
-                case mkMTIConfig 0.1 0.9 1.0 of
+                case mkMTIConfig mtiAlphaBaseVal mtiAlphaMaxVal mtiThresholdVal of
                     Left err -> do
                         -- Config validation failed: log a warning and fall back to
                         -- the unfiltered measurement so gating is not silently degraded.

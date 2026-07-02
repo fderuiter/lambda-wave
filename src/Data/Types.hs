@@ -110,7 +110,8 @@ data SystemState = SystemState
   , kalmanState :: KalmanState            -- ^ Current Kalman filter state (position, velocity, acceleration; metres/s)
   , mtiState :: [Complex Double]
       -- ^ MTI\/EMA clutter filter state (one complex value per range bin).
-      -- Empty list before the first radar frame is processed.
+      -- Empty list before the first radar frame is processed; after the first
+      -- frame its length equals the number of range bins in that frame.
   , auditQueue :: TBQueue AuditEvent -- ^ High-performance event queue
   , audioAlertEnabled :: Bool -- ^ Feature toggle for Audio Alerts (P2-002)
   , activeLanguage :: String
