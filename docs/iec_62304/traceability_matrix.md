@@ -20,15 +20,19 @@ This document provides end-to-end traceability between Functional Requirements (
 | FR-GAT-002 | ISO-13485-7.3.2 | Total latency < 50ms | Phase 4.2 | `Control.Gating`, `Main` | `bench/LatencyBench.hs` | ✅ Complete |
 | FR-UI-001 | ISO-13485-7.3.2 | Real-time visualization | Phase 5.1 | `Control.UI.Renderer`, `Control.Mesher` | `test/Control/UIMathSpec.hs` | ✅ Complete |
 | FR-UI-002 | ISO-13485-7.3.2 | Visual gating feedback | Phase 5.2 | `Control.UI.Renderer` | Visual Inspection | ✅ Complete |
+| FR-UI-003 | IEC-62366-5.1 | Structural navigation, assistive technology hooks, and skip-links | Phase 5.3 | `app/Control/WebUI.hs` | Visual Inspection | ✅ Complete |
 
 ## Safety Requirements (SR)
 
 | Req ID | Quality Policy Origin | Description | Source Phase | Module | Verification Test | Status |
 |---|---|---|---|---|---|---|
+| SR-UI-001 | IEC-62366-5.1, IEC-62304-5.1.1 | Multi-modal encoding (color, shape, and symbol) for safety-critical states | Phase 5.3 | `app/Control/UI/Renderer.hs`, `app/Control/WebUI.hs` | Visual Inspection | ✅ Complete |
+| SR-UI-002 | IEC-62366-5.1 | Formal usability verification checklist for visual inspections | Phase 5.3 | `docs/qms/usability_checklist.md` | Visual Inspection | ✅ Complete |
 | SR-SOUP-001 | ISO-13485-7.1 | GHC RTS deterministic runtime (locked capabilities) | Phase 1.1 | `app/Main.hs`, `.cabal` | `test/System/RTSSpec.hs` | ✅ Complete |
 | SR-WD-001 | ISO-13485-7.1 | Watchdog monitors all critical threads | Phase 4.1 | `Safety.Watchdog` | `test/Safety/WatchdogSpec.hs` | ✅ Complete |
 | SR-WD-002 | ISO-13485-7.1 | Application termination on timeout (100ms) | Phase 4.1 | `Safety.Watchdog` | `test/WatchdogCheck.hs` | ✅ Complete |
 | SR-AUDIT-001 | ISO-13485-7.1 | Immutable event log | Phase 4.3 | `Safety.Audit` | `test/Safety/AuditCheck.hs` | ✅ Complete |
+| SR-IPC-001 | ISO-13485-7.1 | Process boundary isolation; all IPC heartbeats are monitored by the safety daemon | Phase 4.4 | `Safety.Watchdog`, `app/Main.hs`, `app/VisualizerMain.hs` | Visual Inspection | ✅ Complete |
 
 ## Performance Requirements (PR)
 

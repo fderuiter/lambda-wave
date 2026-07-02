@@ -3,7 +3,7 @@
 **Note:** For reporting security vulnerabilities, refer to our [Security Policy](../../SECURITY.md).
 
 ## 1. Introduction
-This document defines the Software Development Plan (SDP) for the Lambda-Wave (Haskell Radar SGRT) project, in compliance with IEC 62304 Class C requirements.
+This document defines the Software Development Plan (SDP) for the Lambda-Wave (Haskell Radar SGRT) project, in compliance with IEC 62304 Class C requirements. The user interface design and verification process is additionally planned and executed in compliance with IEC 62366 (Application of Usability Engineering to Medical Devices) to ensure accessibility and safe clinical operation.
 
 ## 2. SDLC Model
 The project follows a hybrid V-Model mapped to IEC 62304 phases:

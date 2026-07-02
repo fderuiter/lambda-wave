@@ -173,6 +173,7 @@ display stateVar prevStateRef vboPoints vboHeartbeat = do
     bindBuffer ArrayBuffer $= Nothing
     clientState VertexArray $= Disabled
 
+    -- Requirement SR-UI-001: Multi-modal encoding (color, shape, and symbol)
     -- Symbolic Beam Status Icon (Redundant visual signaling)
     -- Provides shape-based state identification for color-blind clinicians
     matrixMode $= Projection
