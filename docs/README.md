@@ -1,4 +1,6 @@
 # Lambda-Wave Documentation Index
+<!-- TAG:roles: Task-Focused Developer, Regulatory Auditor -->
+<!-- TAG:diataxis: Explanations -->
 
 **Last Updated:** January 28, 2026
 

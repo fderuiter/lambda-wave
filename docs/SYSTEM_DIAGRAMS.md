@@ -1,4 +1,6 @@
 # Lambda-Wave: System Diagrams & High-Level Documentation
+<!-- TAG:roles: Regulatory Auditor -->
+<!-- TAG:diataxis: Explanations -->
 
 This document provides a comprehensive visual and technical overview of the Lambda-Wave architecture, FFI interfaces, and subsystem details.
 

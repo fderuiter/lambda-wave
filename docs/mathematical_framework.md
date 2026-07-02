@@ -1,4 +1,6 @@
 # Verified Mathematical Framework for mmWave Radiotherapy Setup
+<!-- TAG:roles: Regulatory Auditor, Medical Physicist -->
+<!-- TAG:diataxis: References, Explanations -->
 
 **Author:** Analysis of Bressler et al. (Med. Phys. 2024)
 **Date:** Today
