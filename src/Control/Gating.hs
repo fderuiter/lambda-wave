@@ -1,6 +1,5 @@
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE PatternSynonyms #-}
 -- |
 -- Module      : Control.Gating
 -- Description : Beam gating logic
@@ -132,11 +131,10 @@ processFrame translations stateVar frame = do
         -- Safety: If current state is BeamHold, we MUST respect it.
         -- If calibration is not valid, we MUST block the beam (BeamOff).
         -- Otherwise, we transition to the proposed state.
-        let resolvedBeamState = if currentBeam == BeamHold
-                                then BeamHold
-                                else if calibrationStatus s /= CalibrationValid
-                                     then BeamOff
-                                     else proposedBeamState
+        let resolvedBeamState
+              | currentBeam == BeamHold = BeamHold
+              | calibrationStatus s /= CalibrationValid = BeamOff
+              | otherwise = proposedBeamState
 
         -- Log Beam Change (only if resolved state is different from what we read initially or updated)
         -- We compare against 'currentBeam' to log transitions that happen NOW.

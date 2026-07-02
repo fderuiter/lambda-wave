@@ -1,4 +1,3 @@
-{-# LANGUAGE ForeignFunctionInterface #-}
 
 -- | High-assurance FFI Bridge Logic for RingBuffer.
 -- 

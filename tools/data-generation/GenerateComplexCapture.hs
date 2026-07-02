@@ -10,7 +10,7 @@ magicPattern :: [Word8]
 magicPattern = [1, 2, 3, 4, 5, 6, 7, 8]
 
 putCoeffs :: [Float] -> Put
-putCoeffs coeffs = mapM_ putFloatle coeffs
+putCoeffs = mapM_ putFloatle
 
 -- Deterministic "random" values based on seed
 pseudoRandom :: Int -> Int -> Int
@@ -22,7 +22,7 @@ generateFrame frameNum = do
     let coeffs = [fromIntegral frameNum, 1.0, 0.5, 0.1, 0.0, 0.1] :: [Float]
 
     -- TLV 999 Size: Deterministic "random" size between 16 and 64 bytes
-    let tlv999PayloadSize = 16 + (pseudoRandom (fromIntegral frameNum) 48)
+    let tlv999PayloadSize = 16 + pseudoRandom (fromIntegral frameNum) 48
     let tlv999TotalSize = 8 + tlv999PayloadSize
 
     let tlv2PayloadSize = 24 -- 6 floats
@@ -58,7 +58,6 @@ generateFrame frameNum = do
     -- Removed to avoid "consumed bytes" issue in current parser implementation
     -- which causes frame drops when garbage is < 8 bytes.
     -- We still test robustness via TLV padding and Unknown TLVs.
-    return ()
 
 main :: IO ()
 main = do

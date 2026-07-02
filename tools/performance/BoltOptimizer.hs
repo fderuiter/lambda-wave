@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase #-}
 module Main (main) where
 
 import System.Environment (getArgs)
@@ -15,7 +16,7 @@ isOpChar :: Char -> Bool
 isOpChar c = c `elem` ("!#$%&*+./<=>?@\\^|-~:" :: String)
 
 lexToken :: String -> (Token, String)
-lexToken [] = error "empty"
+lexToken [] = (Space "", "")
 lexToken (c:cs)
   | isSpace c = let (sp, rest) = span isSpace (c:cs) in (Space sp, rest)
   | isAlpha c || c == '_' = let (idStr, rest) = span (\x -> isAlphaNum x || x == '_') (c:cs) in (Ident idStr, rest)
@@ -37,7 +38,7 @@ untokenize = concatMap toStr
     toStr (Other c) = [c]
 
 skipSpaces :: [Token] -> [Token]
-skipSpaces = dropWhile (\t -> case t of Space _ -> True; _ -> False)
+skipSpaces = dropWhile (\case Space _ -> True; _ -> False)
 
 -- matchers return Just (replacement, remaining_input)
 matchSumZipWithDot :: [Token] -> Maybe ([Token], [Token])
