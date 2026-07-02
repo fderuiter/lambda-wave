@@ -188,9 +188,9 @@ display stateVar prevStateRef vboPoints vboHeartbeat = do
             scale 0.05 0.05 (1.0 :: GLfloat)
             
             let (prim, verts) = case currentState of
-                    BeamOn -> (Triangles, [Vertex2 (0.0 :: GLfloat) 1.0, Vertex2 (-0.866) (-0.5), Vertex2 0.866 (-0.5)])
-                    BeamHold -> (Quads, [Vertex2 (-0.8 :: GLfloat) 0.8, Vertex2 (-0.8) (-0.8), Vertex2 0.8 (-0.8), Vertex2 0.8 0.8])
-                    BeamOff -> (Polygon, [Vertex2 (cos (2 * pi * i / 8) :: GLfloat) (sin (2 * pi * i / 8)) | idx <- [0..7 :: Int], let i = fromIntegral idx])
+                    BeamOn -> (Polygon, [Vertex2 (cos (2 * pi * i / 32) :: GLfloat) (sin (2 * pi * i / 32)) | idx <- [0..31 :: Int], let i = fromIntegral idx])
+                    BeamHold -> (Triangles, [Vertex2 (0.0 :: GLfloat) 1.0, Vertex2 (-0.866) (-0.5), Vertex2 0.866 (-0.5)])
+                    BeamOff -> (Quads, [Vertex2 (-0.8 :: GLfloat) 0.8, Vertex2 (-0.8) (-0.8), Vertex2 0.8 (-0.8), Vertex2 0.8 0.8])
             
             color $ Color3 (1.0 :: GLfloat) 1.0 1.0
             renderPrimitive prim $ mapM_ vertex verts
