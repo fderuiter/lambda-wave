@@ -26,7 +26,7 @@ import qualified Data.Map.Strict as Map
 import Control.Monad (when)
 import SignalProcessing.Kalman (KalmanState(..), KalmanConfig(..), pattern V3, predict, update)
 import SignalProcessing.FMCW (applyStaticClutterRemoval, mkMTIConfig)
-import Data.Complex (Complex(..), realPart)
+import Data.Complex (Complex(..))
 import Hardware.Control (setBeam)
 import Hardware.FFI.Bridge (handleHardwareResponse)
 import Data.I18n (Translations, translateAudit, translateBeamState)
@@ -80,10 +80,14 @@ processFrame translations stateVar frame = do
     -- Update (only if we have measurements)
     let (newMtiState, newKState) = if count > 0
             then let meas = totalHeight / fromIntegral count
-                     mtiConfig = either error id $ mkMTIConfig 0.1 0.9 1.0
-                     (mtiState', outputs) = applyStaticClutterRemoval mtiConfig (mtiState oldSystemState) [meas :+ 0.0]
-                     filteredMeas = realPart (head outputs)
-                 in (mtiState', update filteredMeas kConfig predState)
+                 in case mkMTIConfig 0.1 0.9 1.0 of
+                      Left _          -> (mtiState oldSystemState, update meas kConfig predState)
+                      Right mtiConfig ->
+                          -- Run the MTI filter to advance state, but feed the raw average height
+                          -- (not the high-pass output) into the Kalman update so the absolute
+                          -- position is preserved and the first-frame zero issue is avoided.
+                          let (mtiState', _) = applyStaticClutterRemoval mtiConfig (mtiState oldSystemState) [meas :+ 0.0]
+                          in  (mtiState', update meas kConfig predState)
             else (mtiState oldSystemState, predState) -- Coasting (Dead Reckoning) if signal lost
 
     -- 6. Update System State & Resolve Final Beam State

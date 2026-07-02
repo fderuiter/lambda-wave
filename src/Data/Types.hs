@@ -107,8 +107,10 @@ data SystemState = SystemState
   , sequenceNumber :: Word32  -- ^ Monotonic sequence counter for visual safety (cite:source6)
   , isocenter :: Point3D      -- Calibration zero
   , threadHeartbeats :: Map String Word64 -- Heartbeats for Watchdog
-  , kalmanState :: KalmanState,
-  mtiState :: [Data.Complex.Complex Double]
+  , kalmanState :: KalmanState            -- ^ Current Kalman filter state (position, velocity, acceleration; metres/s)
+  , mtiState :: [Data.Complex.Complex Double]
+      -- ^ MTI\/EMA clutter filter state (one complex value per range bin).
+      -- Empty list before the first radar frame is processed.
   , auditQueue :: TBQueue AuditEvent -- ^ High-performance event queue
   , audioAlertEnabled :: Bool -- ^ Feature toggle for Audio Alerts (P2-002)
   , activeLanguage :: String
