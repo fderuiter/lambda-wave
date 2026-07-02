@@ -101,8 +101,8 @@ spec = describe "Control.UI.Math" $ do
         it "does not beep when remaining in BeamOff (startup/steady state)" $ do
             shouldTriggerAudioAlert True BeamOff BeamOff `shouldBe` False
 
-        it "does not beep when transitioning from BeamOff to BeamOn" $ do
-            shouldTriggerAudioAlert True BeamOff BeamOn `shouldBe` False
+        it "beeps when transitioning from BeamOff to BeamOn" $ do
+            shouldTriggerAudioAlert True BeamOff BeamOn `shouldBe` True
 
         it "does not beep on any transition if alerts are disabled" $ do
             shouldTriggerAudioAlert False BeamHold BeamOff `shouldBe` False

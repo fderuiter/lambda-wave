@@ -31,6 +31,9 @@ import Foreign.Marshal.Array (withArray)
 import Foreign.Storable (sizeOf)
 import Foreign.Ptr (nullPtr)
 import UI.Presentation (getBeamDisplayInfo, bdiColorRGB, scalePointToMeters, shouldTriggerAudioAlert)
+import Control.Concurrent (forkIO)
+import System.Process (spawnCommand)
+import Control.Exception (catch, SomeException)
 
 -- | Main Render Loop
 -- Initializes callbacks and enters the GLUT event processing loop.
@@ -106,8 +109,9 @@ display stateVar prevStateRef vboPoints vboHeartbeat = do
     -- Green = BeamOn, Red = BeamOff, Yellow = BeamHold
     let currentState = beamState state
 
-    when (shouldTriggerAudioAlert (audioAlertEnabled state) prevState currentState) $
-        putStr "\a" >> hFlush stdout
+    when (shouldTriggerAudioAlert (audioAlertEnabled state) prevState currentState) $ do
+        _ <- forkIO $ playAudioAlert currentState
+        return ()
 
     writeIORef prevStateRef currentState
 
@@ -158,6 +162,22 @@ display stateVar prevStateRef vboPoints vboHeartbeat = do
     clientState VertexArray $= Disabled
 
     swapBuffers
+
+playAudioAlert :: BeamState -> IO ()
+playAudioAlert state = do
+    let (toneCmd, speechTxt) = case state of
+            BeamOn   -> ("play -nq -t alsa synth 0.2 sine 440 sine 554 sine 659 2>/dev/null || true", "Beam On")
+            BeamOff  -> ("play -nq -t alsa synth 0.3 sine 220 sine 277 sine 330 2>/dev/null || true", "Beam Off")
+            BeamHold -> ("play -nq -t alsa synth 0.2 sine 440 sine 440 2>/dev/null || true", "Beam Hold")
+    
+    let handler :: SomeException -> IO ()
+        handler _ = return ()
+    let tryRun cmd = catch (spawnCommand cmd >> return ()) handler
+
+    -- Trigger tone
+    tryRun toneCmd
+    -- Trigger speech synthesis (Linux or macOS fallback)
+    tryRun $ "espeak \"" ++ speechTxt ++ "\" 2>/dev/null || say \"" ++ speechTxt ++ "\" 2>/dev/null || true"
 
 -- Requirement FR-UI-001
 
