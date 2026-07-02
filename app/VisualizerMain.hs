@@ -3,9 +3,7 @@ module Main (main) where
 
 import Control.Concurrent (threadDelay)
 import Safety.Thread (forkSafetyThreadOS, ThreadShutdownAction(..))
-#ifdef ENABLE_WEB_UI
 import Safety.Thread (forkSafetyThread)
-#endif
 import Control.Concurrent.STM
 import Control.Exception (try, IOException)
 import System.Posix.IO (openFd, OpenMode(..), defaultFileFlags, OpenFileFlags(..), fdReadBuf)
@@ -20,7 +18,6 @@ import Foreign.Ptr (castPtr, plusPtr)
 import Foreign.ForeignPtr (ForeignPtr)
 import Data.Word (Word32)
 
-
 import Data.Types
 import Data.Config (targetHeight)
 import SignalProcessing.Kalman (initKalman, KalmanConfig(..))
@@ -32,6 +29,10 @@ import Data.Aeson (FromJSON(..), (.:), withObject)
 import qualified Data.Aeson as A
 import System.Exit (exitFailure)
 
+#ifdef ENABLE_UI
+foreign import ccall "run_cpp_hud" c_run_cpp_hud :: IO ()
+#endif
+
 data HardwareManifest = HardwareManifest
     { manifestMountingOffset :: Double }
     deriving (Show)
@@ -39,16 +40,6 @@ data HardwareManifest = HardwareManifest
 instance FromJSON HardwareManifest where
     parseJSON = withObject "HardwareManifest" $ \obj -> HardwareManifest
         <$> obj .: "mounting_offset_mm"
-
-#ifdef ENABLE_UI
-import Control.UI.Window (initWindow)
-import Control.UI.Renderer (renderLoop)
-import Control.UI.Input (handleInput)
-#endif
-
-#ifdef ENABLE_WEB_UI
-import Control.WebUI (runWebUI)
-#endif
 
 main :: IO ()
 main = do
@@ -91,11 +82,6 @@ main = do
         ipcReceiverLoop systemState
 
     -- 1b. Attach to Shared Ring Buffer and run Consumer (Visualizer Side)
-    -- Requirement: SR-IPC-001
-    -- IPC Mechanism: Shared Memory (Ring Buffer)
-    -- Failure Mode: Memory corruption or concurrent write issues from the SafetyCore.
-    -- Mitigation: Lock-free atomic offset updates in the C++ layer ensure safe cross-process reads without blocking the producer.
-    -- The SafetyCore creates the buffer (4MB). We attach to it.
     ringBufferRes <- try (attachRingBuffer (4 * 1024 * 1024)) :: IO (Either IOException (ForeignPtr RingBufferControl))
     case ringBufferRes of
         Left err -> putStrLn $ "Warning: Could not attach to shared ring buffer: " ++ show err
@@ -105,19 +91,10 @@ main = do
                 consumerLoop mountingOffset translations False ringBuffer systemState
             return ()
 
-    -- 2. Web UI (Optional)
-#ifdef ENABLE_WEB_UI
-    putStrLn "Starting Web UI..."
-    _ <- forkSafetyThread (LogOnly putStrLn) "WebUILoop" $ 
-        runWebUI systemState translations
-#endif
-
-    -- 3. OpenGL UI (Optional, must be Main Thread if used)
+    -- 2. C++ HUD
 #ifdef ENABLE_UI
-    putStrLn "Starting OpenGL UI..."
-    initWindow
-    handleInput systemState
-    renderLoop systemState
+    putStrLn "Starting C++ Native HUD..."
+    c_run_cpp_hud
 #else
     putStrLn "Visualizer Running in Headless Mode."
     forever $ threadDelay 1000000

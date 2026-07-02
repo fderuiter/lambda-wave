@@ -56,10 +56,6 @@ flag enable-ui
   manual: True
   default: False
 
-flag enable-web-ui
-  description: Enable Web UI
-  manual: True
-  default: False
 
 flag sandbox
   description: Enable Sandbox mode with relaxed compiler rules
@@ -143,34 +139,21 @@ executable sgrt-visualizer-exe
         GLUT ==2.7.0.16
       , OpenGL ==3.0.3.0
     cpp-options: -DENABLE_UI
+    include-dirs:
+        app/Control/UI/imgui
+        app/Control/UI/imgui/backends
+    cxx-sources:
+        app/Control/UI/hud.cpp
+        app/Control/UI/imgui/imgui.cpp
+        app/Control/UI/imgui/imgui_draw.cpp
+        app/Control/UI/imgui/imgui_tables.cpp
+        app/Control/UI/imgui/imgui_widgets.cpp
+        app/Control/UI/imgui/backends/imgui_impl_glut.cpp
+        app/Control/UI/imgui/backends/imgui_impl_opengl2.cpp
+    cxx-options: -std=c++11 -Wall -O2
+    extra-libraries: stdc++
     other-modules:
-        Control.UI.Renderer
-        Control.UI.Window
-        Control.UI.Input
 
-  if flag(enable-web-ui)
-    build-depends:
-        wai
-      , warp
-      , warp-tls
-      , websockets
-      , wai-websockets
-      , aeson ==2.2.5.0
-      , text ==2.0.2
-      , http-types
-      , file-embed
-      , crypton
-      , memory
-      , process
-      , time
-      , unordered-containers
-      , stm
-      , directory
-      , wai-extra
-    cpp-options: -DENABLE_WEB_UI
-    other-modules:
-        Control.WebUI
-        Control.WebUI.Types
 
 executable watchdog-fault
   import: common-options
