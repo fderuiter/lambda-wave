@@ -8,7 +8,6 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE ConstraintKinds #-}
-{-# OPTIONS_GHC -Wno-redundant-constraints #-}
 
 module Numeric.Kinematics
     ( -- * Core Types
@@ -196,10 +195,15 @@ instance ScalarMultiply Time where
     (Time t) *| s = Time (s * t)
 
 -- | Type-level constraint ensuring WatchdogTimeout > SystemLatency
-type AssertWatchdogSafe w l = (CmpNat w l ~ 'GT)
+type family AssertWatchdogSafe w l where
+    AssertWatchdogSafe w l = IfSafe (CmpNat w l)
+
+type family IfSafe cmp where
+    IfSafe 'GT = ()
+    IfSafe _ = TypeError ('Text "Safety Invariant Violated: WatchdogTimeout must be greater than SystemLatency")
 
 -- Statically enforce it globally for the module
-_assertWatchdogSafe :: AssertWatchdogSafe WatchdogTimeoutMs SystemLatencyMs => ()
+_assertWatchdogSafe :: AssertWatchdogSafe WatchdogTimeoutMs SystemLatencyMs
 _assertWatchdogSafe = ()
 
 -- Helper functions to get type-level constants as runtime values

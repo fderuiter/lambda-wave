@@ -32,24 +32,10 @@ data KalmanConfig = KalmanConfig
     , measNoise :: !Double -- ^ R scalar (Measurement noise variance)
     } deriving (Show, Eq, Generic, Binary, NFData)
 
-ident3 :: Matrix
-ident3 = M33 (V3 1 0 0) (V3 0 1 0) (V3 0 0 1)
-
-transM :: Matrix -> Matrix
-transM = transpose
-
-mvMul :: Matrix -> Vector -> Vector
-mvMul = matVecMult
-
-mmMul :: Matrix -> Matrix -> Matrix
-mmMul a b = case multiply a b of
-    Just m -> m
-    Nothing -> identity 3
-
 initKalman :: Double -> KalmanConfig -> KalmanState
 initKalman initialMeas config = KalmanState
     { x = V3 initialMeas 0 0
-    , p = scaleM (measNoise config) ident3
+    , p = scaleM (measNoise config) (identity 3)
     }
 
 predict :: Double -> KalmanConfig -> KalmanState -> KalmanState
@@ -65,8 +51,8 @@ predict dt config state
     gVec = V3 (0.5 * dt * dt) dt 1
     qMat = scaleM qScalar (outerV gVec gVec)
 
-    xPred = mvMul fMat (x state)
-    pPred = addM (mmMul fMat (mmMul (p state) (transM fMat))) qMat
+    xPred = matVecMult fMat (x state)
+    pPred = addM (safeMultiply 3 fMat (safeMultiply 3 (p state) (transpose fMat))) qMat
 
 update :: Double -> KalmanConfig -> KalmanState -> KalmanState
 update measurement config state
@@ -89,9 +75,9 @@ update measurement config state
                 xNew = addV (x state) (scaleV y kVec)
 
                 khMatFull = outerV kVec hVec
-                iMinusKH = subM ident3 khMatFull
+                iMinusKH = subM (identity 3) khMatFull
 
-                term1 = mmMul iMinusKH (mmMul (p state) (transM iMinusKH))
+                term1 = safeMultiply 3 iMinusKH (safeMultiply 3 (p state) (transpose iMinusKH))
                 term2 = scaleM rVal (outerV kVec kVec)
 
                 pNew = addM term1 term2
