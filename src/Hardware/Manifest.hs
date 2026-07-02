@@ -12,8 +12,6 @@ module Hardware.Manifest (
     SystemLatencyMs
 ) where
 
-import GHC.TypeLits (Nat)
-
 watchdogPin :: Int
 watchdogPin = 27
 

@@ -5,6 +5,8 @@
 #include <cstddef>
 #include <cstdint>
 
+#define RING_BUFFER_GAP 1
+
 struct RingBufferControl {
   alignas(64) std::atomic<size_t> write_offset;
   std::atomic<size_t> read_offset;
@@ -22,5 +24,7 @@ size_t get_write_offset(RingBufferControl* handle);
 void set_write_offset(RingBufferControl* handle, size_t val);
 size_t get_read_offset(RingBufferControl* handle);
 void set_read_offset(RingBufferControl* handle, size_t val);
+size_t rb_available_data(RingBufferControl* handle, size_t current_read_offset);
+size_t rb_next_read_offset(RingBufferControl* handle, size_t current_read_offset, size_t consumed_bytes);
 }
 #endif

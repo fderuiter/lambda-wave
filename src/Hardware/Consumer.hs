@@ -40,6 +40,7 @@ import Data.Maybe (isJust)
 
 import FFI.RingBuffer.Types (RingBufferControl(..), peekStaticFields)
 import FFI.RingBuffer.IO (getWriteOffset, setReadOffset)
+import FFI.RingBuffer.Generated (c_rb_available_data, c_rb_next_read_offset)
 import Data.Types
 import Control.Gating (processFrame)
 import Control.Mesher (reconstructPolynomialSurface)
@@ -89,16 +90,16 @@ consumerLoop mountingOffset translations isPrimary controlFp stateVar = withFore
             -- this double check is fine or we rely on the fact that controlFp is alive.
             writeOff <- getWriteOffset controlFp
 
-            if writeOff == readOff
+            -- 2. Calculate available data via FFI (using C++ master logic)
+            availableBytesC <- c_rb_available_data controlPtr (fromIntegral readOff)
+            let availableBytes = fromIntegral availableBytesC :: Int
+
+            if availableBytes == 0
                 then do
                     -- No new data, sleep briefly to avoid busy wait
                     threadDelay 1000 -- 1ms
                     loop readOff
                 else do
-                    -- 2. Calculate available data
-                    let availableBytes = if writeOff >= readOff
-                                         then writeOff - readOff
-                                         else bufSize - readOff + writeOff
                     let saturation = fromIntegral availableBytes / fromIntegral bufSize :: Double
 
                     when (saturation >= 0.90) $ do
@@ -213,16 +214,10 @@ consumerLoop mountingOffset translations isPrimary controlFp stateVar = withFore
                             then forM_ frames $ \frame -> processFrame translations stateVar frame
                             else atomically $ modifyTVar' stateVar $ \s -> s { currentPoints = concatMap points frames }
 
-                    -- 7. Update Read Offset
-                    -- In a real ring buffer, we advance readOff by how much we processed.
-                    -- But here, the producer might overwrite us if we are slow.
-                    -- Also, we constructed 'lbs' from *all* available data.
-                    -- If we successfully parsed everything, we catch up to writeOff.
-                    -- If we have partial data at the end, we should only advance by bytesConsumed.
-
-                    -- SENTINEL SAFETY CHECK: Ensure we don't pass negative offset
-                    let safeConsumed = max 0 (fromIntegral bytesConsumed)
-                    let newReadOff = (readOff + safeConsumed) `rem` bufSize
+                    -- 7. Update Read Offset via FFI Master Logic
+                    let safeConsumed = max 0 bytesConsumed :: Int64
+                    newReadOffC <- c_rb_next_read_offset controlPtr (fromIntegral readOff) (fromIntegral safeConsumed)
+                    let newReadOff = fromIntegral newReadOffC :: Int
 
                     -- 8. Notify Producer (Release Semantics)
                     -- We must update the shared read offset so the producer can reclaim space
