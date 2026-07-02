@@ -1,4 +1,6 @@
 # Lambda-Wave Quick Start Guide
+<!-- TAG:roles: Task-Focused Developer -->
+<!-- TAG:diataxis: Tutorials -->
 
 **Goal:** Get Lambda-Wave running in 15 minutes or less
 

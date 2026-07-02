@@ -7,3 +7,6 @@ dist-newstyle/
 *.eventlog
 *.log
 docs_output/
+docs_site/
+mkdocs.yml
+site/

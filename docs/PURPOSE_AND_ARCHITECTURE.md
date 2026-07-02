@@ -1,4 +1,6 @@
 # Lambda-Wave: Purpose, Architecture & Technical Overview
+<!-- TAG:roles: Regulatory Auditor -->
+<!-- TAG:diataxis: Explanations -->
 
 **Version:** <!-- METADATA:project_version -->0.1.0.0<!-- /METADATA:project_version -->  
 **Last Updated:** January 2026  
