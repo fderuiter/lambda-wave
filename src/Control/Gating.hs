@@ -109,7 +109,7 @@ processFrame translations stateVar frame = do
                         -- Run the MTI filter to advance state, but feed the raw average
                         -- height (not the high-pass output) into the Kalman update so the
                         -- absolute position is preserved and the first-frame zero issue is avoided.
-                        let (mtiState', _) = applyStaticClutterRemoval mtiConfig (mtiState oldSystemState) [meas :+ 0.0]
+                        let (mtiState', _) = applyStaticClutterRemoval mtiConfig (mtiState oldSystemState) [meas :+ 0.0] -- ignore high-pass output; use raw scalar meas for Kalman update
                         in  return (mtiState', update meas kConfig predState)
             else return (mtiState oldSystemState, predState) -- Coasting (Dead Reckoning) if signal lost
 
