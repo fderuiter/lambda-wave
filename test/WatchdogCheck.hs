@@ -10,6 +10,7 @@ import Data.Maybe (mapMaybe)
 import Control.Exception (try, SomeException)
 import qualified Data.ByteString as B
 import Safety.Crypto (decryptLog)
+import Numeric.Kinematics (Nanoseconds(..), Milliseconds(..), nsToSeconds, secondsToMs)
 
 -- Extract all digits from a string prefix
 takeDigits :: String -> String
@@ -27,14 +28,14 @@ findInfix substr (x:xs)
     | substr `isInfixOf` x = Just x
     | otherwise = findInfix substr xs
 
-parseAge :: String -> Maybe Double
+parseAge :: String -> Maybe Milliseconds
 parseAge line = do
     let prefix = "!!! MAIN WATCHDOG: Thread 'TestThread' FROZEN (Age: "
     idx <- findSubstrIndex prefix line
     let rest = drop (idx + length prefix) line
     let digits = takeDigits rest
     val <- readMaybe digits :: Maybe Double
-    return (val / 1000000.0) -- convert to ms
+    return (secondsToMs (nsToSeconds (Nanoseconds val)))
 
 findSubstrIndex :: String -> String -> Maybe Int
 findSubstrIndex substr str = go str 0
@@ -76,9 +77,10 @@ main = do
             putStrLn $ "OUTPUT:\n" ++ combinedOutput
             exitWith (ExitFailure 1)
             
-    putStrLn $ "Watchdog detected freeze at age: " ++ show ageMs ++ " ms"
-    unless (ageMs <= 110.0) $ do
-        putStrLn $ "FAIL: Sensitivity violation. Expected <= 110ms, got " ++ show ageMs ++ "ms"
+    let Milliseconds ageMsDouble = ageMs
+    putStrLn $ "Watchdog detected freeze at age: " ++ show ageMsDouble ++ " ms"
+    unless (ageMsDouble <= 110.0) $ do
+        putStrLn $ "FAIL: Sensitivity violation. Expected <= 110ms, got " ++ show ageMsDouble ++ "ms"
         exitWith (ExitFailure 1)
 
     -- Requirement 4: High-resolution timing data
@@ -114,7 +116,8 @@ main = do
             putStrLn "FAIL: Could not find trip timestamp in session.log."
             exitWith (ExitFailure 1)
 
-    let responseTimeMs = fromIntegral (tripNs - stallStartNs) / 1000000.0 :: Double
+    let responseNs = fromIntegral (tripNs - stallStartNs) :: Double
+    let Milliseconds responseTimeMs = secondsToMs (nsToSeconds (Nanoseconds responseNs))
     putStrLn $ "System responded in " ++ show responseTimeMs ++ " ms"
 
     unless (responseTimeMs <= 110.0) $ do
@@ -132,7 +135,7 @@ main = do
                  "Requirement: Response time must be <= 110 ms (100ms threshold + 10ms tolerance)\n" ++
                  "Actual Response Time: " ++ show responseTimeMs ++ " ms\n" ++
                  "Sensitivity Requirement: Watchdog interval <= 10ms (detects freeze <= 110ms)\n" ++
-                 "Actual Detected Freeze Age: " ++ show ageMs ++ " ms\n" ++
+                 "Actual Detected Freeze Age: " ++ show ageMsDouble ++ " ms\n" ++
                  "Beam Off Verified: True\n" ++
                  "Status: PASS\n"
     writeFile "safety_audit_report.txt" report

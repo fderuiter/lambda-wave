@@ -22,6 +22,9 @@ module Numeric.Kinematics
     , Meters(..)
     , Nanoseconds(..)
     , Seconds(..)
+    , Milliseconds(..)
+    , Hertz(..)
+    , Gigahertz(..)
       -- * Conversions
     , distanceToMeters
     , metersToDistance
@@ -31,6 +34,11 @@ module Numeric.Kinematics
     , metersToMm
     , nsToSeconds
     , secondsToNs
+    , msToSeconds
+    , secondsToMs
+    , hzToFrequency
+    , frequencyToHz
+    , ghzToHz
       -- * Type-level constants and assertions
     , SystemLatencyMs
     , WatchdogTimeoutMs
@@ -83,6 +91,9 @@ newtype Millimeters = Millimeters Double deriving (Show, Eq, Ord)
 newtype Meters = Meters Double deriving (Show, Eq, Ord)
 newtype Nanoseconds = Nanoseconds Double deriving (Show, Eq, Ord)
 newtype Seconds = Seconds Double deriving (Show, Eq, Ord)
+newtype Milliseconds = Milliseconds Double deriving (Show, Eq, Ord)
+newtype Hertz = Hertz Double deriving (Show, Eq, Ord)
+newtype Gigahertz = Gigahertz Double deriving (Show, Eq, Ord)
 
 -- Conversions
 distanceToMeters :: Distance -> Meters
@@ -108,6 +119,21 @@ nsToSeconds (Nanoseconds ns) = Seconds (ns / 1_000_000_000.0)
 
 secondsToNs :: Seconds -> Nanoseconds
 secondsToNs (Seconds s) = Nanoseconds (s * 1_000_000_000.0)
+
+msToSeconds :: Milliseconds -> Seconds
+msToSeconds (Milliseconds ms) = Seconds (ms / 1000.0)
+
+secondsToMs :: Seconds -> Milliseconds
+secondsToMs (Seconds s) = Milliseconds (s * 1000.0)
+
+hzToFrequency :: Hertz -> Frequency
+hzToFrequency (Hertz hz) = Frequency hz
+
+frequencyToHz :: Frequency -> Hertz
+frequencyToHz (Frequency f) = Hertz f
+
+ghzToHz :: Gigahertz -> Hertz
+ghzToHz (Gigahertz ghz) = Hertz (ghz * 1_000_000_000.0)
 
 -- Basic Add/Sub for same types
 class KinematicMath a where
@@ -135,6 +161,11 @@ instance KinematicMath Time where
     (Time a) |-| (Time b) = Time (a - b)
     kabs (Time a) = Time (abs a)
 
+instance KinematicMath Frequency where
+    (Frequency a) |+| (Frequency b) = Frequency (a + b)
+    (Frequency a) |-| (Frequency b) = Frequency (a - b)
+    kabs (Frequency a) = Frequency (abs a)
+
 class KinematicMultiply a b c where
     (|*|) :: a -> b -> c
 
@@ -153,6 +184,9 @@ instance KinematicMultiply Acceleration Acceleration (SafetyResult Acceleration)
 
 instance KinematicMultiply Time Time (SafetyResult Time) where
     _ |*| _ = Unsafe "Cannot multiply Time by Time"
+
+instance KinematicMultiply Frequency Frequency (SafetyResult Frequency) where
+    _ |*| _ = Unsafe "Cannot multiply Frequency by Frequency"
 
 instance KinematicDivide Distance Distance (SafetyResult Distance) where
     _ |/| _ = Unsafe "Cannot divide Distance by Distance"
@@ -175,6 +209,18 @@ instance KinematicDivide Distance Time Velocity where
 instance KinematicDivide Velocity Time Acceleration where
     (Velocity v) |/| (Time t) = Acceleration (v / t)
 
+instance KinematicMultiply Frequency Distance Velocity where
+    (Frequency f) |*| (Distance d) = Velocity (f * d)
+
+instance KinematicMultiply Distance Frequency Velocity where
+    (Distance d) |*| (Frequency f) = Velocity (d * f)
+
+instance KinematicDivide Velocity Distance Frequency where
+    (Velocity v) |/| (Distance d) = Frequency (v / d)
+
+instance KinematicDivide Velocity Frequency Distance where
+    (Velocity v) |/| (Frequency f) = Distance (v / f)
+
 class ScalarMultiply a where
     (|*) :: Double -> a -> a
     (*|) :: a -> Double -> a
@@ -194,6 +240,10 @@ instance ScalarMultiply Acceleration where
 instance ScalarMultiply Time where
     s |* (Time t) = Time (s * t)
     (Time t) *| s = Time (s * t)
+
+instance ScalarMultiply Frequency where
+    s |* (Frequency f) = Frequency (s * f)
+    (Frequency f) *| s = Frequency (s * f)
 
 -- | Type-level constraint ensuring WatchdogTimeout > SystemLatency
 type AssertWatchdogSafe w l = (CmpNat w l ~ 'GT)

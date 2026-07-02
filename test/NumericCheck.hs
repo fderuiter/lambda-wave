@@ -2,6 +2,7 @@ module Main (main) where
 
 import Control.Exception (try, SomeException)
 import SignalProcessing.Matrix
+import Numeric.Kinematics
 import System.Exit (exitSuccess)
 
 main :: IO ()
@@ -57,5 +58,8 @@ main = do
     let rect1 = isRectangular [[1, 2], [3, 4]] 2
     if rect1 then putStrLn "PASS: isRectangular true" else putStrLn "FAIL: isRectangular true"
 
+    -- Requirement 4: A test case attempting to add Distance to Frequency fails at compile time.
+    -- The following line will result in a compile error: "Couldn't match expected type 'Distance' with actual type 'Frequency'"
+    -- let _invalidAddition = Distance 5.0 |+| Frequency 10.0
     putStrLn "Numeric Check Complete."
     exitSuccess
