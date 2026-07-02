@@ -87,6 +87,7 @@ runHILSimulation name rig duration = do
             , isocenter = Point3D 0 0 0 0 0
             , threadHeartbeats = Map.empty
             , kalmanState = initKalman targetHeight (KalmanConfig 1000.0 2.0)
+            , mtiState = []
             , auditQueue = q
             , audioAlertEnabled = False, activeLanguage = "en", localizedBeamState = "BEAM OFF"
         , calibrationStatus = CalibrationValid
