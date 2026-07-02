@@ -139,3 +139,22 @@ hazards:
     detection: 2
     rpn: 20
 
+  - id: H-USE-001
+    description: Operator misses system pause
+    cause: Lack of localized feedback or clear UI indication
+    effect: Delayed response to patient safety events
+    mitigation: Localized UI feedback, safety-critical interaction logging, and summative evaluation validation.
+    severity: 4
+    occurrence: 2
+    detection: 2
+    rpn: 16
+
+  - id: H-USE-002
+    description: Operator confused by language
+    cause: Hardcoded English logs and UI messages
+    effect: Incorrect response to system prompts
+    mitigation: Full localization of user-facing logs and authentication messages based on selected language.
+    severity: 3
+    occurrence: 2
+    detection: 2
+    rpn: 12
