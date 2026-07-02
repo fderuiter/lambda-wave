@@ -6,6 +6,7 @@ import Test.Hspec
 import GHC.Float (double2Float)
 import UI.Presentation (shouldTriggerAudioAlert)
 import Data.Types (BeamState(..))
+import Numeric.Kinematics (Millimeters(..), Meters(..), mmToMeters)
 
 -- | Mock types for verification
 -- Removed unused fields 'v' and 'snr' to satisfy -Wunused-top-binds
@@ -16,9 +17,12 @@ data Vertex3 a = Vertex3 a a a deriving (Show, Eq)
 -- Transforms a radar point (mm) to OpenGL coordinates (meters)
 transformPoint :: Point3D -> Vertex3 Float
 transformPoint p =
-    let x = double2Float (px p) / 1000.0
-        y = double2Float (py p) / 1000.0
-        z = double2Float (pz p) / 1000.0
+    let Meters mx = mmToMeters (Millimeters (px p))
+        Meters my = mmToMeters (Millimeters (py p))
+        Meters mz = mmToMeters (Millimeters (pz p))
+        x = double2Float mx
+        y = double2Float my
+        z = double2Float mz
     in Vertex3 x y z
 
 type Vector3 = (Double, Double, Double)
