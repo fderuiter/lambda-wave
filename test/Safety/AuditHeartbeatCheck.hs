@@ -31,7 +31,7 @@ mkState = do
             , kalmanState = kState
             , auditQueue = q
             , audioAlertEnabled = False, activeLanguage = "en", localizedBeamState = "BEAM OFF"
-        , calibrationStatus = CalibrationUnverified
+        , calibrationStatus = CalibrationUnverified, mtiState = [], displayPreset = StandardPreset
             }
     newTVarIO s0
 

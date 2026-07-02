@@ -38,7 +38,7 @@ createDummyState = do
         , audioAlertEnabled = False
         , activeLanguage = "en"
         , localizedBeamState = ""
-        , calibrationStatus = CalibrationValid
+        , calibrationStatus = CalibrationValid, mtiState = [], displayPreset = StandardPreset
         }
 
 spec :: Spec
