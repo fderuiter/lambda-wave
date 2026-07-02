@@ -8,10 +8,16 @@ maintainer:     Frederick de Ruiter <fpderuiter@gmail.com>
 copyright:      2024-2026 Frederick de Ruiter, Ayoola Okuribido
 license:        AGPL-3.0-only
 license-file:   LICENSE
-build-type:     Simple
+build-type:     Custom
 extra-source-files:
     README.md
     cbits/include/*.h
+
+custom-setup
+  setup-depends:
+      base >= 4.16 && < 5
+    , Cabal
+    , process
 
 common common-options
   default-extensions:
@@ -77,7 +83,6 @@ library
       Hardware.Consumer
       Hardware.FFI.Common
       Hardware.Manifest
-      Hardware.Template
       Hardware.Types
       Safety.Audit
       Safety.Crypto
@@ -535,13 +540,4 @@ test-suite latency-verification
     , containers
     , unordered-containers
     , stm
-
-test-suite hardware-template-check
-  import: common-options
-  type: exitcode-stdio-1.0
-  main-is: TemplateCheck.hs
-  hs-source-dirs: test/Hardware
-  build-depends:
-      base >=4.7 && <5
-    , sgrt-radar-system
 

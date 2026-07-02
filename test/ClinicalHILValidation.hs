@@ -16,6 +16,7 @@ import Data.List (sort)
 
 import Data.Types
 import Data.Config (targetHeight, gatingTolerance)
+import Hardware.Manifest (systemLatencyMs)
 import SignalProcessing.Kalman (initKalman, KalmanConfig(..), pattern V3, KalmanState(..))
 import Control.Gating (processFrame)
 import Hardware.FFI.Bridge (handleHardwareResponse)
@@ -163,9 +164,9 @@ runHILSimulation name rig duration = do
     putStrLn $ printf "  Average P2E Latency: %.4f ms" avgLat
     putStrLn $ printf "  P99 P2E Latency: %.4f ms" p99Lat
     
-    -- The acceptance criteria mandates 50ms latency.
+    -- The acceptance criteria mandates system latency.
     -- We allow up to 15 false positives because true Kalman lag on 15mm jumps causes valid off-by-a-frame errors.
-    let passed = p99Lat < 50.0 && falsePositives <= 15
+    let passed = p99Lat < fromIntegral systemLatencyMs && falsePositives <= 15
     if not passed 
         then do
             putStrLn $ "FAIL: P99 Latency = " ++ show p99Lat ++ " ms, FP = " ++ show falsePositives
