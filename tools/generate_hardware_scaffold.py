@@ -9,8 +9,17 @@ def generate_haskell_scaffold(sensor_name):
     
     hs_code = f"""{{-# LANGUAGE OverloadedStrings #-}}
 -- |
--- Scaffolded Hardware Integration: {{sensor_name}}
+-- SAFETY-CRITICAL Scaffolded Hardware Integration: {{sensor_name}}
 -- 
+-- = Failure Mode
+-- TODO: Document what happens when this hardware fails.
+--
+-- = Mitigation
+-- TODO: Explain how the system handles the failure mode.
+--
+-- = Audit Events
+-- TODO: List the audit events triggered by this hardware interaction.
+--
 -- Implements exception-safe resource allocation, asynchronous exception masking,
 -- and FFI safety patterns.
 module Hardware.{{sensor_name}} (
@@ -25,8 +34,6 @@ import Foreign.Ptr (Ptr, FunPtr)
 import Foreign.ForeignPtr (ForeignPtr, newForeignPtr)
 import Foreign.Marshal.Alloc (mallocBytes, free, finalizerFree)
 import Hardware.FFI.Bridge (MustHandle, bridgeHardwareCallCustom)
-import Hardware.Types (HardwareError(..))
-import Hardware.FFI.Common (HardwareResult(..))
 import Foreign.C.Types (CInt)
 
 -- | Dummy FFI stand-ins for scaffolding
@@ -74,7 +81,7 @@ initialize{{sensor_name}} = do
     print(f"Generated {hs_path}")
     
     # Generate test
-    test_code = f"""module Hardware.{{sensor_name}}Check (main) where
+    test_code = f"""module Main (main) where
 
 import Hardware.{{sensor_name}}
 import System.Mem (performGC)

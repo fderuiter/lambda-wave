@@ -2,7 +2,16 @@
 {-# LANGUAGE StrictData #-}
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+-- |
+-- = Failure Mode
+-- Unhandled hardware FFI exceptions can corrupt system state or drop critical sensor readings.
+--
+-- = Mitigation
+-- The MustHandle type forces explicit error handling mapping for all FFI bridge calls.
 -- Mitigates Hazard H-SYS-008
+--
+-- = Audit Events
+-- All FFI returns trigger specific audit events defined in ffi_master_spec.md.
 module Hardware.FFI.Bridge (
     MustHandle,
     executeBridgeCall,
