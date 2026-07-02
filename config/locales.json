@@ -8,7 +8,12 @@
     "Connecting": "Connecting...",
     "DataStale": "Data Stale",
     "Offline": "OFFLINE",
-    "AuditStateChanged": "Beam State Changed: %s -> %s"
+    "AuditStateChanged": "Beam State Changed: %s -> %s",
+    "AuthSuccess": "Login successful for user %s",
+    "AuthFailed": "Login failed",
+    "AuthFailedInvalid": "Login failed: invalid encoding",
+    "AuditOperatorPause": "Operator paused trace",
+    "AuditOperatorResume": "Operator resumed trace"
   },
   "es": {
     "BeamOn": "HAZ ENCENDIDO",
@@ -18,18 +23,28 @@
     "Disconnected": "Desconectado",
     "Connecting": "Conectando...",
     "DataStale": "Datos obsoletos",
-    "Offline": "FUERA DE LÍNEA",
-    "AuditStateChanged": "Estado del haz cambiado: %s -> %s"
+    "Offline": "FUERA DE L\u00cdNEA",
+    "AuditStateChanged": "Estado del haz cambiado: %s -> %s",
+    "AuthSuccess": "Inicio de sesi\u00f3n exitoso para el usuario %s",
+    "AuthFailed": "Fallo al iniciar sesi\u00f3n",
+    "AuthFailedInvalid": "Fallo al iniciar sesi\u00f3n: codificaci\u00f3n no v\u00e1lida",
+    "AuditOperatorPause": "El operador paus\u00f3 el trazo",
+    "AuditOperatorResume": "El operador reanud\u00f3 el trazo"
   },
   "fr": {
-    "BeamOn": "FAISCEAU ALLUMÉ",
-    "BeamOff": "FAISCEAU ÉTEINT",
+    "BeamOn": "FAISCEAU ALLUM\u00c9",
+    "BeamOff": "FAISCEAU \u00c9TEINT",
     "BeamHold": "FAISCEAU EN PAUSE",
     "Live": "En direct",
-    "Disconnected": "Déconnecté",
+    "Disconnected": "D\u00e9connect\u00e9",
     "Connecting": "Connexion...",
-    "DataStale": "Données périmées",
+    "DataStale": "Donn\u00e9es p\u00e9rim\u00e9es",
     "Offline": "HORS LIGNE",
-    "AuditStateChanged": "État du faisceau modifié: %s -> %s"
+    "AuditStateChanged": "\u00c9tat du faisceau modifi\u00e9: %s -> %s",
+    "AuthSuccess": "Connexion r\u00e9ussie pour l'utilisateur %s",
+    "AuthFailed": "\u00c9chec de la connexion",
+    "AuthFailedInvalid": "\u00c9chec de la connexion: encodage non valide",
+    "AuditOperatorPause": "L'op\u00e9rateur a mis la trace en pause",
+    "AuditOperatorResume": "L'op\u00e9rateur a repris la trace"
   }
 }
