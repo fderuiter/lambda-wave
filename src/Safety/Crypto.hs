@@ -10,7 +10,7 @@
 --
 -- = Mitigation
 -- Uses AES256 with randomly generated IVs per encryption operation, ensuring semantic security.
-module Safety.Crypto (encryptLog, decryptLog, encryptWebsocket, decryptWebsocket) where
+module Safety.Crypto (encryptLog, decryptLog) where
 
 import Crypto.Cipher.AES (AES256)
 import Crypto.Cipher.Types (BlockCipher(..), Cipher(..), makeIV, IV)
@@ -67,10 +67,4 @@ decryptLog bs = do
         Right dec -> case decryptPure dec of
             Right pt -> Right (BC.unpack pt)
             Left e   -> Left e
-
-encryptWebsocket :: B.ByteString -> IO (SafetyResult B.ByteString)
-encryptWebsocket = encryptIO
-
-decryptWebsocket :: B.ByteString -> Either String B.ByteString
-decryptWebsocket = decryptPure
 

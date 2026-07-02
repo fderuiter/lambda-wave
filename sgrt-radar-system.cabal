@@ -51,15 +51,6 @@ common common-options
     , stm
   default-language: Haskell2010
 
-flag enable-ui
-  description: Enable OpenGL UI
-  manual: True
-  default: False
-
-flag enable-web-ui
-  description: Enable Web UI
-  manual: True
-  default: False
 
 flag sandbox
   description: Enable Sandbox mode with relaxed compiler rules
@@ -110,9 +101,16 @@ library
       cbits/src/ring_buffer_ffi.cpp
       cbits/src/serial_config.cpp
       cbits/src/gpio_driver.cpp
+      cbits/src/hud.cpp
+      cbits/imgui/imgui.cpp
+      cbits/imgui/imgui_draw.cpp
+      cbits/imgui/imgui_tables.cpp
+      cbits/imgui/imgui_widgets.cpp
+      cbits/imgui/backends/imgui_impl_glfw.cpp
+      cbits/imgui/backends/imgui_impl_opengl3.cpp
   cc-options: -Wall -O2
-  cxx-options: -std=c++11 -Wall -O2
-  extra-libraries: stdc++
+  cxx-options: -std=c++11 -Wall -O2 -I cbits/imgui
+  extra-libraries: stdc++ glfw GLEW GL
 
 executable sgrt-radar-system-exe
   import: common-options
@@ -137,40 +135,12 @@ executable sgrt-visualizer-exe
   build-depends:
       sgrt-radar-system
     , process
-
-  if flag(enable-ui)
-    build-depends:
-        GLUT ==2.7.0.16
-      , OpenGL ==3.0.3.0
-    cpp-options: -DENABLE_UI
-    other-modules:
-        Control.UI.Renderer
-        Control.UI.Window
-        Control.UI.Input
-
-  if flag(enable-web-ui)
-    build-depends:
-        wai
-      , warp
-      , warp-tls
-      , websockets
-      , wai-websockets
-      , aeson ==2.2.5.0
-      , text ==2.0.2
-      , http-types
-      , file-embed
-      , crypton
-      , memory
-      , process
-      , time
-      , unordered-containers
-      , stm
-      , directory
-      , wai-extra
-    cpp-options: -DENABLE_WEB_UI
-    other-modules:
-        Control.WebUI
-        Control.WebUI.Types
+    , stm
+    , binary
+    , bytestring
+    , unix
+    , containers
+    , aeson
 
 executable watchdog-fault
   import: common-options
