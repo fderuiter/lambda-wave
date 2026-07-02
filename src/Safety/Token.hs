@@ -19,7 +19,7 @@ import Safety.Result (SafetyResult(..))
 -- | Read exactly 16 bytes into @buf@, retrying on short reads.
 -- Returns the number of bytes accumulated.
 readExact16 :: Fd -> Ptr CChar -> IO Int
-readExact16 fd buf = fmap fst $ foldM step (0 :: Int, False) [1 .. (16 :: Int)]
+readExact16 fd buf = fst <$> foldM step (0 :: Int, False) [1 .. (16 :: Int)]
   where
     step (n, done) _
       | done || n >= 16 = return (n, True)

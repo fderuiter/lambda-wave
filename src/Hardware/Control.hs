@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE LambdaCase #-}
 module Hardware.Control (
     configureSensor,
     configureSensorWithRetry,
@@ -49,8 +50,7 @@ readBeamChannel stateVar channel = do
     let pinNum = case channel of
             LogicChannel -> fromIntegral logicPin
             WatchdogChannel -> fromIntegral watchdogPin
-    bridgeHardwareQuery stateVar "HardwareControl" (c_gpio_read pinNum) $ \val ->
-        case val of
+    bridgeHardwareQuery stateVar "HardwareControl" (c_gpio_read pinNum) $ \case
             0 -> (Common.Success, Right False)
             1 -> (Common.Success, Right True)
             _ -> (Common.Failure "Connection Lost", Left ConnectionLost)
@@ -137,11 +137,9 @@ readUntilDone fd acc = do
                 let newAcc = B.append acc bs
                 if "Done" `B.isInfixOf` newAcc
                     then return True
-                    else if "Error" `B.isInfixOf` newAcc
+                    else if "Error" `B.isInfixOf` newAcc || B.length newAcc > 4096
                         then return False
-                        else if B.length newAcc > 4096
-                            then return False -- Prevent unbounded memory growth
-                            else readUntilDone fd newAcc
+                        else readUntilDone fd newAcc
 
 configureConfigSerial :: Fd -> IO (Either HardwareError ())
 configureConfigSerial fd = do
@@ -171,7 +169,7 @@ configureRawSerial stateVar (Fd fd) = do
     bridgeHardwareCall stateVar "HardwareControl" (c_configure_serial_port fd baud)
 
 setBeam :: TVar SystemState -> Bool -> IO (MustHandle ())
-setBeam stateVar state = setBeamChannel stateVar LogicChannel state
+setBeam stateVar = setBeamChannel stateVar LogicChannel
 
 data GpioChannel = LogicChannel | WatchdogChannel
   deriving (Show, Eq)

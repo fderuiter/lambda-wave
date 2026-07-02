@@ -78,34 +78,34 @@ scaleM :: Double -> Matrix -> Matrix
 scaleM s = map (map (*s))
 
 addV :: Num a => [a] -> [a] -> [a]
-addV xs ys = go [] xs ys
+addV = go []
   where
     go !acc [] _ = reverse acc
     go !acc _ [] = reverse acc
     go !acc (a:as) (b:bs) = go ((a + b) : acc) as bs
 
 subV :: Num a => [a] -> [a] -> [a]
-subV xs ys = go [] xs ys
+subV = go []
   where
     go !acc [] _ = reverse acc
     go !acc _ [] = reverse acc
     go !acc (a:as) (b:bs) = go ((a - b) : acc) as bs
 
 scaleV :: Num a => a -> [a] -> [a]
-scaleV !s xs = go [] xs
+scaleV !s = go []
   where
     go !acc [] = reverse acc
     go !acc (a:as) = go ((s * a) : acc) as
 
 scaleAndAddV :: Num a => a -> [a] -> a -> [a] -> [a]
-scaleAndAddV !s1 xs !s2 ys = go [] xs ys
+scaleAndAddV !s1 xs !s2 = go [] xs
   where
     go !acc [] _ = reverse acc
     go !acc _ [] = reverse acc
     go !acc (a:as) (b:bs) = go ((s1 * a + s2 * b) : acc) as bs
 
 dot :: Num a => [a] -> [a] -> a
-dot xs ys = go 0 xs ys
+dot = go 0
   where
     go !acc [] _ = acc
     go !acc _ [] = acc

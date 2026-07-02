@@ -1,6 +1,5 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE StrictData #-}
-{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 -- |
 -- = Failure Mode
@@ -24,6 +23,7 @@ module Hardware.FFI.Bridge (
 ) where
 
 import qualified Hardware.FFI.Common as Common
+import Control.Monad (when, unless)
 import Hardware.FFI.Common (HardwareResult, toHardwareResult, toRingBufferResult)
 import Hardware.Types
 import Data.Types (SystemState(..), AuditEvent(..), Severity(..), BeamState(..))
@@ -53,9 +53,7 @@ triggerShutdown stateVar reason = do
         -- We try to write one last critical event but this shouldn't block shutdown
         let evt = AuditEvent now Critical "Bridge" ("SYSTEM SHUTDOWN TRIGGERED: " ++ reason)
         full <- isFullTBQueue (auditQueue s)
-        if not full
-            then writeTBQueue (auditQueue s) evt
-            else return ()
+        unless full $ writeTBQueue (auditQueue s) evt
 
 -- | Pipes outcomes to the audit system. Shuts down if audit system is unreachable.
 auditHardwareEvent :: TVar SystemState -> String -> HardwareResult -> IO ()
@@ -86,9 +84,7 @@ auditHardwareEvent stateVar comp res = do
                 writeTBQueue q evt
                 return True
 
-    if not writeSuccess
-        then triggerShutdown stateVar "Audit logging failed"
-        else return ()
+    unless writeSuccess $ triggerShutdown stateVar "Audit logging failed"
 
 -- | Automated retry logic for recoverable errors like transient serial port disconnects.
 executeBridgeCall :: (HardwareResult -> IO ()) -> IO HardwareResult -> IO (MustHandle ())
