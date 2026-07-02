@@ -23,7 +23,7 @@ module Hardware.FFI.Bridge (
 ) where
 
 import qualified Hardware.FFI.Common as Common
-import Control.Monad (when, unless)
+import Control.Monad (unless)
 import Hardware.FFI.Common (HardwareResult, toHardwareResult, toRingBufferResult)
 import Hardware.Types
 import Data.Types (SystemState(..), AuditEvent(..), Severity(..), BeamState(..))
