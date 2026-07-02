@@ -12,6 +12,7 @@ module SignalProcessing.Matrix
     , toLists
     , transpose
     , multiply
+    , safeMultiply
     , matVecMult
     , inverse
     , leastSquares
@@ -118,3 +119,9 @@ dotGen xs initY stepY = go 0 xs initY
 
 outerV :: Num a => [a] -> [a] -> [[a]]
 outerV v1 v2 = [ [ x * y | y <- v2 ] | x <- v1 ]
+
+-- | Safe matrix multiplication with fallback to identity matrix of given size
+safeMultiply :: Int -> Matrix -> Matrix -> Matrix
+safeMultiply fallbackSize a b = case multiply a b of
+    Just m -> m
+    Nothing -> identity fallbackSize
