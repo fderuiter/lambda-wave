@@ -157,6 +157,35 @@ display stateVar prevStateRef vboPoints vboHeartbeat = do
     bindBuffer ArrayBuffer $= Nothing
     clientState VertexArray $= Disabled
 
+    -- Symbolic Beam Status Icon (Redundant visual signaling)
+    -- Provides shape-based state identification for color-blind clinicians
+    matrixMode $= Projection
+    preservingMatrix $ do
+        loadIdentity
+        ortho2D 0 1 0 1
+        matrixMode $= Modelview 0
+        preservingMatrix $ do
+            loadIdentity
+            -- Position in top-left corner
+            translate (Vector3 (0.1 :: GLfloat) 0.9 0)
+            -- Scale to make it a reasonable icon size
+            scale 0.05 0.05 (1.0 :: GLfloat)
+            
+            let (prim, verts) = case currentState of
+                    BeamOn -> (Triangles, [Vertex2 (0.0 :: GLfloat) 1.0, Vertex2 (-0.866) (-0.5), Vertex2 0.866 (-0.5)])
+                    BeamHold -> (Quads, [Vertex2 (-0.8 :: GLfloat) 0.8, Vertex2 (-0.8) (-0.8), Vertex2 0.8 (-0.8), Vertex2 0.8 0.8])
+                    BeamOff -> (Polygon, [Vertex2 (cos (2 * pi * i / 8) :: GLfloat) (sin (2 * pi * i / 8)) | idx <- [0..7 :: Int], let i = fromIntegral idx])
+            
+            color $ Color3 (1.0 :: GLfloat) 1.0 1.0
+            renderPrimitive prim $ mapM_ vertex verts
+            
+            color $ Color3 (0.0 :: GLfloat) 0.0 0.0
+            lineWidth $= (3.0 :: GLfloat)
+            renderPrimitive LineLoop $ mapM_ vertex verts
+            lineWidth $= (1.0 :: GLfloat)
+        matrixMode $= Projection
+    matrixMode $= Modelview 0
+
     swapBuffers
 
 -- Requirement FR-UI-001
