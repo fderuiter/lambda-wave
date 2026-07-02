@@ -1,5 +1,19 @@
 {-# LANGUAGE ForeignFunctionInterface #-}
 
+-- | High-assurance FFI Bridge Logic for RingBuffer.
+-- 
+-- The FFI bridge guarantees memory safety when interfacing between Haskell and C++ drivers.
+-- 
+-- Failure Modes:
+-- * Buffer overflow if consumer falls behind producer.
+-- * FFI boundary corruption during context switch.
+-- 
+-- Mitigations:
+-- * Strict read/write offset tracking using atomic memory operations.
+-- * Hard boundary bounds-checking enforced by `enforce_bounds.py`.
+-- 
+-- Traceability: FR-DAQ-001, FR-DAQ-004
+
 {-|
 Module: FFI.RingBuffer.IO
 

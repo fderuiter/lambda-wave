@@ -9,6 +9,21 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE ConstraintKinds #-}
 
+-- | 3rd-Order Math Model for Kinematic Tracking.
+-- 
+-- This module implements the core kinematic equations (position, velocity, acceleration)
+-- for tracking patient surface motion during radiation therapy.
+-- 
+-- Failure Modes:
+-- * Numerical instability during rapid acceleration spikes (e.g., coughing).
+-- * Integer overflow in nanosecond time delta calculations.
+-- 
+-- Mitigations:
+-- * Saturating arithmetic applied to all derivative calculations.
+-- * Strong typing prevents mixing of mismatched physical units (e.g., Millimeters vs Meters).
+-- 
+-- Traceability: MR-001, MR-005
+
 module Numeric.Kinematics
     ( -- * Core Types
       Distance(..)
