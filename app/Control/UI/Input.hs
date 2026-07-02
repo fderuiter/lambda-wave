@@ -31,6 +31,8 @@ handleInput stateVar = do
 
 -- | Keyboard Event Handler
 -- * Spacebar (Down): Engages 'BeamHold' (Safety Override).
+-- * 'h' (Down): Engages High-Glare Preset.
+-- * 's' (Down): Engages Standard Preset.
 keyboardHandler :: TVar SystemState -> KeyboardMouseCallback
 keyboardHandler stateVar key state _ _ = case (key, state) of
     (Char ' ', Down) -> do
@@ -43,4 +45,10 @@ keyboardHandler stateVar key state _ _ = case (key, state) of
                 let msg = "Beam State Changed: " ++ show (beamState s) ++ " -> BeamHold"
                 writeTBQueue (auditQueue s) (AuditEvent now Warning "UI" msg)
             writeTVar stateVar $ s { beamState = BeamHold }
+    (Char 'h', Down) -> do
+        atomically $ modifyTVar' stateVar (\s -> s { displayPreset = HighGlarePreset })
+        postRedisplay Nothing
+    (Char 's', Down) -> do
+        atomically $ modifyTVar' stateVar (\s -> s { displayPreset = StandardPreset })
+        postRedisplay Nothing
     _ -> return ()

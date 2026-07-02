@@ -13,6 +13,7 @@ module Data.Types (
     Point(..),
     BeamState(..),
     CalibrationStatus(..),
+    DisplayPreset(..),
     SystemState(..),
     RadarFrame(..),
     Severity(..),
@@ -99,6 +100,12 @@ data CalibrationStatus = CalibrationUnverified | CalibrationValid | CalibrationI
 instance NFData CalibrationStatus where
   rnf cs = cs `seq` ()
 
+data DisplayPreset = StandardPreset | HighGlarePreset
+  deriving (Show, Eq, Generic, Binary)
+
+instance NFData DisplayPreset where
+  rnf dp = dp `seq` ()
+
 -- | The Global State shared across threads via STM
 data SystemState = SystemState
   { currentPoints :: [Point3D]
@@ -117,12 +124,13 @@ data SystemState = SystemState
   , activeLanguage :: String
   , localizedBeamState :: String
   , calibrationStatus :: CalibrationStatus -- ^ Real-time safety monitoring of hardware calibration health
+  , displayPreset :: DisplayPreset
   }
 
 instance NFData SystemState where
-  rnf (SystemState pts bs t sn iso hb ks mti aq ae lang locbs cs) = 
+  rnf (SystemState pts bs t sn iso hb ks mti aq ae lang locbs cs dp) = 
       rnf pts `seq` rnf bs `seq` rnf t `seq` rnf sn `seq` rnf iso `seq` 
-      rnf hb `seq` rnf ks `seq` rnf mti `seq` aq `seq` rnf ae `seq` rnf lang `seq` rnf locbs `seq` rnf cs
+      rnf hb `seq` rnf ks `seq` rnf mti `seq` aq `seq` rnf ae `seq` rnf lang `seq` rnf locbs `seq` rnf cs `seq` rnf dp
 
 -- | Raw parsed structure from the sensor
 data RadarFrame = RadarFrame
