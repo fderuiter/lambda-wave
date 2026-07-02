@@ -21,7 +21,7 @@ module Control.UI.Renderer (
 import Control.Concurrent.STM
 import Graphics.UI.GLUT
 import GHC.Float (double2Float)
-import Data.Types (SystemState(..), Point3D(..), BeamState(..))
+import Data.Types (SystemState(..), Point3D(..), BeamState(..), DisplayPreset(..))
 import Data.IORef
 import System.IO (hFlush, stdout)
 import Control.Monad (when)
@@ -116,8 +116,13 @@ display stateVar prevStateRef vboPoints vboHeartbeat = do
     writeIORef prevStateRef currentState
 
     let (bgR, bgG, bgB) = bdiColorRGB (getBeamDisplayInfo currentState)
+    let isHighGlare = displayPreset state == HighGlarePreset
 
-    clearColor $= Color4 bgR bgG bgB 1.0
+    if isHighGlare then
+        clearColor $= Color4 0.9 0.9 0.9 1.0
+    else
+        clearColor $= Color4 bgR bgG bgB 1.0
+
     clear [ColorBuffer]
 
     loadIdentity
@@ -143,7 +148,14 @@ display stateVar prevStateRef vboPoints vboHeartbeat = do
         bufferSubData ArrayBuffer WriteToBuffer 0 dataSize ptr
         
     arrayPointer VertexArray $= (VertexArrayDescriptor 3 Float 0 nullPtr)
-    color $ Color3 (1.0::GLfloat) 1.0 1.0
+    
+    if isHighGlare then do
+        pointSize $= 5.0
+        color $ Color3 (0.0::GLfloat) 0.0 0.0
+    else do
+        pointSize $= 1.0
+        color $ Color3 (1.0::GLfloat) 1.0 1.0
+
     drawArrays Points 0 (fromIntegral numPts)
 
     -- Draw Visual Heartbeat (Sequence counter driven)
