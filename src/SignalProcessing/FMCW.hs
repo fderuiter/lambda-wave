@@ -135,7 +135,7 @@ unwrapPhase (x:xs) = x : go x 0.0 xs
         in val : go p newCorrection ps
 
 -- | Equation (5) (Requirement MR-005): Verified
--- Calculate displacement from phase change.
+-- Calculate displacement from phase change (using 60GHz manifest default).
 -- d = (c * delta_phi) / (4 * pi * f_min)
 --
 -- Complexity: O(1) runtime.
