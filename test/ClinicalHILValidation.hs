@@ -99,7 +99,7 @@ runHILSimulation name rig duration = do
             , mtiState = []
             , auditQueue = q
             , audioAlertEnabled = False, activeLanguage = "en", localizedBeamState = "BEAM OFF"
-        , calibrationStatus = CalibrationValid, mtiState = [], displayPreset = StandardPreset
+        , calibrationStatus = CalibrationValid, displayPreset = StandardPreset
             }
     var <- newTVarIO s
     

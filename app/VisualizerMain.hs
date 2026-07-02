@@ -3,7 +3,6 @@ module Main (main) where
 
 import Control.Concurrent (threadDelay)
 import Safety.Thread (forkSafetyThreadOS, ThreadShutdownAction(..))
-import Safety.Thread (forkSafetyThread)
 import Control.Concurrent.STM
 import Control.Exception (try, IOException)
 import System.Posix.IO (openFd, OpenMode(..), defaultFileFlags, OpenFileFlags(..), fdReadBuf)
