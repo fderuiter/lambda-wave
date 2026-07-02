@@ -28,3 +28,11 @@ generateConstants = do
         , "src/Hardware/Manifest.hs"
         , "config/ti_iwr6843isk/sgrt_profile.cfg"
         ]
+    putStrLn "Generating shared memory bindings..."
+    callProcess "python3" 
+        [ "tools/idl_compiler.py"
+        , "idl/shared_memory.json"
+        , "cbits/include/RingBuffer.h"
+        , "cbits/src/ring_buffer_ffi.cpp"
+        , "src/FFI/RingBuffer/Generated.hs"
+        ]
