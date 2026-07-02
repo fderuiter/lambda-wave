@@ -32,7 +32,7 @@ mkState bs = do
         , mtiState = []
         , auditQueue = q
         , audioAlertEnabled = False, activeLanguage = "en", localizedBeamState = "BEAM OFF"
-        , calibrationStatus = CalibrationValid, mtiState = [], displayPreset = StandardPreset
+        , calibrationStatus = CalibrationValid, displayPreset = StandardPreset
         }
 
 main :: IO ()
