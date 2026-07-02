@@ -30,7 +30,7 @@ import GHC.Generics (Generic)
 import Data.Binary (Binary)
 
 import SignalProcessing.Kalman (KalmanState(..))
-import qualified Data.Complex
+import Data.Complex (Complex)
 
 -- | Severity Levels for Audit Logs
 data Severity = Info | Warning | Critical
@@ -108,7 +108,7 @@ data SystemState = SystemState
   , isocenter :: Point3D      -- Calibration zero
   , threadHeartbeats :: Map String Word64 -- Heartbeats for Watchdog
   , kalmanState :: KalmanState            -- ^ Current Kalman filter state (position, velocity, acceleration; metres/s)
-  , mtiState :: [Data.Complex.Complex Double]
+  , mtiState :: [Complex Double]
       -- ^ MTI\/EMA clutter filter state (one complex value per range bin).
       -- Empty list before the first radar frame is processed.
   , auditQueue :: TBQueue AuditEvent -- ^ High-performance event queue

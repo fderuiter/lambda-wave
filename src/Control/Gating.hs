@@ -78,17 +78,24 @@ processFrame translations stateVar frame = do
     let predState = predict dtSec kConfig oldKState
 
     -- Update (only if we have measurements)
-    let (newMtiState, newKState) = if count > 0
-            then let meas = totalHeight / fromIntegral count
-                 in case mkMTIConfig 0.1 0.9 1.0 of
-                      Left _          -> (mtiState oldSystemState, update meas kConfig predState)
-                      Right mtiConfig ->
-                          -- Run the MTI filter to advance state, but feed the raw average height
-                          -- (not the high-pass output) into the Kalman update so the absolute
-                          -- position is preserved and the first-frame zero issue is avoided.
-                          let (mtiState', _) = applyStaticClutterRemoval mtiConfig (mtiState oldSystemState) [meas :+ 0.0]
-                          in  (mtiState', update meas kConfig predState)
-            else (mtiState oldSystemState, predState) -- Coasting (Dead Reckoning) if signal lost
+    -- Runs in IO so that MTI config errors can be surfaced via the audit queue.
+    (newMtiState, newKState) <- if count > 0
+            then do
+                let meas = totalHeight / fromIntegral count
+                case mkMTIConfig 0.1 0.9 1.0 of
+                    Left err -> do
+                        -- Config validation failed: log a warning and fall back to
+                        -- the unfiltered measurement so gating is not silently degraded.
+                        let evt = AuditEvent currTime Warning "Gating" ("MTI config error: " ++ err)
+                        atomically $ writeTBQueue (auditQueue oldSystemState) evt
+                        return (mtiState oldSystemState, update meas kConfig predState)
+                    Right mtiConfig ->
+                        -- Run the MTI filter to advance state, but feed the raw average
+                        -- height (not the high-pass output) into the Kalman update so the
+                        -- absolute position is preserved and the first-frame zero issue is avoided.
+                        let (mtiState', _) = applyStaticClutterRemoval mtiConfig (mtiState oldSystemState) [meas :+ 0.0]
+                        in  return (mtiState', update meas kConfig predState)
+            else return (mtiState oldSystemState, predState) -- Coasting (Dead Reckoning) if signal lost
 
     -- 6. Update System State & Resolve Final Beam State
     finalBeamState <- atomically $ do
