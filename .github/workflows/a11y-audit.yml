@@ -11,4 +11,4 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Skip Accessibility Audit
-        run: echo "Web UI has been replaced by a native C++ HUD. Skipping accessibility audit."
+        run: echo "Web UI has been replaced by a native C++ HUD. Skipping accessibility audit completely."
