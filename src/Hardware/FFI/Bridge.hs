@@ -33,7 +33,6 @@ import Foreign.C.Error (getErrno, Errno(..))
 import Data.Time.HighRes (getMonotonicTimeNS)
 import Foreign.C.Types (CInt)
 import System.Posix.Types (CSsize)
-import Control.Exception (try, SomeException)
 
 -- | Opaque type to ensure the caller explicitly handles the result.
 -- No Functor/Monad instances are provided to prevent `_ <-` ignoring.

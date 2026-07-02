@@ -46,7 +46,7 @@ main = do
     putStrLn "============================================================"
     
     dummyQ <- newTBQueueIO 10000
-    dummyVar <- newTVarIO (SystemState [] BeamOff 0 0 (Point3D 0 0 0 0 0) Map.empty (initKalman targetHeight (KalmanConfig 1000.0 2.0)) [] dummyQ False "en" "BEAM OFF" CalibrationValid)
+    dummyVar <- newTVarIO (SystemState [] BeamOff 0 0 (Point3D 0 0 0 0 0) Map.empty (initKalman targetHeight (KalmanConfig 1000.0 2.0)) [] dummyQ False "en" "BEAM OFF" CalibrationValid StandardPreset)
     
     res1Init <- initGpio dummyVar
     handleHardwareResponse (\_ -> return ()) (\_ -> return ()) res1Init
@@ -97,7 +97,7 @@ runHILSimulation name rig duration = do
             , kalmanState = initKalman targetHeight (KalmanConfig 1000.0 2.0)
             , auditQueue = q
             , audioAlertEnabled = False, activeLanguage = "en", localizedBeamState = "BEAM OFF"
-        , calibrationStatus = CalibrationValid
+        , calibrationStatus = CalibrationValid, mtiState = [], displayPreset = StandardPreset
             }
     var <- newTVarIO s
     
