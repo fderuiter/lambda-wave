@@ -1,0 +1,28 @@
+/* Custom Sidebar Toggle Styles */
+.nav-toggle-container {
+    padding: 10px 15px;
+    border-bottom: 1px solid var(--md-default-fg-color--lightest);
+    display: flex;
+    justify-content: center;
+    background-color: var(--md-default-bg-color);
+}
+
+.nav-toggle-btn {
+    background-color: var(--md-primary-fg-color);
+    color: var(--md-primary-bg-color);
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    width: 100%;
+    transition: background-color 0.2s;
+}
+
+.nav-toggle-btn:hover {
+    background-color: var(--md-primary-fg-color--light);
+}
+
+.md-nav__item--hidden {
+    display: none !important;
+}

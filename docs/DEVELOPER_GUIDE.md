@@ -23,6 +23,8 @@ This guide provides developers with essential information about code structure, 
 ---
 
 ## Quick Reference
+<!-- TAG:roles: Task-Focused Developer -->
+<!-- TAG:diataxis: References -->
 
 ### Essential Commands
 

@@ -22,6 +22,8 @@
 ---
 
 ## Overview
+<!-- TAG:roles: Regulatory Auditor -->
+<!-- TAG:diataxis: Explanations -->
 
 Lambda-Wave uses a hybrid build system combining:
 - **Cabal** for Haskell source code and dependencies
@@ -38,6 +40,8 @@ The build system is designed for safety-critical development with:
 ---
 
 ## Prerequisites
+<!-- TAG:roles: Task-Focused Developer -->
+<!-- TAG:diataxis: Tutorials -->
 
 ### Hardware Requirements
 - **CPU:** x86_64 or ARM64 (2+ cores recommended)
@@ -90,6 +94,8 @@ The build system is designed for safety-critical development with:
 ---
 
 ## Build System Architecture
+<!-- TAG:roles: Regulatory Auditor -->
+<!-- TAG:diataxis: Explanations -->
 
 ### Directory Structure
 
@@ -157,6 +163,8 @@ graph TD
 ---
 
 ## Local Development Setup
+<!-- TAG:roles: Task-Focused Developer -->
+<!-- TAG:diataxis: How-tos -->
 
 ### Quick Start (Ubuntu/Debian)
 
@@ -310,6 +318,8 @@ cabal build --ghc-options="-O2"
 ---
 
 ## Docker Build
+<!-- TAG:roles: Task-Focused Developer -->
+<!-- TAG:diataxis: How-tos -->
 
 ### Standard Docker Build
 
@@ -390,6 +400,8 @@ CMD ["sgrt-radar-system-exe"]
 ---
 
 ## Dependency Management
+<!-- TAG:roles: Regulatory Auditor -->
+<!-- TAG:diataxis: Explanations -->
 
 ### Cabal Configuration
 
@@ -454,6 +466,8 @@ cabal list-bin sgrt-radar-system-exe
 ---
 
 ## Build Targets
+<!-- TAG:roles: Task-Focused Developer -->
+<!-- TAG:diataxis: References -->
 
 ### Executable
 
@@ -526,6 +540,8 @@ cabal bench --benchmark-options="--output=bench_results.html"
 ---
 
 ## Testing
+<!-- TAG:roles: Task-Focused Developer, Regulatory Auditor -->
+<!-- TAG:diataxis: How-tos -->
 
 ### Test Structure
 
@@ -585,6 +601,8 @@ xdg-open coverage/hpc_index.html  # Linux
 ---
 
 ## Benchmarking
+<!-- TAG:roles: Task-Focused Developer -->
+<!-- TAG:diataxis: How-tos -->
 
 ### Performance Benchmarks
 
@@ -622,6 +640,8 @@ cabal run sgrt-radar-system-exe -- +RTS -P -RTS
 ---
 
 ## Continuous Integration
+<!-- TAG:roles: Regulatory Auditor -->
+<!-- TAG:diataxis: Explanations -->
 
 ### GitHub Actions Workflows
 
@@ -717,6 +737,8 @@ docker run -v $(pwd):/app -w /app haskell:<!-- METADATA:ghc_version -->9.6.7<!--
 ---
 
 ## Troubleshooting
+<!-- TAG:roles: Task-Focused Developer -->
+<!-- TAG:diataxis: References -->
 
 ### Common Build Issues
 
