@@ -559,11 +559,11 @@ When adding new hardware components or sensors, you must adhere strictly to our 
 
 ### 10.1 Scaffold Generator
 
-To minimize manual memory management errors, use the provided scaffold tool when integrating new sensors.
+To minimize manual memory management errors, define your new sensor in `config/master_spec.yaml` under `sensors:` and run the unified compiler:
 ```bash
-python3 tools/generate_hardware_scaffold.py <SensorName>
+python3 tools/compiler.py all config/master_spec.yaml
 ```
-This generates a template (`src/Hardware/<SensorName>.hs`) and a memory-leak test suite (`test/Hardware/<SensorName>Check.hs`). The generated code includes built-in exception-safe resource allocations by default.
+This automatically generates the C++ headers, the Haskell template (`src/Hardware/<SensorName>.hs`), and a memory-leak test suite (`test/Hardware/<SensorName>Check.hs`). The generated code includes built-in exception-safe resource allocations by default.
 
 ### 10.2 Resource Lifecycles & Managers
 
