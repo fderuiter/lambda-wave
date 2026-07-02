@@ -14,13 +14,13 @@ module Data.Config (
     uartBaudRate
 ) where
 
-import Hardware.Manifest (systemLatencyMs, framePeriodicityMs, dataBaudRate)
+import Hardware.Manifest (systemLatencyMs, framePeriodicityMs, dataBaudRate, mountingOffsetMm)
 
 -- | System Configuration Constants
 
 -- | Hardware settings
 radarMountOffset :: Double
-radarMountOffset = 0.0 -- mm
+radarMountOffset = mountingOffsetMm
 
 -- | The angle of the gantry
 -- Fixed angle for setup (degrees)
