@@ -20,7 +20,7 @@ This document provides end-to-end traceability between Functional Requirements (
 | FR-GAT-002 | ISO-13485-7.3.2 | Total latency < 50ms | Phase 4.2 | `Control.Gating`, `Main` | N/A | `bench/LatencyBench.hs` | ✅ Complete |
 | FR-UI-001 | ISO-13485-7.3.2 | Real-time visualization | Phase 5.1 | `cbits/src/hud.cpp`, `cbits/include/hud.h` | N/A | `test/Control/UIMathSpec.hs` | ✅ Complete |
 | FR-UI-002 | ISO-13485-7.3.2 | Visual gating feedback | Phase 5.2 | `cbits/src/hud.cpp`, `cbits/include/hud.h` | N/A | Visual Inspection | ✅ Complete |
-| FR-UI-003 | IEC-62366-5.1 | Structural navigation, assistive technology hooks, and skip-links | Phase 5.3 | `app/Control/WebUI.hs` | N/A | Visual Inspection | ✅ Complete |
+| FR-UI-003 | IEC-62366-5.1 | Structural navigation, assistive technology hooks, and skip-links | Phase 5.3 | `cbits/src/hud.cpp`, `cbits/include/hud.h` | N/A | Visual Inspection | ✅ Complete |
 
 ## Safety Requirements (SR)
 
