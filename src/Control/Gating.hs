@@ -17,14 +17,6 @@
 module Control.Gating (processFrame, evaluateGating) where
 
 import Safety.Result (SafetyResult(..))
-unwrapSafety :: SafetyResult a -> a
-unwrapSafety (Safe a) = a
-unwrapSafety (ClampedToMin a) = a
-unwrapSafety (ClampedToMax a) = a
-unwrapSafety (DivByZeroSafe a) = a
-unwrapSafety (Unsafe _) = error "Unsafe math evaluation"
-
-
 import Data.Types
 import Data.Config
 import Control.Concurrent.STM
@@ -51,6 +43,14 @@ import Numeric.Kinematics
     , systemLatencyTime
     , Proxy(..)
     )
+
+{-# ANN unwrapSafety "HLint: ignore Avoid error in safety critical code" #-}
+unwrapSafety :: SafetyResult a -> a
+unwrapSafety (Safe a) = a
+unwrapSafety (ClampedToMin a) = a
+unwrapSafety (ClampedToMax a) = a
+unwrapSafety (DivByZeroSafe a) = a
+unwrapSafety (Unsafe _) = error "Unsafe math evaluation"
 
 -- | Kalman Configuration
 -- Process Noise (Q): System agility (how fast we expect breathing to change)
