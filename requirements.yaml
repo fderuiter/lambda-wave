@@ -73,14 +73,14 @@ requirements:
     policy: ISO-13485-7.3.2
     description: Real-time visualization
     phase: Phase 5.1
-    module: "`Control.UI.Renderer`, `Control.Mesher`"
+    module: "`cbits/src/hud.cpp`, `cbits/include/hud.h`"
     test: "`test/Control/UIMathSpec.hs`"
     status: Complete
   - id: FR-UI-002
     policy: ISO-13485-7.3.2
     description: Visual gating feedback
     phase: Phase 5.2
-    module: "`Control.UI.Renderer`"
+    module: "`cbits/src/hud.cpp`, `cbits/include/hud.h`"
     test: Visual Inspection
     status: Complete
 
