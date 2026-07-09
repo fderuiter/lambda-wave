@@ -18,8 +18,8 @@ This document provides end-to-end traceability between Functional Requirements (
 | FR-DSP-004 | ISO-13485-7.3.2 | Phase Extraction | Phase 3.2 | `SignalProcessing.FMCW` | N/A | `test/SignalProcessing/FMCWSpec.hs` | ✅ Complete |
 | FR-GAT-001 | ISO-13485-7.3.2 | Automatic beam gating | Phase 4.2 | `Control.Gating` | N/A | `test/Control/GatingCheck.hs` | ✅ Complete |
 | FR-GAT-002 | ISO-13485-7.3.2 | Total latency < 50ms | Phase 4.2 | `Control.Gating`, `Main` | N/A | `bench/LatencyBench.hs` | ✅ Complete |
-| FR-UI-001 | ISO-13485-7.3.2 | Real-time visualization | Phase 5.1 | `Control.UI.Renderer`, `Control.Mesher` | N/A | `test/Control/UIMathSpec.hs` | ✅ Complete |
-| FR-UI-002 | ISO-13485-7.3.2 | Visual gating feedback | Phase 5.2 | `Control.UI.Renderer` | N/A | Visual Inspection | ✅ Complete |
+| FR-UI-001 | ISO-13485-7.3.2 | Real-time visualization | Phase 5.1 | `cbits/src/hud.cpp`, `cbits/include/hud.h` | N/A | `test/Control/UIMathSpec.hs` | ✅ Complete |
+| FR-UI-002 | ISO-13485-7.3.2 | Visual gating feedback | Phase 5.2 | `cbits/src/hud.cpp`, `cbits/include/hud.h` | N/A | Visual Inspection | ✅ Complete |
 | FR-UI-003 | IEC-62366-5.1 | Structural navigation, assistive technology hooks, and skip-links | Phase 5.3 | `app/Control/WebUI.hs` | N/A | Visual Inspection | ✅ Complete |
 
 ## Safety Requirements (SR)
