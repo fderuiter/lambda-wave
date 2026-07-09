@@ -44,6 +44,7 @@ import FFI.RingBuffer.Generated (RingBufferControl)
 
 data HardwareResult
     = Success
+    | SimulationMode
     | PartialData Int
     | Busy
     | EOF
@@ -57,18 +58,20 @@ data HardwareResult
 toHardwareResult :: Int -> CInt -> HardwareResult
 toHardwareResult _ 0 = Success
 toHardwareResult err (-1) = SystemError err
+toHardwareResult _ 2 = SimulationMode
 toHardwareResult _ (-2) = DriverError "Unsupported baud rate"
 toHardwareResult _ n 
     | n > 0 = PartialData (fromIntegral n)
     | otherwise = Failure ("Unknown failure code: " ++ show n)
 
 toRingBufferResult :: Int -> CSsize -> HardwareResult
-toRingBufferResult _ n
-    | n > 0 = PartialData (fromIntegral n)
 toRingBufferResult _ 0 = TransientError "Busy"
 toRingBufferResult err (-1) = SystemError err
+toRingBufferResult _ (-4) = SimulationMode
 toRingBufferResult _ (-2) = EOF
 toRingBufferResult _ (-3) = TransientError "Ring buffer busy"
+toRingBufferResult _ n
+    | n > 0 = PartialData (fromIntegral n)
 toRingBufferResult _ n = Failure ("Unknown ring buffer code: " ++ show n)
 
 -- | Generic resource allocator
@@ -81,7 +84,7 @@ allocateManagedResource alloc finalizer onErr errName = mask_ $ do
 
 -- FFI Definitions
 foreign import ccall unsafe "create_ring_buffer"
-    c_create_ring_buffer :: CSize -> IO (Ptr RingBufferControl)
+    c_create_ring_buffer :: CSize -> Ptr CInt -> IO (Ptr RingBufferControl)
 
 foreign import ccall unsafe "attach_ring_buffer"
     c_attach_ring_buffer :: CSize -> IO (Ptr RingBufferControl)

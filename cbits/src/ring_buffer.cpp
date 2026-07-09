@@ -9,15 +9,30 @@
 
 extern "C" {
 
-RingBufferControl *create_ring_buffer(size_t size) {
+RingBufferControl *create_ring_buffer(size_t size, int* status_out) {
   size_t total_size = sizeof(RingBufferControl) + size;
 
   // Unlink old if exists
   shm_unlink("/sgrt_ring_buffer");
 
   int fd = shm_open("/sgrt_ring_buffer", O_CREAT | O_RDWR, 0666);
-  if (fd == -1)
-    return nullptr;
+  if (fd == -1) {
+    if (status_out) *status_out = 2; // Simulation Mode
+    
+    // Fallback to normal allocation
+    void *mem = nullptr;
+    if (posix_memalign(&mem, 64, total_size) != 0) {
+      return nullptr;
+    }
+    RingBufferControl *control = new (mem) RingBufferControl();
+    control->write_offset.store(0, std::memory_order_relaxed);
+    control->read_offset.store(0, std::memory_order_relaxed);
+    control->buffer_offset = sizeof(RingBufferControl);
+    control->buffer_size = size;
+    return control;
+  }
+  
+  if (status_out) *status_out = 0; // Success
 
   if (ftruncate(fd, total_size) == -1) {
     close(fd);

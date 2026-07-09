@@ -144,13 +144,36 @@ runMain = do
     -- We use the new FFI.RingBuffer.IO directly.
     -- NOW RETURNS ForeignPtr RingBufferControl.
     -- This ensures the buffer is automatically freed when all references (Main thread, consumer thread, ingestion thread) are gone.
-    ringBuffer <- RingBuffer.createRingBuffer (4 * 1024 * 1024)
+    rbRes <- RingBuffer.createRingBuffer systemState (4 * 1024 * 1024)
+    ringBuffer <- handleHardwareResponse
+        (\err -> do
+            if err == SimulationModeActive
+                then putStrLn "FATAL: RingBuffer is in Mock Mode! Blocking operational state."
+                else putStrLn $ "FATAL: Failed to create ring buffer: " ++ show err
+            exitFailure
+        )
+        (\rb -> return rb)
+        rbRes
+
+    -- 1.5 Setup GPIO
+    gpioRes <- Hardware.Control.initGpio systemState
+    handleHardwareResponse
+        (\err -> do
+            if err == SimulationModeActive
+                then putStrLn "FATAL: GPIO is in Mock Mode! Blocking operational state."
+                else putStrLn $ "FATAL: GPIO initialization failed: " ++ show err
+            exitFailure
+        )
+        (\() -> return ())
+        gpioRes
 
     -- Configure Port (Raw Mode) to prevent data corruption
     res <- configureRawSerial systemState fd
     handleHardwareResponse
         (\err -> do
-            putStrLn $ "FATAL: Failed to configure serial port: " ++ show err
+            if err == SimulationModeActive
+                then putStrLn "FATAL: Serial Port is in Mock Mode! Blocking operational state."
+                else putStrLn $ "FATAL: Failed to configure serial port: " ++ show err
             exitFailure
         )
         (\() -> return ())

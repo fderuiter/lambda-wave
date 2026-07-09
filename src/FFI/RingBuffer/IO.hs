@@ -50,15 +50,25 @@ import Data.Types (SystemState)
 -- | Result of a read operation from the Ring Buffer / UART uses HardwareResult
 -- via the shared Hardware.FFI.Common module.
 
+import Foreign.Marshal.Alloc (alloca)
+import Foreign.Storable (peek)
+
 -- | Wrapper for create_ring_buffer.
-createRingBuffer :: Int -> IO (ForeignPtr RingBufferControl)
-createRingBuffer size = do
+createRingBuffer :: TVar SystemState -> Int -> IO (MustHandle (ForeignPtr RingBufferControl))
+createRingBuffer stateVar size = do
     when (size <= 0) $ throwIO (userError "Ring Buffer size must be positive")
-    allocateManagedResource 
-        (c_create_ring_buffer (fromIntegral size))
-        c_free_ring_buffer_ptr
-        c_free_ring_buffer_direct
-        "Ring Buffer (create_ring_buffer returned NULL)"
+    (fp, status) <- alloca $ \statusPtr -> do
+        fp' <- allocateManagedResource 
+            (c_create_ring_buffer (fromIntegral size) statusPtr)
+            c_free_ring_buffer_ptr
+            c_free_ring_buffer_direct
+            "Ring Buffer (create_ring_buffer returned NULL)"
+        st <- peek statusPtr
+        return (fp', st)
+    let res = toHardwareResult 0 status
+    executeBridgeCall (auditHardwareEvent stateVar "RingBuffer") (return res) >>= \case
+        MustHandle (Right _) -> return $ MustHandle (Right fp)
+        MustHandle (Left err) -> return $ MustHandle (Left err)
 
 -- | Wrapper for attach_ring_buffer.
 attachRingBuffer :: Int -> IO (ForeignPtr RingBufferControl)
@@ -118,6 +128,10 @@ ingestionLoop stateVar fp fd = forkSafetyThreadOS (ShutdownSystem $ triggerShutd
             EOF -> do
                 hPutStrLn stderr "Ingestion Thread: Device Disconnected (EOF). Terminating."
                 triggerShutdown stateVar "UART EOF"
+            SimulationMode -> do
+                hPutStrLn stderr "Ingestion Thread: Hardware in Simulation Mode. Continuing."
+                threadDelay 1000
+                loop
             TransientError _ -> do
                 threadDelay 1000 -- 1ms pause if full or empty
                 loop

@@ -33,6 +33,7 @@ data HardwareError
     | SystemError Int         -- ^ POSIX System Error (errno)
     | DriverError String      -- ^ Driver-specific failure
     | TransientError String   -- ^ Transient resource availability
+    | SimulationModeActive    -- ^ Hardware is in simulation mode
     deriving (Show, Eq, Generic)
 
 instance NFData HardwareError

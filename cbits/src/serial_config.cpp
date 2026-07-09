@@ -11,6 +11,9 @@ extern "C" {
 int configure_serial_port(int fd, int baud_rate) {
   struct termios tty;
   if (tcgetattr(fd, &tty) != 0) {
+    if (errno == ENOTTY) {
+      return 2; // Simulation Mode
+    }
     return -1;
   }
 

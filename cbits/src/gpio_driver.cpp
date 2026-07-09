@@ -58,6 +58,7 @@ int gpio_init() {
   if (gpio_map == MAP_FAILED || gpio_map == nullptr) {
     gpio_map = nullptr;
     hw_mode = false;
+    return 2; // Simulation Mode
   } else {
     hw_mode = true;
   }
