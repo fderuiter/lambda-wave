@@ -52,9 +52,7 @@ decryptPure bs =
 encryptLog :: String -> IO (SafetyResult B.ByteString)
 encryptLog str = do
     encRes <- encryptIO (BC.pack str)
-    case encRes of
-        Safe enc -> return $ Safe (convertToBase Base64 enc `B.append` "\n")
-        Unsafe msg -> return $ Unsafe msg
+    return $ fmap (\enc -> convertToBase Base64 enc `B.append` "\n") encRes
 
 decryptLog :: B.ByteString -> Either String String
 decryptLog bs = do

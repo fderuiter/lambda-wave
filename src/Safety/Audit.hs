@@ -115,6 +115,21 @@ processEvents stateVar queue h = go
                         if newSize > 10 * 1024 * 1024 -- 10MB limit
                             then return RotationNeeded
                             else go newSize
+                    ClampedToMin enc -> do
+                        B.hPut h enc
+                        when (severity evt == Critical || severity evt == Warning) $ hFlush h
+                        let !newSize = currentSize + fromIntegral (B.length enc)
+                        if newSize > 10 * 1024 * 1024 then return RotationNeeded else go newSize
+                    ClampedToMax enc -> do
+                        B.hPut h enc
+                        when (severity evt == Critical || severity evt == Warning) $ hFlush h
+                        let !newSize = currentSize + fromIntegral (B.length enc)
+                        if newSize > 10 * 1024 * 1024 then return RotationNeeded else go newSize
+                    DivByZeroSafe enc -> do
+                        B.hPut h enc
+                        when (severity evt == Critical || severity evt == Warning) $ hFlush h
+                        let !newSize = currentSize + fromIntegral (B.length enc)
+                        if newSize > 10 * 1024 * 1024 then return RotationNeeded else go newSize
                     Unsafe msg -> do
                         hPutStrLn stderr $ "CRITICAL ENCRYPTION FAILURE: " ++ msg
                         triggerShutdown stateVar ("CRITICAL ENCRYPTION FAILURE: " ++ msg)

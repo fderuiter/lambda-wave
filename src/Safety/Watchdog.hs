@@ -38,10 +38,19 @@ daemonAudit res = do
     let auditMsg = show now ++ " [INFO] [SafetyDaemon] Hardware Bridge: " ++ show res ++ "\n"
     encAuditRes <- encryptLog auditMsg
     case encAuditRes of
+        Unsafe msg -> putStrLn $ "!!! SAFETY DAEMON ENCRYPTION FAILURE: " ++ msg
         Safe encAudit -> do
             _ <- try (B.appendFile "session.log" encAudit) :: IO (Either IOException ())
             return ()
-        Unsafe msg -> putStrLn $ "!!! SAFETY DAEMON ENCRYPTION FAILURE: " ++ msg
+        ClampedToMin encAudit -> do
+            _ <- try (B.appendFile "session.log" encAudit) :: IO (Either IOException ())
+            return ()
+        ClampedToMax encAudit -> do
+            _ <- try (B.appendFile "session.log" encAudit) :: IO (Either IOException ())
+            return ()
+        DivByZeroSafe encAudit -> do
+            _ <- try (B.appendFile "session.log" encAudit) :: IO (Either IOException ())
+            return ()
 
 -- | The Watchdog Heartbeat Sender Loop (Runs in Main Process)
 -- Requirement SR-WD-001
@@ -166,6 +175,7 @@ tripDaemon parentPid = do
     let auditMsg = show now ++ " [CRITICAL] [SafetyDaemon] " ++ msg ++ "\n"
     encAuditRes <- encryptLog auditMsg
     case encAuditRes of
+        Unsafe _ -> return ()
         Safe encAudit -> do
             resFile <- try (B.appendFile "session.log" encAudit) :: IO (Either IOException ())
             case resFile of
@@ -175,7 +185,33 @@ tripDaemon parentPid = do
                     _ <- try (B.appendFile "fallback_audit.log" encAudit) :: IO (Either IOException ())
                     return ()
                 Right () -> return ()
-        Unsafe _ -> return ()
+        ClampedToMin encAudit -> do
+            resFile <- try (B.appendFile "session.log" encAudit) :: IO (Either IOException ())
+            case resFile of
+                Left err -> do
+                    putStrLn $ "!!! SAFETY DAEMON IO ERROR writing session.log: " ++ show err
+                    hFlush stdout
+                    _ <- try (B.appendFile "fallback_audit.log" encAudit) :: IO (Either IOException ())
+                    return ()
+                Right () -> return ()
+        ClampedToMax encAudit -> do
+            resFile <- try (B.appendFile "session.log" encAudit) :: IO (Either IOException ())
+            case resFile of
+                Left err -> do
+                    putStrLn $ "!!! SAFETY DAEMON IO ERROR writing session.log: " ++ show err
+                    hFlush stdout
+                    _ <- try (B.appendFile "fallback_audit.log" encAudit) :: IO (Either IOException ())
+                    return ()
+                Right () -> return ()
+        DivByZeroSafe encAudit -> do
+            resFile <- try (B.appendFile "session.log" encAudit) :: IO (Either IOException ())
+            case resFile of
+                Left err -> do
+                    putStrLn $ "!!! SAFETY DAEMON IO ERROR writing session.log: " ++ show err
+                    hFlush stdout
+                    _ <- try (B.appendFile "fallback_audit.log" encAudit) :: IO (Either IOException ())
+                    return ()
+                Right () -> return ()
     
     -- Terminate main application process
     putStrLn $ "!!! SAFETY DAEMON: Terminating Parent PID " ++ show parentPid
