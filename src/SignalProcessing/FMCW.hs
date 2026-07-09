@@ -31,6 +31,15 @@ import Data.Complex
 import SignalProcessing.Matrix (normSq, scaleAndAddV, subV, scaleV, dotGen)
 import Numeric.Kinematics
 
+import Safety.Result (SafetyResult(..))
+
+unwrapSafety :: SafetyResult a -> a
+unwrapSafety (Safe a) = a
+unwrapSafety (ClampedToMin a) = a
+unwrapSafety (ClampedToMax a) = a
+unwrapSafety (DivByZeroSafe a) = a
+unwrapSafety (Unsafe _) = error "Unsafe math evaluation"
+
 -- | Equation (1) (Requirement MR-001): Verified
 -- Calculate the beat frequency from a target range.
 -- f_FFT = (2 * B * R) / (c * T)
@@ -41,7 +50,8 @@ calculateBeatFreq :: Frequency -- ^ Bandwidth B (Hz)
                   -> Time -- ^ Chirp Duration T (s)
                   -> Distance -- ^ Range R (m)
                   -> Frequency -- ^ Beat Frequency (Hz)
-calculateBeatFreq bw duration targetRange = (2.0 |* (bw |*| targetRange :: Velocity)) |/| (c |*| duration :: Distance)
+calculateBeatFreq bw duration targetRange = 
+    unwrapSafety (unwrapSafety (2.0 |* unwrapSafety (bw |*| targetRange :: SafetyResult Velocity)) |/| unwrapSafety (c |*| duration :: SafetyResult Distance))
   where
     c = Velocity 3.0e8
 
@@ -52,7 +62,7 @@ calculateBeatFreq bw duration targetRange = (2.0 |* (bw |*| targetRange :: Veloc
 -- Safety: Total function, handles all inputs gracefully.
 calculateRangeResolution :: Frequency -- ^ Bandwidth B (Hz)
                          -> Distance -- ^ Resolution (m)
-calculateRangeResolution bw = (c :: Velocity) |/| (2.0 |* bw :: Frequency) :: Distance
+calculateRangeResolution bw = unwrapSafety ((c :: Velocity) |/| unwrapSafety (2.0 |* bw :: SafetyResult Frequency))
   where
     c = Velocity 3.0e8
 
@@ -143,7 +153,7 @@ unwrapPhase (x:xs) = x : go x 0.0 xs
 calculateDisplacement :: Frequency -- ^ f_min: Start frequency of the chirp (Hz) (e.g. 77e9)
                       -> Double -- ^ Delta Phi: Phase change (radians)
                       -> Distance -- ^ Displacement d (m)
-calculateDisplacement f_min delta_phi = ((delta_phi |* c) :: Velocity) |/| (((4 * pi) |* f_min) :: Frequency) :: Distance
+calculateDisplacement f_min delta_phi = unwrapSafety (unwrapSafety ((delta_phi |* c) :: SafetyResult Velocity) |/| unwrapSafety (((4 * pi) |* f_min) :: SafetyResult Frequency))
   where
     c = Velocity 3.0e8
 
