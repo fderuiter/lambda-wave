@@ -36,46 +36,34 @@ The GHC RTS is deemed acceptable for use in this Class C system because:
 
 ## 6. Pinned Library Dependencies
 <!-- AUTOMATED-DEPENDENCIES-START -->
-- Glob == 0.10.2
+- Cabal == 3.16.1.0
+- Cabal-syntax == 3.16.1.0
 - HUnit == 1.6.2.0
 - OneTuple == 0.4.3
-- Only == 0.1
 - QuickCheck == 2.18.0.0
 - StateVar == 1.2.2
-- aeson == 2.2.5.0
+- aeson == 2.3.0.0
+- alex == 3.5.4.2
 - ansi-terminal == 1.1.5
 - ansi-terminal-types == 1.1.3
 - array == 0.5.8.0
 - assoc == 1.1.1
-- async == 2.2.6
-- attoparsec == 0.14.4
 - base == 4.18.3.0
-- base-compat == 0.15.0
-- base-compat-batteries == 0.15.0
 - base-orphans == 0.9.4
 - base16 == 1.0
 - basement == 0.0.16
 - bifunctors == 5.6.3
 - binary == 0.8.9.1
-- binary-orphans == 1.0.6
-- bitvec == 1.1.6.0
 - bytestring == 0.11.5.3
 - call-stack == 0.4.0
-- cassava == 0.5.4.1
 - character-ps == 0.1
-- code-page == 0.2.1
 - colour == 2.3.7
 - comonad == 5.0.10
 - containers == 0.6.7
 - contravariant == 1.5.6
-- criterion == 1.6.5.0
-- criterion-measurement == 0.2.4.0
 - crypton == 1.1.3
-- data-default == 0.8.0.2
-- data-default-class == 0.2.0.0
 - data-fix == 0.3.4
 - deepseq == 1.4.8.1
-- dense-linear-algebra == 0.1.0.0
 - directory == 1.3.10.1
 - distributive == 0.6.3
 - dlist == 1.0
@@ -83,7 +71,7 @@ The GHC RTS is deemed acceptable for use in this Class C system because:
 - file-io == 0.1.6
 - filepath == 1.4.301.0
 - ghc-bignum == 1.3
-- ghc-boot-th == <!-- METADATA:ghc_version -->9.6.7<!-- /METADATA:ghc_version -->
+- ghc-boot-th == 9.6.7
 - ghc-prim == 0.10.0
 - hashable == 1.5.1.0
 - haskell-lexer == 1.2.1
@@ -97,17 +85,12 @@ The GHC RTS is deemed acceptable for use in this Class C system because:
 - integer-conversion == 0.1.1
 - integer-gmp == 1.1
 - integer-logarithms == 1.0.5
-- js-chart == 2.9.4.1
-- math-functions == 0.3.4.4
 - memory == 0.18.0
-- microstache == 1.0.3.1
 - mtl == 2.3.1
-- mwc-random == 0.15.3.0
 - network == 3.2.8.0
 - network-uri == 2.6.4.2
 - optparse-applicative == 0.19.0.0
 - os-string == 2.0.10
-- parallel == 3.3.0.0
 - parsec == 3.1.18.0
 - pretty == 1.1.3.6
 - prettyprinter == 1.7.2
@@ -122,7 +105,6 @@ The GHC RTS is deemed acceptable for use in this Class C system because:
 - semialign == 1.4
 - semigroupoids == 6.0.2
 - splitmix == 0.1.3.2
-- statistics == 0.16.5.0
 - stm == 2.5.1.0
 - strict == 0.5.1
 - system-cxx-std-lib == 1.0
@@ -130,7 +112,7 @@ The GHC RTS is deemed acceptable for use in this Class C system because:
 - tasty == 1.5.4
 - template-haskell == 2.20.0.0
 - text == 2.1.4
-- text-iso8601 == 0.1.1.1
+- text-iso8601 == 0.2.0.0
 - text-short == 0.1.6.1
 - th-abstraction == 0.7.2.0
 - th-compat == 0.1.7
@@ -143,10 +125,7 @@ The GHC RTS is deemed acceptable for use in this Class C system because:
 - unordered-containers == 0.2.21
 - uuid-types == 1.0.6.1
 - vector == 0.13.2.0
-- vector-algorithms == 0.9.1.0
-- vector-binary-instances == 0.2.5.2
 - vector-stream == 0.1.0.1
-- vector-th-unbox == 0.2.2
 - witherable == 0.5
 <!-- AUTOMATED-DEPENDENCIES-END -->
 
