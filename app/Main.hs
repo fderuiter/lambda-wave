@@ -157,7 +157,7 @@ runMain = do
         rbRes
 
     -- 1.5 Setup GPIO
-    gpioRes <- Hardware.Control.initGpio systemState
+    gpioRes <- initGpio systemState
     handleHardwareResponse
         (\err -> do
             if err == SimulationModeActive
