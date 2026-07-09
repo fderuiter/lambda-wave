@@ -75,6 +75,7 @@ extern "C" void start_cpp_hud_loop(void) {
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO(); (void)io;
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
     ImGui::StyleColorsDark();
 
     ImGui_ImplGlfw_InitForOpenGL(window, true);
@@ -94,8 +95,8 @@ extern "C" void start_cpp_hud_loop(void) {
         if (!logged_in) {
             ImGui::Begin("Authentication", NULL, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize);
             ImGui::InputText("Username", username, IM_ARRAYSIZE(username));
-            ImGui::InputText("Password", password, IM_ARRAYSIZE(password), ImGuiInputTextFlags_Password);
-            if (ImGui::Button("Login")) {
+            bool submit_password = ImGui::InputText("Password", password, IM_ARRAYSIZE(password), ImGuiInputTextFlags_Password | ImGuiInputTextFlags_EnterReturnsTrue);
+            if (ImGui::Button("Login") || submit_password) {
                 if ((strcmp(username, "admin") == 0 || strcmp(username, "operator") == 0) && strcmp(password, "password") == 0) {
                     logged_in = true;
                 }
