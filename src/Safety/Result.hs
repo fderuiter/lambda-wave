@@ -1,4 +1,3 @@
-{-# LANGUAGE DeriveFunctor #-}
 module Safety.Result (
     SafetyResult(..)
 ) where
@@ -13,4 +12,4 @@ data SafetyResult a
     | ClampedToMin !a
     | ClampedToMax !a
     | DivByZeroSafe !a
-    deriving (Show, Eq, Functor)
+    deriving (Show, Eq)
