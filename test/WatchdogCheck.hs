@@ -53,7 +53,7 @@ main = do
     _ <- try (removeFile "session.log") :: IO (Either SomeException ())
 
     -- Run the fault injection executable directly
-    (_exitCode, stdout, stderr) <- readProcessWithExitCode "watchdog-fault" [] ""
+    (_exitCode, stdout, stderr) <- readProcessWithExitCode "cabal" ["exec", "--", "watchdog-fault"] ""
     
     let combinedOutput = stdout ++ stderr
     let linesOutput = lines combinedOutput

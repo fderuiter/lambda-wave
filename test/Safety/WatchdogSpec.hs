@@ -10,7 +10,7 @@ spec :: Spec
 spec = describe "Safety.Watchdog" $ do
     it "kills application when processing thread delays >100ms (P0-002 Fault Injection)" $ do
         -- Run the fault injection executable directly
-        (exitCode, stdout, stderr) <- readProcessWithExitCode "watchdog-fault" [] ""
+        (exitCode, stdout, stderr) <- readProcessWithExitCode "cabal" ["exec", "--", "watchdog-fault"] ""
         
         -- The test executable should be killed by the daemon (ExitFailure)
         exitCode `shouldNotBe` ExitSuccess

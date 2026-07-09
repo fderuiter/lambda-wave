@@ -114,7 +114,7 @@ processFrame translations stateVar frame = do
             else return (mtiState oldSystemState, predState) -- Coasting (Dead Reckoning) if signal lost
 
     -- 6. Update System State & Resolve Final Beam State
-    finalBeamState <- atomically $ do
+    (finalBeamState, hardwareUpdateNeeded) <- atomically $ do
         s <- readTVar stateVar
         let currentBeam = beamState s
 
@@ -138,7 +138,8 @@ processFrame translations stateVar frame = do
 
         -- Log Beam Change (only if resolved state is different from what we read initially or updated)
         -- We compare against 'currentBeam' to log transitions that happen NOW.
-        when (resolvedBeamState /= currentBeam) $ do
+        let changed = resolvedBeamState /= currentBeam
+        when changed $ do
              let msg = translateAudit translations (T.pack $ activeLanguage s) currentBeam resolvedBeamState
                  sev = if resolvedBeamState == BeamHold || currentBeam == BeamHold then Warning else Info
              writeTBQueue (auditQueue s) (AuditEvent currTime sev "Gating" msg)
@@ -157,7 +158,7 @@ processFrame translations stateVar frame = do
             , localizedBeamState = locStr
             }
 
-        return resolvedBeamState
+        return (resolvedBeamState, changed)
 
     -- 7. Hardware Actuation
     -- Only set beam if state changed to avoid UART spam and excessive logging.
@@ -165,11 +166,7 @@ processFrame translations stateVar frame = do
             BeamOn -> True
             _      -> False
     
-    prevState <- atomically $ do
-        s <- readTVar stateVar
-        return (beamState s)
-
-    when (prevState /= finalBeamState) $ do
+    when hardwareUpdateNeeded $ do
         res <- setBeam stateVar beamBool
         
         -- Explicitly handle the hardware response
