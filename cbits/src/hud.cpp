@@ -53,6 +53,9 @@ static void glfw_error_callback(int error, const char* description) {
 }
 
 extern "C" void start_cpp_hud_loop(void) {
+    // Requirement FR-UI-001
+    // Requirement FR-UI-002
+    // Requirement FR-UI-003
     glfwSetErrorCallback(glfw_error_callback);
     if (!glfwInit())
         return;

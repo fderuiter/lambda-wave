@@ -96,7 +96,7 @@ requirements:
     policy: IEC-62366-5.1
     description: Structural navigation, assistive technology hooks, and skip-links
     phase: Phase 5.3
-    module: "`app/Control/WebUI.hs`"
+    module: "`cbits/src/hud.cpp`, `cbits/include/hud.h`"
     test: Visual Inspection
     status: Complete
 
