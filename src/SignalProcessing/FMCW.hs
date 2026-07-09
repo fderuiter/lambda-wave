@@ -31,15 +31,6 @@ import Data.Complex
 import SignalProcessing.Matrix (normSq, scaleAndAddV, subV, scaleV, dotGen)
 import Numeric.Kinematics
 
-import Safety.Result (SafetyResult(..))
-
-unwrapSafety :: SafetyResult a -> a
-unwrapSafety (Safe a) = a
-unwrapSafety (ClampedToMin a) = a
-unwrapSafety (ClampedToMax a) = a
-unwrapSafety (DivByZeroSafe a) = a
-unwrapSafety (Unsafe _) = error "Unsafe math evaluation"
-
 -- | Equation (1) (Requirement MR-001): Verified
 -- Calculate the beat frequency from a target range.
 -- f_FFT = (2 * B * R) / (c * T)
@@ -50,10 +41,8 @@ calculateBeatFreq :: Frequency -- ^ Bandwidth B (Hz)
                   -> Time -- ^ Chirp Duration T (s)
                   -> Distance -- ^ Range R (m)
                   -> Frequency -- ^ Beat Frequency (Hz)
-calculateBeatFreq bw duration targetRange = 
-    unwrapSafety (unwrapSafety (2.0 |* unwrapSafety (bw |*| targetRange :: SafetyResult Velocity)) |/| unwrapSafety (c |*| duration :: SafetyResult Distance))
-  where
-    c = Velocity 3.0e8
+calculateBeatFreq (Frequency b) (Time t) (Distance r) =
+    Frequency ((2.0 * b * r) / (3.0e8 * t))
 
 -- | Range Resolution Limit
 -- Delta R = c / (2 * B)
@@ -62,9 +51,8 @@ calculateBeatFreq bw duration targetRange =
 -- Safety: Total function, handles all inputs gracefully.
 calculateRangeResolution :: Frequency -- ^ Bandwidth B (Hz)
                          -> Distance -- ^ Resolution (m)
-calculateRangeResolution bw = unwrapSafety ((c :: Velocity) |/| unwrapSafety (2.0 |* bw :: SafetyResult Frequency))
-  where
-    c = Velocity 3.0e8
+calculateRangeResolution (Frequency b) =
+    Distance (3.0e8 / (2.0 * b))
 
 -- | Parameters for the Chirp Z-Transform
 data CZTParams = CZTParams
@@ -153,9 +141,8 @@ unwrapPhase (x:xs) = x : go x 0.0 xs
 calculateDisplacement :: Frequency -- ^ f_min: Start frequency of the chirp (Hz) (e.g. 77e9)
                       -> Double -- ^ Delta Phi: Phase change (radians)
                       -> Distance -- ^ Displacement d (m)
-calculateDisplacement f_min delta_phi = unwrapSafety (unwrapSafety ((delta_phi |* c) :: SafetyResult Velocity) |/| unwrapSafety (((4 * pi) |* f_min) :: SafetyResult Frequency))
-  where
-    c = Velocity 3.0e8
+calculateDisplacement (Frequency f_min) delta_phi =
+    Distance ((delta_phi * 3.0e8) / (4.0 * pi * f_min))
 
 -- | Requirement FR-DSP-001: Static Clutter Removal
 -- Implements an Exponential Moving Average (EMA) high-pass filter.

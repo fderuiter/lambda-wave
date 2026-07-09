@@ -48,4 +48,9 @@ generateToken = do
                                 if n /= 16
                                     then return $ Unsafe "Security Violation - insufficient entropy: read fewer than 16 bytes"
                                     else Safe <$> B.packCStringLen (castPtr ptr, 16)
-    return $ fmap (\tokenBytes -> BC.pack (concatMap (printf "%02x") (B.unpack tokenBytes))) resBytes
+    case resBytes of
+        Safe tokenBytes -> return $ Safe (BC.pack (concatMap (printf "%02x") (B.unpack tokenBytes)))
+        Unsafe msg -> return $ Unsafe msg
+        ClampedToMin _ -> return $ Unsafe "Unexpected clamped result"
+        ClampedToMax _ -> return $ Unsafe "Unexpected clamped result"
+        DivByZeroSafe _ -> return $ Unsafe "Unexpected DivByZero result"
