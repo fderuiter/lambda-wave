@@ -30,6 +30,7 @@ import Data.Complex (Complex(..))
 import Hardware.Control (setBeam)
 import Hardware.FFI.Bridge (handleHardwareResponse)
 import Data.I18n (Translations, translateAudit, translateBeamState)
+import qualified Control.Exception
 import qualified Data.Text as T
 import Numeric.Kinematics
     ( Distance(..)
@@ -49,7 +50,7 @@ unwrapSafety (Safe a) = a
 unwrapSafety (ClampedToMin a) = a
 unwrapSafety (ClampedToMax a) = a
 unwrapSafety (DivByZeroSafe a) = a
-unwrapSafety (Unsafe _) = error "Unsafe math evaluation"
+unwrapSafety (Unsafe _) = Control.Exception.throw (Control.Exception.AssertionFailed "Unsafe math evaluation")
 
 
 -- | Kalman Configuration

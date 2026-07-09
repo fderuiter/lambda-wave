@@ -1,3 +1,4 @@
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE StrictData #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -91,7 +92,7 @@ auditHardwareEvent stateVar comp res = do
 
 -- | Automated retry logic for recoverable errors like transient serial port disconnects.
 executeBridgeCall :: (HardwareResult -> IO ()) -> IO HardwareResult -> IO (MustHandle ())
-executeBridgeCall auditFn action = executeBridgeCallWith auditFn (fmap (\r -> (r, ())) action)
+executeBridgeCall auditFn action = executeBridgeCallWith auditFn (fmap (, ()) action)
 
 -- | Automated retry logic that returns a value on success.
 executeBridgeCallWith :: (HardwareResult -> IO ()) -> IO (HardwareResult, a) -> IO (MustHandle a)
