@@ -61,6 +61,7 @@ auditHardwareEvent stateVar comp res = do
     now <- getMonotonicTimeNS
     let (sev, msg) = case res of
             Common.Success -> (Info, "Hardware call succeeded")
+            Common.SimulationMode -> (Warning, "Hardware call succeeded (Simulation Mode)")
             Common.PartialData n -> (Info, "Hardware call returned partial data: " ++ show n)
             Common.Busy -> (Warning, "Hardware resource busy")
             Common.EOF -> (Info, "Hardware EOF")
@@ -99,6 +100,7 @@ executeBridgeCall auditFn action = go 3
         auditFn res
         case res of
             Common.Success -> return $ MustHandle (Right ())
+            Common.SimulationMode -> return $ MustHandle (Left SimulationModeActive)
             Common.TransientError _ -> do
                 threadDelay 10000 -- 10ms wait
                 go (retries - 1)
