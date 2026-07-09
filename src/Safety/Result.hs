@@ -9,3 +9,7 @@ module Safety.Result (
 data SafetyResult a
     = Safe !a
     | Unsafe !String
+    | ClampedToMin !a
+    | ClampedToMax !a
+    | DivByZeroSafe !a
+    deriving (Show, Eq, Functor)
