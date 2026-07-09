@@ -3,6 +3,12 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
 module Main (main) where
 
+import Data.Types (SystemState(..), BeamState(..), Point3D(..), CalibrationStatus(..), DisplayPreset(..))
+import qualified Data.Map as Map
+import Control.Concurrent.STM (newTBQueueIO, newTVarIO, TVar)
+import SignalProcessing.Kalman (initKalman, KalmanConfig(..))
+import Hardware.FFI.Bridge (handleHardwareResponse)
+import Control.Exception (throwIO)
 import Control.Exception (try, SomeException)
 import Control.Monad (when)
 import Data.Time.HighRes (getMonotonicTimeNS, getRealTimeNS)
@@ -44,7 +50,29 @@ instance Storable RingBufferControl where
         pokeByteOff ptr startOff start
         pokeByteOff ptr sizeOff sz
 
+
+
+createDummyState :: IO (TVar SystemState)
+createDummyState = do
+    auditQ <- newTBQueueIO 10000
+    let kState = initKalman 0.0 (KalmanConfig 1.0 1.0)
+    newTVarIO $ SystemState
+        { currentPoints = []
+        , beamState = BeamOff
+        , lastFrameTime = 0
+        , sequenceNumber = 0
+        , isocenter = Point3D 0 0 0 0 0
+        , threadHeartbeats = Map.empty
+        , kalmanState = kState
+        , auditQueue = auditQ
+        , audioAlertEnabled = False
+        , activeLanguage = "en"
+        , localizedBeamState = ""
+        , calibrationStatus = CalibrationValid, mtiState = [], displayPreset = StandardPreset
+        }
+
 main :: IO ()
+
 main = do
     putStrLn "Running Sentinel Checks..."
 
@@ -66,14 +94,16 @@ main = do
 
     -- 2. Test RingBuffer Creation (Invalid Size)
     putStrLn "[Test] RingBuffer Invalid Size..."
-    res <- try $ createRingBuffer 0
+    st <- createDummyState
+    res <- try $ (createRingBuffer st 0 >>= handleHardwareResponse (\e -> throwIO (userError $ show e)) pure)
     case res of
         Left e -> putStrLn $ "PASS: createRingBuffer(0) threw exception: " ++ show (e :: SomeException)
         Right _ -> do
              putStrLn "FAIL: createRingBuffer(0) succeeded unexpectedly"
              exitFailure
 
-    res2 <- try $ createRingBuffer (-100)
+    st' <- createDummyState
+    res2 <- try $ (createRingBuffer st' (-100) >>= handleHardwareResponse (\e -> throwIO (userError $ show e)) pure)
     case res2 of
         Left e -> putStrLn $ "PASS: createRingBuffer(-100) threw exception: " ++ show (e :: SomeException)
         Right _ -> do
@@ -82,7 +112,8 @@ main = do
 
     -- 3. Test RingBuffer Creation (Valid)
     putStrLn "[Test] RingBuffer Valid Creation & FFI..."
-    fp <- createRingBuffer 1024
+    st'' <- createDummyState
+    fp <- createRingBuffer st'' 1024 >>= handleHardwareResponse (\e -> throwIO (userError $ show e)) pure
     putStrLn "PASS: createRingBuffer(1024) succeeded"
 
     -- 4. Test FFI Interaction (getWriteOffset)
