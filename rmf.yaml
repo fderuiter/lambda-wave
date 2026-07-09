@@ -178,3 +178,13 @@ hazards:
     occurrence: 2
     detection: 2
     rpn: 16
+
+  - id: H-SYS-012
+    description: Kinematic calculation errors
+    cause: Standard arithmetic leading to invalid states
+    effect: Tracking crashes or incorrect clinical gating
+    mitigation: Clinical Safety Math layer enforcing bounds and structured SafetyResult
+    severity: 5
+    occurrence: 3
+    detection: 2
+    rpn: 30

@@ -16,6 +16,15 @@
 -- Hysteresis with conservative thresholds and latency compensation are applied.
 module Control.Gating (processFrame, evaluateGating) where
 
+import Safety.Result (SafetyResult(..))
+unwrapSafety :: SafetyResult a -> a
+unwrapSafety (Safe a) = a
+unwrapSafety (ClampedToMin a) = a
+unwrapSafety (ClampedToMax a) = a
+unwrapSafety (DivByZeroSafe a) = a
+unwrapSafety (Unsafe _) = error "Unsafe math evaluation"
+
+
 import Data.Types
 import Data.Config
 import Control.Concurrent.STM
@@ -206,17 +215,17 @@ evaluateGating target tol hyst latencyTime kState oldBeam =
         -- Check for NaN/Inf
         invalid = isNaN pos || isNaN vel || isNaN acc || isInfinite pos || isInfinite vel || isInfinite acc
 
-        term1 = velV |*| latencyTime
-        term2 = 0.5 |* (((accA |*| latencyTime) :: Velocity) |*| latencyTime)
-        predPos = posD |+| term1 |+| term2
+        term1 = unwrapSafety (velV |*| latencyTime)
+        term2 = unwrapSafety (0.5 |* unwrapSafety (unwrapSafety ((accA |*| latencyTime) :: SafetyResult Velocity) |*| latencyTime))
+        predPos = unwrapSafety (unwrapSafety (posD |+| term1) |+| term2)
 
-        err = kabs (predPos |-| target)
+        err = kabs (unwrapSafety (predPos |-| target))
 
         -- Thresholds
         -- ON Threshold: Tolerance
         -- OFF Threshold: Tolerance + Hysteresis
         onLimit = tol
-        offLimit = tol |+| hyst
+        offLimit = unwrapSafety (tol |+| hyst)
 
     in if invalid
        then BeamOff
