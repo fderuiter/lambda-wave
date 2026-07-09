@@ -12,6 +12,35 @@ except ImportError:
 
 from compiler_utils import to_camel_case, capitalize_first, to_snake_case
 
+
+import io
+class WriteIfChanged(io.StringIO):
+    def __init__(self, filepath):
+        super().__init__()
+        self.filepath = filepath
+    def __enter__(self):
+        return self
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if exc_type is not None:
+            return
+        content = self.getvalue()
+        if os.path.exists(self.filepath):
+            with open(self.filepath, 'r') as f:
+                if f.read() == content:
+                    return
+        os.makedirs(os.path.dirname(self.filepath) or '.', exist_ok=True)
+        with open(self.filepath, 'w') as f:
+            f.write(content)
+
+# Override open for 'w' mode
+_builtins_open = open
+def smart_open(file, mode='r', **kwargs):
+    if mode == 'w':
+        return WriteIfChanged(file)
+    return _builtins_open(file, mode, **kwargs)
+
+open = smart_open
+
 def load_data(filepath):
     with open(filepath, 'r') as f:
         if filepath.endswith('.yaml') or filepath.endswith('.yml'):
