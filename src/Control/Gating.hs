@@ -17,13 +17,6 @@
 module Control.Gating (processFrame, evaluateGating) where
 
 import Safety.Result (SafetyResult(..))
-unwrapSafety :: SafetyResult a -> a
-unwrapSafety (Safe a) = a
-unwrapSafety (ClampedToMin a) = a
-unwrapSafety (ClampedToMax a) = a
-unwrapSafety (DivByZeroSafe a) = a
-unwrapSafety (Unsafe _) = error "Unsafe math evaluation"
-
 
 import Data.Types
 import Data.Config
@@ -39,6 +32,7 @@ import Hardware.Control (setBeam)
 import Hardware.FFI.Bridge (handleHardwareResponse)
 import Data.I18n (Translations, translateAudit, translateBeamState)
 import qualified Data.Text as T
+import qualified Control.Exception
 import Numeric.Kinematics
     ( Distance(..)
     , Velocity(..)
@@ -51,6 +45,13 @@ import Numeric.Kinematics
     , systemLatencyTime
     , Proxy(..)
     )
+
+unwrapSafety :: SafetyResult a -> a
+unwrapSafety (Safe a) = a
+unwrapSafety (ClampedToMin a) = a
+unwrapSafety (ClampedToMax a) = a
+unwrapSafety (DivByZeroSafe a) = a
+unwrapSafety (Unsafe _) = Control.Exception.throw (Control.Exception.AssertionFailed "Unsafe math evaluation")
 
 -- | Kalman Configuration
 -- Process Noise (Q): System agility (how fast we expect breathing to change)
