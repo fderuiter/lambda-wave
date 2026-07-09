@@ -66,9 +66,7 @@ createRingBuffer stateVar size = do
         st <- peek statusPtr
         return (fp', st)
     let res = toHardwareResult 0 status
-    executeBridgeCall (auditHardwareEvent stateVar "RingBuffer") (return res) >>= \case
-        MustHandle (Right _) -> return $ MustHandle (Right fp)
-        MustHandle (Left err) -> return $ MustHandle (Left err)
+    executeBridgeCallWith (auditHardwareEvent stateVar "RingBuffer") (return (res, fp))
 
 -- | Wrapper for attach_ring_buffer.
 attachRingBuffer :: Int -> IO (ForeignPtr RingBufferControl)

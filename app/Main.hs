@@ -25,8 +25,9 @@ import Data.Types
 import Data.Config (targetHeight)
 import SignalProcessing.Kalman (initKalman, KalmanConfig(..))
 import qualified FFI.RingBuffer.IO as RingBuffer
-import Hardware.Control (configureRawSerial, configureSensorWithRetry)
+import Hardware.Control (configureRawSerial, configureSensorWithRetry, initGpio)
 import Hardware.FFI.Bridge (handleHardwareResponse, triggerShutdown)
+import Hardware.Types (HardwareError(..))
 import Hardware.Consumer (consumerLoop)
 import Safety.Watchdog (watchdogLoop, runSafetyDaemon)
 import Safety.Audit

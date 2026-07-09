@@ -3,6 +3,8 @@
 
 module FFI.RingBuffer.IOSpec (spec) where
 
+import Hardware.FFI.Bridge (handleHardwareResponse)
+import Control.Exception (throwIO)
 import Test.Hspec
 import FFI.RingBuffer.IO
 import FFI.RingBuffer.Types
@@ -45,22 +47,26 @@ spec :: Spec
 spec = do
   describe "FFI.RingBuffer.IO" $ do
     it "createRingBuffer returns a valid pointer" $ do
-      ptr <- createRingBuffer 1024
+      dummyState <- createDummyState
+      ptr <- createRingBuffer dummyState 1024 >>= handleHardwareResponse (\e -> throwIO (userError $ show e)) pure
       getWriteOffset ptr `shouldReturn` 0
 
     it "createRingBuffer throws error for invalid size" $ do
-      createRingBuffer 0 `shouldThrow` anyException
-      createRingBuffer (-1) `shouldThrow` anyException
+      dummyState <- createDummyState
+      (createRingBuffer dummyState 0 >>= handleHardwareResponse (\e -> throwIO (userError $ show e)) pure) `shouldThrow` anyException
+      dummyState' <- createDummyState
+      (createRingBuffer dummyState' (-1) >>= handleHardwareResponse (\e -> throwIO (userError $ show e)) pure) `shouldThrow` anyException
 
     it "ingestionLoop reads data from pipe into ring buffer" $ do
       (readFd, writeFd) <- createPipe
 
-      ptr <- createRingBuffer 4096
+      dummyState <- createDummyState
+      ptr <- createRingBuffer dummyState 4096 >>= handleHardwareResponse (\e -> throwIO (userError $ show e)) pure
       wOff <- getWriteOffset ptr
       wOff `shouldBe` 0
 
-      dummyState <- createDummyState
-      tid <- ingestionLoop dummyState ptr readFd
+      dummyState' <- createDummyState
+      tid <- ingestionLoop dummyState' ptr readFd
 
       let dataToWrite = "Hello, RingBuffer! This is a test string to verify ingestion...." :: ByteString
       writeBytes writeFd dataToWrite
@@ -82,9 +88,10 @@ spec = do
       let bufSz = 4096
       let totalBytes = 1_000_000 :: Int
 
-      ptr <- createRingBuffer bufSz
       dummyState <- createDummyState
-      tid <- ingestionLoop dummyState ptr readFd
+      ptr <- createRingBuffer dummyState bufSz >>= handleHardwareResponse (\e -> throwIO (userError $ show e)) pure
+      dummyState' <- createDummyState
+      tid <- ingestionLoop dummyState' ptr readFd
 
       producerDone <- newEmptyMVar
       _ <- forkIO $ do

@@ -14,6 +14,8 @@
 module Hardware.FFI.Bridge (
     MustHandle,
     executeBridgeCall,
+    executeBridgeCallWith,
+    auditHardwareEvent,
     bridgeHardwareCall,
     bridgeHardwareCallCustom,
     bridgeRingBufferCall,
@@ -89,17 +91,20 @@ auditHardwareEvent stateVar comp res = do
 
 -- | Automated retry logic for recoverable errors like transient serial port disconnects.
 executeBridgeCall :: (HardwareResult -> IO ()) -> IO HardwareResult -> IO (MustHandle ())
-executeBridgeCall auditFn action = go 3
+executeBridgeCall auditFn action = executeBridgeCallWith auditFn (fmap (\r -> (r, ())) action)
+
+-- | Automated retry logic that returns a value on success.
+executeBridgeCallWith :: (HardwareResult -> IO ()) -> IO (HardwareResult, a) -> IO (MustHandle a)
+executeBridgeCallWith auditFn action = go (3 :: Int)
   where
-    go :: Int -> IO (MustHandle ())
-    go 0 = do
+    go (0 :: Int) = do
         auditFn (Common.Failure "Max retries exceeded")
         return $ MustHandle (Left Timeout)
     go retries = do
-        res <- action
+        (res, val) <- action
         auditFn res
         case res of
-            Common.Success -> return $ MustHandle (Right ())
+            Common.Success -> return $ MustHandle (Right val)
             Common.SimulationMode -> return $ MustHandle (Left SimulationModeActive)
             Common.TransientError _ -> do
                 threadDelay 10000 -- 10ms wait
