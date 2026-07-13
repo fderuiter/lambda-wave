@@ -91,12 +91,12 @@ testLatencyCompensation =
         eval = Gating.evaluateGating target tol hyst lat
 
         -- Moving towards target, latency comp puts it inside
-        s1 = mkState 13.1 (-10.0)
+        s1 = mkState 13.004 (-0.1)
         r1 = eval s1 BeamOff -- Should turn ON
 
-        -- Moving away. Pos 12.9 (Inside). Vel 10.
-        -- PredPos = 12.9 + 0.5 = 13.4 (Outside).
-        s2 = mkState 12.9 10.0
+        -- Moving away. Pos 12.996 (Inside). Vel 0.1.
+        -- PredPos = 12.996 + 0.005 = 13.001 (Outside).
+        s2 = mkState 12.996 0.1
         r2 = eval s2 BeamOn -- Should turn OFF
 
     in catMaybes
