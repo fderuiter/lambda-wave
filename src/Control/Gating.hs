@@ -29,6 +29,7 @@ import SignalProcessing.FMCW (applyStaticClutterRemoval, mkMTIConfig)
 import Data.Complex (Complex(..))
 import Hardware.Control (setBeam)
 import Hardware.FFI.Bridge (handleHardwareResponse)
+import Safety.Audit (tryWriteAudit)
 import Data.I18n (Translations, translateAudit, translateBeamState)
 import qualified Control.Exception
 import qualified Data.Text as T
@@ -113,7 +114,7 @@ processFrame translations stateVar frame = do
                         -- Config validation failed: log a warning and fall back to
                         -- the unfiltered measurement so gating is not silently degraded.
                         let evt = AuditEvent currTime Warning "Gating" ("MTI config error: " ++ err)
-                        atomically $ writeTBQueue (auditQueue oldSystemState) evt
+                        tryWriteAudit (auditQueue oldSystemState) evt
                         return (mtiState oldSystemState, update meas kConfig predState)
                     Right mtiConfig ->
                         -- Run the MTI filter to advance state, but feed the raw average
@@ -124,7 +125,7 @@ processFrame translations stateVar frame = do
             else return (mtiState oldSystemState, predState) -- Coasting (Dead Reckoning) if signal lost
 
     -- 6. Update System State & Resolve Final Beam State
-    (finalBeamState, hardwareUpdateNeeded) <- atomically $ do
+    (finalBeamState, hardwareUpdateNeeded, mEvtToLog) <- atomically $ do
         s <- readTVar stateVar
         let currentBeam = beamState s
 
@@ -149,10 +150,9 @@ processFrame translations stateVar frame = do
         -- Log Beam Change (only if resolved state is different from what we read initially or updated)
         -- We compare against 'currentBeam' to log transitions that happen NOW.
         let changed = resolvedBeamState /= currentBeam
-        when changed $ do
-             let msg = translateAudit translations (T.pack $ activeLanguage s) currentBeam resolvedBeamState
-                 sev = if resolvedBeamState == BeamHold || currentBeam == BeamHold then Warning else Info
-             writeTBQueue (auditQueue s) (AuditEvent currTime sev "Gating" msg)
+        let mEvt = if changed
+                     then Just $ AuditEvent currTime (if resolvedBeamState == BeamHold || currentBeam == BeamHold then Warning else Info) "Gating" (translateAudit translations (T.pack $ activeLanguage s) currentBeam resolvedBeamState)
+                     else Nothing
 
         let locStr = T.unpack $ translateBeamState translations (T.pack $ activeLanguage s) resolvedBeamState
 
@@ -168,7 +168,14 @@ processFrame translations stateVar frame = do
             , localizedBeamState = locStr
             }
 
-        return (resolvedBeamState, changed)
+        return (resolvedBeamState, changed, mEvt)
+
+    -- Log if needed
+    case mEvtToLog of
+        Just evt -> do
+            st <- readTVarIO stateVar
+            tryWriteAudit (auditQueue st) evt
+        Nothing -> return ()
 
     -- 7. Hardware Actuation
     -- Only set beam if state changed to avoid UART spam and excessive logging.
@@ -184,10 +191,9 @@ processFrame translations stateVar frame = do
             (\err -> do
                 let msg = "Hardware actuation failed: " ++ show err
                 let evt = AuditEvent currTime Critical "Hardware" msg
-                atomically $ do
-                    s <- readTVar stateVar
-                    writeTBQueue (auditQueue s) evt
-                    writeTVar stateVar (s { beamState = BeamOff })
+                st <- readTVarIO stateVar
+                tryWriteAudit (auditQueue st) evt
+                atomically $ modifyTVar' stateVar (\s -> s { beamState = BeamOff })
             )
             (\() -> return ())
             res
