@@ -29,7 +29,7 @@ class WriteIfChanged(io.StringIO):
                 if f.read() == content:
                     return
         os.makedirs(os.path.dirname(self.filepath) or '.', exist_ok=True)
-        with open(self.filepath, 'w') as f:
+        with _builtins_open(self.filepath, 'w') as f:
             f.write(content)
 
 # Override open for 'w' mode
