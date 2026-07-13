@@ -1,3 +1,4 @@
+-- Requirement FR-DAQ-002
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE LambdaCase #-}
 module Hardware.Control (
