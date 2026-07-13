@@ -6,7 +6,7 @@
 extern "C" {
 #endif
 
-typedef const char* (*TranslateCallback)(const char* lang, const char* key);
+typedef const char *(*TranslateCallback)(const char *lang, const char *key);
 void register_translate_callback(TranslateCallback callback);
 
 typedef struct {
