@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns #-}
+-- Requirement FR-DSP-003
 
 module Main (main) where
 

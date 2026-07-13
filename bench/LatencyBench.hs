@@ -1,3 +1,4 @@
+-- Requirement FR-GAT-002
 module Main (main) where
 
 import Control.Concurrent.STM

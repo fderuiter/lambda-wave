@@ -1,3 +1,4 @@
+-- Requirement SR-WD-002
 module Main (main) where
 
 import System.Process (readProcessWithExitCode)

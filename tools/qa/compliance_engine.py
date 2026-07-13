@@ -6,6 +6,26 @@ import yaml
 import re
 import argparse
 
+def resolve_file(item, root_dir):
+    if "." in item and not item.endswith(".hs") and not item.endswith(".cpp") and not item.endswith(".h") and not item.endswith(".md") and not item.endswith(".cabal"):
+        # it's a module
+        rel_path = item.replace(".", "/") + ".hs"
+        for d in ["src", "app"]:
+            p = os.path.join(root_dir, d, rel_path)
+            if os.path.exists(p):
+                return p
+    else:
+        # try as is
+        p = os.path.join(root_dir, item)
+        if os.path.exists(p):
+            return p
+        # try in search_dirs
+        for d in ["test", "bench"]:
+            p = os.path.join(root_dir, d, item)
+            if os.path.exists(p):
+                return p
+    return None
+
 def main():
     parser = argparse.ArgumentParser(description="Compliance Engine")
     parser.add_argument('--pdf', action='store_true', help="Generate PDF documentation")
@@ -20,30 +40,47 @@ def main():
     requirements = data.get("requirements", [])
     
     errors = []
+    audited_files = set()
     
     for req in requirements:
         req_id = req['id']
-        status = req['status']
+        modules_str = req.get('module', '')
+        tests_str = req.get('test', '')
         
-        if status == 'Complete':
-            modules = req.get('module', '')
-            if modules == 'None':
-                errors.append(f"Requirement {req_id} marked Complete but has no module.")
-            
-            tests = req.get('test', '')
-            if tests == 'None':
-                errors.append(f"Requirement {req_id} marked Complete but has no matching test file.")
-            
-            module_found = search_tag_in_dirs(root_dir, ["src", "app", "cbits"], req_id)
-            test_found = search_tag_in_dirs(root_dir, ["test", "bench"], req_id)
-            
-            if tests == 'Visual Inspection':
-                test_found = True
+        modules = re.findall(r'`([^`]+)`', modules_str) if modules_str != 'None' else []
+        tests = re.findall(r'`([^`]+)`', tests_str) if tests_str not in ['None', 'Visual Inspection'] else []
+        
+        paths = []
+        
+        for m in modules:
+            res = resolve_file(m, root_dir)
+            if res is None:
+                errors.append(f"Requirement {req_id} references a non-existent module file: {m}")
+            else:
+                paths.append(res)
                 
-            if not test_found:
-                errors.append(f"Requirement {req_id} marked Complete but lacks a matching test file (no tag found in tests).")
+        for t in tests:
+            res = resolve_file(t, root_dir)
+            if res is None:
+                errors.append(f"Requirement {req_id} references a non-existent test file: {t}")
+            else:
+                paths.append(res)
                 
+        for p in paths:
+            audited_files.add(p)
+            with open(p, 'r', encoding='utf-8', errors='ignore') as f:
+                content = f.read()
+                if req_id not in content:
+                    errors.append(f"Requirement {req_id} tag missing in file: {os.path.relpath(p, root_dir)}")
+                    
+    print("--- Validation Report ---")
+    print(f"Total Unique Files Audited: {len(audited_files)}")
+    for f in sorted(list(audited_files)):
+        print(f" - {os.path.relpath(f, root_dir)}")
+    print("-------------------------\n")
+    
     if errors:
+        print("ERRORS FOUND:")
         for err in errors:
             print(f"ERROR: {err}")
         sys.exit(1)
@@ -56,28 +93,11 @@ def main():
         
     sys.exit(0)
 
-def search_tag_in_dirs(root, dirs, tag):
-    for d in dirs:
-        dir_path = os.path.join(root, d)
-        if not os.path.exists(dir_path):
-            continue
-        for root_dir, _, files in os.walk(dir_path):
-            for file in files:
-                if file.endswith((".hs", ".cpp", ".c", ".h")):
-                    path = os.path.join(root_dir, file)
-                    with open(path, 'r', encoding='utf-8', errors='ignore') as f:
-                        content = f.read()
-                        if tag in content:
-                            return True
-    return False
-
-
 def get_architecture_links(req_id, arch_doc_path):
     root_dir = os.path.abspath(os.path.join(os.path.dirname(arch_doc_path), "."))
     arch_dir = os.path.join(root_dir, "docs/architecture")
     links = []
 
-    # Check the new subsystem documents
     if os.path.exists(arch_dir):
         for file in sorted(os.listdir(arch_dir)):
             if file.endswith('.md'):
@@ -88,7 +108,6 @@ def get_architecture_links(req_id, arch_doc_path):
                         title = file.replace('.md', '').replace('_', ' ').title()
                         links.append(f"[`{title}`](../../docs/architecture/{file})")
     
-    # Also check the old auto-generated block to preserve FR-DAQ-001
     if os.path.exists(arch_doc_path):
         with open(arch_doc_path, 'r', encoding='utf-8') as f:
             content = f.read()
@@ -105,7 +124,6 @@ def get_architecture_links(req_id, arch_doc_path):
                     links.append(f"[`{sect_title}`](../../Haskell Radar SGRT System Development.md)")
                     
     if links:
-        # Return unique links
         seen = set()
         unique_links = []
         for l in links:
@@ -150,6 +168,7 @@ def generate_markdown(requirements, root_dir):
             lines.append(f"| {req['id']} | {req['policy']} | {req['description']} | {req['phase']} | {req['module']} | {arch_links} | {req['test']} | {status_str} |")
         lines.append("")
         
+    os.makedirs(os.path.dirname(md_path), exist_ok=True)
     with open(md_path, 'w', encoding='utf-8') as f:
         f.write("\n".join(lines))
     print(f"Generated {md_path}")
