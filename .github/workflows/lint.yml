@@ -38,8 +38,15 @@ jobs:
       - name: Run clang-format
         run: find cbits -path "cbits/imgui" -prune -o -type f \( -name "*.c" -o -name "*.h" -o -name "*.cpp" \) -print | xargs clang-format -n -Werror
 
+      - name: Install pyyaml
+        run: pip install pyyaml
+
       - name: Check Reference Docs Narrative
         run: ./scripts/check_reference_narrative.py
 
       - name: Check Architecture Docs Sync
         run: python3 ./scripts/extract_architecture.py --check
+      - name: Generate Traceability Matrix
+        run: python3 tools/qa/compliance_engine.py
+      - name: Verify Traceability Links
+        run: python3 scripts/verify_traceability_links.py
