@@ -2,7 +2,7 @@
 
 ## Physical Constants
 
-*   **Speed of Light ($c$):** $3 \times 10^8 \text{ m/s}$
+*   **Speed of Light ($c$):** $3 	imes 10^{8} 	ext{ m/s}$
 
 ## Radar Equations
 
@@ -40,3 +40,19 @@ $$ P_k = (I - K_k H) P_{k|k-1} (I - K_k H)^T + K_k R K_k^T $$
 
 Gating Signal calculation:
 $$ \text{GatingSignal} = \text{position}_k + \text{velocity}_k \times 0.05 \text{s} + 0.5 \times \text{acceleration}_k \times (0.05 \text{s})^2 $$
+
+## System Limits
+
+### Generated System Limits
+
+| Parameter | Value | Unit |
+|---|---|---|
+| Speed of Light | 300000000.0 | m/s |
+| Gating Tolerance | 3.0 | mm |
+| Hysteresis Margin | 0.5 | mm |
+| Target Height | 10.0 | mm |
+| Min Velocity | 0.01 | m/s |
+| Max Velocity | 0.1 | m/s |
+| Min Acceleration | 0.01 | m/s² |
+| Max Acceleration | 0.1 | m/s² |
+

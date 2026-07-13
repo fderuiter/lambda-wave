@@ -24,5 +24,5 @@ generateConstants = do
     callProcess "python3" 
         [ "tools/compiler.py"
         , "all"
-        , "config/master_spec.yaml"
+        , "config/master_spec.json"
         ]

@@ -59,10 +59,10 @@ main = do
     if rect1 then putStrLn "PASS: isRectangular true" else putStrLn "FAIL: isRectangular true"
 
     -- Ensure Kinematics import is used
-    let _d = Distance 5.0
+    let _d = Meters 5.0
 
     -- Requirement 4: A test case attempting to add Distance to Frequency fails at compile time.
-    -- The following line will result in a compile error: "Couldn't match expected type 'Distance' with actual type 'Frequency'"
-    -- let _invalidAddition = Distance 5.0 |+| Frequency 10.0
+    -- The following line will result in a compile error: "Couldn't match expected type 'Meters' with actual type 'Hertz'"
+    -- let _invalidAddition = Meters 5.0 |+| Hertz 10.0
     putStrLn "Numeric Check Complete."
     exitSuccess

@@ -30,6 +30,7 @@ module SignalProcessing.FMCW
 import Data.Complex
 import SignalProcessing.Matrix (normSq, scaleAndAddV, subV, scaleV, dotGen)
 import Numeric.Kinematics
+import Hardware.Manifest (speedOfLight)
 
 -- | Equation (1) (Requirement MR-001): Verified
 -- Calculate the beat frequency from a target range.
@@ -37,22 +38,22 @@ import Numeric.Kinematics
 --
 -- Complexity: O(1) runtime.
 -- Safety: Total function, handles all inputs gracefully.
-calculateBeatFreq :: Frequency -- ^ Bandwidth B (Hz)
-                  -> Time -- ^ Chirp Duration T (s)
-                  -> Distance -- ^ Range R (m)
-                  -> Frequency -- ^ Beat Frequency (Hz)
-calculateBeatFreq (Frequency b) (Time t) (Distance r) =
-    Frequency ((2.0 * b * r) / (3.0e8 * t))
+calculateBeatFreq :: Hertz -- ^ Bandwidth B (Hz)
+                  -> Seconds -- ^ Chirp Duration T (s)
+                  -> Meters -- ^ Range R (m)
+                  -> Hertz -- ^ Beat Frequency (Hz)
+calculateBeatFreq (Hertz b) (Seconds t) (Meters r) =
+    Hertz ((2.0 * b * r) / (speedOfLight * t))
 
 -- | Range Resolution Limit
 -- Delta R = c / (2 * B)
 --
 -- Complexity: O(1) runtime.
 -- Safety: Total function, handles all inputs gracefully.
-calculateRangeResolution :: Frequency -- ^ Bandwidth B (Hz)
-                         -> Distance -- ^ Resolution (m)
-calculateRangeResolution (Frequency b) =
-    Distance (3.0e8 / (2.0 * b))
+calculateRangeResolution :: Hertz -- ^ Bandwidth B (Hz)
+                         -> Meters -- ^ Resolution (m)
+calculateRangeResolution (Hertz b) =
+    Meters (speedOfLight / (2.0 * b))
 
 -- | Parameters for the Chirp Z-Transform
 data CZTParams = CZTParams
@@ -138,11 +139,11 @@ unwrapPhase (x:xs) = x : go x 0.0 xs
 --
 -- Complexity: O(1) runtime.
 -- Safety: Total function, handles all inputs gracefully.
-calculateDisplacement :: Frequency -- ^ f_min: Start frequency of the chirp (Hz) (e.g. 77e9)
+calculateDisplacement :: Hertz -- ^ f_min: Start frequency of the chirp (Hz) (e.g. 77e9)
                       -> Double -- ^ Delta Phi: Phase change (radians)
-                      -> Distance -- ^ Displacement d (m)
-calculateDisplacement (Frequency f_min) delta_phi =
-    Distance ((delta_phi * 3.0e8) / (4.0 * pi * f_min))
+                      -> Meters -- ^ Displacement d (m)
+calculateDisplacement (Hertz f_min) delta_phi =
+    Meters ((delta_phi * speedOfLight) / (4.0 * pi * f_min))
 
 -- | Requirement FR-DSP-001: Static Clutter Removal
 -- Implements an Exponential Moving Average (EMA) high-pass filter.

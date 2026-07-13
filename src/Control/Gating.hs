@@ -18,7 +18,7 @@ module Control.Gating (processFrame, evaluateGating) where
 
 import Safety.Result (SafetyResult(..))
 import Data.Types
-import Data.Config
+import Hardware.Manifest (targetHeightMm, gatingToleranceMm, hysteresisMarginMm)
 import Control.Concurrent.STM
 import Data.Time.HighRes (getMonotonicTimeNS)
 import Data.List (foldl')
@@ -33,10 +33,10 @@ import Data.I18n (Translations, translateAudit, translateBeamState)
 import qualified Control.Exception
 import qualified Data.Text as T
 import Numeric.Kinematics
-    ( Distance(..)
-    , Velocity(..)
-    , Acceleration(..)
-    , Time(..)
+    ( Millimeters(..)
+    , MillimetersPerSecond(..)
+    , MillimetersPerSecondSquared(..)
+    , Seconds(..)
     , SystemLatencyMs
     , KinematicMultiply(..)
     , KinematicMath(..)
@@ -133,9 +133,9 @@ processFrame translations stateVar frame = do
         -- This ensures that if the UI thread released BeamHold or modified the state concurrently,
         -- we use the fresh state as the basis for hysteresis and transition logic.
         let latencyT = systemLatencyTime (Proxy :: Proxy SystemLatencyMs)
-            targetD  = Distance targetHeight
-            tolD     = Distance gatingTolerance
-            hystD    = Distance hysteresisMargin
+            targetD  = Millimeters targetHeightMm
+            tolD     = Millimeters gatingToleranceMm
+            hystD    = Millimeters hysteresisMarginMm
             proposedBeamState = evaluateGating targetD tolD hystD latencyT newKState currentBeam
 
         -- Safety: If current state is BeamHold, we MUST respect it.
@@ -194,10 +194,10 @@ processFrame translations stateVar frame = do
 
 -- | Evaluate Gating Decision with Hysteresis and Latency Compensation
 -- Pure function for testability.
-evaluateGating :: Distance    -- ^ Target Height (Distance)
-               -> Distance    -- ^ Tolerance (Distance)
-               -> Distance    -- ^ Hysteresis Margin (Distance)
-               -> Time        -- ^ System Latency
+evaluateGating :: Millimeters    -- ^ Target Height (Distance)
+               -> Millimeters    -- ^ Tolerance (Distance)
+               -> Millimeters    -- ^ Hysteresis Margin (Distance)
+               -> Seconds        -- ^ System Latency
                -> KalmanState -- ^ Current Filter State
                -> BeamState   -- ^ Previous Beam State
                -> BeamState   -- ^ New Beam State
@@ -209,18 +209,20 @@ evaluateGating target tol hyst latencyTime kState oldBeam =
             V3 pVal vVal aVal -> (pVal, vVal, aVal)
             _ -> (0, 0, 0)
         
-        posD = Distance pos
-        velV = Velocity vel
-        accA = Acceleration acc
+        posD = Millimeters pos
+        velV = MillimetersPerSecond vel
+        accA = MillimetersPerSecondSquared acc
 
         -- Check for NaN/Inf
         invalid = isNaN pos || isNaN vel || isNaN acc || isInfinite pos || isInfinite vel || isInfinite acc
 
         term1 = unwrapSafety (velV |*| latencyTime)
-        term2 = unwrapSafety (0.5 |* unwrapSafety (unwrapSafety ((accA |*| latencyTime) :: SafetyResult Velocity) |*| latencyTime))
+        term2 = unwrapSafety (0.5 |* unwrapSafety (unwrapSafety ((accA |*| latencyTime) :: SafetyResult MillimetersPerSecond) |*| latencyTime))
         predPos = unwrapSafety (unwrapSafety (posD |+| term1) |+| term2)
 
-        err = kabs (unwrapSafety (predPos |-| target))
+        Millimeters pPos = predPos
+        Millimeters tPos = target
+        err = Millimeters (abs (pPos - tPos))
 
         -- Thresholds
         -- ON Threshold: Tolerance

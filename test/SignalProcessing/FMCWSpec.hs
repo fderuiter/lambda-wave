@@ -5,6 +5,7 @@ import Test.Hspec
 import Data.Complex
 import SignalProcessing.FMCW
 import Numeric.Kinematics
+import Hardware.Manifest (speedOfLight)
 import Control.Monad (zipWithM_)
 
 -- Helper for float comparison
@@ -16,20 +17,19 @@ spec = describe "SignalProcessing.FMCW" $ do
 
     describe "Range Resolution (Equation 1 & Requirement MR-001 & Resolution Limit)" $ do
         it "calculates correct resolution for 4GHz bandwidth" $ do
-            let bw = Frequency 4.0e9 -- 4 GHz
-                Distance resolution = calculateRangeResolution bw
-            -- c / 2B = 3e8 / 8e9 = 0.0375 m = 3.75 cm
-            resolution `shouldBe` 0.0375
+            let bw = Hertz 4.0e9 -- 4 GHz
+                Meters resolution = calculateRangeResolution bw
+            -- c / 2B = speedOfLight / 8e9 = 0.0375 m = 3.75 cm
+            resolution `shouldBe` (speedOfLight / 8.0e9)
 
         it "calculates beat frequency correctly" $ do
-            let bw = Frequency 4.0e9
-                t = Time 50e-6 -- 50 microseconds
-                r = Distance 1.0   -- 1 meter
-                Frequency f_fft = calculateBeatFreq bw t r
-            -- f = (2 * 4e9 * 1) / (3e8 * 50e-6)
-            --   = 8e9 / 15000
-            --   = 533333.33 Hz
-            f_fft `shouldSatisfy` (\x -> approxEq x 533333.33 0.1)
+            let bw = Hertz 4.0e9
+                t = Seconds 50e-6 -- 50 microseconds
+                r = Meters 1.0   -- 1 meter
+                Hertz f_fft = calculateBeatFreq bw t r
+            -- f = (2 * 4e9 * 1) / (speedOfLight * 50e-6)
+            let expected = (2.0 * 4.0e9 * 1.0) / (speedOfLight * 50e-6)
+            f_fft `shouldSatisfy` (\x -> approxEq x expected 0.1)
 
     describe "Chirp Z-Transform (Requirement MR-002)" $ do
         let params = CZTParams { cztStartFreq = 0
@@ -125,15 +125,12 @@ spec = describe "SignalProcessing.FMCW" $ do
 
     describe "Phase Displacement (Equation 5, Requirement MR-005)" $ do
         it "calculates displacement from phase change correctly" $ do
-            let f_min = Frequency 77.0e9 -- 77 GHz
+            let f_min = Hertz 77.0e9 -- 77 GHz
                 delta_phi = pi   -- 180 degrees phase shift
-                Distance d = calculateDisplacement f_min delta_phi
+                Meters d = calculateDisplacement f_min delta_phi
 
                 -- d = (c * delta_phi) / (4 * pi * f_min)
-                -- d = (3e8 * pi) / (4 * pi * 77e9)
-                -- d = 3e8 / (4 * 77e9)
-                -- d = 3 / 308 meters ~= 0.00974 m ~= 0.97 mm
-                expected = 3.0e8 / (4.0 * 77.0e9)
+                expected = (speedOfLight * pi) / (4.0 * pi * 77.0e9)
 
             d `shouldBe` expected
 

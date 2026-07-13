@@ -9,14 +9,9 @@
 {-# LANGUAGE ConstraintKinds #-}
 
 module Numeric.Kinematics
-    ( -- * Core Types
-      Distance(..)
-    , Velocity(..)
-    , Acceleration(..)
-    , Time(..)
-    , Frequency(..)
+    ( -- * Core Types (Deprecated/Removed, replaced by Unit Specific)
       -- * Unit Specific Types
-    , Millimeters(..)
+      Millimeters(..)
     , Meters(..)
     , Nanoseconds(..)
     , Seconds(..)
@@ -28,14 +23,12 @@ module Numeric.Kinematics
     , MillimetersPerSecondSquared(..)
     , MetersPerSecondSquared(..)
       -- * Conversions
-    , distanceToMeters
-    , metersToDistance
-    , timeToSeconds
-    , secondsToTime
     , mmToMeters
     , metersToMm
     , mmPerSToMetersPerS
     , mmPerS2ToMetersPerS2
+    , metersPerSToMmPerS
+    , metersPerS2ToMmPerS2
     , nsToSeconds
     , secondsToNs
     , nsToMs
@@ -65,14 +58,8 @@ module Numeric.Kinematics
 
 import GHC.TypeLits
 import Data.Proxy
-import Hardware.Manifest (WatchdogTimeoutMs, SystemLatencyMs)
+import Hardware.Manifest (WatchdogTimeoutMs, SystemLatencyMs, minVelocityMs, maxVelocityMs, minAccelerationMs2, maxAccelerationMs2)
 import Safety.Result (SafetyResult(..))
-
-newtype Distance = Distance Double deriving (Show, Eq, Ord)
-newtype Velocity = Velocity Double deriving (Show, Eq, Ord)
-newtype Acceleration = Acceleration Double deriving (Show, Eq, Ord)
-newtype Time = Time Double deriving (Show, Eq, Ord)
-newtype Frequency = Frequency Double deriving (Show, Eq, Ord)
 
 newtype Millimeters = Millimeters Double deriving (Show, Eq, Ord)
 newtype Meters = Meters Double deriving (Show, Eq, Ord)
@@ -86,14 +73,6 @@ newtype MetersPerSecond = MetersPerSecond Double deriving (Show, Eq, Ord)
 newtype MillimetersPerSecondSquared = MillimetersPerSecondSquared Double deriving (Show, Eq, Ord)
 newtype MetersPerSecondSquared = MetersPerSecondSquared Double deriving (Show, Eq, Ord)
 
-distanceToMeters :: Distance -> Meters
-distanceToMeters (Distance d) = Meters d
-metersToDistance :: Meters -> Distance
-metersToDistance (Meters m) = Distance m
-timeToSeconds :: Time -> Seconds
-timeToSeconds (Time t) = Seconds t
-secondsToTime :: Seconds -> Time
-secondsToTime (Seconds s) = Time s
 mmToMeters :: Millimeters -> Meters
 mmToMeters (Millimeters mm) = Meters (mm / 1000.0)
 metersToMm :: Meters -> Millimeters
@@ -102,6 +81,13 @@ mmPerSToMetersPerS :: MillimetersPerSecond -> MetersPerSecond
 mmPerSToMetersPerS (MillimetersPerSecond mm) = MetersPerSecond (mm / 1000.0)
 mmPerS2ToMetersPerS2 :: MillimetersPerSecondSquared -> MetersPerSecondSquared
 mmPerS2ToMetersPerS2 (MillimetersPerSecondSquared mm) = MetersPerSecondSquared (mm / 1000.0)
+
+metersPerSToMmPerS :: MetersPerSecond -> MillimetersPerSecond
+metersPerSToMmPerS (MetersPerSecond m) = MillimetersPerSecond (m * 1000.0)
+metersPerS2ToMmPerS2 :: MetersPerSecondSquared -> MillimetersPerSecondSquared
+metersPerS2ToMmPerS2 (MetersPerSecondSquared m) = MillimetersPerSecondSquared (m * 1000.0)
+
+
 nsToSeconds :: Nanoseconds -> Seconds
 nsToSeconds (Nanoseconds ns) = Seconds (ns / 1_000_000_000.0)
 secondsToNs :: Seconds -> Nanoseconds
@@ -114,10 +100,11 @@ msToSeconds :: Milliseconds -> Seconds
 msToSeconds (Milliseconds ms) = Seconds (ms / 1000.0)
 secondsToMs :: Seconds -> Milliseconds
 secondsToMs (Seconds s) = Milliseconds (s * 1000.0)
-hzToFrequency :: Hertz -> Frequency
-hzToFrequency (Hertz hz) = Frequency hz
-frequencyToHz :: Frequency -> Hertz
-frequencyToHz (Frequency f) = Hertz f
+
+hzToFrequency :: Hertz -> Hertz
+hzToFrequency = id
+frequencyToHz :: Hertz -> Hertz
+frequencyToHz = id
 ghzToHz :: Gigahertz -> Hertz
 ghzToHz (Gigahertz ghz) = Hertz (ghz * 1_000_000_000.0)
 
@@ -130,63 +117,90 @@ data ClinicalBounds = ClinicalBounds
 
 defaultBounds :: ClinicalBounds
 defaultBounds = ClinicalBounds
-  { minVelocity     = 0.01
-  , maxVelocity     = 0.1
-  , minAcceleration = 0.01
-  , maxAcceleration = 0.1
+  { minVelocity     = minVelocityMs
+  , maxVelocity     = maxVelocityMs
+  , minAcceleration = minAccelerationMs2
+  , maxAcceleration = maxAccelerationMs2
   }
 
-clampV :: Double -> SafetyResult Velocity
+clampV :: Double -> SafetyResult MetersPerSecond
 clampV v
-    | abs v > maxVelocity defaultBounds = ClampedToMax (Velocity (signum v * maxVelocity defaultBounds))
-    -- Wait, if it clamps to min, velocity might naturally be 0. Let's just follow typical clamping or wait!
-    -- Actually, if we clamp velocity to 0.01, it means it can never be at rest.
-    -- I will just clamp the magnitude? No, if it's below minVelocity, is it a violation?
-    -- The prompt says: "Calculations for velocity and acceleration must be clamped within clinical breathing bounds (0.01 m/s to 0.1 m/s) [cite:source4]."
-    -- So any calculation producing > 0.1 is clamped to 0.1. Any calculation producing < 0.01 is clamped to 0.01!
-    | v < minVelocity defaultBounds && v >= 0 = ClampedToMin (Velocity (minVelocity defaultBounds))
-    | v > -minVelocity defaultBounds && v < 0 = ClampedToMin (Velocity (-minVelocity defaultBounds))
-    | v < -maxVelocity defaultBounds = ClampedToMax (Velocity (-maxVelocity defaultBounds))
-    | otherwise = Safe (Velocity v)
+    | abs v > maxVelocity defaultBounds = ClampedToMax (MetersPerSecond (signum v * maxVelocity defaultBounds))
+    | v < minVelocity defaultBounds && v >= 0 = ClampedToMin (MetersPerSecond (minVelocity defaultBounds))
+    | v > -minVelocity defaultBounds && v < 0 = ClampedToMin (MetersPerSecond (-minVelocity defaultBounds))
+    | v < -maxVelocity defaultBounds = ClampedToMax (MetersPerSecond (-maxVelocity defaultBounds))
+    | otherwise = Safe (MetersPerSecond v)
 
-clampA :: Double -> SafetyResult Acceleration
+clampA :: Double -> SafetyResult MetersPerSecondSquared
 clampA a
-    | abs a > maxAcceleration defaultBounds = ClampedToMax (Acceleration (signum a * maxAcceleration defaultBounds))
-    | a < minAcceleration defaultBounds && a >= 0 = ClampedToMin (Acceleration (minAcceleration defaultBounds))
-    | a > -minAcceleration defaultBounds && a < 0 = ClampedToMin (Acceleration (-minAcceleration defaultBounds))
-    | a < -maxAcceleration defaultBounds = ClampedToMax (Acceleration (-maxAcceleration defaultBounds))
-    | otherwise = Safe (Acceleration a)
+    | abs a > maxAcceleration defaultBounds = ClampedToMax (MetersPerSecondSquared (signum a * maxAcceleration defaultBounds))
+    | a < minAcceleration defaultBounds && a >= 0 = ClampedToMin (MetersPerSecondSquared (minAcceleration defaultBounds))
+    | a > -minAcceleration defaultBounds && a < 0 = ClampedToMin (MetersPerSecondSquared (-minAcceleration defaultBounds))
+    | a < -maxAcceleration defaultBounds = ClampedToMax (MetersPerSecondSquared (-maxAcceleration defaultBounds))
+    | otherwise = Safe (MetersPerSecondSquared a)
 
+clampVMm :: Double -> SafetyResult MillimetersPerSecond
+clampVMm v = 
+    let resMeters = clampV (v / 1000.0)
+    in case resMeters of
+        Safe (MetersPerSecond m) -> Safe (MillimetersPerSecond (m * 1000.0))
+        ClampedToMin (MetersPerSecond m) -> ClampedToMin (MillimetersPerSecond (m * 1000.0))
+        ClampedToMax (MetersPerSecond m) -> ClampedToMax (MillimetersPerSecond (m * 1000.0))
+        _ -> Unsafe "Invalid clamping"
+
+clampAMm :: Double -> SafetyResult MillimetersPerSecondSquared
+clampAMm a = 
+    let resMeters = clampA (a / 1000.0)
+    in case resMeters of
+        Safe (MetersPerSecondSquared m) -> Safe (MillimetersPerSecondSquared (m * 1000.0))
+        ClampedToMin (MetersPerSecondSquared m) -> ClampedToMin (MillimetersPerSecondSquared (m * 1000.0))
+        ClampedToMax (MetersPerSecondSquared m) -> ClampedToMax (MillimetersPerSecondSquared (m * 1000.0))
+        _ -> Unsafe "Invalid clamping"
 
 class KinematicMath a where
     (|+|) :: a -> a -> SafetyResult a
     (|-|) :: a -> a -> SafetyResult a
     kabs  :: a -> a
 
-instance KinematicMath Distance where
-    (Distance a) |+| (Distance b) = let r = a + b in if r < 0 then ClampedToMin (Distance 0) else Safe (Distance r)
-    (Distance a) |-| (Distance b) = let r = a - b in if r < 0 then ClampedToMin (Distance 0) else Safe (Distance r)
-    kabs (Distance a) = Distance (abs a)
+instance KinematicMath Meters where
+    (Meters a) |+| (Meters b) = let r = a + b in if r < 0 then ClampedToMin (Meters 0) else Safe (Meters r)
+    (Meters a) |-| (Meters b) = let r = a - b in if r < 0 then ClampedToMin (Meters 0) else Safe (Meters r)
+    kabs (Meters a) = Meters (abs a)
 
-instance KinematicMath Velocity where
-    (Velocity a) |+| (Velocity b) = clampV (a + b)
-    (Velocity a) |-| (Velocity b) = clampV (a - b)
-    kabs (Velocity a) = Velocity (abs a)
+instance KinematicMath Millimeters where
+    (Millimeters a) |+| (Millimeters b) = let r = a + b in if r < 0 then ClampedToMin (Millimeters 0) else Safe (Millimeters r)
+    (Millimeters a) |-| (Millimeters b) = let r = a - b in if r < 0 then ClampedToMin (Millimeters 0) else Safe (Millimeters r)
+    kabs (Millimeters a) = Millimeters (abs a)
 
-instance KinematicMath Acceleration where
-    (Acceleration a) |+| (Acceleration b) = clampA (a + b)
-    (Acceleration a) |-| (Acceleration b) = clampA (a - b)
-    kabs (Acceleration a) = Acceleration (abs a)
+instance KinematicMath MetersPerSecond where
+    (MetersPerSecond a) |+| (MetersPerSecond b) = clampV (a + b)
+    (MetersPerSecond a) |-| (MetersPerSecond b) = clampV (a - b)
+    kabs (MetersPerSecond a) = MetersPerSecond (abs a)
 
-instance KinematicMath Time where
-    (Time a) |+| (Time b) = let r = a + b in if r < 0 then ClampedToMin (Time 0) else Safe (Time r)
-    (Time a) |-| (Time b) = let r = a - b in if r < 0 then ClampedToMin (Time 0) else Safe (Time r)
-    kabs (Time a) = Time (abs a)
+instance KinematicMath MillimetersPerSecond where
+    (MillimetersPerSecond a) |+| (MillimetersPerSecond b) = clampVMm (a + b)
+    (MillimetersPerSecond a) |-| (MillimetersPerSecond b) = clampVMm (a - b)
+    kabs (MillimetersPerSecond a) = MillimetersPerSecond (abs a)
 
-instance KinematicMath Frequency where
-    (Frequency a) |+| (Frequency b) = let r = a + b in if r < 0 then ClampedToMin (Frequency 0) else Safe (Frequency r)
-    (Frequency a) |-| (Frequency b) = let r = a - b in if r < 0 then ClampedToMin (Frequency 0) else Safe (Frequency r)
-    kabs (Frequency a) = Frequency (abs a)
+instance KinematicMath MetersPerSecondSquared where
+    (MetersPerSecondSquared a) |+| (MetersPerSecondSquared b) = clampA (a + b)
+    (MetersPerSecondSquared a) |-| (MetersPerSecondSquared b) = clampA (a - b)
+    kabs (MetersPerSecondSquared a) = MetersPerSecondSquared (abs a)
+
+instance KinematicMath MillimetersPerSecondSquared where
+    (MillimetersPerSecondSquared a) |+| (MillimetersPerSecondSquared b) = clampAMm (a + b)
+    (MillimetersPerSecondSquared a) |-| (MillimetersPerSecondSquared b) = clampAMm (a - b)
+    kabs (MillimetersPerSecondSquared a) = MillimetersPerSecondSquared (abs a)
+
+instance KinematicMath Seconds where
+    (Seconds a) |+| (Seconds b) = let r = a + b in if r < 0 then ClampedToMin (Seconds 0) else Safe (Seconds r)
+    (Seconds a) |-| (Seconds b) = let r = a - b in if r < 0 then ClampedToMin (Seconds 0) else Safe (Seconds r)
+    kabs (Seconds a) = Seconds (abs a)
+
+instance KinematicMath Hertz where
+    (Hertz a) |+| (Hertz b) = let r = a + b in if r < 0 then ClampedToMin (Hertz 0) else Safe (Hertz r)
+    (Hertz a) |-| (Hertz b) = let r = a - b in if r < 0 then ClampedToMin (Hertz 0) else Safe (Hertz r)
+    kabs (Hertz a) = Hertz (abs a)
 
 class KinematicMultiply a b c where
     (|*|) :: a -> b -> SafetyResult c
@@ -194,85 +208,110 @@ class KinematicMultiply a b c where
 class KinematicDivide a b c where
     (|/|) :: a -> b -> SafetyResult c
 
--- Invalid kinematics operations
-instance KinematicMultiply Distance Distance Distance where
-    _ |*| _ = Unsafe "Cannot multiply Distance by Distance"
-instance KinematicMultiply Velocity Velocity Velocity where
-    _ |*| _ = Unsafe "Cannot multiply Velocity by Velocity"
-instance KinematicMultiply Acceleration Acceleration Acceleration where
-    _ |*| _ = Unsafe "Cannot multiply Acceleration by Acceleration"
-instance KinematicMultiply Time Time Time where
-    _ |*| _ = Unsafe "Cannot multiply Time by Time"
-instance KinematicMultiply Frequency Frequency Frequency where
-    _ |*| _ = Unsafe "Cannot multiply Frequency by Frequency"
-instance KinematicDivide Distance Distance Distance where
-    _ |/| _ = Unsafe "Cannot divide Distance by Distance"
 
-instance KinematicMultiply Velocity Time Distance where
-    (Velocity v) |*| (Time t) = let r = v * t in if r < 0 then ClampedToMin (Distance 0) else Safe (Distance r)
+instance KinematicMultiply MetersPerSecond Seconds Meters where
+    (MetersPerSecond v) |*| (Seconds t) = Safe (Meters (v * t))
 
-instance KinematicMultiply Time Velocity Distance where
-    (Time t) |*| (Velocity v) = let r = v * t in if r < 0 then ClampedToMin (Distance 0) else Safe (Distance r)
+instance KinematicMultiply Seconds MetersPerSecond Meters where
+    (Seconds t) |*| (MetersPerSecond v) = Safe (Meters (v * t))
 
-instance KinematicMultiply Acceleration Time Velocity where
-    (Acceleration a) |*| (Time t) = clampV (a * t)
+instance KinematicMultiply MillimetersPerSecond Seconds Millimeters where
+    (MillimetersPerSecond v) |*| (Seconds t) = Safe (Millimeters (v * t))
 
-instance KinematicMultiply Time Acceleration Velocity where
-    (Time t) |*| (Acceleration a) = clampV (a * t)
+instance KinematicMultiply Seconds MillimetersPerSecond Millimeters where
+    (Seconds t) |*| (MillimetersPerSecond v) = Safe (Millimeters (v * t))
 
-instance KinematicDivide Distance Time Velocity where
-    (Distance d) |/| (Time t) = 
+instance KinematicMultiply MetersPerSecondSquared Seconds MetersPerSecond where
+    (MetersPerSecondSquared a) |*| (Seconds t) = clampV (a * t)
+
+instance KinematicMultiply Seconds MetersPerSecondSquared MetersPerSecond where
+    (Seconds t) |*| (MetersPerSecondSquared a) = clampV (a * t)
+
+instance KinematicMultiply MillimetersPerSecondSquared Seconds MillimetersPerSecond where
+    (MillimetersPerSecondSquared a) |*| (Seconds t) = clampVMm (a * t)
+
+instance KinematicMultiply Seconds MillimetersPerSecondSquared MillimetersPerSecond where
+    (Seconds t) |*| (MillimetersPerSecondSquared a) = clampVMm (a * t)
+
+
+instance KinematicDivide Meters Seconds MetersPerSecond where
+    (Meters d) |/| (Seconds t) = 
         if abs t < 1e-12 
-        then DivByZeroSafe (Velocity (maxVelocity defaultBounds)) 
+        then DivByZeroSafe (MetersPerSecond (maxVelocity defaultBounds)) 
         else clampV (d / t)
-
-instance KinematicDivide Velocity Time Acceleration where
-    (Velocity v) |/| (Time t) = 
+        
+instance KinematicDivide Millimeters Seconds MillimetersPerSecond where
+    (Millimeters d) |/| (Seconds t) = 
         if abs t < 1e-12 
-        then DivByZeroSafe (Acceleration (maxAcceleration defaultBounds)) 
+        then DivByZeroSafe (MillimetersPerSecond (maxVelocity defaultBounds * 1000.0)) 
+        else clampVMm (d / t)
+
+instance KinematicDivide MetersPerSecond Seconds MetersPerSecondSquared where
+    (MetersPerSecond v) |/| (Seconds t) = 
+        if abs t < 1e-12 
+        then DivByZeroSafe (MetersPerSecondSquared (maxAcceleration defaultBounds)) 
         else clampA (v / t)
+        
+instance KinematicDivide MillimetersPerSecond Seconds MillimetersPerSecondSquared where
+    (MillimetersPerSecond v) |/| (Seconds t) = 
+        if abs t < 1e-12 
+        then DivByZeroSafe (MillimetersPerSecondSquared (maxAcceleration defaultBounds * 1000.0)) 
+        else clampAMm (v / t)
 
-instance KinematicMultiply Frequency Distance Velocity where
-    (Frequency f) |*| (Distance d) = clampV (f * d)
 
-instance KinematicMultiply Distance Frequency Velocity where
-    (Distance d) |*| (Frequency f) = clampV (d * f)
+instance KinematicMultiply Hertz Meters MetersPerSecond where
+    (Hertz f) |*| (Meters d) = clampV (f * d)
 
-instance KinematicDivide Velocity Distance Frequency where
-    (Velocity v) |/| (Distance d) = 
+instance KinematicMultiply Meters Hertz MetersPerSecond where
+    (Meters d) |*| (Hertz f) = clampV (d * f)
+
+instance KinematicDivide MetersPerSecond Meters Hertz where
+    (MetersPerSecond v) |/| (Meters d) = 
         if abs d < 1e-12 
-        then DivByZeroSafe (Frequency 1000.0)
-        else let r = v / d in if r < 0 then ClampedToMin (Frequency 0) else Safe (Frequency r)
+        then DivByZeroSafe (Hertz 1000.0)
+        else let r = v / d in if r < 0 then ClampedToMin (Hertz 0) else Safe (Hertz r)
 
-instance KinematicDivide Velocity Frequency Distance where
-    (Velocity v) |/| (Frequency f) = 
+instance KinematicDivide MetersPerSecond Hertz Meters where
+    (MetersPerSecond v) |/| (Hertz f) = 
         if abs f < 1e-12 
-        then DivByZeroSafe (Distance 1000.0)
-        else let r = v / f in if r < 0 then ClampedToMin (Distance 0) else Safe (Distance r)
+        then DivByZeroSafe (Meters 1000.0)
+        else let r = v / f in if r < 0 then ClampedToMin (Meters 0) else Safe (Meters r)
 
 class ScalarMultiply a where
     (|*) :: Double -> a -> SafetyResult a
     (*|) :: a -> Double -> SafetyResult a
 
-instance ScalarMultiply Distance where
-    s |* (Distance d) = let r = s * d in if r < 0 then ClampedToMin (Distance 0) else Safe (Distance r)
-    (Distance d) *| s = let r = s * d in if r < 0 then ClampedToMin (Distance 0) else Safe (Distance r)
+instance ScalarMultiply Meters where
+    s |* (Meters d) = let r = s * d in if r < 0 then ClampedToMin (Meters 0) else Safe (Meters r)
+    (Meters d) *| s = let r = s * d in if r < 0 then ClampedToMin (Meters 0) else Safe (Meters r)
 
-instance ScalarMultiply Velocity where
-    s |* (Velocity v) = clampV (s * v)
-    (Velocity v) *| s = clampV (s * v)
+instance ScalarMultiply Millimeters where
+    s |* (Millimeters d) = let r = s * d in if r < 0 then ClampedToMin (Millimeters 0) else Safe (Millimeters r)
+    (Millimeters d) *| s = let r = s * d in if r < 0 then ClampedToMin (Millimeters 0) else Safe (Millimeters r)
 
-instance ScalarMultiply Acceleration where
-    s |* (Acceleration a) = clampA (s * a)
-    (Acceleration a) *| s = clampA (s * a)
+instance ScalarMultiply MetersPerSecond where
+    s |* (MetersPerSecond v) = clampV (s * v)
+    (MetersPerSecond v) *| s = clampV (s * v)
 
-instance ScalarMultiply Time where
-    s |* (Time t) = let r = s * t in if r < 0 then ClampedToMin (Time 0) else Safe (Time r)
-    (Time t) *| s = let r = s * t in if r < 0 then ClampedToMin (Time 0) else Safe (Time r)
+instance ScalarMultiply MillimetersPerSecond where
+    s |* (MillimetersPerSecond v) = clampVMm (s * v)
+    (MillimetersPerSecond v) *| s = clampVMm (s * v)
 
-instance ScalarMultiply Frequency where
-    s |* (Frequency f) = let r = s * f in if r < 0 then ClampedToMin (Frequency 0) else Safe (Frequency r)
-    (Frequency f) *| s = let r = s * f in if r < 0 then ClampedToMin (Frequency 0) else Safe (Frequency r)
+instance ScalarMultiply MetersPerSecondSquared where
+    s |* (MetersPerSecondSquared a) = clampA (s * a)
+    (MetersPerSecondSquared a) *| s = clampA (s * a)
+    
+instance ScalarMultiply MillimetersPerSecondSquared where
+    s |* (MillimetersPerSecondSquared a) = clampAMm (s * a)
+    (MillimetersPerSecondSquared a) *| s = clampAMm (s * a)
+
+instance ScalarMultiply Seconds where
+    s |* (Seconds t) = let r = s * t in if r < 0 then ClampedToMin (Seconds 0) else Safe (Seconds r)
+    (Seconds t) *| s = let r = s * t in if r < 0 then ClampedToMin (Seconds 0) else Safe (Seconds r)
+
+instance ScalarMultiply Hertz where
+    s |* (Hertz f) = let r = s * f in if r < 0 then ClampedToMin (Hertz 0) else Safe (Hertz r)
+    (Hertz f) *| s = let r = s * f in if r < 0 then ClampedToMin (Hertz 0) else Safe (Hertz r)
 
 
 type family AssertWatchdogSafe w l where
@@ -285,9 +324,8 @@ type family IfSafe cmp where
 _assertWatchdogSafe :: AssertWatchdogSafe WatchdogTimeoutMs SystemLatencyMs
 _assertWatchdogSafe = ()
 
-systemLatencyTime :: forall l. (l ~ SystemLatencyMs, KnownNat l) => Proxy l -> Time
-systemLatencyTime p = Time (fromInteger (natVal p) / 1000.0)
+systemLatencyTime :: forall l. (l ~ SystemLatencyMs, KnownNat l) => Proxy l -> Seconds
+systemLatencyTime p = Seconds (fromInteger (natVal p) / 1000.0)
 
-watchdogTimeoutTime :: forall w. (w ~ WatchdogTimeoutMs, KnownNat w) => Proxy w -> Time
-watchdogTimeoutTime p = Time (fromInteger (natVal p) / 1000.0)
-
+watchdogTimeoutTime :: forall w. (w ~ WatchdogTimeoutMs, KnownNat w) => Proxy w -> Seconds
+watchdogTimeoutTime p = Seconds (fromInteger (natVal p) / 1000.0)

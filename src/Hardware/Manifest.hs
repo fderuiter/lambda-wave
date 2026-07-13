@@ -9,7 +9,15 @@ module Hardware.Manifest (
     systemLatencyMs,
     mountingOffsetMm,
     WatchdogTimeoutMs,
-    SystemLatencyMs
+    SystemLatencyMs,
+    speedOfLight,
+    gatingToleranceMm,
+    hysteresisMarginMm,
+    targetHeightMm,
+    minVelocityMs,
+    maxVelocityMs,
+    minAccelerationMs2,
+    maxAccelerationMs2
 ) where
 
 watchdogPin :: Int
@@ -36,3 +44,28 @@ mountingOffsetMm = 50.0
 type WatchdogTimeoutMs = 100
 
 type SystemLatencyMs = 50
+
+speedOfLight :: Double
+speedOfLight = 300000000.0
+
+gatingToleranceMm :: Double
+gatingToleranceMm = 3.0
+
+hysteresisMarginMm :: Double
+hysteresisMarginMm = 0.5
+
+targetHeightMm :: Double
+targetHeightMm = 10.0
+
+minVelocityMs :: Double
+minVelocityMs = 0.01
+
+maxVelocityMs :: Double
+maxVelocityMs = 0.1
+
+minAccelerationMs2 :: Double
+minAccelerationMs2 = 0.01
+
+maxAccelerationMs2 :: Double
+maxAccelerationMs2 = 0.1
+

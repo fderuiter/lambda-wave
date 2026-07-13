@@ -25,11 +25,11 @@ class WriteIfChanged(io.StringIO):
             return
         content = self.getvalue()
         if os.path.exists(self.filepath):
-            with open(self.filepath, 'r') as f:
+            with _builtins_open(self.filepath, 'r') as f:
                 if f.read() == content:
                     return
         os.makedirs(os.path.dirname(self.filepath) or '.', exist_ok=True)
-        with open(self.filepath, 'w') as f:
+        with _builtins_open(self.filepath, 'w') as f:
             f.write(content)
 
 # Override open for 'w' mode
@@ -214,7 +214,18 @@ def generate_manifest(data, out_hdr, out_hs, cfg_path):
         f.write("    systemLatencyMs,\n")
         f.write("    mountingOffsetMm,\n")
         f.write("    WatchdogTimeoutMs,\n")
-        f.write("    SystemLatencyMs\n")
+        f.write("    SystemLatencyMs,\n")
+        if "physical_constants" in data:
+            f.write("    speedOfLight,\n")
+        if "gating_tolerances" in data:
+            f.write("    gatingToleranceMm,\n")
+            f.write("    hysteresisMarginMm,\n")
+            f.write("    targetHeightMm,\n")
+        if "kinematic_bounds" in data:
+            f.write("    minVelocityMs,\n")
+            f.write("    maxVelocityMs,\n")
+            f.write("    minAccelerationMs2,\n")
+            f.write("    maxAccelerationMs2\n")
         f.write(") where\n\n")
         f.write(f"watchdogPin :: Int\nwatchdogPin = {data['gpio_pins']['watchdog']}\n\n")
         f.write(f"logicPin :: Int\nlogicPin = {data['gpio_pins']['logic']}\n\n")
@@ -224,7 +235,73 @@ def generate_manifest(data, out_hdr, out_hs, cfg_path):
         f.write(f"systemLatencyMs :: Int\nsystemLatencyMs = {data['timing']['system_latency_ms']}\n\n")
         f.write(f"mountingOffsetMm :: Double\nmountingOffsetMm = {data['mounting_offset_mm']}\n\n")
         f.write(f"type WatchdogTimeoutMs = {data['timing']['frame_periodicity_ms']}\n\n")
-        f.write(f"type SystemLatencyMs = {data['timing']['system_latency_ms']}\n")
+        f.write(f"type SystemLatencyMs = {data['timing']['system_latency_ms']}\n\n")
+        
+        if "physical_constants" in data:
+            f.write(f"speedOfLight :: Double\nspeedOfLight = {data['physical_constants']['speed_of_light']}\n\n")
+            
+        if "gating_tolerances" in data:
+            gt = data["gating_tolerances"]
+            f.write(f"gatingToleranceMm :: Double\ngatingToleranceMm = {gt['gating_tolerance_mm']}\n\n")
+            f.write(f"hysteresisMarginMm :: Double\nhysteresisMarginMm = {gt['hysteresis_margin_mm']}\n\n")
+            f.write(f"targetHeightMm :: Double\ntargetHeightMm = {gt['target_height_mm']}\n\n")
+            
+        if "kinematic_bounds" in data:
+            kb = data["kinematic_bounds"]
+            f.write(f"minVelocityMs :: Double\nminVelocityMs = {kb['min_velocity_m_s']}\n\n")
+            f.write(f"maxVelocityMs :: Double\nmaxVelocityMs = {kb['max_velocity_m_s']}\n\n")
+            f.write(f"minAccelerationMs2 :: Double\nminAccelerationMs2 = {kb['min_acceleration_m_s2']}\n\n")
+            f.write(f"maxAccelerationMs2 :: Double\nmaxAccelerationMs2 = {kb['max_acceleration_m_s2']}\n\n")
+
+    # Generate Markdown Documentation
+    doc_path = 'docs/reference/mathematical_constants.md'
+    if os.path.exists(doc_path):
+        with open(doc_path, 'r') as f:
+            doc_content = f.read()
+
+        import re
+        
+        # Replace Physical Constants Table
+        if "physical_constants" in data:
+            c = data["physical_constants"]["speed_of_light"]
+            # Convert 300000000.0 to 3 \times 10^8
+            sci = f"{c:.1e}".split('e')
+            c_str = rf"{float(sci[0]):g} \times 10^{{{int(sci[1])}}}"
+            new_phys = rf"*   **Speed of Light ($c$):** ${c_str} \text{{ m/s}}$\n"
+            doc_content = re.sub(
+                r'(\*   \*\*Speed of Light \(\$c\$\):\*\*).*?(?=\n)',
+                rf'\g<1> ${c_str} \text{{ m/s}}$',
+                doc_content
+            )
+
+        # Replace Kinematic Bounds / Gating
+        if "kinematic_bounds" in data and "gating_tolerances" in data:
+            kb = data["kinematic_bounds"]
+            gt = data["gating_tolerances"]
+            md_table = "### Generated System Limits\n\n| Parameter | Value | Unit |\n|---|---|---|\n"
+            md_table += f"| Speed of Light | {data['physical_constants']['speed_of_light']} | m/s |\n"
+            md_table += f"| Gating Tolerance | {gt['gating_tolerance_mm']} | mm |\n"
+            md_table += f"| Hysteresis Margin | {gt['hysteresis_margin_mm']} | mm |\n"
+            md_table += f"| Target Height | {gt['target_height_mm']} | mm |\n"
+            md_table += f"| Min Velocity | {kb['min_velocity_m_s']} | m/s |\n"
+            md_table += f"| Max Velocity | {kb['max_velocity_m_s']} | m/s |\n"
+            md_table += f"| Min Acceleration | {kb['min_acceleration_m_s2']} | m/s² |\n"
+            md_table += f"| Max Acceleration | {kb['max_acceleration_m_s2']} | m/s² |\n"
+            
+            # Insert or replace in the doc
+            if "### Generated System Limits" in doc_content:
+                doc_content = re.sub(
+                    r'### Generated System Limits\n\n.*?(\n## |$)',
+                    md_table + r'\1',
+                    doc_content,
+                    flags=re.DOTALL
+                )
+            else:
+                doc_content += "\n## System Limits\n\n" + md_table
+
+        with open(doc_path, 'w') as f:
+            f.write(doc_content)
+
 
     with open(cfg_path, 'r') as f:
         lines = f.readlines()

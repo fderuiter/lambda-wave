@@ -64,7 +64,7 @@ watchdogLoop stateVar = (`catch` \e -> do putStrLn $ "WATCHDOG CRASHED: " ++ sho
     sock <- socket AF_UNIX Datagram 0
     let addr = SockAddrUnix (udsPath myPid)
 
-    let Time timeoutSec = watchdogTimeoutTime (Proxy :: Proxy WatchdogTimeoutMs)
+    let Seconds timeoutSec = watchdogTimeoutTime (Proxy :: Proxy WatchdogTimeoutMs)
         timeoutNS = round (timeoutSec * 1_000_000_000) :: Word64
     forever $ do
         now <- getMonotonicTimeNS
@@ -137,7 +137,7 @@ runSafetyDaemon parentPid = do
     let loop = do
             -- Receive with timeout
             -- timeout takes microseconds.
-            let Time timeoutSec = watchdogTimeoutTime (Proxy :: Proxy WatchdogTimeoutMs)
+            let Seconds timeoutSec = watchdogTimeoutTime (Proxy :: Proxy WatchdogTimeoutMs)
                 -- Add a 5ms grace period to the daemon timeout so the main watchdog has time to log the freeze
                 timeoutUS = round (timeoutSec * 1_000_000) + 5000 :: Int
             resSock <- try (timeout timeoutUS $ recv sock 16) :: IO (Either IOException (Maybe BC.ByteString))
