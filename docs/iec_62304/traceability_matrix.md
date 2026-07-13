@@ -44,8 +44,8 @@ This document provides end-to-end traceability between Functional Requirements (
 
 | Req ID | Quality Policy Origin | Description | Source Phase | Module | Architecture Section | Verification Test | Status |
 |---|---|---|---|---|---|---|---|
-| MR-001 | ISO-13485-7.3.2 | FMCW Range Estimation (Equation 1) | Phase 3.1 | `SignalProcessing.FMCW` | [`src/Numeric/Kinematics.hs`](../../Haskell Radar SGRT System Development.md) | `test/SignalProcessing/FMCWSpec.hs` | ✅ Complete |
+| MR-001 | ISO-13485-7.3.2 | FMCW Range Estimation (Equation 1) | Phase 3.1 | `SignalProcessing.FMCW` | N/A | `test/SignalProcessing/FMCWSpec.hs` | ✅ Complete |
 | MR-002 | ISO-13485-7.3.2 | Chirp Z-Transform (Equation 2) | Phase 3.1 | `SignalProcessing.FMCW` | N/A | `test/SignalProcessing/FMCWSpec.hs` | ✅ Complete |
 | MR-003 | ISO-13485-7.3.2 | Standard DFT (Equation 3) | Phase 3.1 | None | N/A | None | ❌ Incomplete |
 | MR-004 | ISO-13485-7.3.2 | Phase Extraction (Equation 4) | Phase 3.2 | `SignalProcessing.FMCW` | N/A | `test/SignalProcessing/FMCWSpec.hs` | ✅ Complete |
-| MR-005 | ISO-13485-7.3.2 | Displacement Calculation (Equation 5) | Phase 3.2 | `SignalProcessing.FMCW` | [`src/Numeric/Kinematics.hs`](../../Haskell Radar SGRT System Development.md) | `test/SignalProcessing/FMCWSpec.hs` | ✅ Complete |
+| MR-005 | ISO-13485-7.3.2 | Displacement Calculation (Equation 5) | Phase 3.2 | `SignalProcessing.FMCW` | N/A | `test/SignalProcessing/FMCWSpec.hs` | ✅ Complete |

@@ -188,3 +188,13 @@ hazards:
     occurrence: 3
     detection: 2
     rpn: 30
+
+  - id: H-SYS-013
+    description: Real-time thread suspension due to log queue saturation
+    cause: Blocking write operations when audit log queue is full
+    effect: Delayed response to patient safety events
+    mitigation: Non-blocking tryWriteAudit API with fallback diagnostic warnings to stderr
+    severity: 5
+    occurrence: 2
+    detection: 2
+    rpn: 20
