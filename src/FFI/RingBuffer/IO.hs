@@ -44,6 +44,7 @@ import FFI.RingBuffer.Types (getBufferSize)
 import FFI.RingBuffer.Generated (RingBufferControl, c_get_write_offset, c_set_read_offset)
 import Hardware.FFI.Common
 import Hardware.FFI.Bridge
+import Safety.Audit (triggerShutdown)
 import Control.Concurrent.STM (TVar)
 import Data.Types (SystemState)
 

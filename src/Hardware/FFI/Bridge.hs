@@ -21,8 +21,7 @@ module Hardware.FFI.Bridge (
     bridgeHardwareCallCustom,
     bridgeRingBufferCall,
     bridgeHardwareQuery,
-    handleHardwareResponse,
-    triggerShutdown
+    handleHardwareResponse
 ) where
 
 import qualified Hardware.FFI.Common as Common
@@ -36,6 +35,7 @@ import Foreign.C.Error (getErrno, Errno(..))
 import Data.Time.HighRes (getMonotonicTimeNS)
 import Foreign.C.Types (CInt)
 import System.Posix.Types (CSsize)
+import Safety.Audit (tryWriteAuditSTM, triggerShutdown)
 
 -- | Opaque type to ensure the caller explicitly handles the result.
 -- No Functor/Monad instances are provided to prevent `_ <-` ignoring.
@@ -45,18 +45,6 @@ newtype MustHandle a = MustHandle (Either HardwareError a)
 handleHardwareResponse :: (HardwareError -> IO b) -> (a -> IO b) -> MustHandle a -> IO b
 handleHardwareResponse onErr _ (MustHandle (Left err)) = onErr err
 handleHardwareResponse _ onSuccess (MustHandle (Right val)) = onSuccess val
-
--- | Centralized function to trigger a controlled system shutdown on failure
-triggerShutdown :: TVar SystemState -> String -> IO ()
-triggerShutdown stateVar reason = do
-    now <- getMonotonicTimeNS
-    atomically $ do
-        s <- readTVar stateVar
-        writeTVar stateVar s { beamState = BeamOff }
-        -- We try to write one last critical event but this shouldn't block shutdown
-        let evt = AuditEvent now Critical "Bridge" ("SYSTEM SHUTDOWN TRIGGERED: " ++ reason)
-        full <- isFullTBQueue (auditQueue s)
-        unless full $ writeTBQueue (auditQueue s) evt
 
 -- | Pipes outcomes to the audit system. Shuts down if audit system is unreachable.
 auditHardwareEvent :: TVar SystemState -> String -> HardwareResult -> IO ()
@@ -80,13 +68,7 @@ auditHardwareEvent stateVar comp res = do
     -- We can try to write to the TBQueue. If it's full, or we hit an exception, we shutdown.
     writeSuccess <- atomically $ do
         s <- readTVar stateVar
-        let q = auditQueue s
-        full <- isFullTBQueue q
-        if full 
-            then return False
-            else do
-                writeTBQueue q evt
-                return True
+        tryWriteAuditSTM (auditQueue s) evt
 
     unless writeSuccess $ triggerShutdown stateVar "Audit logging failed"
 

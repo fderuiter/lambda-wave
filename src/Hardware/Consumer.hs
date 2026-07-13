@@ -47,6 +47,7 @@ import Control.Mesher (reconstructPolynomialSurface)
 import Hardware.Types
 import Hardware.Control (setBeam)
 import Hardware.FFI.Bridge (handleHardwareResponse)
+import Safety.Audit (tryWriteAudit)
 import Text.Printf (printf)
 
 -- | The Magic Word sequence for TI Millimeter Wave Radar
@@ -110,18 +111,16 @@ consumerLoop mountingOffset translations isPrimary controlFp stateVar = withFore
                                 , component = "Consumer"
                                 , message   = "Buffer pressure reached " ++ show (round (saturation * 100) :: Int) ++ "% saturation. Triggering Beam Off."
                                 }
-                        atomically $ do
-                            st <- readTVar stateVar
-                            writeTBQueue (auditQueue st) evt
-                            writeTVar stateVar (st { beamState = BeamOff })
+                        st <- readTVarIO stateVar
+                        tryWriteAudit (auditQueue st) evt
+                        atomically $ modifyTVar' stateVar (\s -> s { beamState = BeamOff })
                         when isPrimary $ do
                             res <- setBeam stateVar False
                             handleHardwareResponse
                                 (\err -> do
                                     let evt2 = AuditEvent now Critical "Hardware" ("Actuation Error: " ++ show err)
-                                    atomically $ do
-                                        st2 <- readTVar stateVar
-                                        writeTBQueue (auditQueue st2) evt2
+                                    st2 <- readTVarIO stateVar
+                                    tryWriteAudit (auditQueue st2) evt2
                                 )
                                 (\() -> return ())
                                 res
@@ -173,19 +172,17 @@ consumerLoop mountingOffset translations isPrimary controlFp stateVar = withFore
                                     , message   = msg
                                     }
 
-                            atomically $ do
-                                st <- readTVar stateVar
-                                writeTBQueue (auditQueue st) evt
-                                writeTVar stateVar (st { beamState = BeamOff })
+                            st <- readTVarIO stateVar
+                            tryWriteAudit (auditQueue st) evt
+                            atomically $ modifyTVar' stateVar (\s -> s { beamState = BeamOff })
 
                             when isPrimary $ do
                                 res <- setBeam stateVar False
                                 handleHardwareResponse
                                     (\errHardware -> do
                                         let evt2 = AuditEvent now Critical "Hardware" ("Actuation Error: " ++ show errHardware)
-                                        atomically $ do
-                                            st2 <- readTVar stateVar
-                                            writeTBQueue (auditQueue st2) evt2
+                                        st2 <- readTVarIO stateVar
+                                        tryWriteAudit (auditQueue st2) evt2
                                     )
                                     (\() -> return ())
                                     res
@@ -206,9 +203,8 @@ consumerLoop mountingOffset translations isPrimary controlFp stateVar = withFore
                                     , component = "Consumer"
                                     , message   = "Processed frame " ++ show (seqNum frame) ++ " | Header: " ++ headerHex
                                     }
-                            atomically $ do
-                                st <- readTVar stateVar
-                                writeTBQueue (auditQueue st) evt
+                            st <- readTVarIO stateVar
+                            tryWriteAudit (auditQueue st) evt
 
                         if isPrimary
                             then forM_ frames $ \frame -> processFrame translations stateVar frame

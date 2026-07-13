@@ -6,13 +6,13 @@
 --
 -- Provides secure, immutable audit logging to disk with immediate
 -- flush semantics for critical events.
-module Safety.Audit (auditLoop) where
+module Safety.Audit (auditLoop, tryWriteAudit, tryWriteAuditSTM, triggerShutdown) where
 
 import Data.Types
 import Control.Concurrent.STM
 import Control.Concurrent (threadDelay)
 import System.IO
-import Control.Monad (when)
+import Control.Monad (when, unless)
 import Data.Functor ((<&>))
 import Data.Time.HighRes (getMonotonicTimeNS)
 import qualified Data.Map.Strict as Map
@@ -23,7 +23,6 @@ import Data.Char (isControl)
 import qualified Data.ByteString as B
 import Safety.Crypto (encryptLog)
 import Safety.Result (SafetyResult(..))
-import Hardware.FFI.Bridge (triggerShutdown)
 
 -- | Signals why the inner loop exited
 data LoopResult = RotationNeeded
@@ -136,3 +135,33 @@ processEvents stateVar queue h = go
                         return RotationNeeded
 
 -- Requirement SR-AUDIT-001
+
+-- | Unified non-blocking API for writing to the audit queue from STM.
+tryWriteAuditSTM :: TBQueue AuditEvent -> AuditEvent -> STM Bool
+tryWriteAuditSTM queue evt = do
+    full <- isFullTBQueue queue
+    if full then return False else do
+        writeTBQueue queue evt
+        return True
+
+-- | Unified non-blocking API for writing to the audit queue.
+-- Prevents calling threads from suspending. If the queue is full,
+-- it drops the event and outputs a fallback diagnostic to standard error.
+tryWriteAudit :: TBQueue AuditEvent -> AuditEvent -> IO ()
+tryWriteAudit queue evt = do
+    success <- atomically $ tryWriteAuditSTM queue evt
+    unless success $
+        hPutStrLn stderr $ "DROPPED AUDIT EVENT: " ++ show evt
+
+-- | Centralized function to trigger a controlled system shutdown on failure
+triggerShutdown :: TVar SystemState -> String -> IO ()
+triggerShutdown stateVar reason = do
+    now <- getMonotonicTimeNS
+    atomically $ do
+        s <- readTVar stateVar
+        writeTVar stateVar s { beamState = BeamOff }
+        -- We try to write one last critical event but this shouldn't block shutdown
+        let evt = AuditEvent now Critical "Bridge" ("SYSTEM SHUTDOWN TRIGGERED: " ++ reason)
+        _ <- tryWriteAuditSTM (auditQueue s) evt
+        return ()
+

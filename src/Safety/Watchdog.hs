@@ -22,6 +22,7 @@ import System.Posix.Files (removeLink)
 import qualified Data.ByteString as B
 import Safety.Crypto (encryptLog)
 import Safety.Result (SafetyResult(..))
+import Safety.Audit (tryWriteAudit)
 
 import Hardware.Control (setBeamChannelDaemon, GpioChannel(..))
 import Hardware.FFI.Bridge (handleHardwareResponse)
@@ -89,11 +90,7 @@ watchdogLoop stateVar = (`catch` \e -> do putStrLn $ "WATCHDOG CRASHED: " ++ sho
                     hFlush stdout
                     when (diff > timeoutNS) $ do
                         let msg = "Thread '" ++ threadName ++ "' FROZEN (Age: " ++ show diff ++ "ns)."
-                        atomically $ do
-                            let q = auditQueue state
-                            full <- isFullTBQueue q
-                            unless full $
-                                writeTBQueue q (AuditEvent now Critical "Watchdog" msg)
+                        tryWriteAudit (auditQueue state) (AuditEvent now Critical "Watchdog" msg)
                         putStrLn $ "!!! MAIN WATCHDOG: " ++ msg
                         hFlush stdout
                         threadDelay 1000
