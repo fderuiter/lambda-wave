@@ -18,7 +18,7 @@ requirements:
     description: Packet parser validation
     phase: Phase 2.2
     module: "`Hardware.Consumer`"
-    test: "`test/Hardware/ConsumerSpec.hs`, `ConsumerIntegrationCheck.hs`"
+    test: "`test/Hardware/ConsumerSpec.hs`, `test/Hardware/ConsumerIntegrationCheck.hs`"
     status: Complete
   - id: FR-DAQ-004
     policy: ISO-13485-7.3.2
@@ -46,7 +46,7 @@ requirements:
     description: Kalman filter for motion prediction
     phase: Phase 3.3
     module: "`SignalProcessing.Kalman`"
-    test: "`test/SignalProcessing/KalmanCheck.hs`, `test/SignalProcessing/PhantomStudy.hs`"
+    test: "`test/SignalProcessing/KalmanCheck.hs`, `tools/data-generation/PhantomStudy.hs`"
     status: Complete
   - id: FR-DSP-004
     policy: ISO-13485-7.3.2
@@ -66,7 +66,7 @@ requirements:
     policy: ISO-13485-7.3.2
     description: Total latency < 50ms
     phase: Phase 4.2
-    module: "`Control.Gating`, `Main`"
+    module: "`Control.Gating`, `app/Main.hs`"
     test: "`bench/LatencyBench.hs`"
     status: Complete
   - id: FR-UI-001
@@ -88,7 +88,7 @@ requirements:
     policy: IEC-62366-5.1, IEC-62304-5.1.1
     description: Multi-modal encoding (color, shape, and symbol) for safety-critical states
     phase: Phase 5.3
-    module: "`app/Control/UI/Renderer.hs`, `app/Control/WebUI.hs`"
+    module: "`UI.Presentation`"
     test: Visual Inspection
     status: Complete
 
@@ -112,7 +112,7 @@ requirements:
     policy: ISO-13485-7.1
     description: GHC RTS deterministic runtime (locked capabilities)
     phase: Phase 1.1
-    module: "`app/Main.hs`, `.cabal`"
+    module: "`app/Main.hs`, `sgrt-radar-system.cabal`"
     test: "`test/System/RTSSpec.hs`"
     status: Complete
   - id: SR-WD-001
@@ -149,7 +149,7 @@ requirements:
     description: Correlation coefficient > 0.95 vs ground truth
     phase: Phase 6.1
     module: "`SignalProcessing.Kalman`, `SignalProcessing.FMCW`"
-    test: "`test/SignalProcessing/PhantomStudy.hs`"
+    test: "`tools/data-generation/PhantomStudy.hs`"
     status: Incomplete
 
   - id: MR-001
