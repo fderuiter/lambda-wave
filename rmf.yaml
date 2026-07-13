@@ -188,3 +188,13 @@ hazards:
     occurrence: 3
     detection: 2
     rpn: 30
+
+  - id: H-SYS-013
+    description: Dimensional unit mismatch
+    cause: Using scalars for physical quantities leading to millimeter vs meter confusion
+    effect: Incorrect radiation delivery due to failure in latency compensation
+    mitigation: Type-level dimensional analysis forcing compile-time verification
+    severity: 5
+    occurrence: 3
+    detection: 2
+    rpn: 30
