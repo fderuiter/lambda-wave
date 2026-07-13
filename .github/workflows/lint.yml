@@ -27,7 +27,7 @@ jobs:
           python-version: '3.12'
 
       - name: Install HLint
-        run: cabal install hlint
+        run: cabal install hlint --ignore-project
 
       - name: Run HLint
         run: hlint src/ tools/
