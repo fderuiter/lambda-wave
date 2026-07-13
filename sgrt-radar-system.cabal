@@ -1,7 +1,7 @@
 cabal-version: 2.2
--- Requirement SR-SOUP-001
 
 name:           sgrt-radar-system
+-- Requirement SR-SOUP-001
 version:        0.1.0.0
 description:    Safety-critical Surface Guided Radiation Therapy (SGRT) system
 author:         Frederick de Ruiter, Ayoola Okuribido
