@@ -29,22 +29,24 @@ static const size_t MAX_HISTORY = 300;
 static TranslateCallback g_translate_callback = nullptr;
 static std::unordered_map<std::string, std::string> g_translation_cache;
 
-static const char* get_localized_string(const std::string& key, const std::string& default_val) {
-    auto it = g_translation_cache.find(key);
-    if (it != g_translation_cache.end()) {
-        return it->second.c_str();
+static const char *get_localized_string(const std::string &key,
+                                        const std::string &default_val) {
+  auto it = g_translation_cache.find(key);
+  if (it != g_translation_cache.end()) {
+    return it->second.c_str();
+  }
+  if (g_translate_callback != nullptr) {
+    const char *result =
+        g_translate_callback(g_active_language.c_str(), key.c_str());
+    if (result != nullptr) {
+      std::string res_str(result);
+      free((void *)result);
+      g_translation_cache[key] = res_str;
+      return g_translation_cache[key].c_str();
     }
-    if (g_translate_callback != nullptr) {
-        const char* result = g_translate_callback(g_active_language.c_str(), key.c_str());
-        if (result != nullptr) {
-            std::string res_str(result);
-            free((void*)result);
-            g_translation_cache[key] = res_str;
-            return g_translation_cache[key].c_str();
-        }
-    }
-    g_translation_cache[key] = default_val;
-    return g_translation_cache[key].c_str();
+  }
+  g_translation_cache[key] = default_val;
+  return g_translation_cache[key].c_str();
 }
 
 extern "C" {
@@ -147,11 +149,14 @@ extern "C" void start_cpp_hud_loop(void) {
       }
       ImGui::Separator();
 
-      ImGui::InputText(get_localized_string("username_label", "Username"), username, IM_ARRAYSIZE(username));
+      ImGui::InputText(get_localized_string("username_label", "Username"),
+                       username, IM_ARRAYSIZE(username));
       bool submit_password = ImGui::InputText(
-          get_localized_string("password_label", "Password"), password, IM_ARRAYSIZE(password),
+          get_localized_string("password_label", "Password"), password,
+          IM_ARRAYSIZE(password),
           ImGuiInputTextFlags_Password | ImGuiInputTextFlags_EnterReturnsTrue);
-      if (ImGui::Button(get_localized_string("login_button", "Login")) || submit_password) {
+      if (ImGui::Button(get_localized_string("login_button", "Login")) ||
+          submit_password) {
         if ((strcmp(username, "admin") == 0 ||
              strcmp(username, "operator") == 0) &&
             strcmp(password, "password") == 0) {
@@ -180,8 +185,12 @@ extern "C" void start_cpp_hud_loop(void) {
         g_translation_cache.clear();
       }
 
-      ImGui::Text("%s%s", get_localized_string("calibration_status_prefix", "Calibration Status: "),
-                  g_calibration_status == 1 ? get_localized_string("calibration_valid", "Valid") : get_localized_string("calibration_invalid", "Invalid"));
+      ImGui::Text("%s%s",
+                  get_localized_string("calibration_status_prefix",
+                                       "Calibration Status: "),
+                  g_calibration_status == 1
+                      ? get_localized_string("calibration_valid", "Valid")
+                      : get_localized_string("calibration_invalid", "Invalid"));
 
       ImVec4 beamColor;
       if (g_beam_state == 1)
@@ -196,8 +205,9 @@ extern "C" void start_cpp_hud_loop(void) {
 
       // Respiratory trace
       std::vector<float> trace(g_resp_history.begin(), g_resp_history.end());
-      ImGui::PlotLines(get_localized_string("resp_trace_title", "Respiratory Trace"), trace.data(), trace.size(), 0, NULL,
-                       -20.0f, 20.0f, ImVec2(0, 100));
+      ImGui::PlotLines(
+          get_localized_string("resp_trace_title", "Respiratory Trace"),
+          trace.data(), trace.size(), 0, NULL, -20.0f, 20.0f, ImVec2(0, 100));
 
       // Point Cloud Info
       ImGui::Text("Active Points: %zu", g_points.size());
