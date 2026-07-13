@@ -188,23 +188,6 @@ $$A \= \\begin{bmatrix} 1 & x\_1 & y\_1 & x\_1^2 & y\_1^2 & x\_1 y\_1 \\\\ 1 & x
 
 ## Auto-Generated Architecture
 <!-- ARCHITECTURE-START -->
-### Extracted from `src/Numeric/Kinematics.hs`
-
-3rd-Order Math Model for Kinematic Tracking.
-
-This module implements the core kinematic equations (position, velocity, acceleration)
-for tracking patient surface motion during radiation therapy.
-
-Failure Modes:
-* Numerical instability during rapid acceleration spikes (e.g., coughing).
-* Integer overflow in nanosecond time delta calculations.
-
-Mitigations:
-* Saturating arithmetic applied to all derivative calculations.
-* Strong typing prevents mixing of mismatched physical units (e.g., Millimeters vs Meters).
-
-Traceability: MR-001, MR-005
-
 ### Extracted from `src/FFI/RingBuffer/IO.hs`
 
 High-assurance FFI Bridge Logic for RingBuffer.
