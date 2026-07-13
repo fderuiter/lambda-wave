@@ -1,6 +1,6 @@
--- Requirement FR-DAQ-002
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE LambdaCase #-}
+-- Requirement FR-DAQ-002
 module Hardware.Control (
     configureSensor,
     configureSensorWithRetry,

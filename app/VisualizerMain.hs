@@ -1,7 +1,7 @@
--- Requirement SR-IPC-001
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE ForeignFunctionInterface #-}
 {-# LANGUAGE PatternSynonyms #-}
+-- Requirement SR-IPC-001
 module Main (main) where
 
 import Control.Concurrent (threadDelay, forkIO)
