@@ -73,6 +73,8 @@ jobs:
 
       - name: Generate Traceability Matrix
         run: python tools/qa/compliance_engine.py
+      - name: Verify Traceability Links
+        run: python scripts/verify_traceability_links.py
 
       - name: Build dependencies with coverage
         run: |

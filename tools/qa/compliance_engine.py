@@ -71,33 +71,48 @@ def search_tag_in_dirs(root, dirs, tag):
                             return True
     return False
 
+
 def get_architecture_links(req_id, arch_doc_path):
-    if not os.path.exists(arch_doc_path):
-        return "N/A"
-    
-    with open(arch_doc_path, 'r', encoding='utf-8') as f:
-        content = f.read()
-        
-    start_marker = "<!-- ARCHITECTURE-START -->"
-    end_marker = "<!-- ARCHITECTURE-END -->"
-    
-    start_idx = content.find(start_marker)
-    end_idx = content.find(end_marker)
-    
-    if start_idx == -1 or end_idx == -1:
-        return "N/A"
-        
-    arch_content = content[start_idx:end_idx]
-    
-    sections = arch_content.split('### Extracted from `')
+    root_dir = os.path.abspath(os.path.join(os.path.dirname(arch_doc_path), "."))
+    arch_dir = os.path.join(root_dir, "docs/architecture")
     links = []
-    for section in sections[1:]:
-        title = section.split('`', 1)[0]
-        if req_id in section:
-            links.append(f"[`{title}`](../../Haskell Radar SGRT System Development.md)")
-            
+
+    # Check the new subsystem documents
+    if os.path.exists(arch_dir):
+        for file in sorted(os.listdir(arch_dir)):
+            if file.endswith('.md'):
+                file_path = os.path.join(arch_dir, file)
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                    if req_id in content:
+                        title = file.replace('.md', '').replace('_', ' ').title()
+                        links.append(f"[`{title}`](../../docs/architecture/{file})")
+    
+    # Also check the old auto-generated block to preserve FR-DAQ-001
+    if os.path.exists(arch_doc_path):
+        with open(arch_doc_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+        start_marker = "<!-- ARCHITECTURE-START -->"
+        end_marker = "<!-- ARCHITECTURE-END -->"
+        start_idx = content.find(start_marker)
+        end_idx = content.find(end_marker)
+        if start_idx != -1 and end_idx != -1:
+            arch_content = content[start_idx:end_idx]
+            sections = arch_content.split('### Extracted from `')
+            for section in sections[1:]:
+                sect_title = section.split('`', 1)[0]
+                if req_id in section:
+                    links.append(f"[`{sect_title}`](../../Haskell Radar SGRT System Development.md)")
+                    
     if links:
-        return "<br>".join(links)
+        # Return unique links
+        seen = set()
+        unique_links = []
+        for l in links:
+            if l not in seen:
+                unique_links.append(l)
+                seen.add(l)
+        return "<br>".join(unique_links)
     return "N/A"
 
 def generate_markdown(requirements, root_dir):
