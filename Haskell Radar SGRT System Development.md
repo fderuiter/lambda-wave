@@ -202,6 +202,7 @@ Mitigations:
 * Strict read/write offset tracking using atomic memory operations.
 * Hard boundary bounds-checking enforced by `enforce_bounds.py`.
 * Minimal language extensions used for stability.
+* Uses non-blocking best-effort audit logging to prevent ingestion thread suspension.
 
 Traceability: FR-DAQ-001, FR-DAQ-004
 <!-- ARCHITECTURE-END -->
