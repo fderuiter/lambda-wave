@@ -1,8 +1,8 @@
--- Requirement FR-DSP-003, PR-ACC-01
 {-# LANGUAGE StrictData #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE PatternSynonyms #-}
+-- Requirement FR-DSP-003, PR-ACC-01
 
 -- Mitigates Hazard H-SYS-004
 module SignalProcessing.Kalman
