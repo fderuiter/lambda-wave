@@ -2,7 +2,7 @@ module Main (main) where
 
 import Data.Types
 import SignalProcessing.Kalman (initKalman, KalmanConfig(..))
-import Safety.Audit (auditLoop)
+import Safety.Audit (auditLoop, tryWriteAudit, tryWriteAuditSTM, triggerShutdown)
 import Control.Concurrent (forkIO, threadDelay, killThread)
 import Control.Concurrent.STM
 import System.Posix.Files (fileExist, removeLink, getFileStatus, fileSize)
@@ -204,6 +204,45 @@ testIOException = do
         putStrLn "PASS"
         return True
 
+testTryWriteAudit :: IO Bool
+testTryWriteAudit = do
+    putStr "Test 5: tryWriteAudit Non-blocking Behavior... "
+    q <- newTBQueueIO 1
+    now <- getMonotonicTimeNS
+    let evt1 = AuditEvent now Info "Test" "Event 1"
+    let evt2 = AuditEvent now Info "Test" "Event 2"
+    
+    tryWriteAudit q evt1
+    tryWriteAudit q evt2
+    
+    evt <- atomically $ readTBQueue q
+    let ok1 = auditMessage evt == "Event 1"
+    
+    res1 <- atomically $ tryWriteAuditSTM q evt1
+    res2 <- atomically $ tryWriteAuditSTM q evt2
+    
+    if ok1 && res1 && not res2
+       then putStrLn "PASS" >> return True
+       else putStrLn "FAIL" >> return False
+
+testTriggerShutdown :: IO Bool
+testTriggerShutdown = do
+    putStr "Test 6: triggerShutdown ... "
+    q <- newTBQueueIO 10
+    now <- getMonotonicTimeNS
+    let kConfig = KalmanConfig 1.0 1.0
+    let st = SystemState [] BeamOn now 0 (Point3D 0 0 0 0 0) Map.empty (initKalman 0 kConfig) [] q False "en" "BEAM ON" CalibrationUnverified StandardPreset
+    stateVar <- newTVarIO st
+    
+    triggerShutdown stateVar "Test Failure"
+    
+    finalSt <- readTVarIO stateVar
+    evt <- atomically $ readTBQueue q
+    
+    if beamState finalSt == BeamOff && "SYSTEM SHUTDOWN TRIGGERED" `isInfixOf` auditMessage evt
+       then putStrLn "PASS" >> return True
+       else putStrLn "FAIL" >> return False
+
 main :: IO ()
 main = do
     args <- getArgs
@@ -215,8 +254,10 @@ main = do
             p2 <- testLogRotation
             p3 <- testCrashRecovery
             p4 <- testIOException
+            p5 <- testTryWriteAudit
+            p6 <- testTriggerShutdown
 
-            if p1 && p2 && p3 && p4
+            if p1 && p2 && p3 && p4 && p5 && p6
                then putStrLn "VERIFICATION PASSED"
                else fail "VERIFICATION FAILED"
 -- Requirement SR-AUDIT-001
