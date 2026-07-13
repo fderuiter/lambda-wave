@@ -16,7 +16,6 @@
 -- Hysteresis with conservative thresholds and latency compensation are applied.
 module Control.Gating (processFrame, evaluateGating) where
 
-import Safety.Result (SafetyResult(..))
 import Data.Types
 import Data.Config
 import Control.Concurrent.STM
@@ -31,27 +30,14 @@ import Hardware.Control (setBeam)
 import Hardware.FFI.Bridge (handleHardwareResponse)
 import Safety.Audit (tryWriteAudit)
 import Data.I18n (Translations, translateAudit, translateBeamState)
-import qualified Control.Exception
 import qualified Data.Text as T
 import Numeric.Kinematics
     ( Distance(..)
-    , Velocity(..)
-    , Acceleration(..)
     , Time(..)
     , SystemLatencyMs
-    , KinematicMultiply(..)
-    , KinematicMath(..)
-    , ScalarMultiply(..)
     , systemLatencyTime
     , Proxy(..)
     )
-
-unwrapSafety :: SafetyResult a -> a
-unwrapSafety (Safe a) = a
-unwrapSafety (ClampedToMin a) = a
-unwrapSafety (ClampedToMax a) = a
-unwrapSafety (DivByZeroSafe a) = a
-unwrapSafety (Unsafe _) = Control.Exception.throw (Control.Exception.AssertionFailed "Unsafe math evaluation")
 
 
 -- | Kalman Configuration
@@ -207,32 +193,25 @@ evaluateGating :: Distance    -- ^ Target Height (Distance)
                -> KalmanState -- ^ Current Filter State
                -> BeamState   -- ^ Previous Beam State
                -> BeamState   -- ^ New Beam State
-evaluateGating target tol hyst latencyTime kState oldBeam =
+evaluateGating (Distance target) (Distance tol) (Distance hyst) (Time lat) kState oldBeam =
     let -- Latency Compensation
         -- Predict position at (Now + Latency)
         -- x(t+dt) = x(t) + v(t)*dt + 0.5*a(t)*dt^2
         (pos, vel, acc) = case x kState of
             V3 pVal vVal aVal -> (pVal, vVal, aVal)
             _ -> (0, 0, 0)
-        
-        posD = Distance pos
-        velV = Velocity vel
-        accA = Acceleration acc
 
         -- Check for NaN/Inf
         invalid = isNaN pos || isNaN vel || isNaN acc || isInfinite pos || isInfinite vel || isInfinite acc
 
-        term1 = unwrapSafety (velV |*| latencyTime)
-        term2 = unwrapSafety (0.5 |* unwrapSafety (unwrapSafety ((accA |*| latencyTime) :: SafetyResult Velocity) |*| latencyTime))
-        predPos = unwrapSafety (unwrapSafety (posD |+| term1) |+| term2)
-
-        err = kabs (unwrapSafety (predPos |-| target))
+        predPos = pos + vel * lat + 0.5 * acc * lat * lat
+        err = abs (predPos - target)
 
         -- Thresholds
         -- ON Threshold: Tolerance
         -- OFF Threshold: Tolerance + Hysteresis
         onLimit = tol
-        offLimit = unwrapSafety (tol |+| hyst)
+        offLimit = tol + hyst
 
     in if invalid
        then BeamOff
