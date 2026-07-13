@@ -15,10 +15,10 @@ import Data.Binary (decode)
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.ByteString as B
 import Foreign.Marshal.Alloc (allocaBytes)
-import Foreign.Ptr (castPtr, plusPtr, Ptr)
+import Foreign.Ptr (castPtr, plusPtr, Ptr, FunPtr, nullPtr)
 import Foreign.ForeignPtr (ForeignPtr)
 import Data.Word (Word32)
-import Foreign.C.String (withCString, CString, peekCString)
+import Foreign.C.String (withCString, CString, peekCString, newCString)
 import Foreign.Storable (Storable(..))
 import Foreign.Marshal.Array (withArrayLen)
 
@@ -28,7 +28,7 @@ import SignalProcessing.Kalman (initKalman, KalmanConfig(..), KalmanState(..), p
 import Hardware.Consumer (consumerLoop)
 import FFI.RingBuffer.IO (attachRingBuffer)
 import FFI.RingBuffer.Types (RingBufferControl)
-import Data.I18n (loadTranslations, translateBeamState)
+import Data.I18n (loadTranslations, translateBeamState, translate)
 import qualified Data.Text as T
 import Data.Aeson (FromJSON(..), (.:), withObject)
 import qualified Data.Aeson as A
@@ -48,6 +48,10 @@ instance Storable Point3DC where
         pokeByteOff ptr 16 p_z
 
 data HudStateC
+
+type TranslateCallback = CString -> CString -> IO CString
+foreign import ccall "wrapper" mkTranslateCallback :: TranslateCallback -> IO (FunPtr TranslateCallback)
+foreign import ccall "register_translate_callback" c_register_translate_callback :: FunPtr TranslateCallback -> IO ()
 
 foreign import ccall "start_cpp_hud_loop" c_start_cpp_hud_loop :: IO ()
 foreign import ccall "set_cpp_hud_state" c_set_cpp_hud_state :: Ptr HudStateC -> IO ()
@@ -77,6 +81,18 @@ main = do
     auditQ <- newTBQueueIO 1000 -- Dummy queue
 
     translations <- loadTranslations "config/locales.json"
+
+    let translateCb :: TranslateCallback
+        translateCb cLang cKey = do
+            lang <- peekCString cLang
+            key <- peekCString cKey
+            let translated = translate translations (T.pack lang) (T.pack key) ""
+            if T.null translated
+                then return nullPtr
+                else newCString (T.unpack translated)
+
+    cbPtr <- mkTranslateCallback translateCb
+    c_register_translate_callback cbPtr
 
     let initialState = SystemState
           { currentPoints = []

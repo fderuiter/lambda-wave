@@ -5,11 +5,13 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 #include <cmath>
+#include <cstdlib>
 #include <cstring>
 #include <deque>
 #include <iostream>
 #include <mutex>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 static std::mutex g_state_mutex;
@@ -24,7 +26,33 @@ static int g_calibration_status = 0;
 static std::deque<float> g_resp_history;
 static const size_t MAX_HISTORY = 300;
 
+static TranslateCallback g_translate_callback = nullptr;
+static std::unordered_map<std::string, std::string> g_translation_cache;
+
+static const char* get_localized_string(const std::string& key, const std::string& default_val) {
+    auto it = g_translation_cache.find(key);
+    if (it != g_translation_cache.end()) {
+        return it->second.c_str();
+    }
+    if (g_translate_callback != nullptr) {
+        const char* result = g_translate_callback(g_active_language.c_str(), key.c_str());
+        if (result != nullptr) {
+            std::string res_str(result);
+            free((void*)result);
+            g_translation_cache[key] = res_str;
+            return g_translation_cache[key].c_str();
+        }
+    }
+    g_translation_cache[key] = default_val;
+    return g_translation_cache[key].c_str();
+}
+
 extern "C" {
+void register_translate_callback(TranslateCallback callback) {
+  std::lock_guard<std::mutex> lock(g_state_mutex);
+  g_translate_callback = callback;
+}
+
 void set_cpp_hud_state(const HudStateC *state) {
   std::lock_guard<std::mutex> lock(g_state_mutex);
   g_beam_state = state->beam_state;
@@ -98,14 +126,32 @@ extern "C" void start_cpp_hud_loop(void) {
     ImGui::NewFrame();
 
     if (!logged_in) {
-      ImGui::Begin("Authentication", NULL,
+      std::lock_guard<std::mutex> lock(g_state_mutex);
+      ImGui::Begin(get_localized_string("login_title", "Authentication"), NULL,
                    ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize |
                        ImGuiWindowFlags_AlwaysAutoResize);
-      ImGui::InputText("Username", username, IM_ARRAYSIZE(username));
+
+      if (ImGui::Button("EN")) {
+        g_active_language = "en";
+        g_translation_cache.clear();
+      }
+      ImGui::SameLine();
+      if (ImGui::Button("ES")) {
+        g_active_language = "es";
+        g_translation_cache.clear();
+      }
+      ImGui::SameLine();
+      if (ImGui::Button("FR")) {
+        g_active_language = "fr";
+        g_translation_cache.clear();
+      }
+      ImGui::Separator();
+
+      ImGui::InputText(get_localized_string("username_label", "Username"), username, IM_ARRAYSIZE(username));
       bool submit_password = ImGui::InputText(
-          "Password", password, IM_ARRAYSIZE(password),
+          get_localized_string("password_label", "Password"), password, IM_ARRAYSIZE(password),
           ImGuiInputTextFlags_Password | ImGuiInputTextFlags_EnterReturnsTrue);
-      if (ImGui::Button("Login") || submit_password) {
+      if (ImGui::Button(get_localized_string("login_button", "Login")) || submit_password) {
         if ((strcmp(username, "admin") == 0 ||
              strcmp(username, "operator") == 0) &&
             strcmp(password, "password") == 0) {
@@ -119,17 +165,23 @@ extern "C" void start_cpp_hud_loop(void) {
       // Dashboard Window
       ImGui::Begin("SGRT Monitoring HUD");
       ImGui::Text("Active Language: %s", g_active_language.c_str());
-      if (ImGui::Button("EN"))
+      if (ImGui::Button("EN")) {
         g_active_language = "en";
+        g_translation_cache.clear();
+      }
       ImGui::SameLine();
-      if (ImGui::Button("ES"))
+      if (ImGui::Button("ES")) {
         g_active_language = "es";
+        g_translation_cache.clear();
+      }
       ImGui::SameLine();
-      if (ImGui::Button("FR"))
+      if (ImGui::Button("FR")) {
         g_active_language = "fr";
+        g_translation_cache.clear();
+      }
 
-      ImGui::Text("Calibration Status: %s",
-                  g_calibration_status == 1 ? "Valid" : "Invalid");
+      ImGui::Text("%s%s", get_localized_string("calibration_status_prefix", "Calibration Status: "),
+                  g_calibration_status == 1 ? get_localized_string("calibration_valid", "Valid") : get_localized_string("calibration_invalid", "Invalid"));
 
       ImVec4 beamColor;
       if (g_beam_state == 1)
@@ -144,7 +196,7 @@ extern "C" void start_cpp_hud_loop(void) {
 
       // Respiratory trace
       std::vector<float> trace(g_resp_history.begin(), g_resp_history.end());
-      ImGui::PlotLines("Respiratory Trace", trace.data(), trace.size(), 0, NULL,
+      ImGui::PlotLines(get_localized_string("resp_trace_title", "Respiratory Trace"), trace.data(), trace.size(), 0, NULL,
                        -20.0f, 20.0f, ImVec2(0, 100));
 
       // Point Cloud Info
