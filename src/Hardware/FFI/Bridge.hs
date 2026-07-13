@@ -28,7 +28,7 @@ import qualified Hardware.FFI.Common as Common
 import Control.Monad (unless)
 import Hardware.FFI.Common (HardwareResult, toHardwareResult, toRingBufferResult)
 import Hardware.Types
-import Data.Types (SystemState(..), AuditEvent(..), Severity(..), BeamState(..))
+import Data.Types (SystemState(..), AuditEvent(..), Severity(..))
 import Control.Concurrent.STM
 import Control.Concurrent (threadDelay)
 import Foreign.C.Error (getErrno, Errno(..))
