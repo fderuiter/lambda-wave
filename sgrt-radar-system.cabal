@@ -173,6 +173,7 @@ test-suite sgrt-radar-system-test
       System.RTSSpec
       SignalProcessing.FMCWSpec
       Safety.WatchdogSpec
+      Safety.AuditSpec
       Safety.KinematicsSpec
   hs-source-dirs:
       test

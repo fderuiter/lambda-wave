@@ -11,6 +11,7 @@ import qualified System.RTSSpec
 import qualified Safety.WatchdogSpec
 import qualified Safety.KinematicsSpec
 import qualified Control.UIMathSpec
+import qualified Safety.AuditSpec
 
 main :: IO ()
 main = hspec $ do
@@ -25,6 +26,7 @@ main = hspec $ do
   Safety.WatchdogSpec.spec
   Safety.KinematicsSpec.spec
   Control.UIMathSpec.spec
+  Safety.AuditSpec.spec
 
   describe "Gating" $ do
     it "keeps beam off when target is out of range" $ do

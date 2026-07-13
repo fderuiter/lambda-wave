@@ -216,17 +216,28 @@ evaluateGating target tol hyst latencyTime kState oldBeam =
             _ -> (0, 0, 0)
         
         posD = Distance pos
-        velV = Velocity vel
-        accA = Acceleration acc
 
         -- Check for NaN/Inf
         invalid = isNaN pos || isNaN vel || isNaN acc || isInfinite pos || isInfinite vel || isInfinite acc
 
-        term1 = unwrapSafety (velV |*| latencyTime)
-        term2 = unwrapSafety (0.5 |* unwrapSafety (unwrapSafety ((accA |*| latencyTime) :: SafetyResult Velocity) |*| latencyTime))
-        predPos = unwrapSafety (unwrapSafety (posD |+| term1) |+| term2)
+        term1Val = unwrapSafety (Velocity (abs vel) |*| latencyTime)
+        term2Val = unwrapSafety (0.5 |* unwrapSafety (unwrapSafety ((Acceleration (abs acc) |*| latencyTime) :: SafetyResult Velocity) |*| latencyTime))
+        
+        step1 = if abs vel < 0.01
+                then posD
+                else if vel < 0
+                     then unwrapSafety (posD |-| term1Val)
+                     else unwrapSafety (posD |+| term1Val)
+                
+        predPos = if abs acc < 0.01
+                  then step1
+                  else if acc < 0
+                       then unwrapSafety (step1 |-| term2Val)
+                       else unwrapSafety (step1 |+| term2Val)
 
-        err = kabs (unwrapSafety (predPos |-| target))
+        err = if predPos > target
+              then unwrapSafety (predPos |-| target)
+              else unwrapSafety (target |-| predPos)
 
         -- Thresholds
         -- ON Threshold: Tolerance
