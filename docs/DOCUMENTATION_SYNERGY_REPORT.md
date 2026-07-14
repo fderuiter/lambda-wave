@@ -277,7 +277,7 @@ docs/:
 
 ### Modified
 - ✅ `README.md` (navigation improvements)
-- ✅ `docs/DEVELOPER_GUIDE.md` (major expansion)
+- ✅ `docs/reference/DEVELOPER_GUIDE.md` (major expansion)
 - ✅ `roadmap.md` (marked as superseded)
 
 ### Noted as Superseded (kept for reference)
