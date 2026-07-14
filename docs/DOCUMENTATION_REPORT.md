@@ -136,7 +136,7 @@ Successfully created comprehensive documentation for the Lambda-Wave project add
 ## Next Steps for Users
 
 1. **New Users:** Start with [QUICKSTART.md](QUICKSTART.md)
-2. **Developers:** Read [BUILD_GUIDE.md](BUILD_GUIDE.md) and [DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md)
+2. **Developers:** Read [BUILD_GUIDE.md](BUILD_GUIDE.md) and [DEVELOPER_GUIDE.md](reference/DEVELOPER_GUIDE.md)
 3. **Medical Physicists:** Review [PURPOSE_AND_ARCHITECTURE.md](PURPOSE_AND_ARCHITECTURE.md)
 4. **Contributors:** Follow [CONTRIBUTING.md](../CONTRIBUTING.md)
 5. **Project Status:** Check [PROJECT_STATUS.md](PROJECT_STATUS.md)

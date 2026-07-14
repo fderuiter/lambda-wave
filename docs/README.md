@@ -20,17 +20,17 @@ Start here to understand what Lambda-Wave is and get it running quickly:
 ### 👨‍💻 Developers
 Essential guides for contributing to the codebase:
 
-1. **[DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md)** - Code structure and development workflow
+1. **[DEVELOPER_GUIDE.md](reference/DEVELOPER_GUIDE.md)** - Code structure and development workflow
 2. **[BUILD_GUIDE.md](BUILD_GUIDE.md)** - Comprehensive build instructions
 3. **[TODO.md](../TODO.md)** - Prioritized development tasks
 4. **[CONTRIBUTING.md](../CONTRIBUTING.md)** - Contribution guidelines and PR process
-5. **[mathematical_framework.md](mathematical_framework.md)** - Signal processing algorithms
+5. **[mathematical_framework.md](reference/mathematical_framework.md)** - Signal processing algorithms
 
 ### 🏥 Medical Physicists / Clinical Users
 Clinical context and validation:
 
 1. **[PURPOSE_AND_ARCHITECTURE.md](PURPOSE_AND_ARCHITECTURE.md)** - Medical context and SGRT overview
-2. **[mathematical_framework.md](mathematical_framework.md)** - FMCW radar theory and algorithms
+2. **[mathematical_framework.md](reference/mathematical_framework.md)** - FMCW radar theory and algorithms
 3. **[PROJECT_STATUS.md](PROJECT_STATUS.md)** - Current implementation status
 
 ### 🛡️ Compliance / QA Officers
@@ -67,8 +67,8 @@ High-level status and planning:
 |----------|---------|----------|--------|
 | [PURPOSE_AND_ARCHITECTURE.md](PURPOSE_AND_ARCHITECTURE.md) | System design, medical context, architecture | All | ✅ Current |
 | [BUILD_GUIDE.md](BUILD_GUIDE.md) | Build system, dependencies, CI/CD | Developers | ✅ Current |
-| [DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md) | Code structure, workflow | Developers | ⚠️ Needs update |
-| [mathematical_framework.md](mathematical_framework.md) | FMCW algorithms, theory | Developers, Physicists | ✅ Current |
+| [DEVELOPER_GUIDE.md](reference/DEVELOPER_GUIDE.md) | Code structure, workflow | Developers | ⚠️ Needs update |
+| [mathematical_framework.md](reference/mathematical_framework.md) | FMCW algorithms, theory | Developers, Physicists | ✅ Current |
 | [QUICKSTART.md](QUICKSTART.md) | Installation and setup | New users | ✅ Current |
 
 ### Project Management
@@ -225,7 +225,7 @@ lambda-wave/
 → [PURPOSE_AND_ARCHITECTURE.md](PURPOSE_AND_ARCHITECTURE.md) sections 1-2
 
 ### "What are the algorithms?"
-→ [mathematical_framework.md](mathematical_framework.md)
+→ [mathematical_framework.md](reference/mathematical_framework.md)
 
 ### "Is this compliant with medical device regulations?"
 → [PURPOSE_AND_ARCHITECTURE.md](PURPOSE_AND_ARCHITECTURE.md) safety section, [docs/iec_62304/](iec_62304/)

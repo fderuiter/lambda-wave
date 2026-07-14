@@ -9,16 +9,16 @@ This guide provides developers with essential information about code structure, 
 
 ## Table of Contents
 
-1. [Quick Reference](#quick-reference)
-2. [Codebase Structure](#codebase-structure)
-3. [Development Workflow](#development-workflow)
-4. [Coding Standards](#coding-standards)
-5. [Testing Strategy](#testing-strategy)
-6. [Performance Guidelines](#performance-guidelines)
-7. [Safety-Critical Code](#safety-critical-code)
-8. [Debugging Tips](#debugging-tips)
-9. [Common Tasks](#common-tasks)
-10. [Hardware Integration & FFI Safety Framework](#hardware-integration--ffi-safety-framework)
+- [Quick Reference](#quick-reference)
+- [Codebase Structure](#codebase-structure)
+- [Development Workflow](#development-workflow)
+- [Coding Standards](#coding-standards)
+- [Testing Strategy](#testing-strategy)
+- [Performance Guidelines](#performance-guidelines)
+- [Safety-Critical Code](#safety-critical-code)
+- [Debugging Tips](#debugging-tips)
+- [Common Tasks](#common-tasks)
+- [Hardware Integration & FFI Safety Framework](#hardware-integration--ffi-safety-framework)
 
 ---
 
@@ -124,7 +124,7 @@ cabal haddock
 
 ### 1. Setup Development Environment
 
-See [BUILD_GUIDE.md](BUILD_GUIDE.md) for detailed setup instructions.
+See [BUILD_GUIDE.md](../BUILD_GUIDE.md) for detailed setup instructions.
 
 ```bash
 # Clone repository
@@ -141,7 +141,7 @@ cabal test
 
 ### 2. Choose a Task
 
-Check [TODO.md](../TODO.md) for prioritized tasks. Look for:
+Check [TODO.md](../../TODO.md) for prioritized tasks. Look for:
 - **P0** items if you want to work on critical path
 - **P1** items for core functionality
 - **Good first issues** on GitHub for beginners
@@ -206,12 +206,12 @@ git push origin feature/your-feature
 
 ### 7. Open Pull Request
 
-1. Go to GitHub repository
-2. Click "New Pull Request"
-3. Fill out PR template completely
-4. Request review from at least 2 people (4 eyes for safety-critical code)
-5. Address review comments
-6. Wait for CI to pass
+- Go to GitHub repository
+- Click "New Pull Request"
+- Fill out PR template completely
+- Request review from at least 2 people (4 eyes for safety-critical code)
+- Address review comments
+- Wait for CI to pass
 
 ---
 
@@ -302,7 +302,7 @@ public:
 
 ### Hardware Layer Error Propagation
 
-Error handling in the hardware abstraction layer relies on explicit, typed errors defined in `Hardware.Types.HardwareError`. We avoid runtime exceptions (`error`, `undefined`) to comply with IEC 62304 Class C requirements for fail-safe operations.
+- Error handling in the hardware abstraction layer relies on explicit, typed errors defined in `Hardware.Types.HardwareError`. We avoid runtime exceptions (`error`, `undefined`) to comply with IEC 62304 Class C requirements for fail-safe operations.
 
 #### Detailed Error Types (`HardwareError`)
 - `ConnectionLost`: Serial port connection lost or unreadable.
@@ -399,10 +399,10 @@ cabal test --test-options="--qc-max-success=1000"
 
 ### Critical Performance Paths
 
-1. **Data Ingestion** (< 1ms per frame target)
-2. **FMCW Processing** (< 5ms per frame target)
-3. **Gating Decision** (< 0.1ms target)
-4. **Total Pipeline** (< 50ms end-to-end)
+- **Data Ingestion** (< 1ms per frame target)
+- **FMCW Processing** (< 5ms per frame target)
+- **Gating Decision** (< 0.1ms target)
+- **Total Pipeline** (< 50ms end-to-end)
 
 ### Optimization Techniques
 
@@ -445,7 +445,7 @@ cat sgrt-radar-system-exe.prof
 
 ## ⚠️ Safety-Critical Code
 
-**Note:** Please refer to our [Security Policy](../SECURITY.md) for vulnerability reporting and triage for safety-critical flaws.
+**Note:** Please refer to our [Security Policy](../../SECURITY.md) for vulnerability reporting and triage for safety-critical flaws.
 
 ### Identification
 
@@ -456,11 +456,11 @@ Files marked with **⚠️ SAFETY-CRITICAL** require special attention:
 
 ### Review Requirements
 
-1. **Four-Eyes Principle**: Minimum 2 reviewers
-2. **Test Coverage**: ≥90% branch coverage
-3. **Property Testing**: QuickCheck properties required
-4. **Documentation**: Detailed comments explaining safety logic
-5. **Traceability**: Link to requirements (FR-*, SR-*)
+- **Four-Eyes Principle**: Minimum 2 reviewers
+- **Test Coverage**: ≥90% branch coverage
+- **Property Testing**: QuickCheck properties required
+- **Documentation**: Detailed comments explaining safety logic
+- **Traceability**: Link to requirements (FR-*, SR-*)
 
 ### Example Safety Comment
 ```haskell
@@ -527,29 +527,29 @@ cabal build --ghc-options="-g"
 
 ### Adding a New Module
 
-1. Create file in appropriate directory
-2. Add to `exposed-modules` in `.cabal` file
-3. Write module documentation
-4. Add corresponding test file
-5. Update DEVELOPER_GUIDE.md (this file)
+- Create file in appropriate directory
+- Add to `exposed-modules` in `.cabal` file
+- Write module documentation
+- Add corresponding test file
+- Update DEVELOPER_GUIDE.md (this file)
 
 ### Adding a New Dependency
 
-1. Add to `build-depends` in `.cabal` file
-2. Run `cabal build --only-dependencies`
-3. Update BUILD_GUIDE.md with any system requirements
-4. Document usage in relevant module
+- Add to `build-depends` in `.cabal` file
+- Run `cabal build --only-dependencies`
+- Update BUILD_GUIDE.md with any system requirements
+- Document usage in relevant module
 
 ### Updating Documentation
 
-1. Make changes to markdown files
-2. Update `docs/README.md` index if structure changes
-3. Run markdown lint (if available)
-4. Commit with docs: prefix
+- Make changes to markdown files
+- Update `docs/README.md` index if structure changes
+- Run markdown lint (if available)
+- Commit with docs: prefix
 
 ### Creating a Release
 
-See [TODO.md](../TODO.md) Release Checklist section
+See [TODO.md](../../TODO.md) Release Checklist section
 
 ---
 
@@ -557,11 +557,11 @@ See [TODO.md](../TODO.md) Release Checklist section
 
 ## 10. Hardware Integration & FFI Safety Framework
 
-When adding new hardware components or sensors, you must adhere strictly to our safety framework to prevent memory leaks and asynchronous exception hazards. The framework provides a centralized set of resource managers, result wrappers, and audit helpers.
+- When adding new hardware components or sensors, you must adhere strictly to our safety framework to prevent memory leaks and asynchronous exception hazards. The framework provides a centralized set of resource managers, result wrappers, and audit helpers.
 
 ### 10.1 Scaffold Generator
 
-To minimize manual memory management errors, define your new sensor in `config/master_spec.yaml` under `sensors:` and run the unified compiler:
+- To minimize manual memory management errors, define your new sensor in `config/master_spec.yaml` under `sensors:` and run the unified compiler:
 ```bash
 python3 tools/compiler.py all config/master_spec.yaml
 ```
@@ -571,7 +571,7 @@ This automatically generates the C++ headers, the Haskell template (`src/Hardwar
 
 The framework enforces two primary patterns for handling C memory and lifecycle bounds:
 
-1. **New Creation (The Bracket Pattern):**
+- **New Creation (The Bracket Pattern):**
    When allocating temporary resources, always use `Control.Exception.bracket` alongside `mask_` and `uninterruptibleMask_`. This guarantees that your cleanup logic (e.g., `free`) runs even if an asynchronous exception is raised immediately after allocation.
 
    ```haskell
@@ -582,7 +582,7 @@ The framework enforces two primary patterns for handling C memory and lifecycle 
        free ptr = uninterruptibleMask_ $ c_destroy_sensor ptr
    ```
 
-2. **Attachment to Existing Memory (ForeignPtr):**
+- **Attachment to Existing Memory (ForeignPtr):**
    If memory is shared or needs its lifecycle managed by the Haskell Garbage Collector, attach a finalizer via `ForeignPtr`.
 
    ```haskell
@@ -594,7 +594,7 @@ The framework enforces two primary patterns for handling C memory and lifecycle 
 
 ### 10.3 Result Wrappers and the FFI Bridge
 
-To prevent dropped return values and unhandled states, all FFI boundary calls **must** be routed through the `BridgeCall` module (`Hardware.FFI.Bridge`). The bridge transforms C-level errors into the `MustHandle` result wrapper, guaranteeing that logic cannot proceed without addressing potential failures.
+- To prevent dropped return values and unhandled states, all FFI boundary calls **must** be routed through the `BridgeCall` module (`Hardware.FFI.Bridge`). The bridge transforms C-level errors into the `MustHandle` result wrapper, guaranteeing that logic cannot proceed without addressing potential failures.
 
 - **`bridgeHardwareCall` / `bridgeHardwareCallCustom`**: Use these to execute FFI routines safely. They automatically hook into the Safety Audit log.
 - **`MustHandle`**: An explicit wrapper over `Either HardwareError a`. You must use `handleHardwareResponse` to extract the value and define handlers for both the success and error branches.
@@ -605,10 +605,10 @@ To maintain 100% adoption and zero memory-safety violations, automated PR checkl
 
 ## 📚 Additional Resources
 
-- **[TODO.md](../TODO.md)** - Current development tasks
-- **[BUILD_GUIDE.md](BUILD_GUIDE.md)** - Detailed build instructions
-- **[PURPOSE_AND_ARCHITECTURE.md](PURPOSE_AND_ARCHITECTURE.md)** - System architecture
-- **[CONTRIBUTING.md](../CONTRIBUTING.md)** - Contribution process
+- **[TODO.md](../../TODO.md)** - Current development tasks
+- **[BUILD_GUIDE.md](../BUILD_GUIDE.md)** - Detailed build instructions
+- **[PURPOSE_AND_ARCHITECTURE.md](../PURPOSE_AND_ARCHITECTURE.md)** - System architecture
+- **[CONTRIBUTING.md](../../CONTRIBUTING.md)** - Contribution process
 - **Haskell Resources**:
   - [Learn You a Haskell](http://learnyouahaskell.com/)
   - [Real World Haskell](http://book.realworldhaskell.org/)
