@@ -4,6 +4,7 @@ module Main (main) where
 import System.Environment (getArgs)
 import Data.Char (isAlphaNum, isSpace, isAlpha)
 import Data.List (isPrefixOf)
+import System.IO (withFile, IOMode(ReadMode, WriteMode), hSetEncoding, utf8, hGetContents, hPutStr)
 
 data Token = Ident String
            | Op String
@@ -131,15 +132,19 @@ isNumericModule name = "Numeric" `isPrefixOf` name || "SignalProcessing" `isPref
 
 processFile :: FilePath -> IO ()
 processFile path = do
-    content <- readFile path
-    length content `seq` return ()
+    content <- withFile path ReadMode $ \h -> do
+        hSetEncoding h utf8
+        c <- hGetContents h
+        length c `seq` return c
     let mName = getModuleName content
     case mName of
         Just name | isNumericModule name -> do
             let newContent = untokenize (replaceTokens (tokenize content))
             if newContent /= content
                 then do
-                    writeFile path newContent
+                    withFile path WriteMode $ \h -> do
+                        hSetEncoding h utf8
+                        hPutStr h newContent
                     putStrLn $ "Optimized " ++ path
                 else putStrLn $ "No changes for " ++ path
         Just name -> putStrLn $ "Skipping non-numeric module: " ++ name
