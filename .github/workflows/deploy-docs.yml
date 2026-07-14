@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        uses: actions/checkout@v4
 
       - name: Set up Haskell
         uses: haskell-actions/setup@v2
@@ -33,7 +33,7 @@ jobs:
           python-version: '3.12'
 
       - name: Install Python tools
-        run: pip install pyyaml mkdocs mkdocs-material
+        run: pip install --break-system-packages pyyaml mkdocs mkdocs-material
 
       - name: Install system dependencies
         run: scripts/setup_env.sh --skip-security
