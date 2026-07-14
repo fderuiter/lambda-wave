@@ -142,6 +142,7 @@ cabal test
 ### 2. Choose a Task
 
 Check [TODO.md](../../TODO.md) for prioritized tasks. Look for:
+
 - **P0** items if you want to work on critical path
 - **P1** items for core functionality
 - **Good first issues** on GitHub for beginners
