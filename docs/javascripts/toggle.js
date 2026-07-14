@@ -29,30 +29,44 @@ function initToggle() {
     toggleContainer.className = 'nav-toggle-container';
     
     const toggleBtn = document.createElement('button');
+    toggleBtn.type = 'button';
     toggleBtn.className = 'nav-toggle-btn';
+    
+    const primaryNav = document.querySelector('.md-nav--primary');
+    if (primaryNav) {
+        if (!primaryNav.id) {
+            primaryNav.id = 'primary-nav-container';
+        }
+        toggleBtn.setAttribute('aria-controls', primaryNav.id);
+    }
     
     // Initial State
     let currentView = localStorage.getItem('navView') || 'Role-based';
     
-    function applyView() {
+    function applyView(restoreFocus) {
         if (currentView === 'Role-based') {
             roleBasedItem.classList.remove('md-nav__item--hidden');
             typeBasedItem.classList.add('md-nav__item--hidden');
             toggleBtn.textContent = 'Switch to Type-based (Diátaxis)';
+            toggleBtn.setAttribute('aria-pressed', 'false');
         } else {
             roleBasedItem.classList.add('md-nav__item--hidden');
             typeBasedItem.classList.remove('md-nav__item--hidden');
             toggleBtn.textContent = 'Switch to Role-based';
+            toggleBtn.setAttribute('aria-pressed', 'true');
         }
         localStorage.setItem('navView', currentView);
+        if (restoreFocus) {
+            toggleBtn.focus();
+        }
     }
 
     toggleBtn.addEventListener('click', function() {
         currentView = currentView === 'Role-based' ? 'Type-based' : 'Role-based';
-        applyView();
+        applyView(true);
     });
 
-    applyView();
+    applyView(false);
     toggleContainer.appendChild(toggleBtn);
     
     // Insert toggle button at the top of the sidebar
