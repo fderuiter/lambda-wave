@@ -130,20 +130,26 @@ data ClinicalBounds = ClinicalBounds
 
 defaultBounds :: ClinicalBounds
 defaultBounds = ClinicalBounds
-  { minVelocity     = 10.0
-  , maxVelocity     = 100.0
-  , minAcceleration = 10.0
-  , maxAcceleration = 100.0
+  { minVelocity     = 0.01
+  , maxVelocity     = 0.1
+  , minAcceleration = 0.01
+  , maxAcceleration = 0.1
   }
 
 clampV :: Double -> SafetyResult Velocity
 clampV v
-    | abs v > maxVelocity defaultBounds = ClampedToMax (Velocity (signum v * maxVelocity defaultBounds))
+    | v > maxVelocity defaultBounds = ClampedToMax (Velocity (maxVelocity defaultBounds))
+    | v < minVelocity defaultBounds && v >= 0 = ClampedToMin (Velocity (minVelocity defaultBounds))
+    | v > -minVelocity defaultBounds && v < 0 = ClampedToMin (Velocity (-minVelocity defaultBounds))
+    | v < -maxVelocity defaultBounds = ClampedToMax (Velocity (-maxVelocity defaultBounds))
     | otherwise = Safe (Velocity v)
 
 clampA :: Double -> SafetyResult Acceleration
 clampA a
-    | abs a > maxAcceleration defaultBounds = ClampedToMax (Acceleration (signum a * maxAcceleration defaultBounds))
+    | a > maxAcceleration defaultBounds = ClampedToMax (Acceleration (maxAcceleration defaultBounds))
+    | a < minAcceleration defaultBounds && a >= 0 = ClampedToMin (Acceleration (minAcceleration defaultBounds))
+    | a > -minAcceleration defaultBounds && a < 0 = ClampedToMin (Acceleration (-minAcceleration defaultBounds))
+    | a < -maxAcceleration defaultBounds = ClampedToMax (Acceleration (-maxAcceleration defaultBounds))
     | otherwise = Safe (Acceleration a)
 
 
@@ -153,8 +159,8 @@ class KinematicMath a where
     kabs  :: a -> a
 
 instance KinematicMath Distance where
-    (Distance a) |+| (Distance b) = Safe (Distance (a + b))
-    (Distance a) |-| (Distance b) = Safe (Distance (a - b))
+    (Distance a) |+| (Distance b) = let r = a + b in if r < 0 then ClampedToMin (Distance 0) else Safe (Distance r)
+    (Distance a) |-| (Distance b) = let r = a - b in if r < 0 then ClampedToMin (Distance 0) else Safe (Distance r)
     kabs (Distance a) = Distance (abs a)
 
 instance KinematicMath Velocity where
@@ -198,10 +204,10 @@ instance KinematicDivide Distance Distance Distance where
     _ |/| _ = Unsafe "Cannot divide Distance by Distance"
 
 instance KinematicMultiply Velocity Time Distance where
-    (Velocity v) |*| (Time t) = Safe (Distance (v * t))
+    (Velocity v) |*| (Time t) = let r = v * t in if r < 0 then ClampedToMin (Distance 0) else Safe (Distance r)
 
 instance KinematicMultiply Time Velocity Distance where
-    (Time t) |*| (Velocity v) = Safe (Distance (v * t))
+    (Time t) |*| (Velocity v) = let r = v * t in if r < 0 then ClampedToMin (Distance 0) else Safe (Distance r)
 
 instance KinematicMultiply Acceleration Time Velocity where
     (Acceleration a) |*| (Time t) = clampV (a * t)
@@ -244,8 +250,8 @@ class ScalarMultiply a where
     (*|) :: a -> Double -> SafetyResult a
 
 instance ScalarMultiply Distance where
-    s |* (Distance d) = Safe (Distance (s * d))
-    (Distance d) *| s = Safe (Distance (s * d))
+    s |* (Distance d) = let r = s * d in if r < 0 then ClampedToMin (Distance 0) else Safe (Distance r)
+    (Distance d) *| s = let r = s * d in if r < 0 then ClampedToMin (Distance 0) else Safe (Distance r)
 
 instance ScalarMultiply Velocity where
     s |* (Velocity v) = clampV (s * v)
