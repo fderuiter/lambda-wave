@@ -130,20 +130,22 @@ data ClinicalBounds = ClinicalBounds
 
 defaultBounds :: ClinicalBounds
 defaultBounds = ClinicalBounds
-  { minVelocity     = 10.0
-  , maxVelocity     = 100.0
-  , minAcceleration = 10.0
-  , maxAcceleration = 100.0
+  { minVelocity = 0.01
+  , maxVelocity = 0.1
+  , minAcceleration = 0.01
+  , maxAcceleration = 0.1
   }
 
 clampV :: Double -> SafetyResult Velocity
 clampV v
     | abs v > maxVelocity defaultBounds = ClampedToMax (Velocity (signum v * maxVelocity defaultBounds))
+    | abs v < minVelocity defaultBounds = ClampedToMin (Velocity (signum v * minVelocity defaultBounds))
     | otherwise = Safe (Velocity v)
 
 clampA :: Double -> SafetyResult Acceleration
 clampA a
     | abs a > maxAcceleration defaultBounds = ClampedToMax (Acceleration (signum a * maxAcceleration defaultBounds))
+    | abs a < minAcceleration defaultBounds = ClampedToMin (Acceleration (signum a * minAcceleration defaultBounds))
     | otherwise = Safe (Acceleration a)
 
 
@@ -153,8 +155,8 @@ class KinematicMath a where
     kabs  :: a -> a
 
 instance KinematicMath Distance where
-    (Distance a) |+| (Distance b) = Safe (Distance (a + b))
-    (Distance a) |-| (Distance b) = Safe (Distance (a - b))
+    (Distance a) |+| (Distance b) = let r = a + b in if r < 0 then ClampedToMin (Distance 0) else Safe (Distance r)
+    (Distance a) |-| (Distance b) = let r = a - b in if r < 0 then ClampedToMin (Distance 0) else Safe (Distance r)
     kabs (Distance a) = Distance (abs a)
 
 instance KinematicMath Velocity where

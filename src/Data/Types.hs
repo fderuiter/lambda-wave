@@ -56,7 +56,7 @@ data AudioCommand = PlayTone Double Double -- Volume, Frequency
   deriving (Show, Eq)
 
 instance NFData AudioCommand where
-    rnf (PlayTone v f) = rnf v `seq` rnf f
+    rnf (PlayTone vol freq) = rnf vol `seq` rnf freq
 
 -- | 3D Point in Room Coordinates (mm)
 data Point3D = Point3D

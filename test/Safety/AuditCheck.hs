@@ -28,8 +28,9 @@ withTestEnv action = do
     -- Setup State
     now <- getMonotonicTimeNS
     q <- newTBQueueIO 10000
+    audioQ <- newTBQueueIO 100
     let kConfig = KalmanConfig 1.0 1.0
-    let st = SystemState [] BeamOff now 0 (Point3D 0 0 0 0 0) Map.empty (initKalman 0 kConfig) [] q False "en" "BEAM OFF" CalibrationUnverified StandardPreset
+    let st = SystemState [] BeamOff now 0 (Point3D 0 0 0 0 0) Map.empty (initKalman 0 kConfig) [] q audioQ False 1.0 440.0 "en" "BEAM OFF" CalibrationUnverified StandardPreset
     stateVar <- newTVarIO st
 
     -- Run Action
@@ -134,8 +135,9 @@ runChildCrash = do
 
     now <- getMonotonicTimeNS
     q <- newTBQueueIO 10000
+    audioQ <- newTBQueueIO 100
     let kConfig = KalmanConfig 1.0 1.0
-    let st = SystemState [] BeamOff now 0 (Point3D 0 0 0 0 0) Map.empty (initKalman 0 kConfig) [] q False "en" "BEAM OFF" CalibrationUnverified StandardPreset
+    let st = SystemState [] BeamOff now 0 (Point3D 0 0 0 0 0) Map.empty (initKalman 0 kConfig) [] q audioQ False 1.0 440.0 "en" "BEAM OFF" CalibrationUnverified StandardPreset
     stateVar <- newTVarIO st
 
     _ <- forkIO $ auditLoop stateVar logPath
@@ -216,7 +218,7 @@ testTryWriteAudit = do
     tryWriteAudit q evt2
     
     evt <- atomically $ readTBQueue q
-    let ok1 = auditMessage evt == "Event 1"
+    let ok1 = message evt == "Event 1"
     
     res1 <- atomically $ tryWriteAuditSTM q evt1
     res2 <- atomically $ tryWriteAuditSTM q evt2
@@ -229,9 +231,10 @@ testTriggerShutdown :: IO Bool
 testTriggerShutdown = do
     putStr "Test 6: triggerShutdown ... "
     q <- newTBQueueIO 10
+    audioQ <- newTBQueueIO 100
     now <- getMonotonicTimeNS
     let kConfig = KalmanConfig 1.0 1.0
-    let st = SystemState [] BeamOn now 0 (Point3D 0 0 0 0 0) Map.empty (initKalman 0 kConfig) [] q False "en" "BEAM ON" CalibrationUnverified StandardPreset
+    let st = SystemState [] BeamOn now 0 (Point3D 0 0 0 0 0) Map.empty (initKalman 0 kConfig) [] q audioQ False 1.0 440.0 "en" "BEAM ON" CalibrationUnverified StandardPreset
     stateVar <- newTVarIO st
     
     triggerShutdown stateVar "Test Failure"
@@ -239,7 +242,7 @@ testTriggerShutdown = do
     finalSt <- readTVarIO stateVar
     evt <- atomically $ readTBQueue q
     
-    if beamState finalSt == BeamOff && "SYSTEM SHUTDOWN TRIGGERED" `isInfixOf` auditMessage evt
+    if beamState finalSt == BeamOff && "SYSTEM SHUTDOWN TRIGGERED" `isInfixOf` message evt
        then putStrLn "PASS" >> return True
        else putStrLn "FAIL" >> return False
 

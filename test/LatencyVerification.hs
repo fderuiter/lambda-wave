@@ -53,6 +53,7 @@ main = do
     let kConfig = KalmanConfig 10.0 2.0
     let kState = initKalman targetHeight kConfig
     q <- newTBQueueIO 10000
+    audioQ <- newTBQueueIO 100
 
     -- Initial State: Beam Off, Empty Points
     let s = SystemState
@@ -67,7 +68,7 @@ main = do
             , auditQueue = q
             , audioAlertEnabled = False, activeLanguage = "en", localizedBeamState = "BEAM OFF"
         , calibrationStatus = CalibrationValid, displayPreset = StandardPreset
-            }
+            , audioQueue = audioQ, audioVolume = 1.0, audioFrequency = 440.0 }
 
     var <- newTVarIO s
 
