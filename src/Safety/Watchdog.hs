@@ -16,7 +16,7 @@ import qualified Data.Map.Strict as Map
 import Network.Socket
 import Network.Socket.ByteString (sendTo, recv)
 import qualified Data.ByteString.Char8 as BC
-import Control.Exception (try, IOException, catch, SomeException)
+import Control.Exception (try, IOException, catch, SomeException, throwIO)
 import System.Timeout (timeout)
 import System.Posix.Files (removeLink)
 import qualified Data.ByteString as B
@@ -58,7 +58,10 @@ daemonAudit res = do
 -- Evaluates thread heartbeats. If everything is fine, it sends a heartbeat to the Daemon.
 -- If any thread is frozen, it stops sending heartbeats, causing the Daemon to trip.
 watchdogLoop :: TVar SystemState -> IO ()
-watchdogLoop stateVar = (`catch` \e -> do putStrLn $ "WATCHDOG CRASHED: " ++ show (e :: SomeException); hFlush stdout) $ do
+watchdogLoop stateVar = (`catch` \e -> do 
+    putStrLn $ "WATCHDOG CRASHED: " ++ show (e :: SomeException)
+    hFlush stdout
+    throwIO e) $ do
     putStrLn "WATCHDOG LOOP START"
     hFlush stdout
     myPid <- getProcessID
