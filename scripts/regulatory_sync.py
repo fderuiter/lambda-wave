@@ -93,7 +93,7 @@ def sync_soup_dependencies(freeze_deps):
 
 
 def get_safety_critical_modules():
-    dev_guide = "docs/DEVELOPER_GUIDE.md"
+    dev_guide = "docs/reference/DEVELOPER_GUIDE.md"
     modules = set()
     if os.path.exists(dev_guide):
         with open(dev_guide, "r", encoding="utf-8") as f:
@@ -327,7 +327,7 @@ def main():
             
     if safety_missing:
         for mod in safety_missing:
-            mismatch_msg += f"Safety-critical module {mod} lacks regulatory tags. See docs/DEVELOPER_GUIDE.md. "
+            mismatch_msg += f"Safety-critical module {mod} lacks regulatory tags. See docs/reference/DEVELOPER_GUIDE.md. "
         mismatch = True
 
     # Check for files mentioned in safety docs but excluded from scanning

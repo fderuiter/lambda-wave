@@ -285,7 +285,7 @@ cabal run sgrt-radar-system-exe
 
 ### For Developers
 
-1. **Read Developer Guide:** [docs/DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md)
+1. **Read Developer Guide:** [docs/reference/DEVELOPER_GUIDE.md](reference/DEVELOPER_GUIDE.md)
 2. **Explore Codebase:**
    ```bash
    # View source structure
@@ -317,7 +317,7 @@ cabal run sgrt-radar-system-exe
 
 ### For Medical Physicists
 
-1. **Review Mathematical Framework:** [docs/mathematical_framework.md](mathematical_framework.md)
+1. **Review Mathematical Framework:** [docs/reference/mathematical_framework.md](reference/mathematical_framework.md)
 2. **Understand Safety Systems:** [docs/PURPOSE_AND_ARCHITECTURE.md#safety--compliance](PURPOSE_AND_ARCHITECTURE.md#safety--compliance)
 3. **Hardware Validation:**
    ```bash
@@ -499,7 +499,7 @@ cabal test --test-options="-m <test-name>"
 
 ### Documentation
 - [Build Guide](BUILD_GUIDE.md) - Detailed build instructions
-- [Developer Guide](DEVELOPER_GUIDE.md) - Code structure and workflow
+- [Developer Guide](reference/DEVELOPER_GUIDE.md) - Code structure and workflow
 - [Project Status](PROJECT_STATUS.md) - Known issues and roadmap
 
 ### Community
@@ -533,7 +533,7 @@ Please include:
 - [ ] Application runs (simulation or hardware)
 - [ ] Output matches expected behavior
 
-**If all checked:** 🎉 You're ready! Proceed to [Developer Guide](DEVELOPER_GUIDE.md) or [Project Status](PROJECT_STATUS.md)
+**If all checked:** 🎉 You're ready! Proceed to [Developer Guide](reference/DEVELOPER_GUIDE.md) or [Project Status](PROJECT_STATUS.md)
 
 **If stuck:** See [Troubleshooting](#troubleshooting) or [Getting Help](#getting-help)
 
