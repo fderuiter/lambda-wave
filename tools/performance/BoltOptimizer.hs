@@ -2,6 +2,7 @@
 module Main (main) where
 
 import System.Environment (getArgs)
+import System.IO
 import Data.Char (isAlphaNum, isSpace, isAlpha)
 import Data.List (isPrefixOf)
 
@@ -131,7 +132,9 @@ isNumericModule name = "Numeric" `isPrefixOf` name || "SignalProcessing" `isPref
 
 processFile :: FilePath -> IO ()
 processFile path = do
-    content <- readFile path
+    handle <- openFile path ReadMode
+    hSetEncoding handle utf8
+    content <- hGetContents handle
     length content `seq` return ()
     let mName = getModuleName content
     case mName of
@@ -139,11 +142,21 @@ processFile path = do
             let newContent = untokenize (replaceTokens (tokenize content))
             if newContent /= content
                 then do
-                    writeFile path newContent
+                    hClose handle
+                    outHandle <- openFile path WriteMode
+                    hSetEncoding outHandle utf8
+                    hPutStr outHandle newContent
+                    hClose outHandle
                     putStrLn $ "Optimized " ++ path
-                else putStrLn $ "No changes for " ++ path
-        Just name -> putStrLn $ "Skipping non-numeric module: " ++ name
-        Nothing -> putStrLn $ "Skipping file without module name: " ++ path
+                else do
+                    hClose handle
+                    putStrLn $ "No changes for " ++ path
+        Just name -> do
+            hClose handle
+            putStrLn $ "Skipping non-numeric module: " ++ name
+        Nothing -> do
+            hClose handle
+            putStrLn $ "Skipping file without module name: " ++ path
 
 main :: IO ()
 main = do
