@@ -39,7 +39,7 @@ jobs:
         run: find cbits -path "cbits/imgui" -prune -o -type f \( -name "*.c" -o -name "*.h" -o -name "*.cpp" \) -print | xargs clang-format -n -Werror
 
       - name: Install pyyaml
-        run: pip install pyyaml
+        run: pip install pyyaml --break-system-packages
 
       - name: Check Reference Docs Narrative
         run: ./scripts/check_reference_narrative.py
