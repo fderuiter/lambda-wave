@@ -216,7 +216,7 @@ testTryWriteAudit = do
     tryWriteAudit q evt2
     
     evt <- atomically $ readTBQueue q
-    let ok1 = auditMessage evt == "Event 1"
+    let ok1 = message evt == "Event 1"
     
     res1 <- atomically $ tryWriteAuditSTM q evt1
     res2 <- atomically $ tryWriteAuditSTM q evt2
@@ -239,7 +239,7 @@ testTriggerShutdown = do
     finalSt <- readTVarIO stateVar
     evt <- atomically $ readTBQueue q
     
-    if beamState finalSt == BeamOff && "SYSTEM SHUTDOWN TRIGGERED" `isInfixOf` auditMessage evt
+    if beamState finalSt == BeamOff && "SYSTEM SHUTDOWN TRIGGERED" `isInfixOf` message evt
        then putStrLn "PASS" >> return True
        else putStrLn "FAIL" >> return False
 
