@@ -23,6 +23,12 @@
     background-color: var(--md-primary-fg-color--light);
 }
 
+.nav-toggle-btn:focus,
+.nav-toggle-btn:focus-visible {
+    outline: 2px solid var(--md-primary-fg-color);
+    outline-offset: 2px;
+}
+
 .md-nav__item--hidden {
     display: none !important;
 }
