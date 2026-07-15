@@ -13,7 +13,7 @@ import qualified Data.Map.Strict as Map
 import Data.Time.HighRes (getMonotonicTimeNS)
 import Data.List (isInfixOf)
 import Control.Monad (when, forM_)
-import Control.Exception (try, IOException)
+import Control.Exception (try, IOException, SomeException)
 import System.Environment (getArgs, getExecutablePath)
 import qualified Data.ByteString as B
 import Safety.Crypto (decryptLog)
