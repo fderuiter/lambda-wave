@@ -36,7 +36,25 @@ runMain = do
     audioQ <- newTBQueueIO 100
     -- Initialize with "TestThread" heartbeat = now
     let heartbeats = Map.fromList [("TestThread", now)]
-    let initialState = SystemState [] BeamOff now 0 (Point3D 0 0 0 0 0) heartbeats kState [] q audioQ False 1.0 440.0 "en" "BEAM OFF" CalibrationUnverified StandardPreset
+    let initialState = SystemState
+            { currentPoints = []
+            , beamState = BeamOff
+            , lastFrameTime = now
+            , sequenceNumber = 0
+            , isocenter = Point3D 0 0 0 0 0
+            , threadHeartbeats = heartbeats
+            , kalmanState = kState
+            , mtiState = []
+            , auditQueue = q
+            , audioQueue = audioQ
+            , audioAlertEnabled = False
+            , audioVolume = 1.0
+            , audioFrequency = 440.0
+            , activeLanguage = "en"
+            , localizedBeamState = "BEAM OFF"
+            , calibrationStatus = CalibrationUnverified
+            , displayPreset = StandardPreset
+            }
     stateVar <- newTVarIO initialState
 
     -- 2. Spawn Safety Daemon

@@ -13,7 +13,7 @@ import qualified Data.Map.Strict as Map
 import Data.Time.HighRes (getMonotonicTimeNS)
 import Data.List (isInfixOf)
 import Control.Monad (when, forM_)
-import Control.Exception (try, IOException)
+import Control.Exception (try, IOException, SomeException)
 import System.Environment (getArgs, getExecutablePath)
 import qualified Data.ByteString as B
 import Safety.Crypto (decryptLog)
@@ -31,7 +31,25 @@ withTestEnv action = do
     q <- newTBQueueIO 10000
     audioQ <- newTBQueueIO 100
     let kConfig = KalmanConfig 1.0 1.0
-    let st = SystemState [] BeamOff now 0 (Point3D 0 0 0 0 0) Map.empty (initKalman 0 kConfig) [] q audioQ False 1.0 440.0 "en" "BEAM OFF" CalibrationUnverified StandardPreset
+    let st = SystemState
+            { currentPoints = []
+            , beamState = BeamOff
+            , lastFrameTime = now
+            , sequenceNumber = 0
+            , isocenter = Point3D 0 0 0 0 0
+            , threadHeartbeats = Map.empty
+            , kalmanState = initKalman 0 kConfig
+            , mtiState = []
+            , auditQueue = q
+            , audioQueue = audioQ
+            , audioAlertEnabled = False
+            , audioVolume = 1.0
+            , audioFrequency = 440.0
+            , activeLanguage = "en"
+            , localizedBeamState = "BEAM OFF"
+            , calibrationStatus = CalibrationUnverified
+            , displayPreset = StandardPreset
+            }
     stateVar <- newTVarIO st
 
     -- Run Action
@@ -138,7 +156,25 @@ runChildCrash = do
     q <- newTBQueueIO 10000
     audioQ <- newTBQueueIO 100
     let kConfig = KalmanConfig 1.0 1.0
-    let st = SystemState [] BeamOff now 0 (Point3D 0 0 0 0 0) Map.empty (initKalman 0 kConfig) [] q audioQ False 1.0 440.0 "en" "BEAM OFF" CalibrationUnverified StandardPreset
+    let st = SystemState
+            { currentPoints = []
+            , beamState = BeamOff
+            , lastFrameTime = now
+            , sequenceNumber = 0
+            , isocenter = Point3D 0 0 0 0 0
+            , threadHeartbeats = Map.empty
+            , kalmanState = initKalman 0 kConfig
+            , mtiState = []
+            , auditQueue = q
+            , audioQueue = audioQ
+            , audioAlertEnabled = False
+            , audioVolume = 1.0
+            , audioFrequency = 440.0
+            , activeLanguage = "en"
+            , localizedBeamState = "BEAM OFF"
+            , calibrationStatus = CalibrationUnverified
+            , displayPreset = StandardPreset
+            }
     stateVar <- newTVarIO st
 
     _ <- forkIO $ auditLoop stateVar logPath
@@ -235,7 +271,25 @@ testTriggerShutdown = do
     audioQ <- newTBQueueIO 100
     now <- getMonotonicTimeNS
     let kConfig = KalmanConfig 1.0 1.0
-    let st = SystemState [] BeamOn now 0 (Point3D 0 0 0 0 0) Map.empty (initKalman 0 kConfig) [] q audioQ False 1.0 440.0 "en" "BEAM ON" CalibrationUnverified StandardPreset
+    let st = SystemState
+            { currentPoints = []
+            , beamState = BeamOn
+            , lastFrameTime = now
+            , sequenceNumber = 0
+            , isocenter = Point3D 0 0 0 0 0
+            , threadHeartbeats = Map.empty
+            , kalmanState = initKalman 0 kConfig
+            , mtiState = []
+            , auditQueue = q
+            , audioQueue = audioQ
+            , audioAlertEnabled = False
+            , audioVolume = 1.0
+            , audioFrequency = 440.0
+            , activeLanguage = "en"
+            , localizedBeamState = "BEAM ON"
+            , calibrationStatus = CalibrationUnverified
+            , displayPreset = StandardPreset
+            }
     stateVar <- newTVarIO st
     
     triggerShutdown stateVar "Test Failure"
