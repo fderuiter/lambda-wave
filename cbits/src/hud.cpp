@@ -22,6 +22,14 @@ static bool g_audio_alert_enabled = false;
 static std::string g_active_language = "en";
 static std::string g_localized_beam_state = "BEAM OFF";
 static int g_calibration_status = 0;
+static float g_beam_color_r = 1.0f;
+static float g_beam_color_g = 0.0f;
+static float g_beam_color_b = 0.0f;
+static float g_trace_scale_min = -20.0f;
+static float g_trace_scale_max = 20.0f;
+static float g_point_color_r = 0.0f;
+static float g_point_color_g = 1.0f;
+static float g_point_color_b = 1.0f;
 
 static std::deque<float> g_resp_history;
 static const size_t MAX_HISTORY = 300;
@@ -65,6 +73,15 @@ void set_cpp_hud_state(const HudStateC *state) {
   if (state->localized_beam_state)
     g_localized_beam_state = state->localized_beam_state;
   g_calibration_status = state->calibration_status;
+  
+  g_beam_color_r = state->beam_color_r;
+  g_beam_color_g = state->beam_color_g;
+  g_beam_color_b = state->beam_color_b;
+  g_trace_scale_min = state->trace_scale_min;
+  g_trace_scale_max = state->trace_scale_max;
+  g_point_color_r = state->point_color_r;
+  g_point_color_g = state->point_color_g;
+  g_point_color_b = state->point_color_b;
 
   g_resp_history.push_back(static_cast<float>(g_resp_z));
   if (g_resp_history.size() > MAX_HISTORY) {
@@ -192,13 +209,7 @@ extern "C" void start_cpp_hud_loop(void) {
                       ? get_localized_string("calibration_valid", "Valid")
                       : get_localized_string("calibration_invalid", "Invalid"));
 
-      ImVec4 beamColor;
-      if (g_beam_state == 1)
-        beamColor = ImVec4(0, 1, 0, 1); // BeamOn
-      else if (g_beam_state == 2)
-        beamColor = ImVec4(1, 1, 0, 1); // BeamHold
-      else
-        beamColor = ImVec4(1, 0, 0, 1); // BeamOff
+      ImVec4 beamColor = ImVec4(g_beam_color_r, g_beam_color_g, g_beam_color_b, 1.0f);
 
       ImGui::TextColored(beamColor, "STATUS: %s",
                          g_localized_beam_state.c_str());
@@ -207,7 +218,7 @@ extern "C" void start_cpp_hud_loop(void) {
       std::vector<float> trace(g_resp_history.begin(), g_resp_history.end());
       ImGui::PlotLines(
           get_localized_string("resp_trace_title", "Respiratory Trace"),
-          trace.data(), trace.size(), 0, NULL, -20.0f, 20.0f, ImVec2(0, 100));
+          trace.data(), trace.size(), 0, NULL, g_trace_scale_min, g_trace_scale_max, ImVec2(0, 100));
 
       // Point Cloud Info
       ImGui::Text("Active Points: %zu", g_points.size());
@@ -240,7 +251,7 @@ extern "C" void start_cpp_hud_loop(void) {
 
       glPointSize(2.0f);
       glBegin(GL_POINTS);
-      glColor3f(0.0f, 1.0f, 1.0f);
+      glColor3f(g_point_color_r, g_point_color_g, g_point_color_b);
       for (const auto &pt : g_points) {
         glVertex3f(pt.x, pt.y, pt.z);
       }

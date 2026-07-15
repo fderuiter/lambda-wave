@@ -5,7 +5,10 @@ module UI.Presentation (
     getBeamDisplayInfo,
     scalePointToMeters,
     scaleKalmanStateToMeters,
-    shouldTriggerAudioAlert
+    shouldTriggerAudioAlert,
+    indicatorScaleLimitMin,
+    indicatorScaleLimitMax,
+    pointCloudColorRGB
 ) where
 
 import Data.Types (BeamState(..), Point3D(..))
@@ -43,3 +46,12 @@ scaleKalmanStateToMeters ks =
 shouldTriggerAudioAlert :: Bool -> BeamState -> BeamState -> Bool
 shouldTriggerAudioAlert audioEnabled prevState currentState =
     audioEnabled && prevState /= currentState
+
+indicatorScaleLimitMin :: Float
+indicatorScaleLimitMin = -20.0
+
+indicatorScaleLimitMax :: Float
+indicatorScaleLimitMax = 20.0
+
+pointCloudColorRGB :: (Float, Float, Float)
+pointCloudColorRGB = (0.0, 1.0, 1.0)
