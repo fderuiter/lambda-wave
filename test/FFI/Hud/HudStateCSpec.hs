@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-orphans #-}
 -- Requirement FR-UI-001
 -- Requirement FR-UI-002
 -- Requirement FR-UI-003
