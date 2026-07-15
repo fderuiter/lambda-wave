@@ -73,7 +73,7 @@ void set_cpp_hud_state(const HudStateC *state) {
   if (state->localized_beam_state)
     g_localized_beam_state = state->localized_beam_state;
   g_calibration_status = state->calibration_status;
-  
+
   g_beam_color_r = state->beam_color_r;
   g_beam_color_g = state->beam_color_g;
   g_beam_color_b = state->beam_color_b;
@@ -209,7 +209,8 @@ extern "C" void start_cpp_hud_loop(void) {
                       ? get_localized_string("calibration_valid", "Valid")
                       : get_localized_string("calibration_invalid", "Invalid"));
 
-      ImVec4 beamColor = ImVec4(g_beam_color_r, g_beam_color_g, g_beam_color_b, 1.0f);
+      ImVec4 beamColor =
+          ImVec4(g_beam_color_r, g_beam_color_g, g_beam_color_b, 1.0f);
 
       ImGui::TextColored(beamColor, "STATUS: %s",
                          g_localized_beam_state.c_str());
@@ -218,7 +219,8 @@ extern "C" void start_cpp_hud_loop(void) {
       std::vector<float> trace(g_resp_history.begin(), g_resp_history.end());
       ImGui::PlotLines(
           get_localized_string("resp_trace_title", "Respiratory Trace"),
-          trace.data(), trace.size(), 0, NULL, g_trace_scale_min, g_trace_scale_max, ImVec2(0, 100));
+          trace.data(), trace.size(), 0, NULL, g_trace_scale_min,
+          g_trace_scale_max, ImVec2(0, 100));
 
       // Point Cloud Info
       ImGui::Text("Active Points: %zu", g_points.size());

@@ -1,10 +1,10 @@
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE InstanceSigs #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 -- Requirement FR-UI-001
 -- Requirement FR-UI-002
 -- Requirement FR-UI-003
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE InstanceSigs #-}
 
 module FFI.Hud.HudStateCSpec (spec) where
 
@@ -28,5 +28,4 @@ spec = do
       alignment (HudStateC 0 nullPtr 0 0.0 0 nullPtr nullPtr 0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0) `shouldBe` 8
 
     it "calculates offsets consistently (Sanity Check)" $ do
-        -- The struct size should be 96 bytes to accommodate all layout parameters and C struct fields properly aligned
         sizeOf (HudStateC 0 nullPtr 0 0.0 0 nullPtr nullPtr 0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0) `shouldSatisfy` (>= 96)

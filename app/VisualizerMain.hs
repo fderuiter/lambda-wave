@@ -37,7 +37,7 @@ import qualified Data.Aeson as A
 import System.Exit (exitFailure)
 import Foreign.C.Types (CSize(..))
 import Data.Word (Word8, Word64)
-import FFI.Hud.Types (HudStateC(..), Point3DC(..))
+import FFI.Hud.Types (HudStateC, Point3DC(..))
 
 -- C FFI declarations
 
