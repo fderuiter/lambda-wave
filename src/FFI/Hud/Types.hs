@@ -1,4 +1,3 @@
-{-# LANGUAGE ForeignFunctionInterface #-}
 module FFI.Hud.Types (
     HudStateC(..),
     Point3DC(..)
