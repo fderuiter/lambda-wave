@@ -17,3 +17,8 @@ This artifact provides structured criteria for manual visual inspections to veri
 
 ## 3. Hazard Mitigation Verification
 - [ ] The redundant visual signaling successfully mitigates the hazard of state misidentification for users with visual impairments (e.g., color vision deficiency) (H-USE-003).
+
+## 4. Audio Alerts (FR-UI-004)
+- [ ] **Audibility check**: Physical audio tone successfully plays via subprocess upon beam state transitions.
+- [ ] **Configuration validation**: System correctly adjusts alert volume and frequency parameters as set in environment variables prior to launch.
+- [ ] **Silent mode check**: Setting the audio alert toggle to inactive completely silences the subprocess execution without halting gating logic.

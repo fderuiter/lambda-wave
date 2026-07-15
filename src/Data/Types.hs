@@ -18,6 +18,7 @@ module Data.Types (
     RadarFrame(..),
     Severity(..),
     AuditEvent(..),
+    AudioCommand(..),
     TelemetryPacket(..)
 ) where
 
@@ -50,6 +51,12 @@ data AuditEvent = AuditEvent
 
 instance NFData AuditEvent where
     rnf (AuditEvent t s c m) = rnf t `seq` rnf s `seq` rnf c `seq` rnf m
+
+data AudioCommand = PlayTone Double Double -- Volume, Frequency
+  deriving (Show, Eq)
+
+instance NFData AudioCommand where
+    rnf (PlayTone vol freq) = rnf vol `seq` rnf freq
 
 -- | 3D Point in Room Coordinates (mm)
 data Point3D = Point3D
@@ -120,7 +127,10 @@ data SystemState = SystemState
       -- Empty list before the first radar frame is processed; after the first
       -- frame its length equals the number of range bins in that frame.
   , auditQueue :: TBQueue AuditEvent -- ^ High-performance event queue
+  , audioQueue :: TBQueue AudioCommand -- ^ Async audio player queue
   , audioAlertEnabled :: Bool -- ^ Feature toggle for Audio Alerts (P2-002)
+  , audioVolume :: Double
+  , audioFrequency :: Double
   , activeLanguage :: String
   , localizedBeamState :: String
   , calibrationStatus :: CalibrationStatus -- ^ Real-time safety monitoring of hardware calibration health
@@ -128,9 +138,9 @@ data SystemState = SystemState
   }
 
 instance NFData SystemState where
-  rnf (SystemState pts bs t sn iso hb ks mti aq ae lang locbs cs dp) = 
+  rnf (SystemState pts bs t sn iso hb ks mti aq audioQ ae av af lang locbs cs dp) = 
       rnf pts `seq` rnf bs `seq` rnf t `seq` rnf sn `seq` rnf iso `seq` 
-      rnf hb `seq` rnf ks `seq` rnf mti `seq` aq `seq` rnf ae `seq` rnf lang `seq` rnf locbs `seq` rnf cs `seq` rnf dp
+      rnf hb `seq` rnf ks `seq` rnf mti `seq` aq `seq` audioQ `seq` rnf ae `seq` rnf av `seq` rnf af `seq` rnf lang `seq` rnf locbs `seq` rnf cs `seq` rnf dp
 
 -- | Raw parsed structure from the sensor
 data RadarFrame = RadarFrame
@@ -151,6 +161,8 @@ data TelemetryPacket = TelemetryPacket
   , tpThreadHeartbeats :: Map String Word64
   , tpKalmanState :: KalmanState
   , tpAudioAlertEnabled :: Bool
+  , tpAudioVolume :: Double
+  , tpAudioFrequency :: Double
   , tpActiveLanguage :: String
   , tpLocalizedBeamState :: String
   , tpCalibrationStatus :: CalibrationStatus

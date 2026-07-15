@@ -80,6 +80,7 @@ main = do
     let kConfig = KalmanConfig { procNoise = 10.0, measNoise = 2.0 }
     let initialKState = initKalman targetHeight kConfig
     auditQ <- newTBQueueIO 1000 -- Dummy queue
+    audioQ <- newTBQueueIO 10 -- Dummy queue
 
     translations <- loadTranslations "config/locales.json"
 
@@ -105,7 +106,10 @@ main = do
           , kalmanState = initialKState
           , mtiState = []
           , auditQueue = auditQ
+          , audioQueue = audioQ
           , audioAlertEnabled = False
+          , audioVolume = 1.0
+          , audioFrequency = 440.0
           , activeLanguage = "en"
           , calibrationStatus = CalibrationUnverified
           , localizedBeamState = "BEAM OFF"
@@ -223,6 +227,8 @@ readData fd stateVar = do
                                 , threadHeartbeats = tpThreadHeartbeats packet
                                 , kalmanState = tpKalmanState packet
                                 , audioAlertEnabled = tpAudioAlertEnabled packet
+                                , audioVolume = tpAudioVolume packet
+                                , audioFrequency = tpAudioFrequency packet
                                 , activeLanguage = tpActiveLanguage packet
                                 , localizedBeamState = tpLocalizedBeamState packet
                                 , calibrationStatus = tpCalibrationStatus packet

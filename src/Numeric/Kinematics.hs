@@ -138,18 +138,14 @@ defaultBounds = ClinicalBounds
 
 clampV :: Double -> SafetyResult Velocity
 clampV v
-    | v > maxVelocity defaultBounds = ClampedToMax (Velocity (maxVelocity defaultBounds))
-    | v < minVelocity defaultBounds && v >= 0 = ClampedToMin (Velocity (minVelocity defaultBounds))
-    | v > -minVelocity defaultBounds && v < 0 = ClampedToMin (Velocity (-minVelocity defaultBounds))
-    | v < -maxVelocity defaultBounds = ClampedToMax (Velocity (-maxVelocity defaultBounds))
+    | abs v > maxVelocity defaultBounds = ClampedToMax (Velocity (signum v * maxVelocity defaultBounds))
+    | abs v < minVelocity defaultBounds = ClampedToMin (Velocity (signum v * minVelocity defaultBounds))
     | otherwise = Safe (Velocity v)
 
 clampA :: Double -> SafetyResult Acceleration
 clampA a
-    | a > maxAcceleration defaultBounds = ClampedToMax (Acceleration (maxAcceleration defaultBounds))
-    | a < minAcceleration defaultBounds && a >= 0 = ClampedToMin (Acceleration (minAcceleration defaultBounds))
-    | a > -minAcceleration defaultBounds && a < 0 = ClampedToMin (Acceleration (-minAcceleration defaultBounds))
-    | a < -maxAcceleration defaultBounds = ClampedToMax (Acceleration (-maxAcceleration defaultBounds))
+    | abs a > maxAcceleration defaultBounds = ClampedToMax (Acceleration (signum a * maxAcceleration defaultBounds))
+    | abs a < minAcceleration defaultBounds = ClampedToMin (Acceleration (signum a * minAcceleration defaultBounds))
     | otherwise = Safe (Acceleration a)
 
 

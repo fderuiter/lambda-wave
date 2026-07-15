@@ -19,6 +19,7 @@ import Data.Config (targetHeight)
 mkState :: BeamState -> IO SystemState
 mkState bs = do
     q <- newTBQueueIO 10000
+    audioQ <- newTBQueueIO 100
     let kConfig = KalmanConfig { procNoise = 10.0, measNoise = 2.0 }
     let kState = initKalman targetHeight kConfig
     return $ SystemState
@@ -33,7 +34,7 @@ mkState bs = do
         , auditQueue = q
         , audioAlertEnabled = False, activeLanguage = "en", localizedBeamState = "BEAM OFF"
         , calibrationStatus = CalibrationValid, displayPreset = StandardPreset
-        }
+        , audioQueue = audioQ, audioVolume = 1.0, audioFrequency = 440.0 }
 
 main :: IO ()
 main = do

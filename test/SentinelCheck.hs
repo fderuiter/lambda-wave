@@ -55,6 +55,7 @@ instance Storable RingBufferControl where
 createDummyState :: IO (TVar SystemState)
 createDummyState = do
     auditQ <- newTBQueueIO 10000
+    audioQ <- newTBQueueIO 100
     let kState = initKalman 0.0 (KalmanConfig 1.0 1.0)
     newTVarIO $ SystemState
         { currentPoints = []
@@ -69,7 +70,7 @@ createDummyState = do
         , activeLanguage = "en"
         , localizedBeamState = ""
         , calibrationStatus = CalibrationValid, mtiState = [], displayPreset = StandardPreset
-        }
+        , audioQueue = audioQ, audioVolume = 1.0, audioFrequency = 440.0 }
 
 main :: IO ()
 
