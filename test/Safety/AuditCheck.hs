@@ -29,8 +29,9 @@ withTestEnv action = do
     -- Setup State
     now <- getMonotonicTimeNS
     q <- newTBQueueIO 10000
+    audioQ <- newTBQueueIO 100
     let kConfig = KalmanConfig 1.0 1.0
-    let st = SystemState [] BeamOff now 0 (Point3D 0 0 0 0 0) Map.empty (initKalman 0 kConfig) [] q False "en" "BEAM OFF" CalibrationUnverified StandardPreset
+    let st = SystemState [] BeamOff now 0 (Point3D 0 0 0 0 0) Map.empty (initKalman 0 kConfig) [] q audioQ False 1.0 440.0 "en" "BEAM OFF" CalibrationUnverified StandardPreset
     stateVar <- newTVarIO st
 
     -- Run Action
@@ -135,8 +136,9 @@ runChildCrash = do
 
     now <- getMonotonicTimeNS
     q <- newTBQueueIO 10000
+    audioQ <- newTBQueueIO 100
     let kConfig = KalmanConfig 1.0 1.0
-    let st = SystemState [] BeamOff now 0 (Point3D 0 0 0 0 0) Map.empty (initKalman 0 kConfig) [] q False "en" "BEAM OFF" CalibrationUnverified StandardPreset
+    let st = SystemState [] BeamOff now 0 (Point3D 0 0 0 0 0) Map.empty (initKalman 0 kConfig) [] q audioQ False 1.0 440.0 "en" "BEAM OFF" CalibrationUnverified StandardPreset
     stateVar <- newTVarIO st
 
     _ <- forkIO $ auditLoop stateVar logPath
@@ -230,9 +232,10 @@ testTriggerShutdown :: IO Bool
 testTriggerShutdown = do
     putStr "Test 6: triggerShutdown ... "
     q <- newTBQueueIO 10
+    audioQ <- newTBQueueIO 100
     now <- getMonotonicTimeNS
     let kConfig = KalmanConfig 1.0 1.0
-    let st = SystemState [] BeamOn now 0 (Point3D 0 0 0 0 0) Map.empty (initKalman 0 kConfig) [] q False "en" "BEAM ON" CalibrationUnverified StandardPreset
+    let st = SystemState [] BeamOn now 0 (Point3D 0 0 0 0 0) Map.empty (initKalman 0 kConfig) [] q audioQ False 1.0 440.0 "en" "BEAM ON" CalibrationUnverified StandardPreset
     stateVar <- newTVarIO st
     
     triggerShutdown stateVar "Test Failure"

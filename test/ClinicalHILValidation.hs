@@ -47,7 +47,8 @@ main = do
     putStrLn "============================================================"
     
     dummyQ <- newTBQueueIO 10000
-    dummyVar <- newTVarIO (SystemState [] BeamOff 0 0 (Point3D 0 0 0 0 0) Map.empty (initKalman targetHeight (KalmanConfig 1000.0 2.0)) [] dummyQ False "en" "BEAM OFF" CalibrationValid StandardPreset)
+    audioQ <- newTBQueueIO 100
+    dummyVar <- newTVarIO (SystemState [] BeamOff 0 0 (Point3D 0 0 0 0 0) Map.empty (initKalman targetHeight (KalmanConfig 1000.0 2.0)) [] dummyQ audioQ False 1.0 440.0 "en" "BEAM OFF" CalibrationValid StandardPreset)
     
     res1Init <- initGpio dummyVar
     handleHardwareResponse (\_ -> return ()) (\_ -> return ()) res1Init
@@ -87,6 +88,7 @@ runHILSimulation :: String -> RigConfig -> Double -> IO (Bool, [Double])
 runHILSimulation name rig duration = do
     startT <- getMonotonicTimeNS
     q <- newTBQueueIO 10000
+    audioQ <- newTBQueueIO 100
     
     let s = SystemState
             { currentPoints = []
@@ -100,7 +102,7 @@ runHILSimulation name rig duration = do
             , auditQueue = q
             , audioAlertEnabled = False, activeLanguage = "en", localizedBeamState = "BEAM OFF"
         , calibrationStatus = CalibrationValid, displayPreset = StandardPreset
-            }
+            , audioQueue = audioQ, audioVolume = 1.0, audioFrequency = 440.0 }
     var <- newTVarIO s
     
     _ <- forkIO $ forever $ do

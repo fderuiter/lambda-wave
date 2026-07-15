@@ -124,6 +124,7 @@ executable sgrt-radar-system-exe
   extra-libraries: stdc++
   build-depends:
       sgrt-radar-system
+    , process
 
 executable sgrt-visualizer-exe
   import: common-options

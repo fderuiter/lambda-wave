@@ -111,7 +111,7 @@ processFrame translations stateVar frame = do
             else return (mtiState oldSystemState, predState) -- Coasting (Dead Reckoning) if signal lost
 
     -- 6. Update System State & Resolve Final Beam State
-    (finalBeamState, hardwareUpdateNeeded, mEvtToLog) <- atomically $ do
+    (finalBeamState, hardwareUpdateNeeded, mEvtToLog, mAudioCmd) <- atomically $ do
         s <- readTVar stateVar
         let currentBeam = beamState s
 
@@ -140,6 +140,10 @@ processFrame translations stateVar frame = do
                      then Just $ AuditEvent currTime (if resolvedBeamState == BeamHold || currentBeam == BeamHold then Warning else Info) "Gating" (translateAudit translations (T.pack $ activeLanguage s) currentBeam resolvedBeamState)
                      else Nothing
 
+        let mAudio = if changed && audioAlertEnabled s
+                       then Just $ PlayTone (audioVolume s) (audioFrequency s)
+                       else Nothing
+
         let locStr = T.unpack $ translateBeamState translations (T.pack $ activeLanguage s) resolvedBeamState
 
         -- Update State
@@ -154,7 +158,18 @@ processFrame translations stateVar frame = do
             , localizedBeamState = locStr
             }
 
-        return (resolvedBeamState, changed, mEvt)
+        return (resolvedBeamState, changed, mEvt, mAudio)
+
+    -- Handle Audio Trigger (Non-blocking enqueue)
+    case mAudioCmd of
+        Just cmd -> do
+            st <- readTVarIO stateVar
+            atomically $ do
+                isFull <- isFullTBQueue (audioQueue st)
+                if isFull
+                    then return () -- Drop if falling behind (prevents blocking)
+                    else writeTBQueue (audioQueue st) cmd
+        Nothing -> return ()
 
     -- Log if needed
     case mEvtToLog of

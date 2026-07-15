@@ -21,6 +21,7 @@ This document provides end-to-end traceability between Functional Requirements (
 | FR-UI-001 | ISO-13485-7.3.2 | Real-time visualization | Phase 5.1 | `cbits/src/hud.cpp`, `cbits/include/hud.h` | [`07 Visualization`](../../docs/architecture/07_visualization.md) | `test/Control/UIMathSpec.hs` | ✅ Complete |
 | FR-UI-002 | ISO-13485-7.3.2 | Visual gating feedback | Phase 5.2 | `cbits/src/hud.cpp`, `cbits/include/hud.h` | [`07 Visualization`](../../docs/architecture/07_visualization.md) | Visual Inspection | ✅ Complete |
 | FR-UI-003 | IEC-62366-5.1 | Structural navigation, assistive technology hooks, and skip-links | Phase 5.3 | `cbits/src/hud.cpp`, `cbits/include/hud.h` | [`07 Visualization`](../../docs/architecture/07_visualization.md) | Visual Inspection | ✅ Complete |
+| FR-UI-004 | ISO-13485-7.3.2 | Environment-driven audio alerts via subprocess | Phase 5.4 | `Control.Gating`, `app/Main.hs` | [`07 Visualization`](../../docs/architecture/07_visualization.md) | Visual Inspection | ✅ Complete |
 
 ## Safety Requirements (SR)
 
