@@ -4,7 +4,7 @@ module Main (main) where
 import System.Environment (getArgs)
 import Data.Char (isAlphaNum, isSpace, isAlpha)
 import Data.List (isPrefixOf)
-import System.IO (withFile, IOMode(ReadMode, WriteMode), hGetContents, hSetEncoding, utf8, hPutStr)
+import System.IO (withFile, IOMode(ReadMode, WriteMode), hSetEncoding, utf8, hGetContents, hPutStr)
 
 data Token = Ident String
            | Op String

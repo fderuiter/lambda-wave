@@ -7,7 +7,7 @@
 
 ## Abstract
 
-This document provides a verified breakdown of the mathematical models used in *Millimeter wave-based patient setup verification and motion tracking during radiotherapy*. The formulas have been cross-referenced with standard radar theory to correct typographical errors found in the original manuscript's text extraction.
+- This document provides a verified breakdown of the mathematical models used in *Millimeter wave-based patient setup verification and motion tracking during radiotherapy*. The formulas have been cross-referenced with standard radar theory to correct typographical errors found in the original manuscript's text extraction.
 
 ---
 
@@ -15,7 +15,7 @@ This document provides a verified breakdown of the mathematical models used in *
 
 ### 1.1 FMCW Range Estimation
 
-The fundamental operation of Frequency-Modulated Continuous Wave (FMCW) radar relies on mixing the transmitted "chirp" with the received reflection. The resulting Intermediate Frequency (IF) signal contains a beat frequency $\hat{f}_{FFT}$ proportional to the target range $R$.
+- The fundamental operation of Frequency-Modulated Continuous Wave (FMCW) radar relies on mixing the transmitted "chirp" with the received reflection. The resulting Intermediate Frequency (IF) signal contains a beat frequency $\hat{f}_{FFT}$ proportional to the target range $R$.
 
 **Equation (1): Verified**
 
@@ -30,7 +30,7 @@ $$
 
 ### 1.2 Resolution Limit
 
-The standard Fast Fourier Transform (FFT) is limited by the observation window $T$. The minimum distinguishable frequency separation is $1/T$. In terms of distance, this creates a resolution limit (Range Bin):
+- The standard Fast Fourier Transform (FFT) is limited by the observation window $T$. The minimum distinguishable frequency separation is $1/T$. In terms of distance, this creates a resolution limit (Range Bin):
 
 $$
 \Delta R_{FFT} = \frac{c}{2B}
@@ -46,7 +46,7 @@ To overcome the coarse resolution of the FFT, the authors utilize the Chirp Z-Tr
 
 ### 2.1 Correction of Manuscript Equation (2)
 
-The manuscript's text contains typographical errors in Equation (2), specifically regarding the indices ($x_s$ vs $x_n$) and the frequency stepping term ($K/K$ vs $k/K$). The corrected mathematical formulation is presented below.
+- The manuscript's text contains typographical errors in Equation (2), specifically regarding the indices ($x_s$ vs $x_n$) and the frequency stepping term ($K/K$ vs $k/K$). The corrected mathematical formulation is presented below.
 
 **Equation (2): Corrected & Verified**
 
@@ -101,7 +101,7 @@ $$
 
 ## 4. Summary of Validated Algorithm
 
-1. **Coarse Search:** Perform FFT to find the approximate range peak frequency $f_{FFT}$.
-2. **Fine Search (Zoom 1):** Perform CZT centered at $f_{FFT}$ with bandwidth $2F_s/K$.
-3. **Fine Search (Zoom 2):** Perform CZT centered at the new peak with bandwidth $2F_s/K^2$.
-4. **Displacement:** Extract phase from the final CZT peak and unwrap it over time to track motion $d$.
+- **Coarse Search:** Perform FFT to find the approximate range peak frequency $f_{FFT}$.
+- **Fine Search (Zoom 1):** Perform CZT centered at $f_{FFT}$ with bandwidth $2F_s/K$.
+- **Fine Search (Zoom 2):** Perform CZT centered at the new peak with bandwidth $2F_s/K^2$.
+- **Displacement:** Extract phase from the final CZT peak and unwrap it over time to track motion $d$.

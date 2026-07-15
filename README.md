@@ -35,8 +35,8 @@ Lambda-Wave is a **medical device software system** that uses millimeter-wave (m
 | Role | Start Here |
 |------|------------|
 | 👤 **New User** | [Quick Start](docs/QUICKSTART.md) → [Purpose & Architecture](docs/PURPOSE_AND_ARCHITECTURE.md) |
-| 👨‍💻 **Developer** | [Developer Guide](docs/DEVELOPER_GUIDE.md) → [Build Guide](docs/BUILD_GUIDE.md) → [TODO](TODO.md) |
-| 🏥 **Medical Physicist** | [Purpose & Architecture](docs/PURPOSE_AND_ARCHITECTURE.md) → [Mathematical Framework](docs/mathematical_framework.md) |
+| 👨‍💻 **Developer** | [Developer Guide](docs/reference/DEVELOPER_GUIDE.md) → [Build Guide](docs/BUILD_GUIDE.md) → [TODO](TODO.md) |
+| 🏥 **Medical Physicist** | [Purpose & Architecture](docs/PURPOSE_AND_ARCHITECTURE.md) → [Mathematical Framework](docs/reference/mathematical_framework.md) |
 | 🛡️ **QA/Compliance** | [Project Status](docs/PROJECT_STATUS.md) → [Purpose & Architecture](docs/PURPOSE_AND_ARCHITECTURE.md#safety--compliance) |
 | 📊 **Project Manager** | [Project Status](docs/PROJECT_STATUS.md) → [TODO](TODO.md) |
 
@@ -49,8 +49,8 @@ Lambda-Wave is a **medical device software system** that uses millimeter-wave (m
 | [**Project Status**](docs/PROJECT_STATUS.md) | Current implementation status and roadmap |
 | [**Build Guide**](docs/BUILD_GUIDE.md) | Comprehensive build and dependency management |
 | [**Purpose & Architecture**](docs/PURPOSE_AND_ARCHITECTURE.md) | System design and medical context |
-| [**Developer Guide**](docs/DEVELOPER_GUIDE.md) | Development workflow and code structure |
-| [**Mathematical Framework**](docs/mathematical_framework.md) | Signal processing algorithms and theory |
+| [**Developer Guide**](docs/reference/DEVELOPER_GUIDE.md) | Development workflow and code structure |
+| [**Mathematical Framework**](docs/reference/mathematical_framework.md) | Signal processing algorithms and theory |
 | [**Contributing**](CONTRIBUTING.md) | How to contribute to the project |
 | [**Documentation Index**](docs/README.md) | Complete documentation navigation |
 
@@ -266,7 +266,7 @@ All rights reserved.
 
 ## 🌟 Acknowledgments
 
-- **Research Foundation:** Based on algorithms from [Bressler et al., Medical Physics 2024](docs/mathematical_framework.md)
+- **Research Foundation:** Based on algorithms from [Bressler et al., Medical Physics 2024](docs/reference/mathematical_framework.md)
 - **Hardware:** Texas Instruments IWR6843ISK mmWave evaluation kit
 - **Community:** Haskell, GHC, and Cabal teams
 
