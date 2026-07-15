@@ -48,7 +48,25 @@ main = do
     
     dummyQ <- newTBQueueIO 10000
     audioQ <- newTBQueueIO 100
-    dummyVar <- newTVarIO (SystemState [] BeamOff 0 0 (Point3D 0 0 0 0 0) Map.empty (initKalman targetHeight (KalmanConfig 1000.0 2.0)) [] dummyQ audioQ False 1.0 440.0 "en" "BEAM OFF" CalibrationValid StandardPreset)
+    dummyVar <- newTVarIO (SystemState
+        { currentPoints = []
+        , beamState = BeamOff
+        , lastFrameTime = 0
+        , sequenceNumber = 0
+        , isocenter = Point3D 0 0 0 0 0
+        , threadHeartbeats = Map.empty
+        , kalmanState = initKalman targetHeight (KalmanConfig 1000.0 2.0)
+        , mtiState = []
+        , auditQueue = dummyQ
+        , audioQueue = audioQ
+        , audioAlertEnabled = False
+        , audioVolume = 1.0
+        , audioFrequency = 440.0
+        , activeLanguage = "en"
+        , localizedBeamState = "BEAM OFF"
+        , calibrationStatus = CalibrationValid
+        , displayPreset = StandardPreset
+        })
     
     res1Init <- initGpio dummyVar
     handleHardwareResponse (\_ -> return ()) (\_ -> return ()) res1Init
