@@ -2,7 +2,7 @@
 module Main (main) where
 
 import System.Environment (getArgs)
-import System.IO
+import System.IO (withFile, IOMode(ReadMode, WriteMode), hSetEncoding, utf8, hGetContents, hPutStr)
 import Data.Char (isAlphaNum, isSpace, isAlpha)
 import Data.List (isPrefixOf)
 
@@ -132,31 +132,23 @@ isNumericModule name = "Numeric" `isPrefixOf` name || "SignalProcessing" `isPref
 
 processFile :: FilePath -> IO ()
 processFile path = do
-    handle <- openFile path ReadMode
-    hSetEncoding handle utf8
-    content <- hGetContents handle
-    length content `seq` return ()
+    content <- withFile path ReadMode $ \h -> do
+        hSetEncoding h utf8
+        c <- hGetContents h
+        length c `seq` return c
     let mName = getModuleName content
     case mName of
         Just name | isNumericModule name -> do
             let newContent = untokenize (replaceTokens (tokenize content))
             if newContent /= content
                 then do
-                    hClose handle
-                    outHandle <- openFile path WriteMode
-                    hSetEncoding outHandle utf8
-                    hPutStr outHandle newContent
-                    hClose outHandle
+                    withFile path WriteMode $ \h -> do
+                        hSetEncoding h utf8
+                        hPutStr h newContent
                     putStrLn $ "Optimized " ++ path
-                else do
-                    hClose handle
-                    putStrLn $ "No changes for " ++ path
-        Just name -> do
-            hClose handle
-            putStrLn $ "Skipping non-numeric module: " ++ name
-        Nothing -> do
-            hClose handle
-            putStrLn $ "Skipping file without module name: " ++ path
+                else putStrLn $ "No changes for " ++ path
+        Just name -> putStrLn $ "Skipping non-numeric module: " ++ name
+        Nothing -> putStrLn $ "Skipping file without module name: " ++ path
 
 main :: IO ()
 main = do

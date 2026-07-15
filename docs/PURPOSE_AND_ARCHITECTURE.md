@@ -671,9 +671,9 @@ Lambda-Wave represents a modern approach to safety-critical medical software:
 ---
 
 **For more information:**
-- Technical Details: `docs/mathematical_framework.md`
+- Technical Details: `docs/reference/mathematical_framework.md`
 - Build Instructions: `docs/BUILD_GUIDE.md`
-- Development Guide: `docs/DEVELOPER_GUIDE.md`
+- Development Guide: `docs/reference/DEVELOPER_GUIDE.md`
 - Project Status: `docs/PROJECT_STATUS.md`
 
 **Contact:**
