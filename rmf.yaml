@@ -198,3 +198,13 @@ hazards:
     occurrence: 2
     detection: 2
     rpn: 20
+
+  - id: H-SYS-014
+    description: Watchdog thread exception masked
+    cause: Exception masked in the watchdog thread prevents safety supervisor notification
+    effect: System continues in indeterminate state without active watchdog
+    mitigation: Watchdog thread explicitly rethrows exceptions to trigger immediate safety shutdown
+    severity: 5
+    occurrence: 2
+    detection: 3
+    rpn: 30

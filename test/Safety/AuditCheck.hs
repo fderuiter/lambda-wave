@@ -3,6 +3,7 @@ module Main (main) where
 import Data.Types
 import SignalProcessing.Kalman (initKalman, KalmanConfig(..))
 import Safety.Audit (auditLoop, tryWriteAudit, tryWriteAuditSTM, triggerShutdown)
+import Safety.Watchdog (watchdogLoop)
 import Control.Concurrent (forkIO, threadDelay, killThread)
 import Control.Concurrent.STM
 import System.Posix.Files (fileExist, removeLink, getFileStatus, fileSize)
@@ -243,6 +244,14 @@ testTriggerShutdown = do
        then putStrLn "PASS" >> return True
        else putStrLn "FAIL" >> return False
 
+testWatchdogCrashCoverage :: IO Bool
+testWatchdogCrashCoverage = do
+    putStr "Test 7: Watchdog Exception Coverage... "
+    res <- try (watchdogLoop undefined) :: IO (Either SomeException ())
+    case res of
+        Left _ -> putStrLn "PASS" >> return True
+        Right _ -> putStrLn "FAIL" >> return False
+
 main :: IO ()
 main = do
     args <- getArgs
@@ -256,8 +265,9 @@ main = do
             p4 <- testIOException
             p5 <- testTryWriteAudit
             p6 <- testTriggerShutdown
+            p7 <- testWatchdogCrashCoverage
 
-            if p1 && p2 && p3 && p4 && p5 && p6
+            if p1 && p2 && p3 && p4 && p5 && p6 && p7
                then putStrLn "VERIFICATION PASSED"
                else fail "VERIFICATION FAILED"
 -- Requirement SR-AUDIT-001
