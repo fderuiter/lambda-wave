@@ -1,3 +1,19 @@
+/// High-Performance Ring Buffer Memory Manager
+///
+/// Implements a lock-free, zero-copy shared memory ring buffer for inter-process communication.
+///
+/// Failure Modes:
+/// * Race conditions during multi-producer/multi-consumer access causing memory corruption.
+/// * Memory leaks if shared memory segments are not unlinked on abnormal termination.
+///
+/// Mitigations:
+/// * Uses std::atomic for read/write offset management ensuring memory ordering.
+/// * Employs RAII and strict lifecycle control to cleanup /dev/shm artifacts.
+///
+/// Traceability:
+/// * Requirement FR-DAQ-004: Low-latency IPC
+/// * Hazard H-SOUP-003: FFI Memory Leaks
+
 #include "../include/RingBuffer.h"
 #include <cerrno>
 #include <cstdlib>
