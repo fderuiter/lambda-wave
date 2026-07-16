@@ -100,6 +100,8 @@ main() {
                     python3-matplotlib \
                     python3-reportlab \
                     python3-yaml \
+                    libglfw3-dev \
+                    libglew-dev \
                     git
 
                 if [ "$skip_security" = false ]; then
@@ -139,6 +141,7 @@ main() {
                     make automake gcc gcc-c++ kernel-devel \
                     lapack-devel blas-devel \
                     freeglut-devel mesa-libGL-devel mesa-libGLU-devel \
+                    glfw-devel glew-devel \
                     clang-tools-extra \
                     cabal-install \
                     ghc \
@@ -158,7 +161,7 @@ main() {
                 # Brew bundle or direct install? Direct install for simplicity.
                 # lapack/openblas are keg-only in brew usually, might need env vars.
                 # But installing them is the first step.
-                brew install lapack openblas freeglut mesa clang-format cabal-install ghc git curl hlint ormolu
+                brew install lapack openblas freeglut mesa glfw glew clang-format cabal-install ghc git curl hlint ormolu
 
                 log_info "Note: You may need to set LDFLAGS/CPPFLAGS for openblas/lapack."
             else

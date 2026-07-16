@@ -69,6 +69,7 @@ library
       Data.I18n
       FFI.RingBuffer.IO
       FFI.RingBuffer.Types
+      FFI.Hud.Types
       FFI.RingBuffer.Generated
       Hardware.Control
       Hardware.FFI.Bridge
@@ -167,6 +168,7 @@ test-suite sgrt-radar-system-test
       Control.UIMathSpec
       Paths_sgrt_radar_system
       FFI.RingBuffer.TypesSpec
+      FFI.Hud.HudStateCSpec
       FFI.RingBuffer.IOSpec
       RegressionSpec
       Control.MesherSpec
