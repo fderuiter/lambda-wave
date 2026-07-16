@@ -1,3 +1,19 @@
+/// Hardware GPIO Driver
+///
+/// Manages the low-level physical pin mapping and watchdog interlocks for the SGRT hardware.
+///
+/// Failure Modes:
+/// * Unexpected physical pin state transitions leading to hardware damage.
+/// * Watchdog failure due to software lockup or memory map corruption.
+///
+/// Mitigations:
+/// * Atomic pin state tracking and hardware interlocks for the watchdog.
+/// * Automatic safe-state transition on fatal signals (SIGTERM, SIGSEGV).
+///
+/// Traceability:
+/// * Requirement FR-DAQ-002: Hardware safety interlocks
+/// * Hazard H-HW-001: Uncontrolled pin state
+
 #include "gpio.h"
 #include <atomic>
 #include <csignal>
