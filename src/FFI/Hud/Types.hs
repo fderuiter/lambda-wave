@@ -3,6 +3,13 @@ module FFI.Hud.Types (
     Point3DC(..)
 ) where
 
+-- | Types for HUD FFI.
+-- 
+-- Failure Modes: Memory corruption if C struct layout mismatches.
+-- Mitigations: Explicit Storable instances with fixed byte offsets.
+-- Traceability: REQ-HUD-001
+
+
 import Foreign.Storable (Storable(..))
 import Foreign.C.String (CString)
 import Foreign.Ptr (Ptr)
