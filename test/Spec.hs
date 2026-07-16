@@ -3,6 +3,7 @@ import Test.Hspec
 import qualified RegressionSpec
 import qualified Control.MesherSpec
 import qualified FFI.RingBuffer.TypesSpec
+import qualified FFI.Hud.HudStateCSpec
 import qualified FFI.RingBuffer.IOSpec
 import qualified Hardware.ConsumerSpec
 import qualified Hardware.ControlSpec
@@ -18,6 +19,7 @@ main = hspec $ do
   Control.MesherSpec.spec
   SignalProcessing.FMCWSpec.spec
   FFI.RingBuffer.TypesSpec.spec
+  FFI.Hud.HudStateCSpec.spec
   FFI.RingBuffer.IOSpec.spec
   Hardware.ConsumerSpec.spec
   Hardware.ControlSpec.spec

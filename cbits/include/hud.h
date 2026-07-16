@@ -23,6 +23,14 @@ typedef struct {
   const char *active_language;
   const char *localized_beam_state;
   int calibration_status;
+  float beam_color_r;
+  float beam_color_g;
+  float beam_color_b;
+  float trace_scale_min;
+  float trace_scale_max;
+  float point_color_r;
+  float point_color_g;
+  float point_color_b;
 } HudStateC;
 
 void set_cpp_hud_state(const HudStateC *state);

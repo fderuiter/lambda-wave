@@ -25,6 +25,7 @@ import Foreign.Marshal.Array (withArrayLen)
 
 import Data.Types
 import Data.Config (targetHeight)
+import UI.Presentation (getBeamDisplayInfo, BeamDisplayInfo(..), indicatorScaleLimitMin, indicatorScaleLimitMax, pointCloudColorRGB)
 import SignalProcessing.Kalman (initKalman, KalmanConfig(..), KalmanState(..), pattern V3)
 import Hardware.Consumer (consumerLoop)
 import FFI.RingBuffer.IO (attachRingBuffer)
@@ -36,19 +37,9 @@ import qualified Data.Aeson as A
 import System.Exit (exitFailure)
 import Foreign.C.Types (CSize(..))
 import Data.Word (Word8, Word64)
+import FFI.Hud.Types (HudStateC, Point3DC(..))
 
 -- C FFI declarations
-data Point3DC = Point3DC Double Double Double
-instance Storable Point3DC where
-    sizeOf _ = 24
-    alignment _ = 8
-    peek ptr = Point3DC <$> peekByteOff ptr 0 <*> peekByteOff ptr 8 <*> peekByteOff ptr 16
-    poke ptr (Point3DC p_x p_y p_z) = do
-        pokeByteOff ptr 0 p_x
-        pokeByteOff ptr 8 p_y
-        pokeByteOff ptr 16 p_z
-
-data HudStateC
 
 type TranslateCallback = CString -> CString -> IO CString
 foreign import ccall "wrapper" mkTranslateCallback :: TranslateCallback -> IO (FunPtr TranslateCallback)
@@ -144,10 +135,16 @@ main = do
         let currentLangText = T.pack hudLangStr
         let locBState = T.unpack $ translateBeamState translations currentLangText (beamState state)
 
-        let bState = case beamState state of
+        let bStateEnum = beamState state
+        let bState = case bStateEnum of
                 BeamOff -> 0 :: Word32
                 BeamOn -> 1 :: Word32
                 BeamHold -> 2 :: Word32
+        let displayInfo = getBeamDisplayInfo bStateEnum
+        let (bR, bG, bB) = bdiColorRGB displayInfo
+        let (pR, pG, pB) = pointCloudColorRGB
+        let tMin = indicatorScaleLimitMin
+        let tMax = indicatorScaleLimitMax
         let cPts = map (\pt -> Point3DC (px pt) (py pt) (pz pt)) (currentPoints state)
         let rZ = case x (kalmanState state) of
                 V3 pVal _ _ -> pVal
@@ -158,7 +155,7 @@ main = do
         withCString hudLangStr $ \c_lang -> 
             withCString locBState $ \c_loc_bstate -> 
                 withArrayLen cPts $ \numPts ptrPts -> 
-                    allocaBytes 64 $ \ptrStruct -> do
+                    allocaBytes 96 $ \ptrStruct -> do
                         -- Write HudStateC fields manually
                         -- Memory layout depends on platform, but assuming x86_64 System V AMD64 ABI
                         -- offset 0: Int (4 or 8 depending on GHC, let's use CInt/CSize to be safe, but wait! We used Int in Haskell and int in C)
@@ -173,6 +170,14 @@ main = do
                         -- 40: active_language (pointer - 8 bytes)
                         -- 48: localized_beam_state (pointer - 8 bytes)
                         -- 56: calibration_status (int - 4 bytes)
+                        -- 60: beam_color_r (float - 4 bytes)
+                        -- 64: beam_color_g (float - 4 bytes)
+                        -- 68: beam_color_b (float - 4 bytes)
+                        -- 72: trace_scale_min (float - 4 bytes)
+                        -- 76: trace_scale_max (float - 4 bytes)
+                        -- 80: point_color_r (float - 4 bytes)
+                        -- 84: point_color_g (float - 4 bytes)
+                        -- 88: point_color_b (float - 4 bytes)
                         
                         pokeByteOff ptrStruct 0 bState
                         pokeByteOff ptrStruct 8 ptrPts
@@ -182,6 +187,14 @@ main = do
                         pokeByteOff ptrStruct 40 c_lang
                         pokeByteOff ptrStruct 48 c_loc_bstate
                         pokeByteOff ptrStruct 56 calStat
+                        pokeByteOff ptrStruct 60 bR
+                        pokeByteOff ptrStruct 64 bG
+                        pokeByteOff ptrStruct 68 bB
+                        pokeByteOff ptrStruct 72 tMin
+                        pokeByteOff ptrStruct 76 tMax
+                        pokeByteOff ptrStruct 80 pR
+                        pokeByteOff ptrStruct 84 pG
+                        pokeByteOff ptrStruct 88 pB
                         
                         c_set_cpp_hud_state ptrStruct
         threadDelay 33333 -- ~30 fps update to C++
