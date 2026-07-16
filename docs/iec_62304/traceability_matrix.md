@@ -9,9 +9,9 @@ This document provides end-to-end traceability between Functional Requirements (
 | Req ID | Quality Policy Origin | Description | Source Phase | Module | Architecture Section | Verification Test | Status |
 |---|---|---|---|---|---|---|---|
 | FR-DAQ-001 | ISO-13485-7.3.2 | Zero-copy data ingestion | Phase 2.1 | `FFI.RingBuffer.IO`, `cbits/src/ring_buffer.cpp` | [`src/FFI/RingBuffer/IO.hs`](../../Haskell Radar SGRT System Development.md) | `test/FFI/RingBuffer/IOSpec.hs` | ✅ Complete |
-| FR-DAQ-002 | ISO-13485-7.3.2 | Sensor Configuration | Phase 2.3 | `Hardware.Control`, `Data.Config` | [`02 Hardware Stack`](../../docs/architecture/02_hardware_stack.md) | `test/Hardware/ControlSpec.hs` | ✅ Complete |
-| FR-DAQ-003 | ISO-13485-7.3.2 | Packet parser validation | Phase 2.2 | `Hardware.Consumer` | [`03 Software Architecture`](../../docs/architecture/03_software_architecture.md) | `test/Hardware/ConsumerSpec.hs`, `test/Hardware/ConsumerIntegrationCheck.hs` | ✅ Complete |
-| FR-DAQ-004 | ISO-13485-7.3.2 | Atomic ring buffer management | Phase 2.1 | `FFI.RingBuffer.IO`, `cbits/src/ring_buffer.cpp` | [`src/FFI/RingBuffer/IO.hs`](../../Haskell Radar SGRT System Development.md) | `test/FFI/RingBuffer/IOSpec.hs` | ✅ Complete |
+| FR-DAQ-002 | ISO-13485-7.3.2 | Sensor Configuration | Phase 2.3 | `Hardware.Control`, `Data.Config` | [`02 Hardware Stack`](../../docs/architecture/02_hardware_stack.md)<br>[`cbits/src/gpio_driver.cpp`](../../Haskell Radar SGRT System Development.md) | `test/Hardware/ControlSpec.hs` | ✅ Complete |
+| FR-DAQ-003 | ISO-13485-7.3.2 | Packet parser validation | Phase 2.2 | `Hardware.Consumer` | [`03 Software Architecture`](../../docs/architecture/03_software_architecture.md)<br>[`cbits/src/serial_config.cpp`](../../Haskell Radar SGRT System Development.md) | `test/Hardware/ConsumerSpec.hs`, `test/Hardware/ConsumerIntegrationCheck.hs` | ✅ Complete |
+| FR-DAQ-004 | ISO-13485-7.3.2 | Atomic ring buffer management | Phase 2.1 | `FFI.RingBuffer.IO`, `cbits/src/ring_buffer.cpp` | [`src/FFI/RingBuffer/IO.hs`](../../Haskell Radar SGRT System Development.md)<br>[`cbits/src/ring_buffer.cpp`](../../Haskell Radar SGRT System Development.md) | `test/FFI/RingBuffer/IOSpec.hs` | ✅ Complete |
 | FR-DSP-001 | ISO-13485-7.3.2 | Static Clutter Removal | Phase 3.1 | `SignalProcessing.FMCW` | [`04 Surface Mesher`](../../docs/architecture/04_surface_mesher.md) | `test/SignalProcessing/FMCWSpec.hs` | ✅ Complete |
 | FR-DSP-002 | ISO-13485-7.3.2 | Phase Unwrapping | Phase 3.2 | `SignalProcessing.FMCW` | [`04 Surface Mesher`](../../docs/architecture/04_surface_mesher.md) | `test/SignalProcessing/FMCWSpec.hs` | ✅ Complete |
 | FR-DSP-003 | ISO-13485-7.3.2 | Kalman filter for motion prediction | Phase 3.3 | `SignalProcessing.Kalman` | [`04 Surface Mesher`](../../docs/architecture/04_surface_mesher.md) | `test/SignalProcessing/KalmanCheck.hs`, `tools/data-generation/PhantomStudy.hs` | ✅ Complete |
@@ -21,7 +21,6 @@ This document provides end-to-end traceability between Functional Requirements (
 | FR-UI-001 | ISO-13485-7.3.2 | Real-time visualization | Phase 5.1 | `cbits/src/hud.cpp`, `cbits/include/hud.h` | [`07 Visualization`](../../docs/architecture/07_visualization.md) | `test/Control/UIMathSpec.hs` | ✅ Complete |
 | FR-UI-002 | ISO-13485-7.3.2 | Visual gating feedback | Phase 5.2 | `cbits/src/hud.cpp`, `cbits/include/hud.h` | [`07 Visualization`](../../docs/architecture/07_visualization.md) | Visual Inspection | ✅ Complete |
 | FR-UI-003 | IEC-62366-5.1 | Structural navigation, assistive technology hooks, and skip-links | Phase 5.3 | `cbits/src/hud.cpp`, `cbits/include/hud.h` | [`07 Visualization`](../../docs/architecture/07_visualization.md) | Visual Inspection | ✅ Complete |
-| FR-UI-004 | ISO-13485-7.3.2 | Environment-driven audio alerts via subprocess | Phase 5.4 | `Control.Gating`, `app/Main.hs` | [`07 Visualization`](../../docs/architecture/07_visualization.md) | Visual Inspection | ✅ Complete |
 
 ## Safety Requirements (SR)
 

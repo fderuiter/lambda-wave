@@ -31,6 +31,14 @@
 
 ## Auto-Generated Architecture
 <!-- ARCHITECTURE-START -->
+### Extracted from `src/FFI/Hud/Types.hs`
+
+Types for HUD FFI.
+
+Failure Modes: Memory corruption if C struct layout mismatches.
+Mitigations: Explicit Storable instances with fixed byte offsets.
+Traceability: REQ-HUD-001
+
 ### Extracted from `src/FFI/RingBuffer/IO.hs`
 
 High-assurance FFI Bridge Logic for RingBuffer.
@@ -48,6 +56,24 @@ Mitigations:
 * Uses non-blocking best-effort audit logging to prevent ingestion thread suspension.
 
 Traceability: FR-DAQ-001, FR-DAQ-004
+
+### Extracted from `cbits/src/serial_config.cpp`
+
+Hardware Serial Configuration Driver
+
+Configures the raw UART settings for the safety-critical radar sensor connection.
+
+Failure Modes:
+* Silent data corruption due to parity or framing errors in noisy environments.
+* Port lockup due to incorrect flow control or canonical mode settings.
+
+Mitigations:
+* Enforces raw 8N1 transmission with no software flow control.
+* Disables all special character handling (ECHO, ISIG) to prevent parsing bugs.
+
+Traceability:
+* Requirement FR-DAQ-003: Robust sensor telemetry
+* Hazard H-SOUP-002: Malformed serial input
 
 ### Extracted from `cbits/src/ring_buffer.cpp`
 
@@ -84,22 +110,4 @@ Mitigations:
 Traceability:
 * Requirement FR-DAQ-002: Hardware safety interlocks
 * Hazard H-HW-001: Uncontrolled pin state
-
-### Extracted from `cbits/src/serial_config.cpp`
-
-Hardware Serial Configuration Driver
-
-Configures the raw UART settings for the safety-critical radar sensor connection.
-
-Failure Modes:
-* Silent data corruption due to parity or framing errors in noisy environments.
-* Port lockup due to incorrect flow control or canonical mode settings.
-
-Mitigations:
-* Enforces raw 8N1 transmission with no software flow control.
-* Disables all special character handling (ECHO, ISIG) to prevent parsing bugs.
-
-Traceability:
-* Requirement FR-DAQ-003: Robust sensor telemetry
-* Hazard H-SOUP-002: Malformed serial input
 <!-- ARCHITECTURE-END -->
