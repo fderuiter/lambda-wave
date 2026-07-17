@@ -1,3 +1,4 @@
+{-# LANGUAGE ExplicitNamespaces #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
@@ -6,7 +7,7 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 
 module Safety.Verification
-    ( ActiveSafetyChecks
+    ( type ActiveSafetyChecks
     , assertSafetyChecks
     , systemLatencyTime
     , watchdogTimeoutTime
@@ -14,7 +15,7 @@ module Safety.Verification
 
 import GHC.TypeLits
 import Data.Proxy
-import Hardware.Manifest (WatchdogTimeoutMs, SystemLatencyMs)
+import Hardware.Manifest (type WatchdogTimeoutMs, type SystemLatencyMs)
 import Numeric.Kinematics (Time(..))
 
 type family AssertWatchdogSafe w l where

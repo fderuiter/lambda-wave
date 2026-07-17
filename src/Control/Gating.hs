@@ -1,3 +1,4 @@
+{-# LANGUAGE ExplicitNamespaces #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE BangPatterns #-}
 -- |
@@ -36,7 +37,7 @@ import Numeric.Kinematics
     , Time(..)
     , Proxy(..)
     )
-import Hardware.Manifest (SystemLatencyMs)
+import Hardware.Manifest (type SystemLatencyMs)
 import Safety.Verification (systemLatencyTime)
 
 
