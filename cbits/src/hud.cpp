@@ -1,8 +1,8 @@
 #include "hud.h"
-#include "a11y_bridge.h"
 #include "../imgui/backends/imgui_impl_glfw.h"
 #include "../imgui/backends/imgui_impl_opengl3.h"
 #include "../imgui/imgui.h"
+#include "a11y_bridge.h"
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 #include <cmath>
@@ -41,7 +41,7 @@ static std::unordered_map<std::string, std::string> g_translation_cache;
 static std::deque<std::string> g_a11y_announcements;
 static int g_last_focused_item = -1;
 
-static void CheckFocus(int id, const char* name, const char* role) {
+static void CheckFocus(int id, const char *name, const char *role) {
   if (ImGui::IsItemFocused()) {
     if (g_last_focused_item != id) {
       g_last_focused_item = id;
@@ -82,8 +82,11 @@ void set_cpp_hud_state(const HudStateC *state) {
   g_points.assign(state->points, state->points + state->num_points);
 
   static size_t last_announced_points = 0;
-  if (std::abs((long long)state->num_points - (long long)last_announced_points) >= 500) {
-    std::string ann = std::string(get_localized_string("point_cloud_count", "Point Cloud Count: ")) + " " + std::to_string(state->num_points);
+  if (std::abs((long long)state->num_points -
+               (long long)last_announced_points) >= 500) {
+    std::string ann = std::string(get_localized_string("point_cloud_count",
+                                                       "Point Cloud Count: ")) +
+                      " " + std::to_string(state->num_points);
     g_a11y_announcements.push_back(ann);
     last_announced_points = state->num_points;
   }
@@ -93,7 +96,8 @@ void set_cpp_hud_state(const HudStateC *state) {
   // We don't overwrite g_active_language from state anymore, it's managed by UI
   bool beam_changed = false;
   std::string new_beam_state;
-  if (state->localized_beam_state && g_localized_beam_state != state->localized_beam_state) {
+  if (state->localized_beam_state &&
+      g_localized_beam_state != state->localized_beam_state) {
     g_localized_beam_state = state->localized_beam_state;
     beam_changed = true;
     new_beam_state = g_localized_beam_state;
@@ -108,13 +112,17 @@ void set_cpp_hud_state(const HudStateC *state) {
   }
 
   if (beam_changed) {
-    std::string ann = std::string(get_localized_string("beam_status_changed", "Beam Status Changed: ")) + " " + new_beam_state;
+    std::string ann = std::string(get_localized_string(
+                          "beam_status_changed", "Beam Status Changed: ")) +
+                      " " + new_beam_state;
     g_a11y_announcements.push_back(ann);
   }
   if (cal_changed) {
-    std::string ann = new_cal_status == 1 
-      ? get_localized_string("calibration_valid", "Calibration Valid") 
-      : get_localized_string("calibration_invalid", "Calibration Invalid");
+    std::string ann =
+        new_cal_status == 1
+            ? get_localized_string("calibration_valid", "Calibration Valid")
+            : get_localized_string("calibration_invalid",
+                                   "Calibration Invalid");
     g_a11y_announcements.push_back(ann);
   }
 
@@ -215,24 +223,24 @@ extern "C" void start_cpp_hud_loop(void) {
       CheckFocus(3, "French", "button");
       ImGui::Separator();
 
-      const char* user_label = get_localized_string("username_label", "Username");
-      ImGui::InputText(user_label,
-                       username, IM_ARRAYSIZE(username));
+      const char *user_label =
+          get_localized_string("username_label", "Username");
+      ImGui::InputText(user_label, username, IM_ARRAYSIZE(username));
       CheckFocus(4, user_label, "textbox");
-      const char* pass_label = get_localized_string("password_label", "Password");
+      const char *pass_label =
+          get_localized_string("password_label", "Password");
       bool submit_password = ImGui::InputText(
-          pass_label, password,
-          IM_ARRAYSIZE(password),
+          pass_label, password, IM_ARRAYSIZE(password),
           ImGuiInputTextFlags_Password | ImGuiInputTextFlags_EnterReturnsTrue);
       CheckFocus(5, pass_label, "textbox");
-      const char* login_label = get_localized_string("login_button", "Login");
-      if (ImGui::Button(login_label) ||
-          submit_password) {
+      const char *login_label = get_localized_string("login_button", "Login");
+      if (ImGui::Button(login_label) || submit_password) {
         if ((strcmp(username, "admin") == 0 ||
              strcmp(username, "operator") == 0) &&
             strcmp(password, "password") == 0) {
           logged_in = true;
-          g_a11y_announcements.push_back(get_localized_string("login_success", "Login Successful"));
+          g_a11y_announcements.push_back(
+              get_localized_string("login_success", "Login Successful"));
         }
       }
       CheckFocus(6, login_label, "button");
@@ -246,21 +254,24 @@ extern "C" void start_cpp_hud_loop(void) {
       if (ImGui::Button("EN")) {
         g_active_language = "en";
         g_translation_cache.clear();
-        g_a11y_announcements.push_back(get_localized_string("lang_changed", "Language changed to English"));
+        g_a11y_announcements.push_back(get_localized_string(
+            "lang_changed", "Language changed to English"));
       }
       CheckFocus(7, "English", "button");
       ImGui::SameLine();
       if (ImGui::Button("ES")) {
         g_active_language = "es";
         g_translation_cache.clear();
-        g_a11y_announcements.push_back(get_localized_string("lang_changed", "Idioma cambiado a Español"));
+        g_a11y_announcements.push_back(
+            get_localized_string("lang_changed", "Idioma cambiado a Español"));
       }
       CheckFocus(8, "Spanish", "button");
       ImGui::SameLine();
       if (ImGui::Button("FR")) {
         g_active_language = "fr";
         g_translation_cache.clear();
-        g_a11y_announcements.push_back(get_localized_string("lang_changed", "Langue changée en Français"));
+        g_a11y_announcements.push_back(
+            get_localized_string("lang_changed", "Langue changée en Français"));
       }
       CheckFocus(9, "French", "button");
 
