@@ -8,6 +8,10 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE ConstraintKinds #-}
 
+-- | Numeric.Kinematics
+-- Failure Modes: Incorrect dimension conversion.
+-- Mitigations: Core types strictly define domain bounds.
+-- Traceability: REQ-SYS-003
 module Numeric.Kinematics
     ( -- * Core Types
       Distance(..)
