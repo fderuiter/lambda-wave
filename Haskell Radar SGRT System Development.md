@@ -31,6 +31,13 @@
 
 ## Auto-Generated Architecture
 <!-- ARCHITECTURE-START -->
+### Extracted from `src/Numeric/Kinematics.hs`
+
+Numeric.Kinematics
+Failure Modes: Incorrect dimension conversion.
+Mitigations: Core types strictly define domain bounds.
+Traceability: REQ-SYS-003
+
 ### Extracted from `src/FFI/Hud/Types.hs`
 
 Types for HUD FFI.

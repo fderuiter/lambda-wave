@@ -82,6 +82,7 @@ library
       Safety.Result
       Safety.Thread
       Safety.Token
+      Safety.Verification
       Safety.Watchdog
       UI.Presentation
       SignalProcessing.FMCW

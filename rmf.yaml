@@ -208,3 +208,13 @@ hazards:
     occurrence: 2
     detection: 3
     rpn: 30
+
+  - id: H-SYS-015
+    description: Hardware configuration mismatch
+    cause: Incorrect system latency or watchdog configuration leading to invalid safety assumptions
+    effect: Watchdog fires later than the system latency requirement, leading to delayed safety response.
+    mitigation: Centralized compile-time configuration checks ensuring WatchdogTimeout > SystemLatency.
+    severity: 5
+    occurrence: 2
+    detection: 2
+    rpn: 20

@@ -1,6 +1,5 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
@@ -8,6 +7,10 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE ConstraintKinds #-}
 
+-- | Numeric.Kinematics
+-- Failure Modes: Incorrect dimension conversion.
+-- Mitigations: Core types strictly define domain bounds.
+-- Traceability: REQ-SYS-003
 module Numeric.Kinematics
     ( -- * Core Types
       Distance(..)
@@ -45,12 +48,6 @@ module Numeric.Kinematics
     , hzToFrequency
     , frequencyToHz
     , ghzToHz
-      -- * Type-level constants and assertions
-    , SystemLatencyMs
-    , WatchdogTimeoutMs
-    , AssertWatchdogSafe
-    , systemLatencyTime
-    , watchdogTimeoutTime
       -- * Classes
     , KinematicMath(..)
     , KinematicMultiply(..)
@@ -63,9 +60,7 @@ module Numeric.Kinematics
     , Proxy(..)
     ) where
 
-import GHC.TypeLits
 import Data.Proxy
-import Hardware.Manifest (WatchdogTimeoutMs, SystemLatencyMs)
 import Safety.Result (SafetyResult(..))
 
 newtype Distance = Distance Double deriving (Show, Eq, Ord)
@@ -264,21 +259,4 @@ instance ScalarMultiply Time where
 instance ScalarMultiply Frequency where
     s |* (Frequency f) = let r = s * f in if r < 0 then ClampedToMin (Frequency 0) else Safe (Frequency r)
     (Frequency f) *| s = let r = s * f in if r < 0 then ClampedToMin (Frequency 0) else Safe (Frequency r)
-
-
-type family AssertWatchdogSafe w l where
-    AssertWatchdogSafe w l = IfSafe (CmpNat w l)
-
-type family IfSafe cmp where
-    IfSafe 'GT = ()
-    IfSafe _ = TypeError ('Text "Safety Invariant Violated: WatchdogTimeout must be greater than SystemLatency")
-
-_assertWatchdogSafe :: AssertWatchdogSafe WatchdogTimeoutMs SystemLatencyMs
-_assertWatchdogSafe = ()
-
-systemLatencyTime :: forall l. (l ~ SystemLatencyMs, KnownNat l) => Proxy l -> Time
-systemLatencyTime p = Time (fromInteger (natVal p) / 1000.0)
-
-watchdogTimeoutTime :: forall w. (w ~ WatchdogTimeoutMs, KnownNat w) => Proxy w -> Time
-watchdogTimeoutTime p = Time (fromInteger (natVal p) / 1000.0)
 
