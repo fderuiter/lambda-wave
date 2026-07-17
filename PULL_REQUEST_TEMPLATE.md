@@ -8,6 +8,7 @@
 [How to verify the fix/feature]
 
 ## Definition of Done Checklist
+- [ ] Local pre-commit hooks passed successfully (`git commit` didn't block due to formatting or test failures)
 - [ ] Code Linting Passed
 - [ ] Build Successful
 - [ ] Unit/Property Tests Passed

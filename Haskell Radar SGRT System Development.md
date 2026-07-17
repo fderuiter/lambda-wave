@@ -31,6 +31,14 @@
 
 ## Auto-Generated Architecture
 <!-- ARCHITECTURE-START -->
+### Extracted from `src/FFI/Hud/Types.hs`
+
+Types for HUD FFI.
+
+Failure Modes: Memory corruption if C struct layout mismatches.
+Mitigations: Explicit Storable instances with fixed byte offsets.
+Traceability: REQ-HUD-001
+
 ### Extracted from `src/FFI/RingBuffer/IO.hs`
 
 High-assurance FFI Bridge Logic for RingBuffer.
@@ -48,4 +56,66 @@ Mitigations:
 * Uses non-blocking best-effort audit logging to prevent ingestion thread suspension.
 
 Traceability: FR-DAQ-001, FR-DAQ-004
+
+### Extracted from `cbits/src/gpio_driver.cpp`
+
+Hardware GPIO Driver
+
+Manages the low-level physical pin mapping and watchdog interlocks for the
+SGRT hardware.
+
+Failure Modes:
+* Unexpected physical pin state transitions leading to hardware damage.
+* Watchdog failure due to software lockup or memory map corruption.
+
+Mitigations:
+* Atomic pin state tracking and hardware interlocks for the watchdog.
+* Automatic safe-state transition on fatal signals (SIGTERM, SIGSEGV).
+
+Traceability:
+* Requirement FR-DAQ-002: Hardware safety interlocks
+* Hazard H-HW-001: Uncontrolled pin state
+
+### Extracted from `cbits/src/ring_buffer.cpp`
+
+High-Performance Ring Buffer Memory Manager
+
+Implements a lock-free, zero-copy shared memory ring buffer for
+inter-process communication.
+
+Failure Modes:
+* Race conditions during multi-producer/multi-consumer access causing memory
+corruption.
+* Memory leaks if shared memory segments are not unlinked on abnormal
+termination.
+
+Mitigations:
+* Uses std::atomic for read/write offset management ensuring memory
+ordering.
+* Employs RAII and strict lifecycle control to cleanup /dev/shm artifacts.
+
+Traceability:
+* Requirement FR-DAQ-004: Low-latency IPC
+* Hazard H-SOUP-003: FFI Memory Leaks
+
+### Extracted from `cbits/src/serial_config.cpp`
+
+Hardware Serial Configuration Driver
+
+Configures the raw UART settings for the safety-critical radar sensor
+connection.
+
+Failure Modes:
+* Silent data corruption due to parity or framing errors in noisy
+environments.
+* Port lockup due to incorrect flow control or canonical mode settings.
+
+Mitigations:
+* Enforces raw 8N1 transmission with no software flow control.
+* Disables all special character handling (ECHO, ISIG) to prevent parsing
+bugs.
+
+Traceability:
+* Requirement FR-DAQ-003: Robust sensor telemetry
+* Hazard H-SOUP-002: Malformed serial input
 <!-- ARCHITECTURE-END -->

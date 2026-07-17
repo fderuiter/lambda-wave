@@ -105,6 +105,7 @@ library
       cbits/src/serial_config.cpp
       cbits/src/gpio_driver.cpp
       cbits/src/hud.cpp
+      cbits/src/a11y_bridge.cpp
       cbits/imgui/imgui.cpp
       cbits/imgui/imgui_draw.cpp
       cbits/imgui/imgui_tables.cpp
