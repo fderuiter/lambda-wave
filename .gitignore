@@ -10,3 +10,5 @@ docs_output/
 docs_site/
 mkdocs.yml
 site/
+tools/compiler_utils.py~
+tools/compiler_utils.pyc
