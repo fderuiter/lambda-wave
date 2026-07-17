@@ -10,8 +10,8 @@ def extract_docstrings(directory):
     excluded_dirs = {"imgui", "thirdparty", "third-party", "build", "Generated"}
     
     for root, dirs, files in os.walk(directory):
-        dirs[:] = [d for d in dirs if d not in excluded_dirs]
-        for file in files:
+        dirs[:] = sorted([d for d in dirs if d not in excluded_dirs])
+        for file in sorted(files):
             if file in excluded_files:
                 continue
                 
