@@ -239,6 +239,132 @@ def cmd_check_docs(args):
         
     print("Documentation check passed: All safety-critical modules have required sections and valid IDs.")
 
+def cmd_check_ffi_layouts(args):
+    print("Verifying FFI Memory Layouts between markdown and Haskell source...")
+    
+    spec_path = Path('/app/docs/ffi_master_spec.md')
+    if not spec_path.exists():
+        print(f"Error: {spec_path} not found.")
+        sys.exit(1)
+        
+    with open(spec_path, 'r', encoding='utf-8') as f:
+        lines = f.readlines()
+        
+    md_layouts = {}
+    current_layout = None
+    in_ffi_section = False
+    
+    for i, line in enumerate(lines):
+        line_no = i + 1
+        if line.startswith('## FFI Memory Layouts'):
+            in_ffi_section = True
+            continue
+        elif line.startswith('## ') and in_ffi_section:
+            in_ffi_section = False
+            
+        if in_ffi_section:
+            m = re.match(r'^###\s+(\w+)', line)
+            if m:
+                current_layout = m.group(1)
+                md_layouts[current_layout] = []
+                continue
+                
+            if current_layout:
+                field_match = re.search(r'^-\s+`([^`]+)`', line.strip())
+                if field_match:
+                    declaration = field_match.group(1).strip()
+                    parts = declaration.split()
+                    if len(parts) >= 2:
+                        field_name = parts[-1]
+                        field_type = " ".join(parts[:-1])
+                        md_layouts[current_layout].append({
+                            'name': field_name,
+                            'type': field_type,
+                            'line_text': line.strip(),
+                            'line_no': line_no
+                        })
+                        
+    md_layouts = {k: v for k, v in md_layouts.items() if len(v) > 0}
+    
+    hs_records = {}
+    record_pattern = re.compile(r'data\s+([A-Z][A-Za-z0-9_]*)\s*=\s*[A-Z][A-Za-z0-9_]*\s*\{([^}]+)\}')
+    field_pattern = re.compile(r'([a-z][A-Za-z0-9_]*)\s*::\s*!?([A-Z][A-Za-z0-9_]*)')
+
+    for d in SRC_DIRS:
+        for root, dirs, files in os.walk(d):
+            for file in files:
+                if file.endswith('.hs'):
+                    path = os.path.join(root, file)
+                    with open(path, 'r', encoding='utf-8') as f:
+                        content = f.read()
+                    
+                    for match in record_pattern.finditer(content):
+                        record_name = match.group(1)
+                        fields_str = match.group(2)
+                        
+                        fields = []
+                        for fmatch in field_pattern.finditer(fields_str):
+                            fields.append({
+                                'name': fmatch.group(1),
+                                'type': fmatch.group(2)
+                            })
+                        if fields:
+                            hs_records[record_name] = {'fields': fields, 'file': path}
+                            
+    def snake_to_camel(name):
+        parts = name.split('_')
+        return parts[0] + ''.join(p.capitalize() for p in parts[1:])
+
+    failed = False
+    
+    for layout_name, md_fields in md_layouts.items():
+        if layout_name not in hs_records:
+            print(f"Error: Documented layout '{layout_name}' not found in any Haskell FFI source records.")
+            failed = True
+            continue
+            
+        hs_info = hs_records[layout_name]
+        hs_fields = hs_info['fields']
+        hs_file = hs_info['file']
+        
+        if len(md_fields) != len(hs_fields):
+            print(f"Error: Structural mismatch in '{layout_name}'. Markdown has {len(md_fields)} fields, Haskell has {len(hs_fields)} fields.")
+            print(f"File: {hs_file}")
+            failed = True
+            continue
+            
+        for i, (md_f, hs_f) in enumerate(zip(md_fields, hs_fields)):
+            expected_name = snake_to_camel(md_f['name'])
+            if expected_name != hs_f['name']:
+                print(f"Error: Structural mismatch in '{layout_name}' at field {i+1}.")
+                print(f"Spec File: {spec_path}")
+                print(f"Header: ### {layout_name}")
+                print(f"Mismatched line ({md_f['line_no']}): {md_f['line_text']}")
+                print(f"Expected field name '{expected_name}' but found '{hs_f['name']}' in {hs_file}.")
+                failed = True
+                break
+                
+            type_mapping = {
+                'std::atomic<size_t>': 'CSize',
+                'size_t': 'CSize',
+                'uint32_t': 'Word32',
+                'int': 'CInt',
+            }
+            mapped_type = type_mapping.get(md_f['type'])
+            if mapped_type and mapped_type != hs_f['type']:
+                print(f"Error: Type mismatch in '{layout_name}' at field {i+1}.")
+                print(f"Spec File: {spec_path}")
+                print(f"Header: ### {layout_name}")
+                print(f"Mismatched line ({md_f['line_no']}): {md_f['line_text']}")
+                print(f"Expected type '{mapped_type}' but found '{hs_f['type']}' in {hs_file}.")
+                failed = True
+                break
+
+    if failed:
+        sys.exit(1)
+        
+    print("Verification PASSED: Documented FFI memory layouts perfectly match Haskell source records.")
+
 def main():
     parser = argparse.ArgumentParser(description="Integrated Safety & Risk Suite")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -271,6 +397,7 @@ def main():
     subparsers.add_parser("verify", help="Verify all hazards are referenced in codebase")
     subparsers.add_parser("gap", help="Gap analysis for missing codebase references")
     subparsers.add_parser("check-docs", help="Check documentation structure in safety-critical files")
+    subparsers.add_parser("check-ffi-layouts", help="Verify FFI Memory Layouts between markdown and Haskell source")
 
     args = parser.parse_args()
     if args.command == "add":
@@ -287,6 +414,8 @@ def main():
         cmd_gap(args)
     elif args.command == "check-docs":
         cmd_check_docs(args)
+    elif args.command == "check-ffi-layouts":
+        cmd_check_ffi_layouts(args)
 
 if __name__ == "__main__":
     main()

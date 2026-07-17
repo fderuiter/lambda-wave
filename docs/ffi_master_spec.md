@@ -13,7 +13,8 @@ It uses a zero-copy lock-free design using `std::atomic` variables for indices.
 - `std::atomic<size_t> read_offset` (8 bytes)
 - `size_t buffer_offset` (8 bytes)
 - `size_t buffer_size` (8 bytes)
-- `char[] data_region` (starts at `buffer_offset`, spans `buffer_size` bytes)
+
+*Note*: A `char[] data_region` physically follows the struct in memory (starts at `buffer_offset`, spans `buffer_size` bytes).
 
 *Constraint*: The consumer (Haskell) must dynamically resolve the buffer start address using `buffer_offset` relative to the handle to support multi-process address spaces securely.
 

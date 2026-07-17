@@ -145,8 +145,8 @@ flowchart TD
         NanCheck -->|Yes| B_OFF[Beam DISABLE]
         NanCheck -->|No| SelectBranch{Previous Beam State?}
 
-        SelectBranch -->|BeamOff| TolCheckOn{Error < Tolerance?}
-        SelectBranch -->|BeamOn| TolCheckOff{Error < Tolerance + Hysteresis?}
+        SelectBranch -->|BeamOff| TolCheckOn{"Error < Tolerance?"}
+        SelectBranch -->|BeamOn| TolCheckOff{"Error < Tolerance + Hysteresis?"}
         SelectBranch -->|BeamHold| B_HOLD[Maintain BeamHold]
 
         TolCheckOn -->|Yes| B_ON[Beam ENABLE]
@@ -157,7 +157,7 @@ flowchart TD
     end
 
     subgraph "Watchdog Daemon (Safety.Watchdog)"
-        Timer[10ms Timer] --> Check{Last Heartbeat < 100ms?}
+        Timer[10ms Timer] --> Check{"Last Heartbeat < 100ms?"}
         Check -->|No| KILL[EMERGENCY SHUTDOWN]
         Check -->|Yes| Timer
         Socket[AF_UNIX Socket] -.->|Receives Heartbeat| Check
