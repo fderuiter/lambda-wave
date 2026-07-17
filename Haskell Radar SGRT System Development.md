@@ -57,47 +57,55 @@ Mitigations:
 
 Traceability: FR-DAQ-001, FR-DAQ-004
 
-### Extracted from `cbits/src/serial_config.cpp`
-
-Hardware Serial Configuration Driver
-
-Configures the raw UART settings for the safety-critical radar sensor connection.
-
-Failure Modes:
-* Silent data corruption due to parity or framing errors in noisy environments.
-* Port lockup due to incorrect flow control or canonical mode settings.
-
-Mitigations:
-* Enforces raw 8N1 transmission with no software flow control.
-* Disables all special character handling (ECHO, ISIG) to prevent parsing bugs.
-
-Traceability:
-* Requirement FR-DAQ-003: Robust sensor telemetry
-* Hazard H-SOUP-002: Malformed serial input
-
 ### Extracted from `cbits/src/ring_buffer.cpp`
 
 High-Performance Ring Buffer Memory Manager
 
-Implements a lock-free, zero-copy shared memory ring buffer for inter-process communication.
+Implements a lock-free, zero-copy shared memory ring buffer for
+inter-process communication.
 
 Failure Modes:
-* Race conditions during multi-producer/multi-consumer access causing memory corruption.
-* Memory leaks if shared memory segments are not unlinked on abnormal termination.
+* Race conditions during multi-producer/multi-consumer access causing memory
+corruption.
+* Memory leaks if shared memory segments are not unlinked on abnormal
+termination.
 
 Mitigations:
-* Uses std::atomic for read/write offset management ensuring memory ordering.
+* Uses std::atomic for read/write offset management ensuring memory
+ordering.
 * Employs RAII and strict lifecycle control to cleanup /dev/shm artifacts.
 
 Traceability:
 * Requirement FR-DAQ-004: Low-latency IPC
 * Hazard H-SOUP-003: FFI Memory Leaks
 
+### Extracted from `cbits/src/serial_config.cpp`
+
+Hardware Serial Configuration Driver
+
+Configures the raw UART settings for the safety-critical radar sensor
+connection.
+
+Failure Modes:
+* Silent data corruption due to parity or framing errors in noisy
+environments.
+* Port lockup due to incorrect flow control or canonical mode settings.
+
+Mitigations:
+* Enforces raw 8N1 transmission with no software flow control.
+* Disables all special character handling (ECHO, ISIG) to prevent parsing
+bugs.
+
+Traceability:
+* Requirement FR-DAQ-003: Robust sensor telemetry
+* Hazard H-SOUP-002: Malformed serial input
+
 ### Extracted from `cbits/src/gpio_driver.cpp`
 
 Hardware GPIO Driver
 
-Manages the low-level physical pin mapping and watchdog interlocks for the SGRT hardware.
+Manages the low-level physical pin mapping and watchdog interlocks for the
+SGRT hardware.
 
 Failure Modes:
 * Unexpected physical pin state transitions leading to hardware damage.
