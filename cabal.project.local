@@ -1,4 +1,0 @@
-ignore-project: False
-tests: True
-package sgrt-radar-system
-  coverage: True

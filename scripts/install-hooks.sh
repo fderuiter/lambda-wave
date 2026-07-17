@@ -1,11 +1,11 @@
-#!/bin/bash
-# Install the git hooks using the pre-commit framework
+#!/usr/bin/env bash
+set -e
 
-if command -v pre-commit >/dev/null 2>&1; then
-    pre-commit install
-else
-    echo "pre-commit framework is not installed."
-    echo "Please run 'pip install pre-commit' first."
-    exit 1
-fi
-echo "Git hooks successfully initialized."
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(dirname "$SCRIPT_DIR")"
+HOOKS_DIR="$REPO_ROOT/.git/hooks"
+
+echo "Installing git pre-commit hook..."
+cp "$SCRIPT_DIR/pre-commit" "$HOOKS_DIR/pre-commit"
+chmod +x "$HOOKS_DIR/pre-commit"
+echo "Done!"

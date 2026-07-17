@@ -15,6 +15,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Check for forbidden files
+        run: ./scripts/check-forbidden-files.sh
+
       - name: Set up Haskell
         uses: haskell-actions/setup@v2
         with:
