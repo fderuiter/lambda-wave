@@ -23,7 +23,7 @@
 - **Failure Boundaries:** Invalid state transitions will trigger the watchdog. Errors are bounded to the local STM transaction.
 
 ### SR-UI-001: Multi-modal encoding (color, shape, and symbol) for safety-critical states
-- **Module:** `app/Control/UI/Renderer.hs`, `app/Control/WebUI.hs`
+- **Module:** `app/Control/UI/Renderer.hs`
 - **Interfaces:** The unit exposes typed functional interfaces corresponding to Multi-modal encoding (color, shape, and symbol) for safety-critical states, completely decoupled from upstream IO.
 - **Failure Boundaries:** Invalid state transitions will trigger the watchdog. Errors are bounded to the local STM transaction.
 

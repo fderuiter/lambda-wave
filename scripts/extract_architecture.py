@@ -6,43 +6,68 @@ import argparse
 
 def extract_docstrings(directory):
     docstrings = []
-    for root, _, files in os.walk(directory):
-        for file in files:
-            if not file.endswith('.hs'):
+    excluded_files = {"hardware_manifest.h", "RingBuffer.h", "SensorRadar.h", "ring_buffer_ffi.cpp", "hud.cpp", "hud.h", "RingBufferCheck.cpp"}
+    excluded_dirs = {"imgui", "thirdparty", "third-party", "build", "Generated"}
+    
+    for root, dirs, files in os.walk(directory):
+        dirs[:] = sorted([d for d in dirs if d not in excluded_dirs])
+        for file in sorted(files):
+            if file in excluded_files:
                 continue
+                
+            is_haskell = file.endswith('.hs')
+            is_cpp = file.endswith('.cpp') or file.endswith('.hpp') or file.endswith('.h') or file.endswith('.c')
+            
+            if not (is_haskell or is_cpp):
+                continue
+                
             path = os.path.join(root, file)
             with open(path, 'r') as f:
-                content = f.read()
+                file_content = f.read()
             
-            # Simple parser for Haddock block comments starting with '-- |'
-            lines = content.splitlines()
+            lines = file_content.splitlines()
             in_doc = False
             current_doc = []
             
-            for line in lines:
-                if line.lstrip().startswith('-- |'):
-                    if in_doc:
-                        docstrings.append((os.path.relpath(path, '.'), '\n'.join(current_doc)))
-                    in_doc = True
-                    # Remove '-- |'
-                    text = line.lstrip()[4:]
-                    if text.startswith(' '):
-                        text = text[1:]
-                    current_doc = [text]
-                elif in_doc and line.lstrip().startswith('--'):
-                    # Remove '--'
-                    text = line.lstrip()[2:]
-                    if text.startswith(' '):
-                        text = text[1:]
-                    current_doc.append(text)
-                else:
-                    if in_doc:
-                        docstrings.append((os.path.relpath(path, '.'), '\n'.join(current_doc)))
-                        in_doc = False
-                        current_doc = []
-            
-            if in_doc:
-                docstrings.append((os.path.relpath(path, '.'), '\n'.join(current_doc)))
+            if is_haskell:
+                for line in lines:
+                    if line.lstrip().startswith('-- |'):
+                        if in_doc:
+                            docstrings.append((os.path.relpath(path, '.'), '\n'.join(current_doc)))
+                        in_doc = True
+                        text = line.lstrip()[4:]
+                        if text.startswith(' '):
+                            text = text[1:]
+                        current_doc = [text]
+                    elif in_doc and line.lstrip().startswith('--'):
+                        text = line.lstrip()[2:]
+                        if text.startswith(' '):
+                            text = text[1:]
+                        current_doc.append(text)
+                    else:
+                        if in_doc:
+                            docstrings.append((os.path.relpath(path, '.'), '\n'.join(current_doc)))
+                            in_doc = False
+                            current_doc = []
+                if in_doc:
+                    docstrings.append((os.path.relpath(path, '.'), '\n'.join(current_doc)))
+            elif is_cpp:
+                for line in lines:
+                    if line.lstrip().startswith('///'):
+                        if not in_doc:
+                            in_doc = True
+                            current_doc = []
+                        text = line.lstrip()[3:]
+                        if text.startswith(' '):
+                            text = text[1:]
+                        current_doc.append(text)
+                    else:
+                        if in_doc:
+                            docstrings.append((os.path.relpath(path, '.'), '\n'.join(current_doc)))
+                            in_doc = False
+                            current_doc = []
+                if in_doc:
+                    docstrings.append((os.path.relpath(path, '.'), '\n'.join(current_doc)))
                 
     return docstrings
 
@@ -83,8 +108,24 @@ def check_for_missing_docstring_updates():
         
         modified_files = subprocess.check_output(cmd, text=True).splitlines()
         
-        safety_dirs = ('src/Numeric', 'src/SignalProcessing', 'src/FFI')
-        safety_modified = [f for f in modified_files if f.startswith(safety_dirs) and f.endswith('.hs')]
+        safety_dirs = ('src/Numeric', 'src/SignalProcessing', 'src/FFI', 'cbits')
+        excluded_files = {"hardware_manifest.h", "RingBuffer.h", "SensorRadar.h", "ring_buffer_ffi.cpp", "hud.cpp", "hud.h", "RingBufferCheck.cpp"}
+        excluded_dirs = {"imgui", "thirdparty", "third-party", "build", "Generated"}
+        
+        def is_tracked_file(f):
+            if not f.startswith(safety_dirs):
+                return False
+            if not (f.endswith('.hs') or f.endswith('.cpp') or f.endswith('.hpp') or f.endswith('.h') or f.endswith('.c')):
+                return False
+            name = os.path.basename(f)
+            if name in excluded_files:
+                return False
+            parts = f.split('/')
+            if any(d in excluded_dirs for d in parts):
+                return False
+            return True
+        
+        safety_modified = [f for f in modified_files if is_tracked_file(f)]
         
         for sf in safety_modified:
             if base_ref:
@@ -94,15 +135,25 @@ def check_for_missing_docstring_updates():
             
             diff_out = subprocess.check_output(diff_cmd, text=True)
             doc_changed = False
+            
+            is_haskell = sf.endswith('.hs')
+            is_cpp = sf.endswith('.cpp') or sf.endswith('.hpp') or sf.endswith('.h') or sf.endswith('.c')
+            
             for line in diff_out.splitlines():
                 if line.startswith('+') and not line.startswith('+++'):
                     content = line[1:].lstrip()
-                    if content.startswith('-- |') or content.startswith('--'):
+                    if is_haskell and (content.startswith('-- |') or content.startswith('--')):
+                        doc_changed = True
+                        break
+                    if is_cpp and content.startswith('///'):
                         doc_changed = True
                         break
                 elif line.startswith('-') and not line.startswith('---'):
                     content = line[1:].lstrip()
-                    if content.startswith('-- |') or content.startswith('--'):
+                    if is_haskell and (content.startswith('-- |') or content.startswith('--')):
+                        doc_changed = True
+                        break
+                    if is_cpp and content.startswith('///'):
                         doc_changed = True
                         break
             
@@ -158,7 +209,7 @@ def main():
     if args.check:
         check_for_missing_docstring_updates()
     
-    dirs_to_scan = ['src/Numeric', 'src/SignalProcessing', 'src/FFI']
+    dirs_to_scan = ['src/Numeric', 'src/SignalProcessing', 'src/FFI', 'cbits']
     all_docstrings = []
     for d in dirs_to_scan:
         path = os.path.join('.', d)

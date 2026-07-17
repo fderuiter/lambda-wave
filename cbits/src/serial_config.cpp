@@ -1,3 +1,22 @@
+/// Hardware Serial Configuration Driver
+///
+/// Configures the raw UART settings for the safety-critical radar sensor
+/// connection.
+///
+/// Failure Modes:
+/// * Silent data corruption due to parity or framing errors in noisy
+/// environments.
+/// * Port lockup due to incorrect flow control or canonical mode settings.
+///
+/// Mitigations:
+/// * Enforces raw 8N1 transmission with no software flow control.
+/// * Disables all special character handling (ECHO, ISIG) to prevent parsing
+/// bugs.
+///
+/// Traceability:
+/// * Requirement FR-DAQ-003: Robust sensor telemetry
+/// * Hazard H-SOUP-002: Malformed serial input
+
 #include "hardware_manifest.h"
 #include <cstdio>
 #include <cstring>
