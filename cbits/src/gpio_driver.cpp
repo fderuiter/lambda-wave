@@ -1,6 +1,7 @@
 /// Hardware GPIO Driver
 ///
-/// Manages the low-level physical pin mapping and watchdog interlocks for the SGRT hardware.
+/// Manages the low-level physical pin mapping and watchdog interlocks for the
+/// SGRT hardware.
 ///
 /// Failure Modes:
 /// * Unexpected physical pin state transitions leading to hardware damage.
