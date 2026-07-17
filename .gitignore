@@ -10,3 +10,21 @@ docs_output/
 docs_site/
 mkdocs.yml
 site/
+
+# Workspace scratchpads and logs
+*scratchpad*
+*.todo
+todo.txt
+tasks.md
+scratchpad.md
+
+# Editor backups and files
+*~
+*.bak
+*.swp
+.vscode/
+.idea/
+
+# Local build / env configs
+cabal.project.local
+.cabal-sandbox/
