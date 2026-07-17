@@ -57,6 +57,25 @@ Mitigations:
 
 Traceability: FR-DAQ-001, FR-DAQ-004
 
+### Extracted from `cbits/src/gpio_driver.cpp`
+
+Hardware GPIO Driver
+
+Manages the low-level physical pin mapping and watchdog interlocks for the
+SGRT hardware.
+
+Failure Modes:
+* Unexpected physical pin state transitions leading to hardware damage.
+* Watchdog failure due to software lockup or memory map corruption.
+
+Mitigations:
+* Atomic pin state tracking and hardware interlocks for the watchdog.
+* Automatic safe-state transition on fatal signals (SIGTERM, SIGSEGV).
+
+Traceability:
+* Requirement FR-DAQ-002: Hardware safety interlocks
+* Hazard H-HW-001: Uncontrolled pin state
+
 ### Extracted from `cbits/src/ring_buffer.cpp`
 
 High-Performance Ring Buffer Memory Manager
@@ -99,23 +118,4 @@ bugs.
 Traceability:
 * Requirement FR-DAQ-003: Robust sensor telemetry
 * Hazard H-SOUP-002: Malformed serial input
-
-### Extracted from `cbits/src/gpio_driver.cpp`
-
-Hardware GPIO Driver
-
-Manages the low-level physical pin mapping and watchdog interlocks for the
-SGRT hardware.
-
-Failure Modes:
-* Unexpected physical pin state transitions leading to hardware damage.
-* Watchdog failure due to software lockup or memory map corruption.
-
-Mitigations:
-* Atomic pin state tracking and hardware interlocks for the watchdog.
-* Automatic safe-state transition on fatal signals (SIGTERM, SIGSEGV).
-
-Traceability:
-* Requirement FR-DAQ-002: Hardware safety interlocks
-* Hazard H-HW-001: Uncontrolled pin state
 <!-- ARCHITECTURE-END -->
