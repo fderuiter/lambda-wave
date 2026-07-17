@@ -20,7 +20,6 @@ This file provides the "operating instructions" for AI Agents and human develope
     *   `deepseq`: strict evaluation.
 *   **UI Frameworks (Optional/Flag-Gated):**
     *   `GLUT` / `OpenGL`: Desktop visualization (`-f enable-ui`).
-    *   `warp` / `websockets`: Web dashboard (`-f enable-web-ui`).
 
 ## 3. Rules of Engagement
 These rules are mandatory for all `src/` and `cbits/` components.
