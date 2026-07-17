@@ -35,6 +35,7 @@ import Safety.Audit
 import Data.Time.HighRes (getMonotonicTimeNS)
 import Data.I18n (loadTranslations)
 import Data.Aeson (decode, FromJSON(..), (.:), withObject)
+import Safety.Verification (assertSafetyChecks)
 
 data HardwareManifest = HardwareManifest
     { manifestMountingOffset :: Double }
@@ -46,6 +47,7 @@ instance FromJSON HardwareManifest where
 
 main :: IO ()
 main = do
+    let _ = assertSafetyChecks
     args <- getArgs
     case args of
         ["--safety-daemon", parentPidStr] -> do

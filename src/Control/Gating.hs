@@ -34,10 +34,10 @@ import qualified Data.Text as T
 import Numeric.Kinematics
     ( Distance(..)
     , Time(..)
-    , SystemLatencyMs
-    , systemLatencyTime
     , Proxy(..)
     )
+import Hardware.Manifest (SystemLatencyMs)
+import Safety.Verification (systemLatencyTime)
 
 
 -- | Kalman Configuration

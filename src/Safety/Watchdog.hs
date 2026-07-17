@@ -23,6 +23,8 @@ import qualified Data.ByteString as B
 import Safety.Crypto (encryptLog)
 import Safety.Result (SafetyResult(..))
 import Safety.Audit (tryWriteAudit)
+import Safety.Verification (watchdogTimeoutTime)
+import Hardware.Manifest (WatchdogTimeoutMs)
 
 import Hardware.Control (setBeamChannelDaemon, GpioChannel(..))
 import Hardware.FFI.Bridge (handleHardwareResponse)
