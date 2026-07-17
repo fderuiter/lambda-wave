@@ -57,7 +57,6 @@ module Numeric.Kinematics
     , Proxy(..)
     ) where
 
-import GHC.TypeLits
 import Data.Proxy
 import Safety.Result (SafetyResult(..))
 
