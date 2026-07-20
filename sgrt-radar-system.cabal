@@ -32,24 +32,24 @@ common common-options
   else
     ghc-options: -Wall -Werror -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
   build-depends:
-      base >= 4.16 && < 5
+      base ==4.18.3.0
     , stm ==2.5.1.0
     , binary ==0.8.9.1
     , bytestring ==0.11.5.3
-    , unix >=2.7 && <2.9
-    , template-haskell
-    , deepseq >=1.4.8.0 && <1.5
+    , unix ==2.8.8.0
+    , template-haskell ==2.20.0.0
+    , deepseq ==1.4.8.1
     , containers ==0.6.7
-    , filepath >=1.4.2.2 && <1.5
+    , filepath ==1.4.301.0
     , network ==3.2.8.0
-    , crypton
-    , memory
-    , time
-    , directory
-    , aeson
-    , text
-    , unordered-containers
-    , stm
+    , crypton ==1.1.3
+    , memory ==0.18.0
+    , time ==1.12.2
+    , directory ==1.3.10.1
+    , aeson ==2.3.0.0
+    , text ==2.1.4
+    , unordered-containers ==0.2.21
+    , stm ==2.5.1.0
   default-language: Haskell2010
 
 
@@ -127,7 +127,7 @@ executable sgrt-radar-system-exe
   extra-libraries: stdc++
   build-depends:
       sgrt-radar-system
-    , process
+    , process ==1.6.29.0
 
 executable sgrt-visualizer-exe
   import: common-options
@@ -139,13 +139,13 @@ executable sgrt-visualizer-exe
   ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
   build-depends:
       sgrt-radar-system
-    , process
-    , stm
-    , binary
-    , bytestring
-    , unix
-    , containers
-    , aeson
+    , process ==1.6.29.0
+    , stm ==2.5.1.0
+    , binary ==0.8.9.1
+    , bytestring ==0.11.5.3
+    , unix ==2.8.8.0
+    , containers ==0.6.7
+    , aeson ==2.3.0.0
 
 executable watchdog-fault
   import: common-options
@@ -155,12 +155,12 @@ executable watchdog-fault
   ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
   build-depends:
       sgrt-radar-system
-    , base >= 4.16 && < 5
+    , base ==4.18.3.0
     , stm ==2.5.1.0
     , containers ==0.6.7
-    , unix >=2.7 && <2.9
-    , process
-    , template-haskell
+    , unix ==2.8.8.0
+    , process ==1.6.29.0
+    , template-haskell ==2.20.0.0
 
 test-suite sgrt-radar-system-test
   import: common-options
@@ -189,8 +189,8 @@ test-suite sgrt-radar-system-test
     , QuickCheck ==2.18.0.0
     , bytestring ==0.11.5.3
     , binary ==0.8.9.1
-    , process
-    , directory
+    , process ==1.6.29.0
+    , directory ==1.3.10.1
   build-tool-depends:
       sgrt-radar-system:watchdog-fault
 
@@ -205,7 +205,7 @@ test-suite hardware-control-check
   ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
   build-depends:
       sgrt-radar-system
-    , base >= 4.16 && < 5
+    , base ==4.18.3.0
 
 test-suite hardware-consumer-check
   import: common-options
@@ -218,7 +218,7 @@ test-suite hardware-consumer-check
   ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
   build-depends:
       sgrt-radar-system
-    , base >= 4.16 && < 5
+    , base ==4.18.3.0
     , bytestring ==0.11.5.3
     , binary ==0.8.9.1
     , QuickCheck ==2.18.0.0
@@ -234,7 +234,7 @@ test-suite kalman-verification
   ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
   build-depends:
       sgrt-radar-system
-    , base >= 4.16 && < 5
+    , base ==4.18.3.0
 
 test-suite audit-check
   import: common-options
@@ -247,9 +247,9 @@ test-suite audit-check
   ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
   build-depends:
       sgrt-radar-system
-    , base >= 4.16 && < 5
-    , unix >=2.7 && <2.9
-    , template-haskell
+    , base ==4.18.3.0
+    , unix ==2.8.8.0
+    , template-haskell ==2.20.0.0
 
 test-suite clinical-hil-validation
   import: common-options
@@ -262,10 +262,10 @@ test-suite clinical-hil-validation
   ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
   build-depends:
       sgrt-radar-system
-    , base >= 4.16 && < 5
+    , base ==4.18.3.0
     , stm ==2.5.1.0
     , containers ==0.6.7
-    , process >= 1.6.18.0
+    , process ==1.6.29.0
     
 test-suite gating-check
   import: common-options
@@ -278,7 +278,7 @@ test-suite gating-check
   ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
   build-depends:
       sgrt-radar-system
-    , base >= 4.16 && < 5
+    , base ==4.18.3.0
 
 test-suite watchdog-check
   import: common-options
@@ -291,9 +291,9 @@ test-suite watchdog-check
   ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
   build-depends:
       sgrt-radar-system
-    , base >= 4.16 && < 5
-    , process
-    , directory
+    , base ==4.18.3.0
+    , process ==1.6.29.0
+    , directory ==1.3.10.1
   build-tool-depends:
       sgrt-radar-system:watchdog-fault
 
@@ -308,7 +308,7 @@ test-suite numeric-check
   ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
   build-depends:
       sgrt-radar-system
-    , base >= 4.16 && < 5
+    , base ==4.18.3.0
 
 test-suite sentinel-check
   import: common-options
@@ -321,7 +321,7 @@ test-suite sentinel-check
   ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
   build-depends:
       sgrt-radar-system
-    , base >= 4.16 && < 5
+    , base ==4.18.3.0
 
 benchmark sgrt-radar-system-bench
   import: common-options
@@ -360,7 +360,7 @@ test-suite consumer-integration-check
   ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
   build-depends:
       sgrt-radar-system
-    , base >= 4.16 && < 5
+    , base ==4.18.3.0
     , bytestring ==0.11.5.3
 
 
@@ -372,7 +372,7 @@ executable phantom-study
   ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
   build-depends:
       sgrt-radar-system
-    , base >= 4.16 && < 5
+    , base ==4.18.3.0
 
 executable update-csp
   import: common-options
@@ -380,9 +380,9 @@ executable update-csp
   hs-source-dirs:
       tools/system-maintenance
   build-depends:
-      base >= 4.16 && < 5
+      base ==4.18.3.0
     , bytestring ==0.11.5.3
-    , process >= 1.6.18.0
+    , process ==1.6.29.0
 
 executable check-baud
   import: common-options
@@ -390,9 +390,9 @@ executable check-baud
   hs-source-dirs:
       tools/hardware-simulation
   build-depends:
-      base >= 4.16 && < 5
-    , unix >=2.7 && <2.9
-    , template-haskell
+      base ==4.18.3.0
+    , unix ==2.8.8.0
+    , template-haskell ==2.20.0.0
 
 executable check-pty
   import: common-options
@@ -400,9 +400,9 @@ executable check-pty
   hs-source-dirs:
       tools/hardware-simulation
   build-depends:
-      base >= 4.16 && < 5
-    , unix >=2.7 && <2.9
-    , template-haskell
+      base ==4.18.3.0
+    , unix ==2.8.8.0
+    , template-haskell ==2.20.0.0
 
 executable check-unix
   import: common-options
@@ -410,9 +410,9 @@ executable check-unix
   hs-source-dirs:
       tools/hardware-simulation
   build-depends:
-      base >= 4.16 && < 5
-    , unix >=2.7 && <2.9
-    , template-haskell
+      base ==4.18.3.0
+    , unix ==2.8.8.0
+    , template-haskell ==2.20.0.0
 
 executable test-parse-errors
   import: common-options
@@ -421,7 +421,7 @@ executable test-parse-errors
       tools/qa
   build-depends:
       sgrt-radar-system
-    , base >= 4.16 && < 5
+    , base ==4.18.3.0
     , bytestring ==0.11.5.3
     , binary ==0.8.9.1
 
@@ -437,7 +437,7 @@ benchmark fmcw-bench
   build-depends:
       sgrt-radar-system
     , criterion ==1.6.5.0
-    , base >= 4.16 && < 5
+    , base ==4.18.3.0
 
 executable bolt-optimizer
   import: common-options
@@ -445,8 +445,8 @@ executable bolt-optimizer
   hs-source-dirs:
       tools/performance
   build-depends:
-      base >= 4.16 && < 5
-    , text
+      base ==4.18.3.0
+    , text ==2.1.4
 
 executable generate-synthetic-capture
   import: common-options
@@ -454,7 +454,7 @@ executable generate-synthetic-capture
   hs-source-dirs:
       tools/data-generation
   build-depends:
-      base >= 4.16 && < 5
+      base ==4.18.3.0
     , bytestring ==0.11.5.3
     , binary ==0.8.9.1
 
@@ -464,7 +464,7 @@ executable generate-complex-capture
   hs-source-dirs:
       tools/data-generation
   build-depends:
-      base >= 4.16 && < 5
+      base ==4.18.3.0
     , bytestring ==0.11.5.3
     , binary ==0.8.9.1
 
@@ -479,13 +479,13 @@ test-suite audit-heartbeat-check
   ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
   build-depends:
       sgrt-radar-system
-    , base >= 4.16 && < 5
+    , base ==4.18.3.0
     , stm ==2.5.1.0
     , containers ==0.6.7
-    , unix >=2.7 && <2.9
-    , process
-    , vector
-    , template-haskell
+    , unix ==2.8.8.0
+    , process ==1.6.29.0
+    , vector ==0.13.2.0
+    , template-haskell ==2.20.0.0
 
 test-suite beam-hold-check
   import: common-options
@@ -498,10 +498,10 @@ test-suite beam-hold-check
   ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
   build-depends:
       sgrt-radar-system
-    , base >= 4.16 && < 5
+    , base ==4.18.3.0
     , stm ==2.5.1.0
-    , unordered-containers
-    , stm
+    , unordered-containers ==0.2.21
+    , stm ==2.5.1.0
     , containers ==0.6.7
 
 test-suite latency-verification
@@ -515,8 +515,8 @@ test-suite latency-verification
   ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
   build-depends:
       sgrt-radar-system
-    , base >= 4.16 && < 5
-    , containers
-    , unordered-containers
-    , stm
+    , base ==4.18.3.0
+    , containers ==0.6.7
+    , unordered-containers ==0.2.21
+    , stm ==2.5.1.0
 
