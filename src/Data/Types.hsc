@@ -82,16 +82,18 @@ instance Storable Point where
   sizeOf _ = 16
   alignment _ = 4
   peek ptr = do
-      xVal <- peekByteOff ptr 0
-      yVal <- peekByteOff ptr 4
-      zVal <- peekByteOff ptr 8
-      vel <- peekByteOff ptr 12
+      let fptr = castPtr ptr :: Ptr Float
+      xVal <- peekElemOff fptr 0
+      yVal <- peekElemOff fptr 1
+      zVal <- peekElemOff fptr 2
+      vel <- peekElemOff fptr 3
       return $ Point xVal yVal zVal vel
   poke ptr (Point xVal yVal zVal vel) = do
-      pokeByteOff ptr 0 xVal
-      pokeByteOff ptr 4 yVal
-      pokeByteOff ptr 8 zVal
-      pokeByteOff ptr 12 vel
+      let fptr = castPtr ptr :: Ptr Float
+      pokeElemOff fptr 0 xVal
+      pokeElemOff fptr 1 yVal
+      pokeElemOff fptr 2 zVal
+      pokeElemOff fptr 3 vel
 
 -- | The critical decision state
 data BeamState = BeamOn | BeamOff | BeamHold -- Hold is manual override
