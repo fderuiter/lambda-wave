@@ -26,7 +26,7 @@ import Foreign.Marshal.Array (withArrayLen)
 import Data.Types
 import Data.Config (targetHeight)
 import UI.Presentation (getBeamDisplayInfo, BeamDisplayInfo(..), indicatorScaleLimitMin, indicatorScaleLimitMax, pointCloudColorRGB)
-import SignalProcessing.Kalman (initKalman, KalmanConfig(..), KalmanState(..), pattern V3)
+import SignalProcessing.Kalman (initKalman, KalmanConfig(..), pattern V3)
 import qualified SignalProcessing.Kalman as K
 import Hardware.Consumer (consumerLoop)
 import FFI.RingBuffer.IO (attachRingBuffer)
