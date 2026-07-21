@@ -98,6 +98,8 @@ library
       src
   include-dirs:
       cbits/include
+  install-includes:
+      a11y_bridge.h
   cxx-sources:
       cbits/src/RingBufferCheck.cpp
       cbits/src/ring_buffer.cpp

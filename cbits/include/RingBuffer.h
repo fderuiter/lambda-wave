@@ -21,8 +21,6 @@ static_assert(sizeof(RingBufferControl) == 64,
 
 extern "C" {
 size_t get_write_offset(RingBufferControl *handle);
-void set_write_offset(RingBufferControl *handle, size_t val);
-size_t get_read_offset(RingBufferControl *handle);
 void set_read_offset(RingBufferControl *handle, size_t val);
 size_t rb_available_data(RingBufferControl *handle, size_t current_read_offset);
 size_t rb_next_read_offset(RingBufferControl *handle,

@@ -115,15 +115,6 @@ RingBufferControl *attach_ring_buffer(size_t size) {
   return control;
 }
 
-void get_buffer_pointers(RingBufferControl *control, char **buf_start,
-                         size_t *size) {
-  if (control) {
-    // Compute dynamically for safety across processes
-    *buf_start = reinterpret_cast<char *>(control) + control->buffer_offset;
-    *size = control->buffer_size;
-  }
-}
-
 void free_ring_buffer(RingBufferControl *handle) {
   if (handle) {
     size_t total_size = sizeof(RingBufferControl) + handle->buffer_size;
