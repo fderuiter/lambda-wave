@@ -21,7 +21,6 @@
 #include "../include/RingBuffer.h"
 #include <cerrno>
 #include <cstdlib>
-#include <cstring>
 #include <fcntl.h>
 #include <new>
 #include <sys/mman.h>

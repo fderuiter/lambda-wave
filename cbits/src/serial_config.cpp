@@ -18,12 +18,8 @@
 /// * Hazard H-SOUP-002: Malformed serial input
 
 #include "hardware_manifest.h"
-#include <cstdio>
-#include <cstring>
 #include <errno.h>
-#include <fcntl.h>
 #include <termios.h>
-#include <unistd.h>
 
 extern "C" {
 
