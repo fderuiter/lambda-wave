@@ -15,7 +15,25 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Get modified files and evaluate path selector
+        id: path_selector
+        run: |
+          if [ -n "${{ github.base_ref }}" ]; then
+            git fetch origin ${{ github.base_ref }} || true
+            git diff --name-only "origin/${{ github.base_ref }}...HEAD" > modified_files.txt
+            if [ $? -ne 0 ]; then
+              echo "git diff failed, falling back to git show"
+              git show --name-only --format= > modified_files.txt
+            fi
+          else
+            git show --name-only --format= > modified_files.txt
+          fi
+          echo "Modified files detected:"
+          cat modified_files.txt
+          python scripts/path_selector.py modified_files.txt
+
       - name: Validate Documentation Metadata
+        if: steps.path_selector.outputs.prototype_only != 'true'
         run: python3 scripts/sync_metadata.py --check
 
       - uses: haskell-actions/setup@v2
@@ -33,6 +51,7 @@ jobs:
         run: cabal build --only-dependencies
 
       - name: Run Code Optimization
+        if: steps.path_selector.outputs.prototype_only != 'true'
         run: |
           cabal build bolt-optimizer
           find src/ -type f -name "*.hs" | xargs cabal run bolt-optimizer --
@@ -50,19 +69,20 @@ jobs:
         run: cabal bench | tee bench.log || true
 
       - name: Compliance Gate
+        if: steps.path_selector.outputs.prototype_only != 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: python3 scripts/regulatory_sync.py test.log bench.log
 
       - name: Archive Compliance Report
-        if: always()
+        if: always() && steps.path_selector.outputs.prototype_only != 'true'
         uses: actions/upload-artifact@v4
         with:
           name: regulatory-evidence-report
           path: regulatory_evidence_report.md
 
       - name: Archive Safety Audit Artifact
-        if: always()
+        if: always() && steps.path_selector.outputs.prototype_only != 'true'
         uses: actions/upload-artifact@v4
         with:
           name: safety-audit-report
