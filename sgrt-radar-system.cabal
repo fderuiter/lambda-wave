@@ -376,15 +376,16 @@ executable phantom-study
       sgrt-radar-system
     , base >= 4.16 && < 5
 
-executable update-csp
+executable safety-kpi
   import: common-options
-  main-is: UpdateCSP.hs
+  main-is: SafetyKPI.hs
   hs-source-dirs:
-      tools/system-maintenance
+      tools/qa
   build-depends:
       base >= 4.16 && < 5
     , bytestring ==0.11.5.3
     , process >= 1.6.18.0
+    , sgrt-radar-system
 
 executable check-baud
   import: common-options

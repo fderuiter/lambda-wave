@@ -70,8 +70,11 @@ sgrt-radar-system/
 To comply with IEC 62304 traceability and validation requirements, all auxiliary scripts (data generation, QA, hardware simulation, and system maintenance) must be integrated into the formal build system as first-class executables.
 *   **Registration:** Tools are defined as `executable` stanzas in `sgrt-radar-system.cabal` and stored in functional subdirectories under `tools/`.
 *   **Validation:** All tool source code is subjected to the same CI pipelines (static analysis via HLint, compilation checks) as the core application.
-*   **Execution:** Tools are invoked via `cabal run <tool-name>` (e.g., `cabal run update-csp`) instead of running ad-hoc scripts, ensuring dependencies and versions are aligned.
+*   **Execution:** Tools are invoked via `cabal run <tool-name>` (e.g., `cabal run safety-kpi`) instead of running ad-hoc scripts, ensuring dependencies and versions are aligned.
 *   **Ad-hoc Binaries:** Untracked binaries and loose scripts in the repository root are strictly forbidden.
+
+### Legacy Components
+*   **Web UI Retirement:** The legacy Web UI and its corresponding security management utilities (such as the Content Security Policy updater) have been permanently retired in favor of the native C++ HUD. This removes the need for obsolete security utilities and eliminates defunct web asset directories from the repository, simplifying the build process.
 
 ### Core Configuration Files
 *   **`sgrt-radar-system.cabal`**: Defines build instructions, package dependencies (`hmatrix`, `stm`, `clock`, `binary`), and links to C++ FFI code in `cbits/`.
