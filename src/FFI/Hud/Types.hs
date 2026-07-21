@@ -32,8 +32,6 @@ data HudStateC = HudStateC
     , hscNumPoints :: Word64
     , hscRespZ :: Double
     , hscAudioAlertEnabled :: Word8
-    , hscActiveLanguage :: CString
-    , hscLocalizedBeamState :: CString
     , hscCalibrationStatus :: Word32
     , hscBeamColorR :: Float
     , hscBeamColorG :: Float
@@ -46,7 +44,7 @@ data HudStateC = HudStateC
     }
 
 instance Storable HudStateC where
-    sizeOf _ = 96
+    sizeOf _ = 72
     alignment _ = 8
     peek ptr = HudStateC
         <$> peekByteOff ptr 0
@@ -54,32 +52,28 @@ instance Storable HudStateC where
         <*> peekByteOff ptr 16
         <*> peekByteOff ptr 24
         <*> peekByteOff ptr 32
+        <*> peekByteOff ptr 36
         <*> peekByteOff ptr 40
+        <*> peekByteOff ptr 44
         <*> peekByteOff ptr 48
+        <*> peekByteOff ptr 52
         <*> peekByteOff ptr 56
         <*> peekByteOff ptr 60
         <*> peekByteOff ptr 64
         <*> peekByteOff ptr 68
-        <*> peekByteOff ptr 72
-        <*> peekByteOff ptr 76
-        <*> peekByteOff ptr 80
-        <*> peekByteOff ptr 84
-        <*> peekByteOff ptr 88
 
-    poke ptr (HudStateC bS pT nP rZ aA aL lBS cS bR bG bB tMin tMax pR pG pB) = do
+    poke ptr (HudStateC bS pT nP rZ aA cS bR bG bB tMin tMax pR pG pB) = do
         pokeByteOff ptr 0 bS
         pokeByteOff ptr 8 pT
         pokeByteOff ptr 16 nP
         pokeByteOff ptr 24 rZ
         pokeByteOff ptr 32 aA
-        pokeByteOff ptr 40 aL
-        pokeByteOff ptr 48 lBS
-        pokeByteOff ptr 56 cS
-        pokeByteOff ptr 60 bR
-        pokeByteOff ptr 64 bG
-        pokeByteOff ptr 68 bB
-        pokeByteOff ptr 72 tMin
-        pokeByteOff ptr 76 tMax
-        pokeByteOff ptr 80 pR
-        pokeByteOff ptr 84 pG
-        pokeByteOff ptr 88 pB
+        pokeByteOff ptr 36 cS
+        pokeByteOff ptr 40 bR
+        pokeByteOff ptr 44 bG
+        pokeByteOff ptr 48 bB
+        pokeByteOff ptr 52 tMin
+        pokeByteOff ptr 56 tMax
+        pokeByteOff ptr 60 pR
+        pokeByteOff ptr 64 pG
+        pokeByteOff ptr 68 pB

@@ -19,7 +19,7 @@ import Foreign.Marshal.Alloc (allocaBytes)
 import Foreign.Ptr (castPtr, plusPtr, Ptr, FunPtr, nullPtr)
 import Foreign.ForeignPtr (ForeignPtr)
 import Data.Word (Word32)
-import Foreign.C.String (withCString, CString, peekCString, newCString)
+import Foreign.C.String (CString, peekCString, newCString)
 import Foreign.Storable (Storable(..))
 import Foreign.Marshal.Array (withArrayLen)
 
@@ -30,7 +30,7 @@ import SignalProcessing.Kalman (initKalman, KalmanConfig(..), KalmanState(..), p
 import Hardware.Consumer (consumerLoop)
 import FFI.RingBuffer.IO (attachRingBuffer)
 import FFI.RingBuffer.Types (RingBufferControl)
-import Data.I18n (loadTranslations, translateBeamState, translate)
+import Data.I18n (loadTranslations, translate)
 import qualified Data.Text as T
 import Data.Aeson (FromJSON(..), (.:), withObject)
 import qualified Data.Aeson as A
@@ -47,7 +47,6 @@ foreign import ccall "register_translate_callback" c_register_translate_callback
 
 foreign import ccall "start_cpp_hud_loop" c_start_cpp_hud_loop :: IO ()
 foreign import ccall "set_cpp_hud_state" c_set_cpp_hud_state :: Ptr HudStateC -> IO ()
-foreign import ccall "get_cpp_hud_language" c_get_cpp_hud_language :: CString -> CSize -> IO ()
 
 data HardwareManifest = HardwareManifest
     { manifestMountingOffset :: Double }
@@ -127,14 +126,6 @@ main = do
     void $ forkIO $ forever $ do
         state <- readTVarIO systemState
         
-        -- Get HUD active language
-        hudLangStr <- allocaBytes 16 $ \langBuf -> do
-            c_get_cpp_hud_language langBuf 16
-            peekCString langBuf
-            
-        let currentLangText = T.pack hudLangStr
-        let locBState = T.unpack $ translateBeamState translations currentLangText (beamState state)
-
         let bStateEnum = beamState state
         let bState = case bStateEnum of
                 BeamOff -> 0 :: Word32
@@ -152,51 +143,41 @@ main = do
         let calStat = case calibrationStatus state of
                 CalibrationValid -> 1 :: Word32
                 _ -> 0 :: Word32
-        withCString hudLangStr $ \c_lang -> 
-            withCString locBState $ \c_loc_bstate -> 
-                withArrayLen cPts $ \numPts ptrPts -> 
-                    allocaBytes 96 $ \ptrStruct -> do
-                        -- Write HudStateC fields manually
-                        -- Memory layout depends on platform, but assuming x86_64 System V AMD64 ABI
-                        -- offset 0: Int (4 or 8 depending on GHC, let's use CInt/CSize to be safe, but wait! We used Int in Haskell and int in C)
-                        -- Let's just be explicit and use pokeByteOff
-                        -- Actually it's safer to use a C wrapper or Storable.
-                        -- Wait! I will just use sizeOf to be safe, but let's poke everything with standard C layout.
-                        -- 0: beam_state (int - 4 bytes)
-                        -- 8: points (pointer - 8 bytes)
-                        -- 16: num_points (size_t - 8 bytes)
-                        -- 24: resp_z (double - 8 bytes)
-                        -- 32: audio_alert_enabled (bool - 1 byte)
-                        -- 40: active_language (pointer - 8 bytes)
-                        -- 48: localized_beam_state (pointer - 8 bytes)
-                        -- 56: calibration_status (int - 4 bytes)
-                        -- 60: beam_color_r (float - 4 bytes)
-                        -- 64: beam_color_g (float - 4 bytes)
-                        -- 68: beam_color_b (float - 4 bytes)
-                        -- 72: trace_scale_min (float - 4 bytes)
-                        -- 76: trace_scale_max (float - 4 bytes)
-                        -- 80: point_color_r (float - 4 bytes)
-                        -- 84: point_color_g (float - 4 bytes)
-                        -- 88: point_color_b (float - 4 bytes)
-                        
-                        pokeByteOff ptrStruct 0 bState
-                        pokeByteOff ptrStruct 8 ptrPts
-                        pokeByteOff ptrStruct 16 (fromIntegral numPts :: Word64)
-                        pokeByteOff ptrStruct 24 rZ
-                        pokeByteOff ptrStruct 32 (if audioAlertEnabled state then 1 else 0 :: Word8)
-                        pokeByteOff ptrStruct 40 c_lang
-                        pokeByteOff ptrStruct 48 c_loc_bstate
-                        pokeByteOff ptrStruct 56 calStat
-                        pokeByteOff ptrStruct 60 bR
-                        pokeByteOff ptrStruct 64 bG
-                        pokeByteOff ptrStruct 68 bB
-                        pokeByteOff ptrStruct 72 tMin
-                        pokeByteOff ptrStruct 76 tMax
-                        pokeByteOff ptrStruct 80 pR
-                        pokeByteOff ptrStruct 84 pG
-                        pokeByteOff ptrStruct 88 pB
-                        
-                        c_set_cpp_hud_state ptrStruct
+        withArrayLen cPts $ \numPts ptrPts -> 
+            allocaBytes 72 $ \ptrStruct -> do
+                -- Write HudStateC fields manually
+                -- Memory layout depends on platform, but assuming x86_64 System V AMD64 ABI
+                -- 0: beam_state (int - 4 bytes)
+                -- 8: points (pointer - 8 bytes)
+                -- 16: num_points (size_t - 8 bytes)
+                -- 24: resp_z (double - 8 bytes)
+                -- 32: audio_alert_enabled (bool - 1 byte)
+                -- 36: calibration_status (int - 4 bytes)
+                -- 40: beam_color_r (float - 4 bytes)
+                -- 44: beam_color_g (float - 4 bytes)
+                -- 48: beam_color_b (float - 4 bytes)
+                -- 52: trace_scale_min (float - 4 bytes)
+                -- 56: trace_scale_max (float - 4 bytes)
+                -- 60: point_color_r (float - 4 bytes)
+                -- 64: point_color_g (float - 4 bytes)
+                -- 68: point_color_b (float - 4 bytes)
+                
+                pokeByteOff ptrStruct 0 bState
+                pokeByteOff ptrStruct 8 ptrPts
+                pokeByteOff ptrStruct 16 (fromIntegral numPts :: Word64)
+                pokeByteOff ptrStruct 24 rZ
+                pokeByteOff ptrStruct 32 (if audioAlertEnabled state then 1 else 0 :: Word8)
+                pokeByteOff ptrStruct 36 calStat
+                pokeByteOff ptrStruct 40 bR
+                pokeByteOff ptrStruct 44 bG
+                pokeByteOff ptrStruct 48 bB
+                pokeByteOff ptrStruct 52 tMin
+                pokeByteOff ptrStruct 56 tMax
+                pokeByteOff ptrStruct 60 pR
+                pokeByteOff ptrStruct 64 pG
+                pokeByteOff ptrStruct 68 pB
+                
+                c_set_cpp_hud_state ptrStruct
         threadDelay 33333 -- ~30 fps update to C++
 
     -- 3. C++ HUD Loop (Blocks Main Thread)

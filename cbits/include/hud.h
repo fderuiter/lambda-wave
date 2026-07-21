@@ -20,8 +20,6 @@ typedef struct {
   size_t num_points;
   double resp_z; // from kalman state
   bool audio_alert_enabled;
-  const char *active_language;
-  const char *localized_beam_state;
   int calibration_status;
   float beam_color_r;
   float beam_color_g;
@@ -34,7 +32,6 @@ typedef struct {
 } HudStateC;
 
 void set_cpp_hud_state(const HudStateC *state);
-void get_cpp_hud_language(char *out_lang, size_t max_len);
 void start_cpp_hud_loop(void);
 
 #ifdef __cplusplus
