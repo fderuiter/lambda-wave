@@ -27,6 +27,7 @@ import Data.Types
 import Data.Config (targetHeight)
 import UI.Presentation (getBeamDisplayInfo, BeamDisplayInfo(..), indicatorScaleLimitMin, indicatorScaleLimitMax, pointCloudColorRGB)
 import SignalProcessing.Kalman (initKalman, KalmanConfig(..), KalmanState(..), pattern V3)
+import qualified SignalProcessing.Kalman as K
 import Hardware.Consumer (consumerLoop)
 import FFI.RingBuffer.IO (attachRingBuffer)
 import FFI.RingBuffer.Types (RingBufferControl)
@@ -146,7 +147,7 @@ main = do
         let tMin = indicatorScaleLimitMin
         let tMax = indicatorScaleLimitMax
         let cPts = map (\pt -> Point3DC (realToFrac $ px pt) (realToFrac $ py pt) (realToFrac $ pz pt)) (currentPoints state)
-        let rZ = case x (kalmanState state) of
+        let rZ = case K.x (kalmanState state) of
                 V3 pVal _ _ -> pVal
                 _ -> 0
         let calStat = case calibrationStatus state of
