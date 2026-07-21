@@ -1,7 +1,7 @@
 module System.RTSSpec (spec) where
 
-import Test.Hspec
 import Control.Concurrent (getNumCapabilities)
+import Test.Hspec
 
 spec :: Spec
 spec = do

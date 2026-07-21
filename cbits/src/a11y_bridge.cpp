@@ -1,4 +1,5 @@
 #include <a11y_bridge.h>
+
 #include <iostream>
 
 #ifdef _WIN32
@@ -21,7 +22,7 @@ void SetFocus(const std::string &element_name, const std::string &role) {
   std::cout << "[A11y-Win32] Focus: " << element_name << " (" << role << ")"
             << std::endl;
 }
-} // namespace A11y
+}  // namespace A11y
 
 #elif defined(__APPLE__)
 // In a full implementation, this would use NSAccessibility APIs.
@@ -39,7 +40,7 @@ void SetFocus(const std::string &element_name, const std::string &role) {
   std::cout << "[A11y-macOS] Focus: " << element_name << " (" << role << ")"
             << std::endl;
 }
-} // namespace A11y
+}  // namespace A11y
 
 #else
 // Linux / Fallback
@@ -53,5 +54,5 @@ void SetFocus(const std::string &element_name, const std::string &role) {
   std::cout << "[A11y-Linux] Focus: " << element_name << " (" << role << ")"
             << std::endl;
 }
-} // namespace A11y
+}  // namespace A11y
 #endif

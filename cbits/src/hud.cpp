@@ -1,10 +1,9 @@
 #include "hud.h"
-#include "../imgui/backends/imgui_impl_glfw.h"
-#include "../imgui/backends/imgui_impl_opengl3.h"
-#include "../imgui/imgui.h"
-#include <a11y_bridge.h>
+
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
+#include <a11y_bridge.h>
+
 #include <cmath>
 #include <cstdlib>
 #include <cstring>
@@ -14,6 +13,10 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+
+#include "../imgui/backends/imgui_impl_glfw.h"
+#include "../imgui/backends/imgui_impl_opengl3.h"
+#include "../imgui/imgui.h"
 
 static std::mutex g_state_mutex;
 static std::vector<Point3DC> g_points;
@@ -136,7 +139,7 @@ void set_cpp_hud_state(const HudStateC *state) {
     g_resp_history.pop_front();
   }
 }
-} // close extern "C"
+}  // close extern "C"
 
 extern "C" void get_cpp_hud_language(char *out_lang, size_t max_len) {
   std::lock_guard<std::mutex> lock(g_state_mutex);
@@ -153,18 +156,16 @@ extern "C" void start_cpp_hud_loop(void) {
   // Requirement FR-UI-002
   // Requirement FR-UI-003
   glfwSetErrorCallback(glfw_error_callback);
-  if (!glfwInit())
-    return;
+  if (!glfwInit()) return;
 
   const char *glsl_version = "#version 130";
   glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
   glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
 
   GLFWwindow *window = glfwCreateWindow(1280, 720, "SGRT HUD", NULL, NULL);
-  if (window == NULL)
-    return;
+  if (window == NULL) return;
   glfwMakeContextCurrent(window);
-  glfwSwapInterval(1); // Enable vsync
+  glfwSwapInterval(1);  // Enable vsync
 
   if (glewInit() != GLEW_OK) {
     std::cerr << "Failed to initialize OpenGL loader!" << std::endl;
@@ -323,7 +324,7 @@ extern "C" void start_cpp_hud_loop(void) {
       glMatrixMode(GL_MODELVIEW);
       glLoadIdentity();
       // LookAt roughly: pos=(0, 2, -2), target=(0,0,2), up=(0,1,0)
-      glTranslatef(0.0f, -1.0f, -5.0f); // basic positioning
+      glTranslatef(0.0f, -1.0f, -5.0f);  // basic positioning
 
       glPointSize(2.0f);
       glBegin(GL_POINTS);

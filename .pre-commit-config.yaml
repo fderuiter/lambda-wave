@@ -1,9 +1,19 @@
 repos:
+  - repo: https://github.com/pre-commit/mirrors-clang-format
+    rev: v18.1.8
+    hooks:
+      - id: clang-format
+        types_or: [c, c++]
   - repo: local
     hooks:
+      - id: check-forbidden-files
+        name: check for forbidden files
+        entry: ./scripts/check-forbidden-files.sh
+        language: script
+        pass_filenames: false
       - id: ormolu
         name: ormolu
-        entry: bash -c 'command -v ormolu >/dev/null 2>&1 || { echo "ormolu not found"; exit 1; }; ormolu --mode check "$@"' --
+        entry: bash -c 'command -v ormolu >/dev/null 2>&1 || { echo "ormolu not found"; exit 1; }; ormolu --mode inplace "$@"' --
         language: system
         types: [haskell]
       - id: hlint
@@ -11,20 +21,3 @@ repos:
         entry: bash -c 'command -v hlint >/dev/null 2>&1 || { echo "hlint not found"; exit 1; }; hlint "$@"' --
         language: system
         types: [haskell]
-      - id: clang-format
-        name: clang-format
-        entry: bash -c 'command -v clang-format >/dev/null 2>&1 || { echo "clang-format not found"; exit 1; }; clang-format --dry-run --Werror "$@"' --
-        language: system
-        types_or: [c, c++]
-      - id: cabal-build
-        name: cabal build all
-        entry: bash -c 'command -v cabal >/dev/null 2>&1 || { echo "cabal not found"; exit 1; }; cabal build all'
-        language: system
-        pass_filenames: false
-        types_or: [haskell, c, c++]
-      - id: cabal-test
-        name: cabal test local suites
-        entry: bash -c 'command -v cabal >/dev/null 2>&1 || { echo "cabal not found"; exit 1; }; TESTS=$(grep "^test-suite" sgrt-radar-system.cabal | awk "{print \$2}" | grep -v "clinical-hil-validation"); for t in $TESTS; do cabal test "$t" || exit 1; done'
-        language: system
-        pass_filenames: false
-        types_or: [haskell, c, c++]

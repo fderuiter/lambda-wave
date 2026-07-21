@@ -1,97 +1,103 @@
-{-# LANGUAGE StrictData #-}
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE StrictData #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
+
 -- |
 -- Module      : Data.Types
 -- Description : Core system types
 --
 -- Defines the primary data structures used throughout the Lambda-Wave
 -- system, including points, frames, state, and audit events.
-module Data.Types (
-    Point3D(..),
-    Point(..),
-    BeamState(..),
-    CalibrationStatus(..),
-    DisplayPreset(..),
-    SystemState(..),
-    RadarFrame(..),
-    Severity(..),
-    AuditEvent(..),
-    AudioCommand(..),
-    TelemetryPacket(..)
-) where
+module Data.Types
+  ( Point3D (..),
+    Point (..),
+    BeamState (..),
+    CalibrationStatus (..),
+    DisplayPreset (..),
+    SystemState (..),
+    RadarFrame (..),
+    Severity (..),
+    AuditEvent (..),
+    AudioCommand (..),
+    TelemetryPacket (..),
+  )
+where
 
-import Data.Word (Word64, Word32)
-import Data.Map.Strict (Map)
-import qualified Data.ByteString as B
-import Foreign.Storable
-import Control.DeepSeq (NFData(..))
 import Control.Concurrent.STM (TBQueue)
-import GHC.Generics (Generic)
+import Control.DeepSeq (NFData (..))
 import Data.Binary (Binary)
-
-import SignalProcessing.Kalman (KalmanState(..))
+import qualified Data.ByteString as B
 import Data.Complex (Complex)
+import Data.Map.Strict (Map)
+import Data.Word (Word32, Word64)
+import Foreign.Storable
+import GHC.Generics (Generic)
+import SignalProcessing.Kalman (KalmanState (..))
 
 -- | Severity Levels for Audit Logs
 data Severity = Info | Warning | Critical
-    deriving (Show, Eq)
+  deriving (Show, Eq)
 
 instance NFData Severity where
-    rnf s = s `seq` ()
+  rnf s = s `seq` ()
 
 -- | Immutable Audit Event
 data AuditEvent = AuditEvent
-    { eventTime :: Word64  -- ^ Timestamp (ns)
-    , severity  :: Severity
-    , component :: String  -- ^ Source Component (e.g. "Gating", "Watchdog")
-    , message   :: String
-    } deriving (Show, Eq)
+  { -- | Timestamp (ns)
+    eventTime :: Word64,
+    severity :: Severity,
+    -- | Source Component (e.g. "Gating", "Watchdog")
+    component :: String,
+    message :: String
+  }
+  deriving (Show, Eq)
 
 instance NFData AuditEvent where
-    rnf (AuditEvent t s c m) = rnf t `seq` rnf s `seq` rnf c `seq` rnf m
+  rnf (AuditEvent t s c m) = rnf t `seq` rnf s `seq` rnf c `seq` rnf m
 
 data AudioCommand = PlayTone Double Double -- Volume, Frequency
   deriving (Show, Eq)
 
 instance NFData AudioCommand where
-    rnf (PlayTone vol freq) = rnf vol `seq` rnf freq
+  rnf (PlayTone vol freq) = rnf vol `seq` rnf freq
 
 -- | 3D Point in Room Coordinates (mm)
 data Point3D = Point3D
-  { px :: Double
-  , py :: Double
-  , pz :: Double
-  , v  :: Double -- Velocity from Doppler
-  , snr :: Double
-  } deriving (Show, Eq, Generic, Binary)
+  { px :: Double,
+    py :: Double,
+    pz :: Double,
+    v :: Double, -- Velocity from Doppler
+    snr :: Double
+  }
+  deriving (Show, Eq, Generic, Binary)
 
 instance NFData Point3D where
   rnf (Point3D xVal yVal zVal vel sVal) = rnf xVal `seq` rnf yVal `seq` rnf zVal `seq` rnf vel `seq` rnf sVal
 
 -- | Raw Point structure from "Type 1" TLV (4 floats)
 data Point = Point
-  { px' :: Float
-  , py' :: Float
-  , pz' :: Float
-  , v'  :: Float
-  } deriving (Show, Eq, Generic, Binary)
+  { px' :: Float,
+    py' :: Float,
+    pz' :: Float,
+    v' :: Float
+  }
+  deriving (Show, Eq, Generic, Binary)
 
 instance Storable Point where
   sizeOf _ = 16
   alignment _ = 4
   peek ptr = do
-      xVal <- peekByteOff ptr 0
-      yVal <- peekByteOff ptr 4
-      zVal <- peekByteOff ptr 8
-      vel <- peekByteOff ptr 12
-      return $ Point xVal yVal zVal vel
+    xVal <- peekByteOff ptr 0
+    yVal <- peekByteOff ptr 4
+    zVal <- peekByteOff ptr 8
+    vel <- peekByteOff ptr 12
+    return $ Point xVal yVal zVal vel
   poke ptr (Point xVal yVal zVal vel) = do
-      pokeByteOff ptr 0 xVal
-      pokeByteOff ptr 4 yVal
-      pokeByteOff ptr 8 zVal
-      pokeByteOff ptr 12 vel
+    pokeByteOff ptr 0 xVal
+    pokeByteOff ptr 4 yVal
+    pokeByteOff ptr 8 zVal
+    pokeByteOff ptr 12 vel
 
 -- | The critical decision state
 data BeamState = BeamOn | BeamOff | BeamHold -- Hold is manual override
@@ -115,55 +121,80 @@ instance NFData DisplayPreset where
 
 -- | The Global State shared across threads via STM
 data SystemState = SystemState
-  { currentPoints :: [Point3D]
-  , beamState :: BeamState
-  , lastFrameTime :: Word64   -- For Watchdog (Nanoseconds)
-  , sequenceNumber :: Word32  -- ^ Monotonic sequence counter for visual safety (cite:source6)
-  , isocenter :: Point3D      -- Calibration zero
-  , threadHeartbeats :: Map String Word64 -- Heartbeats for Watchdog
-  , kalmanState :: KalmanState            -- ^ Current Kalman filter state (position, velocity, acceleration; metres/s)
-  , mtiState :: [Complex Double]
-      -- ^ MTI\/EMA clutter filter state (one complex value per range bin).
-      -- Empty list before the first radar frame is processed; after the first
-      -- frame its length equals the number of range bins in that frame.
-  , auditQueue :: TBQueue AuditEvent -- ^ High-performance event queue
-  , audioQueue :: TBQueue AudioCommand -- ^ Async audio player queue
-  , audioAlertEnabled :: Bool -- ^ Feature toggle for Audio Alerts (P2-002)
-  , audioVolume :: Double
-  , audioFrequency :: Double
-  , activeLanguage :: String
-  , localizedBeamState :: String
-  , calibrationStatus :: CalibrationStatus -- ^ Real-time safety monitoring of hardware calibration health
-  , displayPreset :: DisplayPreset
+  { currentPoints :: [Point3D],
+    beamState :: BeamState,
+    lastFrameTime :: Word64, -- For Watchdog (Nanoseconds)
+
+    -- | Monotonic sequence counter for visual safety (cite:source6)
+    sequenceNumber :: Word32,
+    isocenter :: Point3D, -- Calibration zero
+    threadHeartbeats :: Map String Word64, -- Heartbeats for Watchdog
+
+    -- | Current Kalman filter state (position, velocity, acceleration; metres/s)
+    kalmanState :: KalmanState,
+    -- | MTI\/EMA clutter filter state (one complex value per range bin).
+    -- Empty list before the first radar frame is processed; after the first
+    -- frame its length equals the number of range bins in that frame.
+    mtiState :: [Complex Double],
+    -- | High-performance event queue
+    auditQueue :: TBQueue AuditEvent,
+    -- | Async audio player queue
+    audioQueue :: TBQueue AudioCommand,
+    -- | Feature toggle for Audio Alerts (P2-002)
+    audioAlertEnabled :: Bool,
+    audioVolume :: Double,
+    audioFrequency :: Double,
+    activeLanguage :: String,
+    localizedBeamState :: String,
+    -- | Real-time safety monitoring of hardware calibration health
+    calibrationStatus :: CalibrationStatus,
+    displayPreset :: DisplayPreset
   }
 
 instance NFData SystemState where
-  rnf (SystemState pts bs t sn iso hb ks mti aq audioQ ae av af lang locbs cs dp) = 
-      rnf pts `seq` rnf bs `seq` rnf t `seq` rnf sn `seq` rnf iso `seq` 
-      rnf hb `seq` rnf ks `seq` rnf mti `seq` aq `seq` audioQ `seq` rnf ae `seq` rnf av `seq` rnf af `seq` rnf lang `seq` rnf locbs `seq` rnf cs `seq` rnf dp
+  rnf (SystemState pts bs t sn iso hb ks mti aq audioQ ae av af lang locbs cs dp) =
+    rnf pts `seq`
+      rnf bs `seq`
+        rnf t `seq`
+          rnf sn `seq`
+            rnf iso `seq`
+              rnf hb `seq`
+                rnf ks `seq`
+                  rnf mti `seq`
+                    aq `seq`
+                      audioQ `seq`
+                        rnf ae `seq`
+                          rnf av `seq`
+                            rnf af `seq`
+                              rnf lang `seq`
+                                rnf locbs `seq`
+                                  rnf cs `seq`
+                                    rnf dp
 
 -- | Raw parsed structure from the sensor
 data RadarFrame = RadarFrame
-  { header :: B.ByteString
-  , seqNum :: Word32
-  , points :: [Point3D]
-  } deriving (Show, Eq, Generic, Binary)
+  { header :: B.ByteString,
+    seqNum :: Word32,
+    points :: [Point3D]
+  }
+  deriving (Show, Eq, Generic, Binary)
 
 instance NFData RadarFrame where
   rnf (RadarFrame h sn pts) = rnf h `seq` rnf sn `seq` rnf pts
 
 -- | Packet for sending telemetry over IPC
 data TelemetryPacket = TelemetryPacket
-  { tpBeamState :: BeamState
-  , tpLastFrameTime :: Word64
-  , tpSequenceNumber :: Word32
-  , tpIsocenter :: Point3D
-  , tpThreadHeartbeats :: Map String Word64
-  , tpKalmanState :: KalmanState
-  , tpAudioAlertEnabled :: Bool
-  , tpAudioVolume :: Double
-  , tpAudioFrequency :: Double
-  , tpActiveLanguage :: String
-  , tpLocalizedBeamState :: String
-  , tpCalibrationStatus :: CalibrationStatus
-  } deriving (Show, Generic, Binary)
+  { tpBeamState :: BeamState,
+    tpLastFrameTime :: Word64,
+    tpSequenceNumber :: Word32,
+    tpIsocenter :: Point3D,
+    tpThreadHeartbeats :: Map String Word64,
+    tpKalmanState :: KalmanState,
+    tpAudioAlertEnabled :: Bool,
+    tpAudioVolume :: Double,
+    tpAudioFrequency :: Double,
+    tpActiveLanguage :: String,
+    tpLocalizedBeamState :: String,
+    tpCalibrationStatus :: CalibrationStatus
+  }
+  deriving (Show, Generic, Binary)

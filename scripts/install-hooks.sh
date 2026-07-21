@@ -3,9 +3,12 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(dirname "$SCRIPT_DIR")"
-HOOKS_DIR="$REPO_ROOT/.git/hooks"
 
 echo "Installing git pre-commit hook..."
-cp "$SCRIPT_DIR/pre-commit" "$HOOKS_DIR/pre-commit"
-chmod +x "$HOOKS_DIR/pre-commit"
+cd "$REPO_ROOT"
+if ! command -v pre-commit >/dev/null 2>&1; then
+    echo "Installing pre-commit..."
+    pip install --break-system-packages pre-commit
+fi
+pre-commit install
 echo "Done!"

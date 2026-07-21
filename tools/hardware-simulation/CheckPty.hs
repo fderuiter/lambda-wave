@@ -4,6 +4,6 @@ import System.Posix.Terminal
 
 main :: IO ()
 main = do
-    (master, slave) <- openPseudoTerminal
-    print master
-    print slave
+  (master, slave) <- openPseudoTerminal
+  print master
+  print slave

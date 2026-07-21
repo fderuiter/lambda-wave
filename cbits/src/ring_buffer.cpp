@@ -18,13 +18,15 @@
 /// * Requirement FR-DAQ-004: Low-latency IPC
 /// * Hazard H-SOUP-003: FFI Memory Leaks
 
-#include "../include/RingBuffer.h"
-#include <cerrno>
-#include <cstdlib>
 #include <fcntl.h>
-#include <new>
 #include <sys/mman.h>
 #include <unistd.h>
+
+#include <cerrno>
+#include <cstdlib>
+#include <new>
+
+#include "../include/RingBuffer.h"
 
 extern "C" {
 
@@ -36,8 +38,7 @@ RingBufferControl *create_ring_buffer(size_t size, int *status_out) {
 
   int fd = shm_open("/sgrt_ring_buffer", O_CREAT | O_RDWR, 0666);
   if (fd == -1) {
-    if (status_out)
-      *status_out = 2; // Simulation Mode
+    if (status_out) *status_out = 2;  // Simulation Mode
 
     // Fallback to normal allocation
     void *mem = nullptr;
@@ -52,8 +53,7 @@ RingBufferControl *create_ring_buffer(size_t size, int *status_out) {
     return control;
   }
 
-  if (status_out)
-    *status_out = 0; // Success
+  if (status_out) *status_out = 0;  // Success
 
   if (ftruncate(fd, total_size) == -1) {
     close(fd);
@@ -62,9 +62,8 @@ RingBufferControl *create_ring_buffer(size_t size, int *status_out) {
 
   void *mem =
       mmap(nullptr, total_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-  close(fd); // fd is no longer needed after mmap
-  if (mem == MAP_FAILED)
-    return nullptr;
+  close(fd);  // fd is no longer needed after mmap
+  if (mem == MAP_FAILED) return nullptr;
 
   // Pin memory
   if (mlock(mem, total_size) != 0) {
@@ -88,14 +87,12 @@ RingBufferControl *attach_ring_buffer(size_t size) {
   size_t total_size = sizeof(RingBufferControl) + size;
 
   int fd = shm_open("/sgrt_ring_buffer", O_RDWR, 0666);
-  if (fd == -1)
-    return nullptr;
+  if (fd == -1) return nullptr;
 
   void *mem =
       mmap(nullptr, total_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
   close(fd);
-  if (mem == MAP_FAILED)
-    return nullptr;
+  if (mem == MAP_FAILED) return nullptr;
 
   // Pin memory
   if (mlock(mem, total_size) != 0) {
@@ -133,8 +130,7 @@ void detach_ring_buffer(RingBufferControl *handle) {
 }
 
 ssize_t read_from_uart(RingBufferControl *handle, int uart_fd) {
-  if (!handle)
-    return -1;
+  if (!handle) return -1;
 
   size_t current_offset = handle->write_offset.load(std::memory_order_relaxed);
   size_t read_offset = handle->read_offset.load(std::memory_order_acquire);
