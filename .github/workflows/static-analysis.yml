@@ -1,0 +1,27 @@
+name: Static Analysis
+
+on:
+  pull_request:
+    branches:
+      - '**'
+    paths:
+      - 'cbits/src/**'
+      - 'cbits/include/**'
+
+jobs:
+  clang-tidy:
+    name: Clang-Tidy Checks
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install clang-tidy
+        run: sudo apt-get update && sudo apt-get install -y clang-tidy
+
+      - name: Run Incremental Clang-Tidy
+        run: |
+          chmod +x scripts/run_incremental_clang_tidy.sh
+          ./scripts/run_incremental_clang_tidy.sh
