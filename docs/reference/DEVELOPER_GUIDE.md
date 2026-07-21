@@ -560,9 +560,11 @@ See [TODO.md](../../TODO.md) Release Checklist section
 
 - When adding new hardware components or sensors, you must adhere strictly to our safety framework to prevent memory leaks and asynchronous exception hazards. The framework provides a centralized set of resource managers, result wrappers, and audit helpers.
 
-### 10.1 Scaffold Generator
+### 10.1 Shared-Memory Configuration & Scaffold Generator
 
-- To minimize manual memory management errors, define your new sensor in `config/master_spec.yaml` under `sensors:` and run the unified compiler:
+- To modify the shared-memory configuration or to minimize manual memory management errors when adding a new sensor, define your changes in `config/master_spec.yaml`. This YAML file is the definitive source of truth. *(Note: The legacy `idl/shared_memory.json` specification has been completely removed in favor of `config/master_spec.yaml`.)*
+
+After making your changes, run the unified compiler:
 ```bash
 python3 tools/compiler.py all config/master_spec.yaml
 ```
