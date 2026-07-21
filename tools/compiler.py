@@ -57,8 +57,7 @@ def generate_cxx_idl(data, out_hdr, out_src):
         f.write("#ifndef RING_BUFFER_CONTROL_H\n")
         f.write("#define RING_BUFFER_CONTROL_H\n\n")
         f.write("#include <atomic>\n")
-        f.write("#include <cstddef>\n")
-        f.write("#include <cstdint>\n\n")
+        f.write("#include <cstddef>\n\n")
         f.write(f"#define RING_BUFFER_GAP {gap_val}\n\n")
         
         for struct in data.get('structs', []):
@@ -90,10 +89,11 @@ def generate_cxx_idl(data, out_hdr, out_src):
         for struct in data.get('structs', []):
             for field in struct['fields']:
                 if field['type'] == 'atomic_size_t':
-                    f.write(f"size_t get_{field['name']}({struct['name']}* handle);\n")
-                    f.write(f"void set_{field['name']}({struct['name']}* handle, size_t val);\n")
-            f.write(f"size_t rb_available_data({struct['name']}* handle, size_t current_read_offset);\n")
-            f.write(f"size_t rb_next_read_offset({struct['name']}* handle, size_t current_read_offset, size_t consumed_bytes);\n")
+                    f.write(f"size_t get_{field['name']}({struct['name']} *handle);\n")
+                    f.write(f"void set_{field['name']}({struct['name']} *handle, size_t val);\n")
+            f.write(f"size_t rb_available_data({struct['name']} *handle, size_t current_read_offset);\n")
+            f.write(f"size_t rb_next_read_offset({struct['name']} *handle,\n")
+            f.write(f"                           size_t current_read_offset, size_t consumed_bytes);\n")
         f.write('}\n')
         f.write("#endif\n")
 
@@ -104,16 +104,16 @@ def generate_cxx_idl(data, out_hdr, out_src):
         for struct in data.get('structs', []):
             for field in struct['fields']:
                 if field['type'] == 'atomic_size_t':
-                    f.write(f"size_t get_{field['name']}({struct['name']}* handle) {{\n")
+                    f.write(f"size_t get_{field['name']}({struct['name']} *handle) {{\n")
                     f.write(f"    if (!handle) return 0;\n")
                     f.write(f"    return handle->{field['name']}.load(std::memory_order_acquire);\n")
                     f.write(f"}}\n")
-                    f.write(f"void set_{field['name']}({struct['name']}* handle, size_t val) {{\n")
+                    f.write(f"void set_{field['name']}({struct['name']} *handle, size_t val) {{\n")
                     f.write(f"    if (!handle) return;\n")
                     f.write(f"    handle->{field['name']}.store(val, std::memory_order_release);\n")
                     f.write(f"}}\n")
             
-            f.write(f"size_t rb_available_data({struct['name']}* handle, size_t current_read_offset) {{\n")
+            f.write(f"size_t rb_available_data({struct['name']} *handle, size_t current_read_offset) {{\n")
             f.write(f"    if (!handle) return 0;\n")
             f.write(f"    size_t write_off = handle->write_offset.load(std::memory_order_acquire);\n")
             f.write(f"    size_t size = handle->buffer_size;\n")
@@ -124,12 +124,16 @@ def generate_cxx_idl(data, out_hdr, out_src):
             f.write(f"    }}\n")
             f.write(f"}}\n\n")
 
-            f.write(f"size_t rb_next_read_offset({struct['name']}* handle, size_t current_read_offset, size_t consumed_bytes) {{\n")
+            f.write(f"size_t rb_next_read_offset({struct['name']} *handle, size_t current_read_offset, size_t consumed_bytes) {{\n")
             f.write(f"    if (!handle) return current_read_offset;\n")
             f.write(f"    size_t size = handle->buffer_size;\n")
             f.write(f"    return (current_read_offset + consumed_bytes) % size;\n")
             f.write(f"}}\n")
         f.write('}\n')
+
+    # Format the generated files using clang-format
+    import subprocess
+    subprocess.run(["clang-format", "-i", out_hdr, out_src], check=False)
 
 def generate_hs_idl(data, out_hs):
     gap_val = data.get('constants', {}).get('ring_buffer_gap', 1)

@@ -3,7 +3,6 @@
 
 #include <atomic>
 #include <cstddef>
-#include <cstdint>
 
 #define RING_BUFFER_GAP 1
 
