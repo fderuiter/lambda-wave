@@ -76,6 +76,7 @@ library
       Hardware.Consumer
       Hardware.FFI.Common
       Hardware.Manifest
+      Hardware.Radar
       Hardware.Types
       Safety.Audit
       Safety.Crypto
@@ -100,6 +101,7 @@ library
       cbits/include
   cxx-sources:
       cbits/src/RingBufferCheck.cpp
+      cbits/src/SensorRadar.cpp
       cbits/src/ring_buffer.cpp
       cbits/src/ring_buffer_ffi.cpp
       cbits/src/serial_config.cpp
@@ -519,4 +521,18 @@ test-suite latency-verification
     , containers
     , unordered-containers
     , stm
+
+test-suite radar-check
+  import: common-options
+  type: exitcode-stdio-1.0
+  main-is: RadarCheck.hs
+  other-modules:
+      Paths_sgrt_radar_system
+  hs-source-dirs:
+      test/Hardware
+  ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
+  build-depends:
+      sgrt-radar-system
+    , base >= 4.16 && < 5
+
 

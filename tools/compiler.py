@@ -24,6 +24,14 @@ class WriteIfChanged(io.StringIO):
         if exc_type is not None:
             return
         content = self.getvalue()
+        if self.filepath.endswith('.cpp') or self.filepath.endswith('.h'):
+            import subprocess
+            try:
+                res = subprocess.run(['clang-format'], input=content, text=True, capture_output=True, check=True)
+                content = res.stdout
+            except Exception:
+                pass
+                
         if os.path.exists(self.filepath):
             with _builtins_open(self.filepath, 'r') as f:
                 if f.read() == content:
@@ -238,7 +246,7 @@ def generate_manifest(data, out_hdr, out_hs, cfg_path):
             else:
                 f.write(line)
 
-def generate_sensor_scaffold(sensor_name, cbits_include_dir, hs_src_dir, hs_test_dir):
+def generate_sensor_scaffold(sensor_name, cbits_include_dir, cbits_src_dir, hs_src_dir, hs_test_dir):
     sensor_upper = capitalize_first(sensor_name)
     sensor_lower = to_snake_case(sensor_name)
     
@@ -258,10 +266,20 @@ def generate_sensor_scaffold(sensor_name, cbits_include_dir, hs_src_dir, hs_test
         f.write("}\n")
         f.write("#endif\n\n")
         f.write("#endif\n")
+
+    # 1.5 C++ Source Stub
+    cxx_src = os.path.join(cbits_src_dir, f"Sensor{sensor_upper}.cpp")
+    os.makedirs(cbits_src_dir, exist_ok=True)
+    with open(cxx_src, 'w') as f:
+        f.write(f"#include \"Sensor{sensor_upper}.h\"\n\n")
+        f.write("extern \"C\" {\n")
+        f.write(f"void* c_create_{sensor_lower}() {{ return nullptr; }}\n")
+        f.write(f"void c_destroy_{sensor_lower}(void* ptr) {{ (void)ptr; }}\n")
+        f.write(f"void* c_attach_{sensor_lower}(void* existing_ptr) {{ return existing_ptr; }}\n")
+        f.write("}\n")
     
     # 2. Haskell Source
-    hs_code = f"""{{-# LANGUAGE OverloadedStrings #-}}
--- |
+    hs_code = f"""-- |
 -- SAFETY-CRITICAL Scaffolded Hardware Integration: {sensor_upper}
 -- 
 -- = Failure Mode
@@ -360,10 +378,10 @@ main = do
     with open(test_path, "w") as f:
         f.write(test_code)
 
-def generate_all_sensors(data, cbits_include_dir, hs_src_dir, hs_test_dir):
+def generate_all_sensors(data, cbits_include_dir, cbits_src_dir, hs_src_dir, hs_test_dir):
     sensors = data.get('sensors', [])
     for sensor in sensors:
-        generate_sensor_scaffold(sensor['name'], cbits_include_dir, hs_src_dir, hs_test_dir)
+        generate_sensor_scaffold(sensor['name'], cbits_include_dir, cbits_src_dir, hs_src_dir, hs_test_dir)
 
 def main():
     parser = argparse.ArgumentParser(description="Unified Hardware Compiler")
@@ -384,6 +402,7 @@ def main():
     parser_sensors = subparsers.add_parser("sensors")
     parser_sensors.add_argument("input")
     parser_sensors.add_argument("cbits_include_dir")
+    parser_sensors.add_argument("cbits_src_dir")
     parser_sensors.add_argument("hs_src_dir")
     parser_sensors.add_argument("hs_test_dir")
     
@@ -396,6 +415,7 @@ def main():
     parser_all.add_argument("--man_out_hs", default="src/Hardware/Manifest.hs")
     parser_all.add_argument("--man_out_cfg", default="config/ti_iwr6843isk/sgrt_profile.cfg")
     parser_all.add_argument("--cbits_include_dir", default="cbits/include")
+    parser_all.add_argument("--cbits_src_dir", default="cbits/src")
     parser_all.add_argument("--hs_src_dir", default="src")
     parser_all.add_argument("--hs_test_dir", default="test")
 
@@ -408,7 +428,7 @@ def main():
     elif args.command == "manifest":
         generate_manifest(data, args.out_hdr, args.out_hs, args.out_cfg)
     elif args.command == "sensors":
-        generate_all_sensors(data, args.cbits_include_dir, args.hs_src_dir, args.hs_test_dir)
+        generate_all_sensors(data, args.cbits_include_dir, args.cbits_src_dir, args.hs_src_dir, args.hs_test_dir)
     elif args.command == "all":
         if 'structs' in data:
             generate_cxx_idl(data, args.idl_out_hdr, args.idl_out_src)
@@ -416,7 +436,7 @@ def main():
         if 'baud_rates' in data:
             generate_manifest(data, args.man_out_hdr, args.man_out_hs, args.man_out_cfg)
         if 'sensors' in data:
-            generate_all_sensors(data, args.cbits_include_dir, args.hs_src_dir, args.hs_test_dir)
+            generate_all_sensors(data, args.cbits_include_dir, args.cbits_src_dir, args.hs_src_dir, args.hs_test_dir)
 
 if __name__ == '__main__':
     main()
