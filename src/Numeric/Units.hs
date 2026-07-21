@@ -4,7 +4,9 @@
 {-# LANGUAGE PatternSynonyms #-}
 
 module Numeric.Units
-    ( ConvertUnits(..)
+    ( ConvertUnits(..),
+      Point3DM(..),
+      KalmanStateM(..)
     ) where
 
 import Data.Types (Point3D(..))
@@ -23,18 +25,21 @@ instance ConvertUnits MillimetersPerSecond Double where
 instance ConvertUnits MillimetersPerSecondSquared Double where
     convertUnits (MillimetersPerSecondSquared mms2) = mms2 / 1000.0
 
-instance ConvertUnits Point3D Point3D where
-    convertUnits pt = pt
-        { px = convertUnits (Millimeters (px pt))
-        , py = convertUnits (Millimeters (py pt))
-        , pz = convertUnits (Millimeters (pz pt))
+data Point3DM = Point3DM { pxM :: Double, pyM :: Double, pzM :: Double } deriving (Show, Eq)
+data KalmanStateM = KalmanStateM { posX :: Double, velX :: Double, accX :: Double } deriving (Show, Eq)
+
+instance ConvertUnits Point3D Point3DM where
+    convertUnits pt = Point3DM
+        { pxM = convertUnits (Millimeters (px pt))
+        , pyM = convertUnits (Millimeters (py pt))
+        , pzM = convertUnits (Millimeters (pz pt))
         }
 
-instance ConvertUnits KalmanState KalmanState where
+instance ConvertUnits KalmanState KalmanStateM where
     convertUnits ks =
         let (pos, vel, acc) = case x ks of
                 V3 pVal vVal aVal -> (pVal, vVal, aVal)
                 _ -> (0, 0, 0)
-        in ks { x = V3 (convertUnits (Millimeters pos))
-                       (convertUnits (MillimetersPerSecond vel))
-                       (convertUnits (MillimetersPerSecondSquared acc)) }
+        in KalmanStateM (convertUnits (Millimeters pos))
+                        (convertUnits (MillimetersPerSecond vel))
+                        (convertUnits (MillimetersPerSecondSquared acc))

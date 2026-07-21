@@ -6,7 +6,7 @@ import Test.Hspec
 import GHC.Float (double2Float)
 import UI.Presentation (shouldTriggerAudioAlert)
 import Data.Types (BeamState(..), Point3D(..))
-import Numeric.Units (ConvertUnits(..))
+import Numeric.Units (ConvertUnits(..), Point3DM(..))
 
 data Vertex3 a = Vertex3 a a a deriving (Show, Eq)
 
@@ -15,10 +15,7 @@ data Vertex3 a = Vertex3 a a a deriving (Show, Eq)
 transformPoint :: Point3D -> Vertex3 Float
 transformPoint p =
     let p' = convertUnits p
-        x = double2Float (px p')
-        y = double2Float (py p')
-        z = double2Float (pz p')
-    in Vertex3 x y z
+    in Vertex3 (double2Float $ pxM p') (double2Float $ pyM p') (double2Float $ pzM p')
 
 type Vector3 = (Double, Double, Double)
 

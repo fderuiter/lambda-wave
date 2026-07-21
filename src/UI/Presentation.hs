@@ -13,7 +13,7 @@ module UI.Presentation (
 
 import Data.Types (BeamState(..), Point3D(..))
 import SignalProcessing.Kalman (KalmanState(..))
-import Numeric.Units (ConvertUnits(..))
+import Numeric.Units (ConvertUnits(..), Point3DM(..), KalmanStateM(..))
 
 data BeamDisplayInfo = BeamDisplayInfo
     { bdiColorHex   :: String
@@ -27,10 +27,10 @@ getBeamDisplayInfo BeamOn   = BeamDisplayInfo "#0f0" (0.0, 0.2, 0.0) "circle" "�
 getBeamDisplayInfo BeamOff  = BeamDisplayInfo "#f00" (0.2, 0.0, 0.0) "square" "■ "
 getBeamDisplayInfo BeamHold = BeamDisplayInfo "#ff0" (0.2, 0.2, 0.0) "triangle" "▲ "
 
-scalePointToMeters :: Point3D -> Point3D
+scalePointToMeters :: Point3D -> Point3DM
 scalePointToMeters = convertUnits
 
-scaleKalmanStateToMeters :: KalmanState -> KalmanState
+scaleKalmanStateToMeters :: KalmanState -> KalmanStateM
 scaleKalmanStateToMeters = convertUnits
 
 shouldTriggerAudioAlert :: Bool -> BeamState -> BeamState -> Bool
