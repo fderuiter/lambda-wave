@@ -37,6 +37,7 @@ echo "Running clang-tidy on: $FILES_TO_CHECK"
 
 # We enable specific rules for redundant checks, unused variables, and performance
 CHECKS="-*,performance-*,readability-redundant-*,misc-unused-*,bugprone-redundant-branch-condition,clang-analyzer-deadcode.DeadStores"
+FAILED=0
 for f in $FILES_TO_CHECK; do
     echo "Checking $f"
     clang-tidy -p . -checks="$CHECKS" --warnings-as-errors="*" "$f" || FAILED=1

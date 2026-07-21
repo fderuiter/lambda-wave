@@ -146,7 +146,7 @@ extern "C" void get_cpp_hud_language(char *out_lang, size_t max_len) {
 }
 
 static void glfw_error_callback(int error, const char *description) {
-  std::cerr << "GLFW Error " << error << ": " << description << std::endl;
+  std::cerr << "GLFW Error " << error << ": " << description << '\n';
 }
 
 extern "C" void start_cpp_hud_loop(void) {
@@ -168,7 +168,7 @@ extern "C" void start_cpp_hud_loop(void) {
   glfwSwapInterval(1); // Enable vsync
 
   if (glewInit() != GLEW_OK) {
-    std::cerr << "Failed to initialize OpenGL loader!" << std::endl;
+    std::cerr << "Failed to initialize OpenGL loader!\n";
     return;
   }
 
@@ -317,7 +317,7 @@ extern "C" void start_cpp_hud_loop(void) {
       // simple perspective
       float fov = 45.0f;
       float near_plane = 0.1f, far_plane = 100.0f;
-      float top = tan(fov * 3.14159f / 360.0f) * near_plane;
+      float top = std::tan(fov * 3.14159f / 360.0f) * near_plane;
       float bottom = -top;
       float right = top * ratio;
       float left = -right;
