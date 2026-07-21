@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE ForeignFunctionInterface #-}
 {-# LANGUAGE CApiFFI #-}
 
@@ -24,53 +25,34 @@ import Foreign.Marshal.Alloc (alloca)
 import Control.Monad (when)
 import Foreign.C.Error (throwErrno)
 
+#include <time.h>
+
 -- | Corresponds to C 'struct timespec'
 data TimeSpec = TimeSpec
     { _sec  :: {-# UNPACK #-} !CTime
     , _nsec :: {-# UNPACK #-} !CLong
     }
 
-
 instance Storable TimeSpec where
-    alignment _ = max (alignment (0 :: CTime)) (alignment (0 :: CLong))
-    sizeOf _ =
-        let s = sizeOf (0 :: CTime)
-            n = sizeOf (0 :: CLong)
-            a = alignment (TimeSpec 0 0)
-            n_align = alignment (0 :: CLong)
-            padding_s = (n_align - (s `rem` n_align)) `rem` n_align
-            total = s + padding_s + n
-            tail_padding = (a - (total `rem` a)) `rem` a
-        in total + tail_padding
+    alignment _ = #{alignment struct timespec}
+    sizeOf _ = #{size struct timespec}
 
-    peek ptr = do
-        let s_size = sizeOf (0 :: CTime)
-            n_align = alignment (0 :: CLong)
-            padding = (n_align - (s_size `rem` n_align)) `rem` n_align
-            n_offset = s_size + padding
-        s <- peekByteOff ptr 0
-        n <- peekByteOff ptr n_offset
-        return (TimeSpec s n)
+    peek ptr = TimeSpec
+        <$> #{peek struct timespec, tv_sec} ptr
+        <*> #{peek struct timespec, tv_nsec} ptr
 
     poke ptr (TimeSpec s n) = do
-        let s_size = sizeOf (0 :: CTime)
-            n_align = alignment (0 :: CLong)
-            padding = (n_align - (s_size `rem` n_align)) `rem` n_align
-            n_offset = s_size + padding
-        pokeByteOff ptr 0 s
-        pokeByteOff ptr n_offset n
+        #{poke struct timespec, tv_sec} ptr s
+        #{poke struct timespec, tv_nsec} ptr n
 
--- | Clock ID for CLOCK_REALTIME (0) and CLOCK_MONOTONIC (1)
--- These vary by OS, but 1 is standard for Monotonic on Linux.
--- We use CPP or just hardcode for standard Linux/Posix.
 foreign import ccall unsafe "time.h clock_gettime"
     c_clock_gettime :: Int32 -> Ptr TimeSpec -> IO CInt
 
 clockMonotonic :: Int32
-clockMonotonic = 1
+clockMonotonic = #{const CLOCK_MONOTONIC}
 
 clockRealtime :: Int32
-clockRealtime = 0
+clockRealtime = #{const CLOCK_REALTIME}
 
 -- | Get Monotonic Time in Nanoseconds (Word64)
 getMonotonicTimeNS :: IO Word64

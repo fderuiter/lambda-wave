@@ -89,7 +89,12 @@ void set_cpp_hud_state(const HudStateC *state) {
   }
 
   g_resp_z = state->resp_z;
-  // We don't overwrite g_active_language from state anymore, it's managed by UI
+  
+  if (state->active_language && g_active_language != state->active_language) {
+    g_active_language = state->active_language;
+    g_translation_cache.clear();
+  }
+
   bool beam_changed = false;
   std::string new_beam_state;
   if (state->localized_beam_state &&
