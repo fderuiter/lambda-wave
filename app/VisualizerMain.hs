@@ -145,7 +145,7 @@ main = do
         let (pR, pG, pB) = pointCloudColorRGB
         let tMin = indicatorScaleLimitMin
         let tMax = indicatorScaleLimitMax
-        let cPts = map (\pt -> Point3DC (px pt) (py pt) (pz pt)) (currentPoints state)
+        let cPts = map (\pt -> Point3DC (realToFrac $ px pt) (realToFrac $ py pt) (realToFrac $ pz pt)) (currentPoints state)
         let rZ = case x (kalmanState state) of
                 V3 pVal _ _ -> pVal
                 _ -> 0

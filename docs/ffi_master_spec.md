@@ -4,6 +4,29 @@ This document serves as the master specification for all hardware-software inter
 
 ## FFI Memory Layouts
 
+### Point3DC
+- `double x`
+- `double y`
+- `double z`
+
+### HudStateC
+- `int beam_state`
+- `Point3DC* points`
+- `size_t num_points`
+- `double resp_z`
+- `bool audio_alert_enabled`
+- `const char* active_language`
+- `const char* localized_beam_state`
+- `int calibration_status`
+- `float beam_color_r`
+- `float beam_color_g`
+- `float beam_color_b`
+- `float trace_scale_min`
+- `float trace_scale_max`
+- `float point_color_r`
+- `float point_color_g`
+- `float point_color_b`
+
 ### RingBufferControl
 The ring buffer is implemented via POSIX shared memory mapped into process space (`/sgrt_ring_buffer`).
 It uses a zero-copy lock-free design using `std::atomic` variables for indices.

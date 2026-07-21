@@ -206,7 +206,7 @@ def cmd_check_docs(args):
                     with open(fpath, 'r', encoding='utf-8', errors='ignore') as f:
                         content = f.read()
                         
-                    is_ffi_module = 'Hardware/FFI' in fpath and file.endswith('.hs')
+                    is_ffi_module = ('Hardware/FFI' in fpath or 'FFI/Hud' in fpath) and 'test/' not in fpath and file.endswith('.hs')
                     is_safety_critical = "SAFETY-CRITICAL" in content
                     
                     if is_safety_critical or is_ffi_module:

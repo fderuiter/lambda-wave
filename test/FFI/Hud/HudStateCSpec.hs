@@ -14,6 +14,8 @@ import Foreign.Storable
 import FFI.Hud.Types (HudStateC(..))
 import Foreign.Ptr (nullPtr)
 
+import Foreign.C.Types (CInt(..), CDouble(..), CFloat(..), CSize(..), CBool(..))
+
 instance Arbitrary HudStateC where
     arbitrary = do
         return $ HudStateC 0 nullPtr 0 0.0 0 nullPtr nullPtr 0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0

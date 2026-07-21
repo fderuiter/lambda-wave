@@ -3,19 +3,31 @@ module FFI.Hud.Types (
     Point3DC(..)
 ) where
 
+-- SAFETY-CRITICAL
 -- | Types for HUD FFI.
 -- 
--- Failure Modes: Memory corruption if C struct layout mismatches.
--- Mitigations: Explicit Storable instances with fixed byte offsets.
--- Traceability: REQ-HUD-001
+-- = Failure Mode
+-- Memory corruption if C struct layout mismatches.
+-- 
+-- = Mitigation
+-- Explicit Storable instances with fixed byte offsets, and continuous layout automated checks.
+-- 
+-- = Audit Events
+-- Validated FFI boundaries produce Info/Warning events on configuration failures.
+-- 
+-- Traceability: FR-UI-001, FR-UI-002, H-USE-001
 
 
 import Foreign.Storable (Storable(..))
 import Foreign.C.String (CString)
+import Foreign.C.Types (CInt(..), CDouble(..), CFloat(..), CSize(..), CBool(..))
 import Foreign.Ptr (Ptr)
-import Data.Word (Word64, Word32, Word8)
 
-data Point3DC = Point3DC Double Double Double
+data Point3DC = Point3DC
+    { x :: CDouble
+    , y :: CDouble
+    , z :: CDouble
+    }
 
 instance Storable Point3DC where
     sizeOf _ = 24
@@ -27,22 +39,22 @@ instance Storable Point3DC where
         pokeByteOff ptr 16 p_z
 
 data HudStateC = HudStateC
-    { hscBeamState :: Word32
-    , hscPoints :: Ptr Point3DC
-    , hscNumPoints :: Word64
-    , hscRespZ :: Double
-    , hscAudioAlertEnabled :: Word8
-    , hscActiveLanguage :: CString
-    , hscLocalizedBeamState :: CString
-    , hscCalibrationStatus :: Word32
-    , hscBeamColorR :: Float
-    , hscBeamColorG :: Float
-    , hscBeamColorB :: Float
-    , hscTraceScaleMin :: Float
-    , hscTraceScaleMax :: Float
-    , hscPointColorR :: Float
-    , hscPointColorG :: Float
-    , hscPointColorB :: Float
+    { beamState :: CInt
+    , points :: Ptr Point3DC
+    , numPoints :: CSize
+    , respZ :: CDouble
+    , audioAlertEnabled :: CBool
+    , activeLanguage :: CString
+    , localizedBeamState :: CString
+    , calibrationStatus :: CInt
+    , beamColorR :: CFloat
+    , beamColorG :: CFloat
+    , beamColorB :: CFloat
+    , traceScaleMin :: CFloat
+    , traceScaleMax :: CFloat
+    , pointColorR :: CFloat
+    , pointColorG :: CFloat
+    , pointColorB :: CFloat
     }
 
 instance Storable HudStateC where
