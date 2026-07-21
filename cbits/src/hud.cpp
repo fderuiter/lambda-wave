@@ -48,15 +48,16 @@ static void CheckFocus(int id, const char *name, const char *role) {
   }
 }
 
-static const char *get_localized_string(const std::string &key,
-                                        const std::string &default_val) {
+static const char *get_localized_string(const char *key_cstr,
+                                        const char *default_val_cstr) {
+  std::string key(key_cstr);
   auto it = g_translation_cache.find(key);
   if (it != g_translation_cache.end()) {
     return it->second.c_str();
   }
   if (g_translate_callback != nullptr) {
     const char *result =
-        g_translate_callback(g_active_language.c_str(), key.c_str());
+        g_translate_callback(g_active_language.c_str(), key_cstr);
     if (result != nullptr) {
       std::string res_str(result);
       free((void *)result);
@@ -64,7 +65,7 @@ static const char *get_localized_string(const std::string &key,
       return g_translation_cache[key].c_str();
     }
   }
-  g_translation_cache[key] = default_val;
+  g_translation_cache[key] = default_val_cstr;
   return g_translation_cache[key].c_str();
 }
 
@@ -285,10 +286,12 @@ extern "C" void start_cpp_hud_loop(void) {
                          g_localized_beam_state.c_str());
 
       // Respiratory trace
-      std::vector<float> trace(g_resp_history.begin(), g_resp_history.end());
       ImGui::PlotLines(
           get_localized_string("resp_trace_title", "Respiratory Trace"),
-          trace.data(), trace.size(), 0, NULL, g_trace_scale_min,
+          [](void *data, int idx) {
+            return (*static_cast<std::deque<float> *>(data))[idx];
+          },
+          &g_resp_history, g_resp_history.size(), 0, NULL, g_trace_scale_min,
           g_trace_scale_max, ImVec2(0, 100));
 
       // Point Cloud Info
