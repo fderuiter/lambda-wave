@@ -1,0 +1,11 @@
+default:
+  expressions: 90.0
+  branches: 90.0
+
+modules:
+  Control.Actuation:
+    expressions: 85.0
+    branches: 70.0
+  SignalProcessing:
+    expressions: 75.5
+    branches: 60.0
