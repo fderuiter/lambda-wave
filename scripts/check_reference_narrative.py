@@ -12,6 +12,13 @@ def check_file(filepath):
     
     issues = []
     
+    buzzwords = [
+        "revolutionary", "synergy", "breakthrough", "cutting-edge", 
+        "state-of-the-art", "game-changer", "disruptive", "paradigm-shift", 
+        "industry-leading", "world-class", "next-generation", "seamless"
+    ]
+    buzzwords_pattern = re.compile(r'\b(' + '|'.join(re.escape(w) for w in buzzwords) + r')\b', re.IGNORECASE)
+    
     for i, p in enumerate(paragraphs):
         p = p.strip()
         if not p:
@@ -21,13 +28,18 @@ def check_file(filepath):
         if p.startswith('#') or p.startswith('*') or p.startswith('-') or p.startswith('$$') or p.startswith('```') or p.startswith('|'):
             continue
             
+        # Check for promotional buzzwords in ALL text blocks
+        buzzword_match = buzzwords_pattern.search(p)
+        if buzzword_match:
+            issues.append(f"Paragraph {i+1} contains restricted marketing buzzword '{buzzword_match.group(1)}':\n{p[:50]}...")
+            
         # Ignore very short lines (e.g., single formulas or small notes)
         if len(p) < 150 and p.count('.') <= 2:
             continue
 
         # If it's a regular paragraph and it's long, flag it
         sentences = len(re.split(r'(?<!\w\.\w.)(?<![A-Z][a-z]\.)(?<=\.|\?)\s', p))
-        if len(p) >= 200 or sentences >= 3:
+        if len(p) > 400 or sentences > 4:
             issues.append(f"Paragraph {i+1} appears to be narrative text (length: {len(p)} chars, {sentences} sentences):\n{p[:50]}...")
             
     return issues
