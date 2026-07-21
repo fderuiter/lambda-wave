@@ -18,8 +18,8 @@ This document provides end-to-end traceability between Functional Requirements (
 | FR-DSP-004 | ISO-13485-7.3.2 | Phase Extraction | Phase 3.2 | `SignalProcessing.FMCW` | [`04 Surface Mesher`](../../docs/architecture/04_surface_mesher.md) | `test/SignalProcessing/FMCWSpec.hs` | ✅ Complete |
 | FR-GAT-001 | ISO-13485-7.3.2 | Automatic beam gating | Phase 4.2 | `Control.Gating` | [`05 Gating Logic`](../../docs/architecture/05_gating_logic.md) | `test/Control/GatingCheck.hs` | ✅ Complete |
 | FR-GAT-002 | ISO-13485-7.3.2 | Total latency < 50ms | Phase 4.2 | `Control.Gating`, `app/Main.hs` | [`05 Gating Logic`](../../docs/architecture/05_gating_logic.md) | `bench/LatencyBench.hs` | ✅ Complete |
-| FR-UI-001 | ISO-13485-7.3.2 | Real-time visualization | Phase 5.1 | `cbits/src/hud.cpp`, `cbits/include/hud.h` | [`07 Visualization`](../../docs/architecture/07_visualization.md) | `test/Control/UIMathSpec.hs` | ✅ Complete |
-| FR-UI-002 | ISO-13485-7.3.2 | Visual gating feedback | Phase 5.2 | `cbits/src/hud.cpp`, `cbits/include/hud.h` | [`07 Visualization`](../../docs/architecture/07_visualization.md) | Visual Inspection | ✅ Complete |
+| FR-UI-001 | ISO-13485-7.3.2 | Real-time visualization | Phase 5.1 | `cbits/src/hud.cpp`, `cbits/include/hud.h` | [`07 Visualization`](../../docs/architecture/07_visualization.md)<br>[`src/FFI/Hud/Types.hs`](../../Haskell Radar SGRT System Development.md) | `test/Control/UIMathSpec.hs` | ✅ Complete |
+| FR-UI-002 | ISO-13485-7.3.2 | Visual gating feedback | Phase 5.2 | `cbits/src/hud.cpp`, `cbits/include/hud.h` | [`07 Visualization`](../../docs/architecture/07_visualization.md)<br>[`src/FFI/Hud/Types.hs`](../../Haskell Radar SGRT System Development.md) | Visual Inspection | ✅ Complete |
 | FR-UI-003 | IEC-62366-5.1 | Structural navigation, assistive technology hooks, and skip-links | Phase 5.3 | `cbits/src/hud.cpp`, `cbits/include/hud.h` | [`07 Visualization`](../../docs/architecture/07_visualization.md) | Visual Inspection | ✅ Complete |
 
 ## Safety Requirements (SR)

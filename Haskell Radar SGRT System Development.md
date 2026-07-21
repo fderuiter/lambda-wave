@@ -42,9 +42,16 @@ Traceability: REQ-SYS-003
 
 Types for HUD FFI.
 
-Failure Modes: Memory corruption if C struct layout mismatches.
-Mitigations: Explicit Storable instances with fixed byte offsets.
-Traceability: REQ-HUD-001
+Failure Modes:
+Memory corruption if C struct layout mismatches.
+
+Mitigations:
+Explicit Storable instances with fixed byte offsets, and continuous layout automated checks.
+
+= Audit Events
+Validated FFI boundaries produce Info/Warning events on configuration failures.
+
+Traceability: FR-UI-001, FR-UI-002, H-USE-001
 
 ### Extracted from `src/FFI/RingBuffer/IO.hs`
 

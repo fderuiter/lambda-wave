@@ -6,10 +6,10 @@ module FFI.Hud.Types (
 -- SAFETY-CRITICAL
 -- | Types for HUD FFI.
 -- 
--- = Failure Mode
+-- Failure Modes:
 -- Memory corruption if C struct layout mismatches.
 -- 
--- = Mitigation
+-- Mitigations:
 -- Explicit Storable instances with fixed byte offsets, and continuous layout automated checks.
 -- 
 -- = Audit Events
