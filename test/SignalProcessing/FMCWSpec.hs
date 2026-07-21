@@ -6,10 +6,7 @@ import Data.Complex
 import SignalProcessing.FMCW
 import Numeric.Kinematics
 import Control.Monad (zipWithM_)
-
--- Helper for float comparison
-approxEq :: Double -> Double -> Double -> Bool
-approxEq a b epsilon = abs (a - b) < epsilon
+import Numeric.FloatAssert (shouldBeApprox, shouldBeApproxList)
 
 spec :: Spec
 spec = describe "SignalProcessing.FMCW" $ do
@@ -29,7 +26,7 @@ spec = describe "SignalProcessing.FMCW" $ do
             -- f = (2 * 4e9 * 1) / (3e8 * 50e-6)
             --   = 8e9 / 15000
             --   = 533333.33 Hz
-            f_fft `shouldSatisfy` (\x -> approxEq x 533333.33 0.1)
+            shouldBeApprox f_fft 533333.33 0.1
 
     describe "Chirp Z-Transform (Requirement MR-002)" $ do
         let params = CZTParams { cztStartFreq = 0
@@ -45,7 +42,7 @@ spec = describe "SignalProcessing.FMCW" $ do
                 mag0 = case output of
                         (x:_) -> magnitude x
                         []    -> 0.0
-            mag0 `shouldSatisfy` (\x -> approxEq x (fromIntegral n_samples) 1e-9)
+            shouldBeApprox mag0 (fromIntegral n_samples) 1e-9
             -- Other bins should be zero as fs/n_samples = 100Hz, which matches bin spacing.
             let otherMags = map magnitude (drop 1 output)
             all (< 1e-9) otherMags `shouldBe` True
@@ -68,7 +65,7 @@ spec = describe "SignalProcessing.FMCW" $ do
                 peakIdx = 2 :: Int
                 indexedMags = zip [0..] mags
             case lookup peakIdx indexedMags of
-                Just m -> m `shouldSatisfy` (\x -> approxEq x (fromIntegral n_samples) 1e-9)
+                Just m -> shouldBeApprox m (fromIntegral n_samples) 1e-9
                 Nothing -> expectationFailure "Peak index not found in CZT output"
             -- Other bins should be zero because bins are multiples of fs/n_samples = 100Hz.
             let others = [ m | (i, m) <- indexedMags, i /= peakIdx ]
@@ -174,7 +171,7 @@ spec = describe "SignalProcessing.FMCW" $ do
                 -- Since motion is low, alpha=0.9 should be used
                 -- newMean = 0.1*0 + 0.9*0.4 = 0.36
             let expectedMean = replicate n_bins (0.36 :+ 0.0)
-            zipWithM_ (\(r1 :+ _) (r2 :+ _) -> abs (r1 - r2) `shouldSatisfy` (< 1e-10)) newMean expectedMean
+            shouldBeApproxList (map (\(r :+ _) -> r) newMean) (map (\(r :+ _) -> r) expectedMean) 1e-10
 
         it "uses standard suppression strength (alphaBase) when motion is above threshold" $ do
             let n_bins = 5
@@ -187,7 +184,7 @@ spec = describe "SignalProcessing.FMCW" $ do
                 -- Since motion is high, alpha=0.1 should be used
                 -- newMean = 0.9*0 + 0.1*2.0 = 0.2
             let expectedMean = replicate n_bins (0.2 :+ 0.0)
-            zipWithM_ (\(r1 :+ _) (r2 :+ _) -> abs (r1 - r2) `shouldSatisfy` (< 1e-10)) newMean expectedMean
+            shouldBeApproxList (map (\(r :+ _) -> r) newMean) (map (\(r :+ _) -> r) expectedMean) 1e-10
 
         it "uses alphaBase when motionMetric equals threshold" $ do
             let n_bins = 5
@@ -202,8 +199,6 @@ spec = describe "SignalProcessing.FMCW" $ do
                 -- So alphaBase=0.1 should be used
                 -- newMean = 0.9*0 + 0.1*input = 0.1*input
             let expectedMean = replicate n_bins (0.04472135955 :+ 0.0)
-                diffs = zipWith (-) (map magnitude newMean) (map magnitude expectedMean)
-                maxDiff = maximum (map abs diffs)
-            maxDiff `shouldSatisfy` (< 1.0e-9)
+            shouldBeApproxList (map magnitude newMean) (map magnitude expectedMean) 1.0e-9
 
 -- Requirement FR-DSP-004, Requirement MR-004

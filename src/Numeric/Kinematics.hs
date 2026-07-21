@@ -6,6 +6,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE PatternSynonyms #-}
 
 -- | Numeric.Kinematics
 -- Failure Modes: Incorrect dimension conversion.
@@ -18,6 +19,7 @@ module Numeric.Kinematics
     , Acceleration(..)
     , Time(..)
     , Frequency(..)
+    , Coordinate(..)
       -- * Unit Specific Types
     , Millimeters(..)
     , Meters(..)
@@ -56,12 +58,63 @@ module Numeric.Kinematics
       -- * Safe Bounds
     , ClinicalBounds(..)
     , defaultBounds
+      -- * Spatial Functions
+    , pattern Vector3D
+    , translate
+    , distance
+    , magnitude
+    , normalize
+    , dot
+    , sub
+    , angleBetween
       -- * Re-exports
     , Proxy(..)
     ) where
 
 import Data.Proxy
 import Safety.Result (SafetyResult(..))
+
+data Coordinate = Coordinate
+  { coordX :: Double
+  , coordY :: Double
+  , coordZ :: Double
+  , coordIntensity :: Double
+  , coordConfidence :: Double
+  } deriving (Show, Eq)
+
+pattern Vector3D :: Double -> Double -> Double -> Coordinate
+pattern Vector3D x y z <- Coordinate x y z _ _
+  where Vector3D x y z = Coordinate x y z 0.0 0.0
+
+translate :: Coordinate -> Coordinate -> Coordinate
+translate (Coordinate x1 y1 z1 i1 c1) (Coordinate x2 y2 z2 _ _) =
+    Coordinate (x1 + x2) (y1 + y2) (z1 + z2) i1 c1
+
+distance :: Coordinate -> Coordinate -> Double
+distance (Vector3D x1 y1 z1) (Vector3D x2 y2 z2) =
+    sqrt ((x1 - x2)**2 + (y1 - y2)**2 + (z1 - z2)**2)
+
+magnitude :: Coordinate -> Double
+magnitude (Vector3D x y z) = sqrt (x*x + y*y + z*z)
+
+normalize :: Coordinate -> Coordinate
+normalize v@(Vector3D x y z) =
+    let m = magnitude v
+    in if m == 0 then Vector3D 0 0 0 else Vector3D (x/m) (y/m) (z/m)
+
+dot :: Coordinate -> Coordinate -> Double
+dot (Vector3D x1 y1 z1) (Vector3D x2 y2 z2) = x1*x2 + y1*y2 + z1*z2
+
+sub :: Coordinate -> Coordinate -> Coordinate
+sub (Vector3D x1 y1 z1) (Vector3D x2 y2 z2) = Vector3D (x1-x2) (y1-y2) (z1-z2)
+
+angleBetween :: Coordinate -> Coordinate -> Double
+angleBetween v1 v2 =
+    let (Vector3D n1x n1y n1z) = normalize v1
+        (Vector3D n2x n2y n2z) = normalize v2
+        d = n1x*n2x + n1y*n2y + n1z*n2z
+        d' = max (-1.0) (min 1.0 d)
+    in (acos d') * 180.0 / pi
 
 newtype Distance = Distance Double deriving (Show, Eq, Ord)
 newtype Velocity = Velocity Double deriving (Show, Eq, Ord)

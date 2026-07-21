@@ -2,7 +2,7 @@ module Main (main) where
 
 import Control.Exception (try, SomeException)
 import SignalProcessing.Matrix
-import Numeric.Kinematics
+import Numeric.Kinematics hiding (dot)
 import System.Exit (exitSuccess)
 
 main :: IO ()

@@ -170,6 +170,7 @@ test-suite sgrt-radar-system-test
   main-is: Spec.hs
   other-modules:
       Control.UIMathSpec
+      Numeric.FloatAssert
       Paths_sgrt_radar_system
       FFI.RingBuffer.TypesSpec
       FFI.Hud.HudStateCSpec

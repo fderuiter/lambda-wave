@@ -2,77 +2,54 @@
 module Control.UIMathSpec (spec) where
 
 import Test.Hspec
--- Removed unused Control.Monad (unless)
 import GHC.Float (double2Float)
 import UI.Presentation (shouldTriggerAudioAlert)
 import Data.Types (BeamState(..))
-import Numeric.Kinematics (Millimeters(..), Meters(..), mmToMeters)
+import Numeric.Kinematics 
+  ( Millimeters(..)
+  , Meters(..)
+  , mmToMeters
+  , Coordinate(..)
+  , pattern Vector3D
+  , sub
+  , angleBetween
+  )
 
 -- | Mock types for verification
--- Removed unused fields 'v' and 'snr' to satisfy -Wunused-top-binds
-data Point3D = Point3D { px :: Double, py :: Double, pz :: Double }
 data Vertex3 a = Vertex3 a a a deriving (Show, Eq)
 
 -- | Pure transformation logic to verify
 -- Transforms a radar point (mm) to OpenGL coordinates (meters)
-transformPoint :: Point3D -> Vertex3 Float
+transformPoint :: Coordinate -> Vertex3 Float
 transformPoint p =
-    let Meters mx = mmToMeters (Millimeters (px p))
-        Meters my = mmToMeters (Millimeters (py p))
-        Meters mz = mmToMeters (Millimeters (pz p))
+    let Meters mx = mmToMeters (Millimeters (coordX p))
+        Meters my = mmToMeters (Millimeters (coordY p))
+        Meters mz = mmToMeters (Millimeters (coordZ p))
         x = double2Float mx
         y = double2Float my
         z = double2Float mz
     in Vertex3 x y z
 
-type Vector3 = (Double, Double, Double)
-
-dot :: Vector3 -> Vector3 -> Double
-dot (x1, y1, z1) (x2, y2, z2) = x1*x2 + y1*y2 + z1*z2
-
-magnitude :: Vector3 -> Double
-magnitude (x, y, z) = sqrt (x*x + y*y + z*z)
-
-normalize :: Vector3 -> Vector3
-normalize vec@(x, y, z) = -- Renamed 'v' to 'vec' to avoid shadowing
-    let m = magnitude vec
-    in if m == 0 then (0,0,0) else (x/m, y/m, z/m)
-
-sub :: Vector3 -> Vector3 -> Vector3
-sub (x1, y1, z1) (x2, y2, z2) = (x1-x2, y1-y2, z1-z2)
-
-rad2deg :: Double -> Double
-rad2deg r = r * 180.0 / pi
-
-angleBetween :: Vector3 -> Vector3 -> Double
-angleBetween v1 v2 =
-    let n1 = normalize v1
-        n2 = normalize v2
-        d = dot n1 n2
-        -- Clamp d to [-1, 1] to avoid NaN from acos
-        d' = max (-1.0) (min 1.0 d)
-    in rad2deg (acos d')
-
 spec :: Spec
 spec = describe "Control.UI.Math" $ do
     describe "Coordinate Transformation (mm to meters)" $ do
-        it "correctly scales and converts Point3D to Vertex3" $ do
-            let p1 = Point3D 1000 2000 3000
+        it "correctly scales and converts Coordinate to Vertex3" $ do
+            let p1 = Vector3D 1000 2000 3000
             let v1 = transformPoint p1
             let expected = Vertex3 1.0 2.0 3.0
             v1 `shouldBe` expected
 
         it "handles negative coordinates" $ do
-            let p = Point3D (-500) (-100) 0
-            let vec = transformPoint p -- Renamed 'v' to 'vec'
+            let p = Vector3D (-500) (-100) 0
+            let vec = transformPoint p
             let expected = Vertex3 (-0.5) (-0.1) 0.0
             vec `shouldBe` expected
 
     describe "Camera Projection Logic (FOV Coverage)" $ do
         it "ensures a target at (0, 0, 2m) is centered in view from (0, 2, -2)" $ do
-            let cameraPos = (0.0, 2.0, -2.0)
-            let lookAtPos = (0.0, 0.0, 2.0)
-            let forward = sub lookAtPos cameraPos -- (0, -2, 4) -> (0, -0.447, 0.894)
+            let cameraPos = Vector3D 0.0 2.0 (-2.0)
+            let lookAtPos = Vector3D 0.0 0.0 2.0
+            let forward = sub lookAtPos cameraPos
 
             -- Target is at lookAtPos, so angle should be 0
             let targetVec = sub lookAtPos cameraPos
@@ -80,11 +57,11 @@ spec = describe "Control.UI.Math" $ do
             angle `shouldSatisfy` (< 1.0e-5)
 
         it "ensures edge point (2m lateral) is within horizontal FOV" $ do
-            let cameraPos = (0.0, 2.0, -2.0)
-            let lookAtPos = (0.0, 0.0, 2.0)
+            let cameraPos = Vector3D 0.0 2.0 (-2.0)
+            let lookAtPos = Vector3D 0.0 0.0 2.0
             let forward = sub lookAtPos cameraPos
 
-            let edgePoint = (2.0, 0.0, 2.0)
+            let edgePoint = Vector3D 2.0 0.0 2.0
             let toEdge = sub edgePoint cameraPos
 
             let angle = angleBetween forward toEdge
