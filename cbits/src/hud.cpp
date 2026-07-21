@@ -16,10 +16,8 @@
 #include <vector>
 
 static std::mutex g_state_mutex;
-static int g_beam_state = 0;
 static std::vector<Point3DC> g_points;
 static double g_resp_z = 0.0;
-static bool g_audio_alert_enabled = false;
 static std::string g_active_language = "en";
 static std::string g_localized_beam_state = "BEAM OFF";
 static int g_calibration_status = 0;
@@ -78,7 +76,6 @@ void register_translate_callback(TranslateCallback callback) {
 
 void set_cpp_hud_state(const HudStateC *state) {
   std::lock_guard<std::mutex> lock(g_state_mutex);
-  g_beam_state = state->beam_state;
   g_points.assign(state->points, state->points + state->num_points);
 
   static size_t last_announced_points = 0;
@@ -92,7 +89,6 @@ void set_cpp_hud_state(const HudStateC *state) {
   }
 
   g_resp_z = state->resp_z;
-  g_audio_alert_enabled = state->audio_alert_enabled;
   // We don't overwrite g_active_language from state anymore, it's managed by UI
   bool beam_changed = false;
   std::string new_beam_state;
