@@ -77,19 +77,19 @@ subM = zipWith (zipWith (-))
 scaleM :: Double -> Matrix -> Matrix
 scaleM s = map (map (*s))
 
-addV :: Num a => [a] -> [a] -> [a]
-addV = go []
+zipWithStrict :: (a -> b -> c) -> [a] -> [b] -> [c]
+zipWithStrict f = go []
   where
     go !acc [] _ = reverse acc
     go !acc _ [] = reverse acc
-    go !acc (a:as) (b:bs) = go ((a + b) : acc) as bs
+    go !acc (a:as) (b:bs) = go (f a b : acc) as bs
+
+addV :: Num a => [a] -> [a] -> [a]
+addV = zipWithStrict (+)
 
 subV :: Num a => [a] -> [a] -> [a]
-subV = go []
-  where
-    go !acc [] _ = reverse acc
-    go !acc _ [] = reverse acc
-    go !acc (a:as) (b:bs) = go ((a - b) : acc) as bs
+subV = zipWithStrict (-)
+
 
 scaleV :: Num a => a -> [a] -> [a]
 scaleV !s = go []

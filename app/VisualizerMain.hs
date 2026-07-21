@@ -36,8 +36,7 @@ import Data.Aeson (FromJSON(..), (.:), withObject)
 import qualified Data.Aeson as A
 import System.Exit (exitFailure)
 import Foreign.C.Types (CSize(..))
-import Data.Word (Word8, Word64)
-import FFI.Hud.Types (HudStateC, Point3DC(..))
+import FFI.Hud.Types (HudStateC(..), Point3DC(..))
 
 -- C FFI declarations
 
@@ -145,7 +144,7 @@ main = do
         let (pR, pG, pB) = pointCloudColorRGB
         let tMin = indicatorScaleLimitMin
         let tMax = indicatorScaleLimitMax
-        let cPts = map (\pt -> Point3DC (px pt) (py pt) (pz pt)) (currentPoints state)
+        let cPts = map (\pt -> Point3DC (realToFrac $ px pt) (realToFrac $ py pt) (realToFrac $ pz pt)) (currentPoints state)
         let rZ = case x (kalmanState state) of
                 V3 pVal _ _ -> pVal
                 _ -> 0
@@ -155,46 +154,26 @@ main = do
         withCString hudLangStr $ \c_lang -> 
             withCString locBState $ \c_loc_bstate -> 
                 withArrayLen cPts $ \numPts ptrPts -> 
-                    allocaBytes 96 $ \ptrStruct -> do
-                        -- Write HudStateC fields manually
-                        -- Memory layout depends on platform, but assuming x86_64 System V AMD64 ABI
-                        -- offset 0: Int (4 or 8 depending on GHC, let's use CInt/CSize to be safe, but wait! We used Int in Haskell and int in C)
-                        -- Let's just be explicit and use pokeByteOff
-                        -- Actually it's safer to use a C wrapper or Storable.
-                        -- Wait! I will just use sizeOf to be safe, but let's poke everything with standard C layout.
-                        -- 0: beam_state (int - 4 bytes)
-                        -- 8: points (pointer - 8 bytes)
-                        -- 16: num_points (size_t - 8 bytes)
-                        -- 24: resp_z (double - 8 bytes)
-                        -- 32: audio_alert_enabled (bool - 1 byte)
-                        -- 40: active_language (pointer - 8 bytes)
-                        -- 48: localized_beam_state (pointer - 8 bytes)
-                        -- 56: calibration_status (int - 4 bytes)
-                        -- 60: beam_color_r (float - 4 bytes)
-                        -- 64: beam_color_g (float - 4 bytes)
-                        -- 68: beam_color_b (float - 4 bytes)
-                        -- 72: trace_scale_min (float - 4 bytes)
-                        -- 76: trace_scale_max (float - 4 bytes)
-                        -- 80: point_color_r (float - 4 bytes)
-                        -- 84: point_color_g (float - 4 bytes)
-                        -- 88: point_color_b (float - 4 bytes)
-                        
-                        pokeByteOff ptrStruct 0 bState
-                        pokeByteOff ptrStruct 8 ptrPts
-                        pokeByteOff ptrStruct 16 (fromIntegral numPts :: Word64)
-                        pokeByteOff ptrStruct 24 rZ
-                        pokeByteOff ptrStruct 32 (if audioAlertEnabled state then 1 else 0 :: Word8)
-                        pokeByteOff ptrStruct 40 c_lang
-                        pokeByteOff ptrStruct 48 c_loc_bstate
-                        pokeByteOff ptrStruct 56 calStat
-                        pokeByteOff ptrStruct 60 bR
-                        pokeByteOff ptrStruct 64 bG
-                        pokeByteOff ptrStruct 68 bB
-                        pokeByteOff ptrStruct 72 tMin
-                        pokeByteOff ptrStruct 76 tMax
-                        pokeByteOff ptrStruct 80 pR
-                        pokeByteOff ptrStruct 84 pG
-                        pokeByteOff ptrStruct 88 pB
+                    allocaBytes (sizeOf (undefined :: HudStateC)) $ \ptrStruct -> do
+                        let hudState = HudStateC
+                                { hscBeamState = fromIntegral bState
+                                , hscPoints = ptrPts
+                                , hscNumPoints = fromIntegral numPts
+                                , hscRespZ = realToFrac rZ
+                                , hscAudioAlertEnabled = if audioAlertEnabled state then 1 else 0
+                                , hscActiveLanguage = c_lang
+                                , hscLocalizedBeamState = c_loc_bstate
+                                , hscCalibrationStatus = fromIntegral calStat
+                                , hscBeamColorR = realToFrac bR
+                                , hscBeamColorG = realToFrac bG
+                                , hscBeamColorB = realToFrac bB
+                                , hscTraceScaleMin = realToFrac tMin
+                                , hscTraceScaleMax = realToFrac tMax
+                                , hscPointColorR = realToFrac pR
+                                , hscPointColorG = realToFrac pG
+                                , hscPointColorB = realToFrac pB
+                                }
+                        poke ptrStruct hudState
                         
                         c_set_cpp_hud_state ptrStruct
         threadDelay 33333 -- ~30 fps update to C++
