@@ -33,7 +33,7 @@ jobs:
         run: cabal install hlint --ignore-project
 
       - name: Run HLint
-        run: hlint src/ tools/
+        run: hlint src/ src-math/ tools/ app/ test/ bench/
 
       - name: Install clang-format
         run: sudo apt-get install -y clang-format

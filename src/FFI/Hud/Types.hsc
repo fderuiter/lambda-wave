@@ -15,11 +15,11 @@ module FFI.Hud.Types (
 import Foreign.Storable (Storable(..))
 import Foreign.C.String (CString)
 import Foreign.Ptr (Ptr)
-import Data.Word (Word64, Word32, Word8)
+import Foreign.C.Types
 
 #include "hud.h"
 
-data Point3DC = Point3DC Double Double Double
+data Point3DC = Point3DC CDouble CDouble CDouble
 
 instance Storable Point3DC where
     sizeOf _ = #{size Point3DC}
@@ -34,22 +34,22 @@ instance Storable Point3DC where
         #{poke Point3DC, z} ptr p_z
 
 data HudStateC = HudStateC
-    { hscBeamState :: Word32
+    { hscBeamState :: CInt
     , hscPoints :: Ptr Point3DC
-    , hscNumPoints :: Word64
-    , hscRespZ :: Double
-    , hscAudioAlertEnabled :: Word8
+    , hscNumPoints :: CSize
+    , hscRespZ :: CDouble
+    , hscAudioAlertEnabled :: CBool
     , hscActiveLanguage :: CString
     , hscLocalizedBeamState :: CString
-    , hscCalibrationStatus :: Word32
-    , hscBeamColorR :: Float
-    , hscBeamColorG :: Float
-    , hscBeamColorB :: Float
-    , hscTraceScaleMin :: Float
-    , hscTraceScaleMax :: Float
-    , hscPointColorR :: Float
-    , hscPointColorG :: Float
-    , hscPointColorB :: Float
+    , hscCalibrationStatus :: CInt
+    , hscBeamColorR :: CFloat
+    , hscBeamColorG :: CFloat
+    , hscBeamColorB :: CFloat
+    , hscTraceScaleMin :: CFloat
+    , hscTraceScaleMax :: CFloat
+    , hscPointColorR :: CFloat
+    , hscPointColorG :: CFloat
+    , hscPointColorB :: CFloat
     }
 
 instance Storable HudStateC where

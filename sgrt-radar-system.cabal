@@ -9,16 +9,10 @@ maintainer:     Frederick de Ruiter <fpderuiter@gmail.com>
 copyright:      2024-2026 Frederick de Ruiter, Ayoola Okuribido
 license:        AGPL-3.0-only
 license-file:   LICENSE
-build-type:     Custom
+build-type:     Simple
 extra-source-files:
     README.md
     cbits/include/*.h
-
-custom-setup
-  setup-depends:
-      base >= 4.16 && < 5
-    , Cabal
-    , process
 
 common common-options
   default-extensions:
@@ -27,10 +21,10 @@ common common-options
       NumericUnderscores
       CPP
   if flag(sandbox)
-    ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
+    ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wno-missing-home-modules -Wpartial-fields -Wredundant-constraints
     cpp-options: -DSANDBOX
   else
-    ghc-options: -Wall -Werror -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
+    ghc-options: -Wall -Werror -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wno-missing-home-modules -Wpartial-fields -Wredundant-constraints
   build-depends:
       base >= 4.16 && < 5
     , stm ==2.5.1.0
@@ -58,9 +52,32 @@ flag sandbox
   manual: True
   default: False
 
-library
+
+library sgrt-radar-math
   import: common-options
   exposed-modules:
+      Safety.Result
+      SignalProcessing.FMCW
+      SignalProcessing.Matrix
+      SignalProcessing.Regression
+      SignalProcessing.Kalman
+      Numeric.Kinematics
+      Numeric.Simple
+      Numeric.Units
+
+  hs-source-dirs:
+      src-math
+  build-depends:
+      base >= 4.16 && < 5
+    , binary ==0.8.9.1
+    , deepseq >=1.4.8.0 && <1.5
+
+library
+  import: common-options
+  build-depends:
+    sgrt-radar-math
+  exposed-modules:
+
       Control.Gating
       Control.Mesher
       Data.Config
@@ -79,20 +96,11 @@ library
       Hardware.Types
       Safety.Audit
       Safety.Crypto
-      Safety.Result
       Safety.Thread
       Safety.Token
       Safety.Verification
       Safety.Watchdog
       UI.Presentation
-      SignalProcessing.FMCW
-      SignalProcessing.Matrix
-      SignalProcessing.Regression
-      SignalProcessing.Kalman
-      
-      Numeric.Kinematics
-      Numeric.Simple
-      Numeric.Units
   other-modules:
       Paths_sgrt_radar_system
   hs-source-dirs:
@@ -130,6 +138,7 @@ executable sgrt-radar-system-exe
   extra-libraries: stdc++
   build-depends:
       sgrt-radar-system
+    , sgrt-radar-math
     , process
 
 executable sgrt-visualizer-exe
@@ -142,6 +151,7 @@ executable sgrt-visualizer-exe
   ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
   build-depends:
       sgrt-radar-system
+    , sgrt-radar-math
     , process
     , stm
     , binary
@@ -158,6 +168,7 @@ executable watchdog-fault
   ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
   build-depends:
       sgrt-radar-system
+    , sgrt-radar-math
     , base >= 4.16 && < 5
     , stm ==2.5.1.0
     , containers ==0.6.7
@@ -190,6 +201,7 @@ test-suite sgrt-radar-system-test
   ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
   build-depends:
       sgrt-radar-system
+    , sgrt-radar-math
     , hspec ==2.11.17
     , QuickCheck ==2.18.0.0
     , bytestring ==0.11.5.3
@@ -210,6 +222,7 @@ test-suite hardware-control-check
   ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
   build-depends:
       sgrt-radar-system
+    , sgrt-radar-math
     , base >= 4.16 && < 5
 
 test-suite hardware-consumer-check
@@ -223,6 +236,7 @@ test-suite hardware-consumer-check
   ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
   build-depends:
       sgrt-radar-system
+    , sgrt-radar-math
     , base >= 4.16 && < 5
     , bytestring ==0.11.5.3
     , binary ==0.8.9.1
@@ -239,6 +253,7 @@ test-suite kalman-verification
   ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
   build-depends:
       sgrt-radar-system
+    , sgrt-radar-math
     , base >= 4.16 && < 5
 
 test-suite audit-check
@@ -252,6 +267,7 @@ test-suite audit-check
   ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
   build-depends:
       sgrt-radar-system
+    , sgrt-radar-math
     , base >= 4.16 && < 5
     , unix >=2.7 && <2.9
     , template-haskell
@@ -267,6 +283,7 @@ test-suite clinical-hil-validation
   ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
   build-depends:
       sgrt-radar-system
+    , sgrt-radar-math
     , base >= 4.16 && < 5
     , stm ==2.5.1.0
     , containers ==0.6.7
@@ -283,6 +300,7 @@ test-suite gating-check
   ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
   build-depends:
       sgrt-radar-system
+    , sgrt-radar-math
     , base >= 4.16 && < 5
 
 test-suite watchdog-check
@@ -296,6 +314,7 @@ test-suite watchdog-check
   ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
   build-depends:
       sgrt-radar-system
+    , sgrt-radar-math
     , base >= 4.16 && < 5
     , process
     , directory
@@ -313,6 +332,7 @@ test-suite numeric-check
   ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
   build-depends:
       sgrt-radar-system
+    , sgrt-radar-math
     , base >= 4.16 && < 5
 
 test-suite sentinel-check
@@ -326,6 +346,7 @@ test-suite sentinel-check
   ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
   build-depends:
       sgrt-radar-system
+    , sgrt-radar-math
     , base >= 4.16 && < 5
 
 benchmark sgrt-radar-system-bench
@@ -339,6 +360,7 @@ benchmark sgrt-radar-system-bench
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       sgrt-radar-system
+    , sgrt-radar-math
     , criterion ==1.6.5.0
 
 benchmark kalman-bench
@@ -352,6 +374,7 @@ benchmark kalman-bench
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       sgrt-radar-system
+    , sgrt-radar-math
     , criterion ==1.6.5.0
 
 test-suite consumer-integration-check
@@ -365,6 +388,7 @@ test-suite consumer-integration-check
   ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
   build-depends:
       sgrt-radar-system
+    , sgrt-radar-math
     , base >= 4.16 && < 5
     , bytestring ==0.11.5.3
 
@@ -377,6 +401,7 @@ executable phantom-study
   ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
   build-depends:
       sgrt-radar-system
+    , sgrt-radar-math
     , base >= 4.16 && < 5
 
 executable safety-kpi
@@ -389,6 +414,7 @@ executable safety-kpi
     , bytestring ==0.11.5.3
     , process >= 1.6.18.0
     , sgrt-radar-system
+    , sgrt-radar-math
 
 executable check-baud
   import: common-options
@@ -427,6 +453,7 @@ executable test-parse-errors
       tools/qa
   build-depends:
       sgrt-radar-system
+    , sgrt-radar-math
     , base >= 4.16 && < 5
     , bytestring ==0.11.5.3
     , binary ==0.8.9.1
@@ -442,6 +469,7 @@ benchmark fmcw-bench
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       sgrt-radar-system
+    , sgrt-radar-math
     , criterion ==1.6.5.0
     , base >= 4.16 && < 5
 
@@ -485,6 +513,7 @@ test-suite audit-heartbeat-check
   ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
   build-depends:
       sgrt-radar-system
+    , sgrt-radar-math
     , base >= 4.16 && < 5
     , stm ==2.5.1.0
     , containers ==0.6.7
@@ -504,6 +533,7 @@ test-suite beam-hold-check
   ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
   build-depends:
       sgrt-radar-system
+    , sgrt-radar-math
     , base >= 4.16 && < 5
     , stm ==2.5.1.0
     , unordered-containers
@@ -521,6 +551,7 @@ test-suite latency-verification
   ghc-options: -threaded -rtsopts "-with-rtsopts=-N2 -qa -l"
   build-depends:
       sgrt-radar-system
+    , sgrt-radar-math
     , base >= 4.16 && < 5
     , containers
     , unordered-containers
