@@ -10,7 +10,7 @@ import Control.Concurrent.STM
 import Control.Exception (try, IOException)
 import System.Posix.IO (openFd, OpenMode(..), defaultFileFlags, OpenFileFlags(..), fdReadBuf)
 import System.Posix.Types (Fd, ByteCount)
-import Control.Monad (forever, void, when)
+import Control.Monad (forever, void)
 import qualified Data.Map.Strict as Map
 import Data.Binary (decode)
 import qualified Data.ByteString.Lazy as BL
@@ -19,7 +19,7 @@ import Foreign.Marshal.Alloc (allocaBytes, alloca)
 import Foreign.Ptr (castPtr, plusPtr, Ptr, FunPtr, nullPtr)
 import Foreign.ForeignPtr (ForeignPtr)
 import Data.Word (Word32)
-import Foreign.C.String (withCString, CString, peekCString, newCString)
+import Foreign.C.String (CString, peekCString, newCString)
 import Foreign.Storable (Storable(..))
 import Foreign.Marshal.Array (withArrayLen)
 
@@ -30,12 +30,12 @@ import SignalProcessing.Kalman (initKalman, KalmanConfig(..), KalmanState(..), p
 import Hardware.Consumer (consumerLoop)
 import FFI.RingBuffer.IO (attachRingBuffer)
 import FFI.RingBuffer.Types (RingBufferControl)
-import Data.I18n (loadTranslations, translateBeamState, translate)
+import Data.I18n (loadTranslations, translate)
 import qualified Data.Text as T
 import Data.Aeson (FromJSON(..), (.:), withObject)
 import qualified Data.Aeson as A
 import System.Exit (exitFailure)
-import Foreign.C.Types (CSize(..), CInt)
+import Foreign.C.Types (CInt)
 import FFI.Hud.Types (HudStateC(..), Point3DC(..))
 
 -- C FFI declarations
@@ -46,7 +46,6 @@ foreign import ccall "register_translate_callback" c_register_translate_callback
 
 foreign import ccall "start_cpp_hud_loop" c_start_cpp_hud_loop :: IO ()
 foreign import ccall "set_cpp_hud_state" c_set_cpp_hud_state :: Ptr HudStateC -> IO ()
-foreign import ccall "get_cpp_hud_language" c_get_cpp_hud_language :: CString -> CSize -> IO ()
 
 data HardwareManifest = HardwareManifest
     { manifestMountingOffset :: Double }
@@ -123,70 +122,47 @@ main = do
             return ()
 
     -- Start state pusher to C++
-    let syncLoop lastBackend lastFrontend = do
-            state <- readTVarIO systemState
-            
-            -- Get HUD active language
-            hudLangStr <- allocaBytes 16 $ \langBuf -> do
-                c_get_cpp_hud_language langBuf 16
-                peekCString langBuf
-            
-            let backendLang = activeLanguage state
-            let effectiveLang = if backendLang /= lastBackend then backendLang
-                                else if hudLangStr /= lastFrontend then hudLangStr
-                                else backendLang
-            
-            when (effectiveLang /= backendLang) $
-                atomically $ modifyTVar' systemState (\s -> s { activeLanguage = effectiveLang })
-                
-            let currentLangText = T.pack effectiveLang
-            let locBState = T.unpack $ translateBeamState translations currentLangText (beamState state)
-
-            let bStateEnum = beamState state
-            let bState = case bStateEnum of
-                    BeamOff -> 0 :: CInt
-                    BeamOn -> 1 :: CInt
-                    BeamHold -> 2 :: CInt
-            let displayInfo = getBeamDisplayInfo bStateEnum
-            let (bR, bG, bB) = bdiColorRGB displayInfo
-            let (pR, pG, pB) = pointCloudColorRGB
-            let tMin = indicatorScaleLimitMin
-            let tMax = indicatorScaleLimitMax
-            let cPts = map (\pt -> Point3DC (realToFrac $ px pt) (realToFrac $ py pt) (realToFrac $ pz pt)) (currentPoints state)
-            let rZ = case x (kalmanState state) of
-                    V3 pVal _ _ -> pVal
-                    _ -> 0
-            let calStat = case calibrationStatus state of
-                    CalibrationValid -> 1 :: CInt
-                    _ -> 0 :: CInt
-            withCString effectiveLang $ \c_lang -> 
-                withCString locBState $ \c_loc_bstate -> 
-                    withArrayLen cPts $ \numPts ptrPts -> 
-                        alloca $ \ptrStruct -> do
-                            let hudStateC = HudStateC
-                                    { hscBeamState = bState
-                                    , hscPoints = ptrPts
-                                    , hscNumPoints = fromIntegral numPts
-                                    , hscRespZ = realToFrac rZ
-                                    , hscAudioAlertEnabled = if audioAlertEnabled state then 1 else 0
-                                    , hscActiveLanguage = c_lang
-                                    , hscLocalizedBeamState = c_loc_bstate
-                                    , hscCalibrationStatus = calStat
-                                    , hscBeamColorR = realToFrac bR
-                                    , hscBeamColorG = realToFrac bG
-                                    , hscBeamColorB = realToFrac bB
-                                    , hscTraceScaleMin = realToFrac tMin
-                                    , hscTraceScaleMax = realToFrac tMax
-                                    , hscPointColorR = realToFrac pR
-                                    , hscPointColorG = realToFrac pG
-                                    , hscPointColorB = realToFrac pB
-                                    }
-                            poke ptrStruct hudStateC
-                            c_set_cpp_hud_state ptrStruct
-            threadDelay 33333 -- ~30 fps update to C++
-            syncLoop effectiveLang effectiveLang
-
-    void $ forkIO $ syncLoop "" ""
+    void $ forkIO $ forever $ do
+        state <- readTVarIO systemState
+        
+        let bStateEnum = beamState state
+        let bState = case bStateEnum of
+                BeamOff -> 0 :: CInt
+                BeamOn -> 1 :: CInt
+                BeamHold -> 2 :: CInt
+        let displayInfo = getBeamDisplayInfo bStateEnum
+        let (bR, bG, bB) = bdiColorRGB displayInfo
+        let (pR, pG, pB) = pointCloudColorRGB
+        let tMin = indicatorScaleLimitMin
+        let tMax = indicatorScaleLimitMax
+        let cPts = map (\pt -> Point3DC (realToFrac $ px pt) (realToFrac $ py pt) (realToFrac $ pz pt)) (currentPoints state)
+        let rZ = case x (kalmanState state) of
+                V3 pVal _ _ -> pVal
+                _ -> 0
+        let calStat = case calibrationStatus state of
+                CalibrationValid -> 1 :: CInt
+                _ -> 0 :: CInt
+        withArrayLen cPts $ \numPts ptrPts -> 
+            alloca $ \ptrStruct -> do
+                let hudStateC = HudStateC
+                        { hscBeamState = bState
+                        , hscPoints = ptrPts
+                        , hscNumPoints = fromIntegral numPts
+                        , hscRespZ = realToFrac rZ
+                        , hscAudioAlertEnabled = if audioAlertEnabled state then 1 else 0
+                        , hscCalibrationStatus = calStat
+                        , hscBeamColorR = realToFrac bR
+                        , hscBeamColorG = realToFrac bG
+                        , hscBeamColorB = realToFrac bB
+                        , hscTraceScaleMin = realToFrac tMin
+                        , hscTraceScaleMax = realToFrac tMax
+                        , hscPointColorR = realToFrac pR
+                        , hscPointColorG = realToFrac pG
+                        , hscPointColorB = realToFrac pB
+                        }
+                poke ptrStruct hudStateC
+                c_set_cpp_hud_state ptrStruct
+        threadDelay 33333 -- ~30 fps update to C++
 
     -- 3. C++ HUD Loop (Blocks Main Thread)
     c_start_cpp_hud_loop

@@ -33,7 +33,7 @@ def main():
     
     # Append or create ghc-options
     with open(cabal_local, 'a') as f:
-        f.write(f"\npackage *\n  ghc-options: {ghc_options}\n")
+        f.write(f"\npackage sgrt-radar-system\n  ghc-options: {ghc_options}\n")
 
     print(f"Prototype only run: {prototype_only}")
     print(f"Appended ghc-options: {ghc_options} to {cabal_local}")
