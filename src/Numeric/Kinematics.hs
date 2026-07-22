@@ -85,34 +85,34 @@ data Coordinate = Coordinate
 pattern Vector3D :: Double -> Double -> Double -> Coordinate
 pattern Vector3D x y z <- Coordinate x y z _ _
   where Vector3D x y z = Coordinate x y z 0.0 0.0
-{-# COMPLETE Vector3D #-}
+{-# COMPLETE Vector3D :: Coordinate #-}
 
 translate :: Coordinate -> Coordinate -> Coordinate
 translate (Coordinate x1 y1 z1 i1 c1) (Coordinate x2 y2 z2 _ _) =
     Coordinate (x1 + x2) (y1 + y2) (z1 + z2) i1 c1
 
 distance :: Coordinate -> Coordinate -> Double
-distance (Vector3D x1 y1 z1) (Vector3D x2 y2 z2) =
+distance (Coordinate x1 y1 z1 _ _) (Coordinate x2 y2 z2 _ _) =
     sqrt ((x1 - x2)**2 + (y1 - y2)**2 + (z1 - z2)**2)
 
 magnitude :: Coordinate -> Double
-magnitude (Vector3D x y z) = sqrt (x*x + y*y + z*z)
+magnitude (Coordinate x y z _ _) = sqrt (x*x + y*y + z*z)
 
 normalize :: Coordinate -> Coordinate
-normalize v@(Vector3D x y z) =
+normalize v@(Coordinate x y z _ _) =
     let m = magnitude v
     in if m == 0 then Vector3D 0 0 0 else Vector3D (x/m) (y/m) (z/m)
 
 dot :: Coordinate -> Coordinate -> Double
-dot (Vector3D x1 y1 z1) (Vector3D x2 y2 z2) = x1*x2 + y1*y2 + z1*z2
+dot (Coordinate x1 y1 z1 _ _) (Coordinate x2 y2 z2 _ _) = x1*x2 + y1*y2 + z1*z2
 
 sub :: Coordinate -> Coordinate -> Coordinate
-sub (Vector3D x1 y1 z1) (Vector3D x2 y2 z2) = Vector3D (x1-x2) (y1-y2) (z1-z2)
+sub (Coordinate x1 y1 z1 _ _) (Coordinate x2 y2 z2 _ _) = Vector3D (x1-x2) (y1-y2) (z1-z2)
 
 angleBetween :: Coordinate -> Coordinate -> Double
 angleBetween v1 v2 =
-    let (Vector3D n1x n1y n1z) = normalize v1
-        (Vector3D n2x n2y n2z) = normalize v2
+    let (Coordinate n1x n1y n1z _ _) = normalize v1
+        (Coordinate n2x n2y n2z _ _) = normalize v2
         d = n1x*n2x + n1y*n2y + n1z*n2z
         d' = max (-1.0) (min 1.0 d)
     in (acos d') * 180.0 / pi
