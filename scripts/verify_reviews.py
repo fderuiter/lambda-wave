@@ -19,8 +19,8 @@ def main():
         sys.exit(0)
         
     event_name = os.environ.get('GITHUB_EVENT_NAME')
-    if event_name != 'pull_request':
-        print(f"Event is '{event_name}', not 'pull_request'. Skipping review verification.")
+    if event_name not in ['pull_request', 'pull_request_review']:
+        print(f"Event is '{event_name}', not 'pull_request' or 'pull_request_review'. Skipping review verification.")
         sys.exit(0)
 
     pr_number = None
