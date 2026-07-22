@@ -15,9 +15,7 @@ main = do
         "Kalman"
         [ bench "predict_update_cycle" $
             nf
-              ( \st ->
-                  update meas config (predict dt config st)
-              )
+              (update meas config . predict dt config)
               initialState
         ]
     ]

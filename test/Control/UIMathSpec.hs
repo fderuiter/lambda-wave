@@ -11,8 +11,8 @@ import Numeric.Kinematics
     Millimeters (..),
     angleBetween,
     mmToMeters,
-    pattern Vector3D,
     sub,
+    pattern Vector3D,
   )
 import Test.Hspec
 import UI.Presentation (shouldTriggerAudioAlert)
@@ -73,7 +73,6 @@ spec = describe "Control.UI.Math" $ do
       -- Assuming Horizontal FOV > 50 degrees (half > 25), it is visible.
       -- 24.1 < 25.
       angle `shouldSatisfy` (< 35.0) -- Safe margin
-
   describe "Audio Alert Logic (shouldTriggerAudioAlert)" $ do
     it "beeps when transitioning from BeamHold to BeamOff with alerts enabled" $ do
       shouldTriggerAudioAlert True BeamHold BeamOff `shouldBe` True

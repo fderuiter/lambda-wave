@@ -2,7 +2,7 @@ module Control.Combinators
   ( retryEither,
     retryAction,
     paceMapM_,
-    paceWhen
+    paceWhen,
   )
 where
 
@@ -27,7 +27,7 @@ retryEither attempts delayMcs defaultErr action = go attempts
 paceMapM_ :: Int -> (a -> IO ()) -> [a] -> IO ()
 paceMapM_ _ _ [] = return ()
 paceMapM_ _ f [x] = f x
-paceMapM_ delayMcs f (x:xs) = do
+paceMapM_ delayMcs f (x : xs) = do
   f x
   threadDelay delayMcs
   paceMapM_ delayMcs f xs

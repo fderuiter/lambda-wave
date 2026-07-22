@@ -83,14 +83,14 @@ scaleM s = map (map (* s))
 zipWithStrict :: (a -> b -> c) -> [a] -> [b] -> [c]
 zipWithStrict f = go []
   where
-  go !acc [] _ = reverse acc
-  go !acc _ [] = reverse acc
-  go !acc (a:as) (b:bs) = go (f a b : acc) as bs
+    go !acc [] _ = reverse acc
+    go !acc _ [] = reverse acc
+    go !acc (a : as) (b : bs) = go (f a b : acc) as bs
 
-addV :: Num a => [a] -> [a] -> [a]
+addV :: (Num a) => [a] -> [a] -> [a]
 addV = zipWithStrict (+)
 
-subV :: Num a => [a] -> [a] -> [a]
+subV :: (Num a) => [a] -> [a] -> [a]
 subV = zipWithStrict (-)
 
 scaleV :: (Num a) => a -> [a] -> [a]

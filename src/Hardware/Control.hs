@@ -22,6 +22,7 @@ where
 import Control.Combinators (paceMapM_, retryEither)
 import Control.Concurrent.STM (TVar)
 import Control.Exception (IOException, bracket, try)
+import Control.Monad (unless)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as BC
 import Data.Char (isSpace)
@@ -106,17 +107,19 @@ configureSensor configPath portPath = do
                           Left (ConfigurationFailed err) -> ioError (userError err)
                           Left err -> ioError (userError $ show err)
                           Right () -> do
-                            paceMapM_ 10000 (\cmd -> do
-                                let packet = BC.pack (cmd ++ "\n")
-                                bytesSent <- fdWrite fd packet
-                                if fromIntegral bytesSent < BC.length packet
-                                  then ioError (userError "Failed to send")
-                                  else do
-                                    ackResult <- readUntilDone fd B.empty
-                                    if not ackResult
-                                      then ioError (userError $ "Handshake failed on command: " ++ cmd)
-                                      else return ()
-                              ) commands
+                            paceMapM_
+                              10000
+                              ( \cmd -> do
+                                  let packet = BC.pack (cmd ++ "\n")
+                                  bytesSent <- fdWrite fd packet
+                                  if fromIntegral bytesSent < BC.length packet
+                                    then ioError (userError "Failed to send")
+                                    else do
+                                      ackResult <- readUntilDone fd B.empty
+                                      unless ackResult $
+                                        ioError (userError $ "Handshake failed on command: " ++ cmd)
+                              )
+                              commands
                 )
           case result of
             Left ex -> return (Left $ ConfigurationFailed $ show (ex :: IOException))

@@ -68,4 +68,4 @@ main = do
 
   if avgMS < 15.0
     then putStrLn "PASS: Latency < 15ms"
-    else error $ "FAIL: Latency " ++ show avgMS ++ "ms > 15ms"
+    else ioError . userError $ "FAIL: Latency " ++ show avgMS ++ "ms > 15ms"

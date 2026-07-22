@@ -46,16 +46,20 @@ solveRegression constructor mkRow x y
 
 -- | Perform the Regression
 solveBiQuadratic :: [Double] -> [Double] -> Maybe BiQuadratic
-solveBiQuadratic = solveRegression
-  (\ lst -> case lst of [p0, p1, p2, p3, p4] -> Just (BiQuadratic p0 p1 p2 p3 p4); _ -> Nothing)
-  (\ val -> let v2 = val * val in [1, val, v2, v2 * val, v2 * v2])
+solveBiQuadratic = solveRegression mkBiQuadratic (\val -> let v2 = val * val in [1, val, v2, v2 * val, v2 * v2])
+  where
+    mkBiQuadratic [p0, p1, p2, p3, p4] = Just (BiQuadratic p0 p1 p2 p3 p4)
+    mkBiQuadratic _ = Nothing
+
 -- | Perform the Regression for "Strict" Bi-Quadratic
 -- y = a*x^4 + b*x^2 + c
 -- Cols: [1, x^2, x^4]
 solveStrictBiQuadratic :: [Double] -> [Double] -> Maybe StrictBiQuadratic
-solveStrictBiQuadratic = solveRegression
-  (\ lst -> case lst of [k0, k2, k4] -> Just (StrictBiQuadratic k0 k2 k4); _ -> Nothing)
-  (\ val -> let v2 = val * val in [1, v2, v2 * v2])
+solveStrictBiQuadratic = solveRegression mkStrictBiQuadratic (\val -> let v2 = val * val in [1, v2, v2 * v2])
+  where
+    mkStrictBiQuadratic [k0, k2, k4] = Just (StrictBiQuadratic k0 k2 k4)
+    mkStrictBiQuadratic _ = Nothing
+
 -- | Perform the Regression for "Strict" Bi-Quadratic
 class Predictable a where
   -- | Predicts the y value for a given x using the polynomial model.

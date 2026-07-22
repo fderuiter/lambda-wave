@@ -37,7 +37,7 @@ import System.Posix.Process (executeFile, forkProcess, getProcessID)
 import System.Posix.Types (Fd, ProcessID)
 import System.Process (callCommand)
 
-data HardwareManifest = HardwareManifest
+newtype HardwareManifest = HardwareManifest
   {manifestMountingOffset :: Double}
   deriving (Show)
 
@@ -176,7 +176,7 @@ runMain = do
             else putStrLn $ "FATAL: Failed to create ring buffer: " ++ show err
           exitFailure
       )
-      (\rb -> return rb)
+      return
       rbRes
 
   -- 1.5 Setup GPIO
@@ -305,9 +305,7 @@ writeBsToFd fd bs = unsafeUseAsCStringLen bs $ \(ptr, len) -> do
   let loop remain curPtr = do
         wrote <- fdWriteBuf fd (castPtr curPtr) (fromIntegral remain)
         let wroteInt = fromIntegral wrote
-        if wroteInt < remain
-          then loop (remain - wroteInt) (curPtr `plusPtr` wroteInt)
-          else return ()
+        Control.Monad.when (wroteInt < remain) $ loop (remain - wroteInt) (curPtr `plusPtr` wroteInt)
   loop len ptr
 
 audioWorkerLoop :: TBQueue AudioCommand -> IO ()

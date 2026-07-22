@@ -6,6 +6,7 @@ import Control.Monad (unless)
 import qualified Data.Binary.Put as P
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as BL
+import Data.Maybe (isNothing)
 import Data.Types
 import Foreign.ForeignPtr
 import Foreign.Storable
@@ -81,7 +82,7 @@ testFindsMagicWord = do
     length frames == 1
       && pointCheck
       && consumed == (BL.length garbage + BL.length payload)
-      && err == Nothing
+      && isNothing err
 
 testPartialFrames :: IO ()
 testPartialFrames = do
@@ -102,7 +103,7 @@ testPartialFrames = do
   assert "Handles partial frames" $
     length frames == 1
       && consumed == BL.length frame
-      && err == Nothing
+      && isNothing err
 
 testPaddedTLVs :: IO ()
 testPaddedTLVs = do
@@ -130,7 +131,7 @@ testPaddedTLVs = do
 
   assert "Handles Padded TLVs" $
     length frames == 2
-      && err == Nothing
+      && isNothing err
       && consumed == BL.length payload2
 
 testFuzzGarbage :: IO ()
@@ -143,7 +144,7 @@ testFuzzGarbage = do
       let input = BL.fromStrict (B.pack bytes)
           (_, consumed, err) = parseStream 0.0 input
       if BL.null input
-        then unless (consumed == 0 && err == Nothing) $ do
+        then unless (consumed == 0 && isNothing err) $ do
           putStrLn "FAIL: Empty input consumed bytes or returned error"
           exitFailure
         else unless (consumed >= 0) $ do
@@ -201,7 +202,7 @@ testUnknownTLVs = do
         _ -> False
 
   assert "Skips Unknown TLVs" $
-    err == Nothing
+    isNothing err
       && length frames == 1
       && pointCheck
       && consumed == 80
@@ -224,4 +225,4 @@ testDoSAttack = do
 
   assert "Detects DoS Attack" $
     err == Just DoSAttackDetected
-      && length frames == 0
+      && null frames

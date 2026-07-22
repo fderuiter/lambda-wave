@@ -1,5 +1,4 @@
 {-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE PatternSynonyms #-}
 
 module Main (main) where
 

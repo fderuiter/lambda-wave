@@ -50,7 +50,7 @@ foreign import ccall "start_cpp_hud_loop" c_start_cpp_hud_loop :: IO ()
 
 foreign import ccall "set_cpp_hud_state" c_set_cpp_hud_state :: Ptr HudStateC -> IO ()
 
-data HardwareManifest = HardwareManifest
+newtype HardwareManifest = HardwareManifest
   {manifestMountingOffset :: Double}
   deriving (Show)
 

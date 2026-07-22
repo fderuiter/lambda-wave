@@ -125,7 +125,7 @@ angleBetween v1 v2 =
       (Coordinate n2x n2y n2z _ _) = normalize v2
       d = n1x * n2x + n1y * n2y + n1z * n2z
       d' = max (-1.0) (min 1.0 d)
-   in (acos d') * 180.0 / pi
+   in acos d' * 180.0 / pi
 
 newtype Distance = Distance Double deriving (Show, Eq, Ord)
 
@@ -251,6 +251,7 @@ instance KinematicMath Distance where
   (Distance a) |+| (Distance b) = clampNonNegative Distance (a + b)
   (Distance a) |-| (Distance b) = clampNonNegative Distance (a - b)
   kabs (Distance a) = Distance (abs a)
+
 instance KinematicMath Velocity where
   (Velocity a) |+| (Velocity b) = clampV (a + b)
   (Velocity a) |-| (Velocity b) = clampV (a - b)
@@ -270,6 +271,7 @@ instance KinematicMath Frequency where
   (Frequency a) |+| (Frequency b) = clampNonNegative Frequency (a + b)
   (Frequency a) |-| (Frequency b) = clampNonNegative Frequency (a - b)
   kabs (Frequency a) = Frequency (abs a)
+
 class KinematicMultiply a b c where
   (|*|) :: a -> b -> SafetyResult c
 
@@ -300,6 +302,7 @@ instance KinematicMultiply Velocity Time Distance where
 
 instance KinematicMultiply Time Velocity Distance where
   (Time t) |*| (Velocity v) = clampNonNegative Distance (v * t)
+
 instance KinematicMultiply Acceleration Time Velocity where
   (Acceleration a) |*| (Time t) = clampV (a * t)
 
@@ -325,16 +328,17 @@ instance KinematicMultiply Distance Frequency Velocity where
   (Distance d) |*| (Frequency f) = clampV (d * f)
 
 instance KinematicDivide Velocity Distance Frequency where
-  (Velocity v) |/| (Distance d) = 
-      if abs d < 1e-12 
+  (Velocity v) |/| (Distance d) =
+    if abs d < 1e-12
       then DivByZeroSafe (Frequency 1000.0)
       else clampNonNegative Frequency (v / d)
 
 instance KinematicDivide Velocity Frequency Distance where
-  (Velocity v) |/| (Frequency f) = 
-      if abs f < 1e-12 
+  (Velocity v) |/| (Frequency f) =
+    if abs f < 1e-12
       then DivByZeroSafe (Distance 1000.0)
       else clampNonNegative Distance (v / f)
+
 class ScalarMultiply a where
   (|*) :: Double -> a -> SafetyResult a
   (*|) :: a -> Double -> SafetyResult a
@@ -342,6 +346,7 @@ class ScalarMultiply a where
 instance ScalarMultiply Distance where
   s |* (Distance d) = clampNonNegative Distance (s * d)
   (Distance d) *| s = clampNonNegative Distance (s * d)
+
 instance ScalarMultiply Velocity where
   s |* (Velocity v) = clampV (s * v)
   (Velocity v) *| s = clampV (s * v)

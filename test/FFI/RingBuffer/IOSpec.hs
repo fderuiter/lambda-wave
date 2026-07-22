@@ -26,7 +26,7 @@ import Test.Hspec
 
 createDummyState :: IO (TVar SystemState)
 createDummyState = do
-  auditQ <- newTBQueueIO 10000
+  auditQ <- newTBQueueIO 10_000
   audioQ <- newTBQueueIO 100
   let kState = initKalman 0.0 (KalmanConfig 1.0 1.0)
   newTVarIO $

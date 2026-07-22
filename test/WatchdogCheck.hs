@@ -4,18 +4,19 @@ module Main (main) where
 import Control.Exception (SomeException, try)
 import Control.Monad (unless, when)
 import qualified Data.ByteString as B
+import Data.Char (isDigit)
 import Data.List (isInfixOf, isPrefixOf)
 import Data.Maybe (mapMaybe)
 import Numeric.Kinematics (Milliseconds (..), Nanoseconds (..), nsToMs)
 import Safety.Crypto (decryptLog)
 import System.Directory (doesFileExist, removeFile)
-import System.Exit (ExitCode (..), exitWith)
+import System.Exit (ExitCode (..), exitSuccess, exitWith)
 import System.Process (readProcessWithExitCode)
 import Text.Read (readMaybe)
 
 -- Extract all digits from a string prefix
 takeDigits :: String -> String
-takeDigits = takeWhile (\c -> c >= '0' && c <= '9')
+takeDigits = takeWhile isDigit
 
 findPrefix :: String -> [String] -> Maybe String
 findPrefix _ [] = Nothing
@@ -147,4 +148,4 @@ main = do
   writeFile "safety_audit_report.txt" report
 
   putStrLn "PASS: Daemon successfully tripped on timeout within constraints."
-  exitWith ExitSuccess
+  exitSuccess

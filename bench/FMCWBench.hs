@@ -8,11 +8,9 @@ main :: IO ()
 main = do
   let czt_params = CZTParams 0 500 8 1000
   let n_samples = 1000 :: Int
-  let x = [(fromIntegral n :+ (fromIntegral n * 0.5)) | n <- [0 .. n_samples - 1]]
-  let p = [(fromIntegral n * 0.1 :+ (fromIntegral n * 0.2)) | n <- [0 .. n_samples - 1]]
-  let mti_config = case mkMTIConfig 0.05 0.95 1.0 of
-        Right cfg -> cfg
-        Left err -> error err
+  let x = [fromIntegral n :+ (fromIntegral n * 0.5) | n <- [0 .. n_samples - 1]]
+  let p = [fromIntegral n * 0.1 :+ (fromIntegral n * 0.2) | n <- [0 .. n_samples - 1]]
+  let Right mti_config = mkMTIConfig 0.05 0.95 1.0
 
   defaultMain
     [ bgroup

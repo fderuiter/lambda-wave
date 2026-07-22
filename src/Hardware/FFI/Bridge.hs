@@ -84,13 +84,15 @@ executeBridgeCallWith auditFn action = do
   let perform = do
         (res, val) <- action
         auditFn res
-        return (res, val)
+        return (res, Just val)
       shouldRetry (res, _) = case res of
         Common.TransientError _ -> True
         _ -> False
-  (finalRes, finalVal) <- retryAction 3 10000 shouldRetry (Common.Failure "Max retries exceeded", undefined) perform
+  (finalRes, finalValMb) <- retryAction 3 10000 shouldRetry (Common.Failure "Max retries exceeded", Nothing) perform
   case finalRes of
-    Common.Success -> return $ MustHandle (Right finalVal)
+    Common.Success -> case finalValMb of
+      Just val -> return $ MustHandle (Right val)
+      Nothing -> return $ MustHandle (Left (UnknownError "Unexpected missing value"))
     Common.SimulationMode -> return $ MustHandle (Left SimulationModeActive)
     Common.SystemError err -> return $ MustHandle (Left (SystemError err))
     Common.DriverError err -> return $ MustHandle (Left (DriverError err))
