@@ -1,236 +1,252 @@
 {-# LANGUAGE CPP #-}
+
 module Main (main) where
 
 import Control.Concurrent (setNumCapabilities, threadDelay)
-import Safety.Thread (forkSafetyThread, forkSafetyThreadOS, ThreadShutdownAction(..))
 import Control.Concurrent.STM
-import Control.Exception (try, IOException)
-import System.Environment (lookupEnv, getArgs, getExecutablePath)
-import Data.Maybe (fromMaybe)
-import System.Posix.IO (openFd, OpenMode(..), defaultFileFlags, OpenFileFlags(..), fdWriteBuf, closeFd)
-import System.Posix.Files (getFdStatus, isCharacterDevice, createNamedPipe, unionFileModes, ownerReadMode, ownerWriteMode)
-import System.Posix.Types (Fd, ProcessID)
-import System.Posix.Process (forkProcess, executeFile, getProcessID)
-import System.Process (callCommand)
+import Control.Exception (IOException, try)
 import Control.Monad (forever, unless)
-import qualified Data.Map.Strict as Map
-import System.Exit (exitFailure)
+import Data.Aeson (FromJSON (..), decode, withObject, (.:))
 import Data.Binary (encode)
-import qualified Data.ByteString.Lazy as BL
 import qualified Data.ByteString as B
+import qualified Data.ByteString.Lazy as BL
 import Data.ByteString.Unsafe (unsafeUseAsCStringLen)
-import Foreign.Ptr (castPtr, plusPtr)
-import Data.Word (Word32)
-
-import Data.Types
 import Data.Config (targetHeight)
-import SignalProcessing.Kalman (initKalman, KalmanConfig(..))
+import Data.I18n (loadTranslations)
+import qualified Data.Map.Strict as Map
+import Data.Maybe (fromMaybe)
+import Data.Time.HighRes (getMonotonicTimeNS)
+import Data.Types
+import Data.Word (Word32)
 import qualified FFI.RingBuffer.IO as RingBuffer
+import Foreign.Ptr (castPtr, plusPtr)
+import Hardware.Consumer (consumerLoop)
 import Hardware.Control (configureRawSerial, configureSensorWithRetry, initGpio)
 import Hardware.FFI.Bridge (handleHardwareResponse)
-import Hardware.Types (HardwareError(..))
-import Hardware.Consumer (consumerLoop)
-import Safety.Watchdog (watchdogLoop, runSafetyDaemon)
+import Hardware.Types (HardwareError (..))
 import Safety.Audit
-import Data.Time.HighRes (getMonotonicTimeNS)
-import Data.I18n (loadTranslations)
-import Data.Aeson (decode, FromJSON(..), (.:), withObject)
+import Safety.Thread (ThreadShutdownAction (..), forkSafetyThread, forkSafetyThreadOS)
 import Safety.Verification (assertSafetyChecks)
+import Safety.Watchdog (runSafetyDaemon, watchdogLoop)
+import SignalProcessing.Kalman (KalmanConfig (..), initKalman)
+import System.Environment (getArgs, getExecutablePath, lookupEnv)
+import System.Exit (exitFailure)
+import System.Posix.Files (createNamedPipe, getFdStatus, isCharacterDevice, ownerReadMode, ownerWriteMode, unionFileModes)
+import System.Posix.IO (OpenFileFlags (..), OpenMode (..), closeFd, defaultFileFlags, fdWriteBuf, openFd)
+import System.Posix.Process (executeFile, forkProcess, getProcessID)
+import System.Posix.Types (Fd, ProcessID)
+import System.Process (callCommand)
 
 data HardwareManifest = HardwareManifest
-    { manifestMountingOffset :: Double }
-    deriving (Show)
+  {manifestMountingOffset :: Double}
+  deriving (Show)
 
 instance FromJSON HardwareManifest where
-    parseJSON = withObject "HardwareManifest" $ \obj -> HardwareManifest
-        <$> obj .: "mounting_offset_mm"
+  parseJSON = withObject "HardwareManifest" $ \obj ->
+    HardwareManifest
+      <$> obj .: "mounting_offset_mm"
+
+#if MIN_VERSION_unix(2,8,0)
+openPortFd :: FilePath -> IO Fd
+openPortFd path = openFd path ReadWrite defaultFileFlags { nonBlock = False, creat = Nothing }
+
+openTelemetryWritePipe :: FilePath -> IO Fd
+openTelemetryWritePipe path = openFd path WriteOnly defaultFileFlags { nonBlock = True, creat = Nothing }
+#else
+openPortFd :: FilePath -> IO Fd
+openPortFd path = openFd path ReadWrite Nothing defaultFileFlags { nonBlock = False }
+
+openTelemetryWritePipe :: FilePath -> IO Fd
+openTelemetryWritePipe path = openFd path WriteOnly Nothing defaultFileFlags { nonBlock = True }
+#endif
 
 main :: IO ()
 main = do
-    let _ = assertSafetyChecks
-    args <- getArgs
-    case args of
-        ["--safety-daemon", parentPidStr] -> do
-            let parentPid = read parentPidStr :: ProcessID
-            runSafetyDaemon parentPid
-        _ -> runMain
+  let _ = assertSafetyChecks
+  args <- getArgs
+  case args of
+    ["--safety-daemon", parentPidStr] -> do
+      let parentPid = read parentPidStr :: ProcessID
+      runSafetyDaemon parentPid
+    _ -> runMain
 
 runMain :: IO ()
 runMain = do
-    -- lock capabilities to specific cores
-    setNumCapabilities 2
-    putStrLn "Initializing Lambda-Wave System..."
+  -- lock capabilities to specific cores
+  setNumCapabilities 2
+  putStrLn "Initializing Lambda-Wave System..."
 
-    startTime <- getMonotonicTimeNS
+  startTime <- getMonotonicTimeNS
 
-    translations <- loadTranslations "config/locales.json"
+  translations <- loadTranslations "config/locales.json"
 
-    let kConfig = KalmanConfig { procNoise = 10.0, measNoise = 2.0 }
-    let initialKState = initKalman targetHeight kConfig
+  let kConfig = KalmanConfig {procNoise = 10.0, measNoise = 2.0}
+  let initialKState = initKalman targetHeight kConfig
 
-    -- Initialize High-Performance Audit Queue
-    auditQ <- newTBQueueIO 1000
-    audioQ <- newTBQueueIO 10
+  -- Initialize High-Performance Audit Queue
+  auditQ <- newTBQueueIO 1000
+  audioQ <- newTBQueueIO 10
 
-    audioAlertsStr <- fromMaybe "True" <$> lookupEnv "SGRT_AUDIO_ALERTS"
-    let audioAlerts = audioAlertsStr == "True" || audioAlertsStr == "true" || audioAlertsStr == "1"
+  audioAlertsStr <- fromMaybe "True" <$> lookupEnv "SGRT_AUDIO_ALERTS"
+  let audioAlerts = audioAlertsStr == "True" || audioAlertsStr == "true" || audioAlertsStr == "1"
 
-    volStr <- fromMaybe "1.0" <$> lookupEnv "SGRT_ALARM_VOLUME"
-    freqStr <- fromMaybe "440.0" <$> lookupEnv "SGRT_ALARM_FREQ"
-    let vol = read volStr :: Double
-    let freq = read freqStr :: Double
+  volStr <- fromMaybe "1.0" <$> lookupEnv "SGRT_ALARM_VOLUME"
+  freqStr <- fromMaybe "440.0" <$> lookupEnv "SGRT_ALARM_FREQ"
+  let vol = read volStr :: Double
+  let freq = read freqStr :: Double
 
-    let initialState = SystemState
-          { currentPoints = []
-          , beamState = BeamOff
-          , lastFrameTime = startTime
-          , sequenceNumber = 0
-          , isocenter = Point3D 0 0 0 0 0
-          , threadHeartbeats = Map.empty
-          , kalmanState = initialKState
-          , mtiState = []
-          , auditQueue = auditQ
-          , audioQueue = audioQ
-          , audioAlertEnabled = audioAlerts
-          , audioVolume = vol
-          , audioFrequency = freq
-          , activeLanguage = "en"
-          , localizedBeamState = "BEAM OFF"
-          , calibrationStatus = CalibrationUnverified
-          , displayPreset = StandardPreset
+  let initialState =
+        SystemState
+          { currentPoints = [],
+            beamState = BeamOff,
+            lastFrameTime = startTime,
+            sequenceNumber = 0,
+            isocenter = Point3D 0 0 0 0 0,
+            threadHeartbeats = Map.empty,
+            kalmanState = initialKState,
+            mtiState = [],
+            auditQueue = auditQ,
+            audioQueue = audioQ,
+            audioAlertEnabled = audioAlerts,
+            audioVolume = vol,
+            audioFrequency = freq,
+            activeLanguage = "en",
+            localizedBeamState = "BEAM OFF",
+            calibrationStatus = CalibrationUnverified,
+            displayPreset = StandardPreset
           }
 
-    systemState <- newTVarIO initialState
+  systemState <- newTVarIO initialState
 
-    -- Get Configuration from Environment
-    sensorPort <- fromMaybe "/dev/ttyUSB0" <$> lookupEnv "SGRT_SENSOR_PORT"
-    cliPort    <- fromMaybe "/dev/ttyUSB1" <$> lookupEnv "SGRT_CLI_PORT"
+  -- Get Configuration from Environment
+  sensorPort <- fromMaybe "/dev/ttyUSB0" <$> lookupEnv "SGRT_SENSOR_PORT"
+  cliPort <- fromMaybe "/dev/ttyUSB1" <$> lookupEnv "SGRT_CLI_PORT"
 
-    putStrLn $ "Configuration: Sensor=" ++ sensorPort ++ ", CLI=" ++ cliPort
+  putStrLn $ "Configuration: Sensor=" ++ sensorPort ++ ", CLI=" ++ cliPort
 
-    -- Security Validation: Ensure the ports are character devices
-    let openAndValidatePort name path = do
-            let flags = defaultFileFlags { nonBlock = False }
-#if MIN_VERSION_unix(2,8,0)
-            let flags' = flags { creat = Nothing }
-            fdRes <- try (openFd path ReadWrite flags') :: IO (Either IOException Fd)
-#else
-            fdRes <- try (openFd path ReadWrite Nothing flags) :: IO (Either IOException Fd)
-#endif
-            case fdRes of
-                Left err -> do
-                    putStrLn $ "FATAL: Could not access " ++ name ++ " " ++ path ++ ": " ++ show err
-                    exitFailure
-                Right f -> do
-                    fStatus <- getFdStatus f
-                    unless (isCharacterDevice fStatus) $ do
-                        putStrLn $ "FATAL: Security Violation - " ++ path ++ " (" ++ name ++ ") is not a character device."
-                        exitFailure
-                    return f
-
-    fd <- openAndValidatePort "sensor port" sensorPort
-    -- We don't open the cliPort here, we let configureSensor do it securely to avoid FD leaks
-    -- _cliFd <- openAndValidatePort "CLI port" cliPort
-
-    -- Parse Hardware Manifest for Mounting Offset
-    manifestBytes <- BL.readFile "config/hardware_manifest.json"
-    mountingOffset <- case decode manifestBytes of
-        Just m -> return (manifestMountingOffset m)
-        Nothing -> do
-            putStrLn "FATAL: Failed to parse protected configuration file: hardware_manifest.json"
+  -- Security Validation: Ensure the ports are character devices
+  let openAndValidatePort name path = do
+        fdRes <- try (openPortFd path) :: IO (Either IOException Fd)
+        case fdRes of
+          Left err -> do
+            putStrLn $ "FATAL: Could not access " ++ name ++ " " ++ path ++ ": " ++ show err
             exitFailure
+          Right f -> do
+            fStatus <- getFdStatus f
+            unless (isCharacterDevice fStatus) $ do
+              putStrLn $ "FATAL: Security Violation - " ++ path ++ " (" ++ name ++ ") is not a character device."
+              exitFailure
+            return f
 
-    putStrLn $ "Loaded physical mounting offset: " ++ show mountingOffset ++ " mm"
+  fd <- openAndValidatePort "sensor port" sensorPort
+  -- We don't open the cliPort here, we let configureSensor do it securely to avoid FD leaks
+  -- _cliFd <- openAndValidatePort "CLI port" cliPort
 
-    -- Sensor Configuration Handshake
-    putStrLn "Starting Sensor Calibration Handshake..."
-    configRes <- configureSensorWithRetry 3 "config/ti_iwr6843isk/sgrt_profile.cfg" cliPort
-    case configRes of
-        Left err -> do
-            putStrLn $ "Hardware Handshake Failed: " ++ show err
-            atomically $ modifyTVar' systemState $ \s -> s { calibrationStatus = CalibrationInvalid }
-        Right () -> do
-            putStrLn "Hardware Handshake Successful. Sensor Calibrated."
-            atomically $ modifyTVar' systemState $ \s -> s { calibrationStatus = CalibrationValid }
+  -- Parse Hardware Manifest for Mounting Offset
+  manifestBytes <- BL.readFile "config/hardware_manifest.json"
+  mountingOffset <- case decode manifestBytes of
+    Just m -> return (manifestMountingOffset m)
+    Nothing -> do
+      putStrLn "FATAL: Failed to parse protected configuration file: hardware_manifest.json"
+      exitFailure
 
-    -- 1. Setup Ring Buffer (4MB)
-    -- We use the new FFI.RingBuffer.IO directly.
-    -- NOW RETURNS ForeignPtr RingBufferControl.
-    -- This ensures the buffer is automatically freed when all references (Main thread, consumer thread, ingestion thread) are gone.
-    rbRes <- RingBuffer.createRingBuffer systemState (4 * 1024 * 1024)
-    ringBuffer <- handleHardwareResponse
-        (\err -> do
-            if err == SimulationModeActive
-                then putStrLn "FATAL: RingBuffer is in Mock Mode! Blocking operational state."
-                else putStrLn $ "FATAL: Failed to create ring buffer: " ++ show err
-            exitFailure
-        )
-        (\rb -> return rb)
-        rbRes
+  putStrLn $ "Loaded physical mounting offset: " ++ show mountingOffset ++ " mm"
 
-    -- 1.5 Setup GPIO
-    gpioRes <- initGpio systemState
+  -- Sensor Configuration Handshake
+  putStrLn "Starting Sensor Calibration Handshake..."
+  configRes <- configureSensorWithRetry 3 "config/ti_iwr6843isk/sgrt_profile.cfg" cliPort
+  case configRes of
+    Left err -> do
+      putStrLn $ "Hardware Handshake Failed: " ++ show err
+      atomically $ modifyTVar' systemState $ \s -> s {calibrationStatus = CalibrationInvalid}
+    Right () -> do
+      putStrLn "Hardware Handshake Successful. Sensor Calibrated."
+      atomically $ modifyTVar' systemState $ \s -> s {calibrationStatus = CalibrationValid}
+
+  -- 1. Setup Ring Buffer (4MB)
+  -- We use the new FFI.RingBuffer.IO directly.
+  -- NOW RETURNS ForeignPtr RingBufferControl.
+  -- This ensures the buffer is automatically freed when all references (Main thread, consumer thread, ingestion thread) are gone.
+  rbRes <- RingBuffer.createRingBuffer systemState (4 * 1024 * 1024)
+  ringBuffer <-
     handleHardwareResponse
-        (\err -> do
-            if err == SimulationModeActive
-                then putStrLn "FATAL: GPIO is in Mock Mode! Blocking operational state."
-                else putStrLn $ "FATAL: GPIO initialization failed: " ++ show err
-            exitFailure
-        )
-        (\() -> return ())
-        gpioRes
+      ( \err -> do
+          if err == SimulationModeActive
+            then putStrLn "FATAL: RingBuffer is in Mock Mode! Blocking operational state."
+            else putStrLn $ "FATAL: Failed to create ring buffer: " ++ show err
+          exitFailure
+      )
+      (\rb -> return rb)
+      rbRes
 
-    -- Configure Port (Raw Mode) to prevent data corruption
-    res <- configureRawSerial systemState fd
-    handleHardwareResponse
-        (\err -> do
-            if err == SimulationModeActive
-                then putStrLn "FATAL: Serial Port is in Mock Mode! Blocking operational state."
-                else putStrLn $ "FATAL: Failed to configure serial port: " ++ show err
-            exitFailure
-        )
-        (\() -> return ())
-        res
+  -- 1.5 Setup GPIO
+  gpioRes <- initGpio systemState
+  handleHardwareResponse
+    ( \err -> do
+        if err == SimulationModeActive
+          then putStrLn "FATAL: GPIO is in Mock Mode! Blocking operational state."
+          else putStrLn $ "FATAL: GPIO initialization failed: " ++ show err
+        exitFailure
+    )
+    (\() -> return ())
+    gpioRes
 
-    -- 2. Hardware Ingestion (Dedicated Thread)
-    -- ingestionLoop accepts ForeignPtr
-    _ <- RingBuffer.ingestionLoop systemState ringBuffer fd
+  -- Configure Port (Raw Mode) to prevent data corruption
+  res <- configureRawSerial systemState fd
+  handleHardwareResponse
+    ( \err -> do
+        if err == SimulationModeActive
+          then putStrLn "FATAL: Serial Port is in Mock Mode! Blocking operational state."
+          else putStrLn $ "FATAL: Failed to configure serial port: " ++ show err
+        exitFailure
+    )
+    (\() -> return ())
+    res
 
-    -- Process Boundary: Safety Daemon Spawning
-    -- Requirement: SR-IPC-001
-    -- Justification: Safety Daemon is spawned as a separate process to ensure it survives if the main process hangs or crashes.
-    -- IPC Mechanism: AF_UNIX socket for heartbeat monitoring.
-    -- Failure Mode: Socket exhaustion or permission denied during daemon startup.
-    -- Mitigation: Parent validates daemon PID and checks early hardware setup response. Daemon kills parent if socket binding fails.
-    exePath <- getExecutablePath
-    myPid <- getProcessID
-    _daemonPid <- forkProcess $ executeFile exePath False ["--safety-daemon", show myPid] Nothing
+  -- 2. Hardware Ingestion (Dedicated Thread)
+  -- ingestionLoop accepts ForeignPtr
+  _ <- RingBuffer.ingestionLoop systemState ringBuffer fd
 
-    -- 3. Consumer/Parser (Dedicated Thread)
-    _ <- forkSafetyThreadOS (ShutdownSystem $ triggerShutdown systemState) "ConsumerLoop" $ 
-        consumerLoop mountingOffset translations True ringBuffer systemState
+  -- Process Boundary: Safety Daemon Spawning
+  -- Requirement: SR-IPC-001
+  -- Justification: Safety Daemon is spawned as a separate process to ensure it survives if the main process hangs or crashes.
+  -- IPC Mechanism: AF_UNIX socket for heartbeat monitoring.
+  -- Failure Mode: Socket exhaustion or permission denied during daemon startup.
+  -- Mitigation: Parent validates daemon PID and checks early hardware setup response. Daemon kills parent if socket binding fails.
+  exePath <- getExecutablePath
+  myPid <- getProcessID
+  _daemonPid <- forkProcess $ executeFile exePath False ["--safety-daemon", show myPid] Nothing
 
-    -- 3. Safety Watchdog Heartbeat Sender (High Priority Thread)
-    _ <- forkSafetyThreadOS (ShutdownSystem $ triggerShutdown systemState) "WatchdogLoop" $ 
-        watchdogLoop systemState
+  -- 3. Consumer/Parser (Dedicated Thread)
+  _ <-
+    forkSafetyThreadOS (ShutdownSystem $ triggerShutdown systemState) "ConsumerLoop" $
+      consumerLoop mountingOffset translations True ringBuffer systemState
 
-    -- 4. Audit Logging
-    _ <- forkSafetyThreadOS (ShutdownSystem $ triggerShutdown systemState) "AuditLoop" $ 
-        auditLoop systemState "session.log"
+  -- 3. Safety Watchdog Heartbeat Sender (High Priority Thread)
+  _ <-
+    forkSafetyThreadOS (ShutdownSystem $ triggerShutdown systemState) "WatchdogLoop" $
+      watchdogLoop systemState
 
-    -- 4.5 Audio Worker Thread
-    _ <- forkSafetyThreadOS (ShutdownSystem $ triggerShutdown systemState) "AudioWorkerLoop" $ 
-        audioWorkerLoop audioQ
+  -- 4. Audit Logging
+  _ <-
+    forkSafetyThreadOS (ShutdownSystem $ triggerShutdown systemState) "AuditLoop" $
+      auditLoop systemState "session.log"
 
-    -- 5. IPC Sender to Visualizer
-    putStrLn "Starting IPC Telemetry Stream..."
-    _ <- forkSafetyThread (ShutdownSystem $ triggerShutdown systemState) "IPCSenderLoop" $ 
-        ipcSenderLoop systemState
+  -- 4.5 Audio Worker Thread
+  _ <-
+    forkSafetyThreadOS (ShutdownSystem $ triggerShutdown systemState) "AudioWorkerLoop" $
+      audioWorkerLoop audioQ
 
-    putStrLn "System Armed. SafetyCore is running."
-    
-    -- Keep Main Alive
-    forever $ threadDelay 1000000
+  -- 5. IPC Sender to Visualizer
+  putStrLn "Starting IPC Telemetry Stream..."
+  _ <-
+    forkSafetyThread (ShutdownSystem $ triggerShutdown systemState) "IPCSenderLoop" $
+      ipcSenderLoop systemState
+
+  putStrLn "System Armed. SafetyCore is running."
+
+  -- Keep Main Alive
+  forever $ threadDelay 1000000
 
 -- | IPC Sender Loop using a POSIX FIFO with O_NONBLOCK
 -- Requirement: SR-IPC-001
@@ -240,81 +256,73 @@ runMain = do
 -- Mitigation: O_NONBLOCK is used. If the buffer is full (EAGAIN), the writer catches the exception, drops the frame, and continues operating without blocking the main safety loop.
 ipcSenderLoop :: TVar SystemState -> IO ()
 ipcSenderLoop stateVar = do
-    let pipePath = "/tmp/sgrt_telemetry.fifo"
-    _ <- try (createNamedPipe pipePath (unionFileModes ownerReadMode ownerWriteMode)) :: IO (Either IOException ())
-    
-    let flags = defaultFileFlags { nonBlock = True }
-#if MIN_VERSION_unix(2,8,0)
-    let flags' = flags { creat = Nothing }
-#endif
+  let pipePath = "/tmp/sgrt_telemetry.fifo"
+  _ <- try (createNamedPipe pipePath (unionFileModes ownerReadMode ownerWriteMode)) :: IO (Either IOException ())
 
-    forever $ do
-#if MIN_VERSION_unix(2,8,0)
-        fdRes <- try (openFd pipePath WriteOnly flags') :: IO (Either IOException Fd)
-#else
-        fdRes <- try (openFd pipePath WriteOnly Nothing flags) :: IO (Either IOException Fd)
-#endif
-        case fdRes of
-            Left _ -> threadDelay 1000000 -- Wait for reader
-            Right fd -> do
-                streamData fd stateVar
-                _ <- try (closeFd fd) :: IO (Either IOException ())
-                return ()
+  forever $ do
+    fdRes <- try (openTelemetryWritePipe pipePath) :: IO (Either IOException Fd)
+    case fdRes of
+      Left _ -> threadDelay 1000000 -- Wait for reader
+      Right fd -> do
+        streamData fd stateVar
+        _ <- try (closeFd fd) :: IO (Either IOException ())
+        return ()
 
 streamData :: Fd -> TVar SystemState -> IO ()
 streamData fd stateVar = do
-    let loop = do
-            state <- readTVarIO stateVar
-            let packet = TelemetryPacket
-                  { tpBeamState = beamState state
-                  , tpLastFrameTime = lastFrameTime state
-                  , tpSequenceNumber = sequenceNumber state
-                  , tpIsocenter = isocenter state
-                  , tpThreadHeartbeats = threadHeartbeats state
-                  , tpKalmanState = kalmanState state
-                  , tpAudioAlertEnabled = audioAlertEnabled state
-                  , tpAudioVolume = audioVolume state
-                  , tpAudioFrequency = audioFrequency state
-                  , tpActiveLanguage = activeLanguage state
-                  , tpLocalizedBeamState = localizedBeamState state
-                  , tpCalibrationStatus = calibrationStatus state
-                  }
-            let payload = BL.toStrict (encode packet)
-            let len = fromIntegral (B.length payload) :: Word32
-            let lenPayload = BL.toStrict (encode len)
-            let frame = B.append lenPayload payload
-            
-            res <- try (writeBsToFd fd frame) :: IO (Either IOException ())
-            case res of
-                Left _ -> return () -- Reader disconnected or buffer full, break loop
-                Right _ -> do
-                    threadDelay 33000 -- ~30Hz
-                    loop
-    loop
+  let loop = do
+        state <- readTVarIO stateVar
+        let packet =
+              TelemetryPacket
+                { tpBeamState = beamState state,
+                  tpLastFrameTime = lastFrameTime state,
+                  tpSequenceNumber = sequenceNumber state,
+                  tpIsocenter = isocenter state,
+                  tpThreadHeartbeats = threadHeartbeats state,
+                  tpKalmanState = kalmanState state,
+                  tpAudioAlertEnabled = audioAlertEnabled state,
+                  tpAudioVolume = audioVolume state,
+                  tpAudioFrequency = audioFrequency state,
+                  tpActiveLanguage = activeLanguage state,
+                  tpLocalizedBeamState = localizedBeamState state,
+                  tpCalibrationStatus = calibrationStatus state
+                }
+        let payload = BL.toStrict (encode packet)
+        let len = fromIntegral (B.length payload) :: Word32
+        let lenPayload = BL.toStrict (encode len)
+        let frame = B.append lenPayload payload
+
+        res <- try (writeBsToFd fd frame) :: IO (Either IOException ())
+        case res of
+          Left _ -> return () -- Reader disconnected or buffer full, break loop
+          Right _ -> do
+            threadDelay 33000 -- ~30Hz
+            loop
+  loop
 
 writeBsToFd :: Fd -> B.ByteString -> IO ()
 writeBsToFd fd bs = unsafeUseAsCStringLen bs $ \(ptr, len) -> do
-    let loop remain curPtr = do
-            wrote <- fdWriteBuf fd (castPtr curPtr) (fromIntegral remain)
-            let wroteInt = fromIntegral wrote
-            if wroteInt < remain
-                then loop (remain - wroteInt) (curPtr `plusPtr` wroteInt)
-                else return ()
-    loop len ptr
+  let loop remain curPtr = do
+        wrote <- fdWriteBuf fd (castPtr curPtr) (fromIntegral remain)
+        let wroteInt = fromIntegral wrote
+        if wroteInt < remain
+          then loop (remain - wroteInt) (curPtr `plusPtr` wroteInt)
+          else return ()
+  loop len ptr
 
 audioWorkerLoop :: TBQueue AudioCommand -> IO ()
 audioWorkerLoop q = forever $ do
-    cmd <- atomically $ readTBQueue q
-    case cmd of
-        PlayTone vol freq -> do
-            -- The prompt mentions playing a static audio file, such as aplay.
-            -- However, standard standard utilities don't usually scale freq easily.
-            -- We'll use a hypothetical or standard command sequence, perhaps `play` (SoX) 
-            -- or assume a script can handle it.
-            -- To satisfy the specific prompt, we just call the subprocess asynchronously (actually synchronously in this worker thread so it doesn't overlap).
-            let commandStr = "aplay -q /app/assets/alert.wav || play -v " ++ show vol ++ " -n synth 0.2 sine " ++ show freq ++ " || true"
-            _ <- try (callCommand commandStr) :: IO (Either IOException ())
-            return ()
+  cmd <- atomically $ readTBQueue q
+  case cmd of
+    PlayTone vol freq -> do
+      -- The prompt mentions playing a static audio file, such as aplay.
+      -- However, standard standard utilities don't usually scale freq easily.
+      -- We'll use a hypothetical or standard command sequence, perhaps `play` (SoX)
+      -- or assume a script can handle it.
+      -- To satisfy the specific prompt, we just call the subprocess asynchronously (actually synchronously in this worker thread so it doesn't overlap).
+      let commandStr = "aplay -q /app/assets/alert.wav || play -v " ++ show vol ++ " -n synth 0.2 sine " ++ show freq ++ " || true"
+      _ <- try (callCommand commandStr) :: IO (Either IOException ())
+      return ()
 
 -- Requirement SR-SOUP-001
 
