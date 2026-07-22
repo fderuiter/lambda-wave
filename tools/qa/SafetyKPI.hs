@@ -1,12 +1,11 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Main (main) where
 
-import Control.Exception (catch, SomeException, try, IOException)
+import Control.Exception (catch, SomeException)
 import qualified Data.ByteString as B
 import Safety.Crypto (decryptLog)
-import Data.List (isPrefixOf, isInfixOf)
+import Data.List (isInfixOf)
 import System.Exit (exitFailure, exitSuccess)
-import Control.Monad (when)
 
 main :: IO ()
 main = do
