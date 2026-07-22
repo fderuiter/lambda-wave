@@ -56,3 +56,6 @@ jobs:
         run: python3 tools/qa/compliance_engine.py
       - name: Verify Traceability Links
         run: python3 scripts/verify_traceability_links.py
+
+      - name: Run Duplicate Clone Detector
+        run: python3 scripts/detect_clones.py --dirs src/UI src/FFI/Hud cbits/src/hud.cpp cbits/src/a11y_bridge.cpp cbits/include/hud.h cbits/include/a11y_bridge.h --threshold 5
