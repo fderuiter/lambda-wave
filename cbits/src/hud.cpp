@@ -90,7 +90,7 @@ void set_cpp_hud_state(const HudStateC *state) {
   }
 
   g_resp_z = state->resp_z;
-  
+
   if (state->active_language && g_active_language != state->active_language) {
     g_active_language = state->active_language;
     g_translation_cache.clear();
