@@ -10,12 +10,12 @@ import Control.Concurrent.STM
 import Control.Exception (try, IOException)
 import System.Posix.IO (openFd, OpenMode(..), defaultFileFlags, OpenFileFlags(..), fdReadBuf)
 import System.Posix.Types (Fd, ByteCount)
-import Control.Monad (forever, void)
+import Control.Monad (forever, void, when)
 import qualified Data.Map.Strict as Map
 import Data.Binary (decode)
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.ByteString as B
-import Foreign.Marshal.Alloc (allocaBytes)
+import Foreign.Marshal.Alloc (allocaBytes, alloca)
 import Foreign.Ptr (castPtr, plusPtr, Ptr, FunPtr, nullPtr)
 import Foreign.ForeignPtr (ForeignPtr)
 import Data.Word (Word32)
@@ -123,22 +123,30 @@ main = do
             return ()
 
     -- Start state pusher to C++
-    void $ forkIO $ forever $ do
-        state <- readTVarIO systemState
-        
-        -- Get HUD active language
-        hudLangStr <- allocaBytes 16 $ \langBuf -> do
-            c_get_cpp_hud_language langBuf 16
-            peekCString langBuf
+    let syncLoop lastBackend lastFrontend = do
+            state <- readTVarIO systemState
             
-        let currentLangText = T.pack hudLangStr
-        let locBState = T.unpack $ translateBeamState translations currentLangText (beamState state)
+            -- Get HUD active language
+            hudLangStr <- allocaBytes 16 $ \langBuf -> do
+                c_get_cpp_hud_language langBuf 16
+                peekCString langBuf
+            
+            let backendLang = activeLanguage state
+            let effectiveLang = if backendLang /= lastBackend then backendLang
+                                else if hudLangStr /= lastFrontend then hudLangStr
+                                else backendLang
+            
+            when (effectiveLang /= backendLang) $
+                atomically $ modifyTVar' systemState (\s -> s { activeLanguage = effectiveLang })
+                
+            let currentLangText = T.pack effectiveLang
+            let locBState = T.unpack $ translateBeamState translations currentLangText (beamState state)
 
         let bStateEnum = beamState state
         let bState = case bStateEnum of
-                BeamOff -> 0 :: Word32
-                BeamOn -> 1 :: Word32
-                BeamHold -> 2 :: Word32
+                BeamOff -> 0 :: CInt
+                BeamOn -> 1 :: CInt
+                BeamHold -> 2 :: CInt
         let displayInfo = getBeamDisplayInfo bStateEnum
         let (bR, bG, bB) = bdiColorRGB displayInfo
         let (pR, pG, pB) = pointCloudColorRGB
@@ -149,21 +157,21 @@ main = do
                 V3 pVal _ _ -> pVal
                 _ -> 0
         let calStat = case calibrationStatus state of
-                CalibrationValid -> 1 :: Word32
-                _ -> 0 :: Word32
-        withCString hudLangStr $ \c_lang -> 
+                CalibrationValid -> 1 :: CInt
+                _ -> 0 :: CInt
+        withCString effectiveLang $ \c_lang -> 
             withCString locBState $ \c_loc_bstate -> 
                 withArrayLen cPts $ \numPts ptrPts -> 
-                    allocaBytes (sizeOf (undefined :: HudStateC)) $ \ptrStruct -> do
-                        let hudState = HudStateC
-                                { hscBeamState = fromIntegral bState
+                    alloca $ \ptrStruct -> do
+                        let hudStateC = HudStateC
+                                { hscBeamState = bState
                                 , hscPoints = ptrPts
                                 , hscNumPoints = fromIntegral numPts
                                 , hscRespZ = realToFrac rZ
                                 , hscAudioAlertEnabled = if audioAlertEnabled state then 1 else 0
                                 , hscActiveLanguage = c_lang
                                 , hscLocalizedBeamState = c_loc_bstate
-                                , hscCalibrationStatus = fromIntegral calStat
+                                , hscCalibrationStatus = calStat
                                 , hscBeamColorR = realToFrac bR
                                 , hscBeamColorG = realToFrac bG
                                 , hscBeamColorB = realToFrac bB
@@ -173,10 +181,12 @@ main = do
                                 , hscPointColorG = realToFrac pG
                                 , hscPointColorB = realToFrac pB
                                 }
-                        poke ptrStruct hudState
-                        
+                        poke ptrStruct hudStateC
                         c_set_cpp_hud_state ptrStruct
         threadDelay 33333 -- ~30 fps update to C++
+        syncLoop effectiveLang effectiveLang
+
+    void $ forkIO $ syncLoop "" ""
 
     -- 3. C++ HUD Loop (Blocks Main Thread)
     c_start_cpp_hud_loop

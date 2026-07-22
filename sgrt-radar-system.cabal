@@ -63,6 +63,7 @@ library sgrt-radar-math
       SignalProcessing.Kalman
       Numeric.Kinematics
       Numeric.Simple
+      Numeric.Units
 
   hs-source-dirs:
       src-math
@@ -100,7 +101,6 @@ library
       Safety.Verification
       Safety.Watchdog
       UI.Presentation
-      
   other-modules:
       Paths_sgrt_radar_system
   hs-source-dirs:

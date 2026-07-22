@@ -1,5 +1,12 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE ForeignFunctionInterface #-}
+
+-- | Types for HUD FFI.
+-- 
+-- Failure Modes: Memory corruption if C struct layout mismatches.
+-- Mitigations: Explicit Storable instances with fixed byte offsets, now generated via hsc2hs.
+-- Traceability: REQ-HUD-001
+
 module FFI.Hud.Types (
     HudStateC(..),
     Point3DC(..)
