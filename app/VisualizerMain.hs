@@ -10,12 +10,12 @@ import Control.Concurrent.STM
 import Control.Exception (try, IOException)
 import System.Posix.IO (openFd, OpenMode(..), defaultFileFlags, OpenFileFlags(..), fdReadBuf)
 import System.Posix.Types (Fd, ByteCount)
-import Control.Monad (forever, void)
+import Control.Monad (forever, void, when)
 import qualified Data.Map.Strict as Map
 import Data.Binary (decode)
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.ByteString as B
-import Foreign.Marshal.Alloc (allocaBytes)
+import Foreign.Marshal.Alloc (allocaBytes, alloca)
 import Foreign.Ptr (castPtr, plusPtr, Ptr, FunPtr, nullPtr)
 import Foreign.ForeignPtr (ForeignPtr)
 import Data.Word (Word32)
@@ -36,8 +36,8 @@ import Data.Aeson (FromJSON(..), (.:), withObject)
 import qualified Data.Aeson as A
 import System.Exit (exitFailure)
 import Foreign.C.Types (CSize(..))
-import Data.Word (Word8, Word64)
-import FFI.Hud.Types (HudStateC, Point3DC(..))
+
+import FFI.Hud.Types (HudStateC(..), Point3DC(..))
 
 -- C FFI declarations
 
@@ -144,39 +144,24 @@ main = do
                 CalibrationValid -> 1 :: Word32
                 _ -> 0 :: Word32
         withArrayLen cPts $ \numPts ptrPts -> 
-            allocaBytes 72 $ \ptrStruct -> do
-                -- Write HudStateC fields manually
-                -- Memory layout depends on platform, but assuming x86_64 System V AMD64 ABI
-                -- 0: beam_state (int - 4 bytes)
-                -- 8: points (pointer - 8 bytes)
-                -- 16: num_points (size_t - 8 bytes)
-                -- 24: resp_z (double - 8 bytes)
-                -- 32: audio_alert_enabled (bool - 1 byte)
-                -- 36: calibration_status (int - 4 bytes)
-                -- 40: beam_color_r (float - 4 bytes)
-                -- 44: beam_color_g (float - 4 bytes)
-                -- 48: beam_color_b (float - 4 bytes)
-                -- 52: trace_scale_min (float - 4 bytes)
-                -- 56: trace_scale_max (float - 4 bytes)
-                -- 60: point_color_r (float - 4 bytes)
-                -- 64: point_color_g (float - 4 bytes)
-                -- 68: point_color_b (float - 4 bytes)
-                
-                pokeByteOff ptrStruct 0 bState
-                pokeByteOff ptrStruct 8 ptrPts
-                pokeByteOff ptrStruct 16 (fromIntegral numPts :: Word64)
-                pokeByteOff ptrStruct 24 rZ
-                pokeByteOff ptrStruct 32 (if audioAlertEnabled state then 1 else 0 :: Word8)
-                pokeByteOff ptrStruct 36 calStat
-                pokeByteOff ptrStruct 40 bR
-                pokeByteOff ptrStruct 44 bG
-                pokeByteOff ptrStruct 48 bB
-                pokeByteOff ptrStruct 52 tMin
-                pokeByteOff ptrStruct 56 tMax
-                pokeByteOff ptrStruct 60 pR
-                pokeByteOff ptrStruct 64 pG
-                pokeByteOff ptrStruct 68 pB
-                
+            alloca $ \ptrStruct -> do
+                let hudStateC = HudStateC
+                        { hscBeamState = bState
+                        , hscPoints = ptrPts
+                        , hscNumPoints = fromIntegral numPts
+                        , hscRespZ = rZ
+                        , hscAudioAlertEnabled = if audioAlertEnabled state then 1 else 0
+                        , hscCalibrationStatus = calStat
+                        , hscBeamColorR = bR
+                        , hscBeamColorG = bG
+                        , hscBeamColorB = bB
+                        , hscTraceScaleMin = tMin
+                        , hscTraceScaleMax = tMax
+                        , hscPointColorR = pR
+                        , hscPointColorG = pG
+                        , hscPointColorB = pB
+                        }
+                poke ptrStruct hudStateC
                 c_set_cpp_hud_state ptrStruct
         threadDelay 33333 -- ~30 fps update to C++
 

@@ -2,9 +2,9 @@
 #include "../imgui/backends/imgui_impl_glfw.h"
 #include "../imgui/backends/imgui_impl_opengl3.h"
 #include "../imgui/imgui.h"
-#include <a11y_bridge.h>
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
+#include <a11y_bridge.h>
 #include <cmath>
 #include <cstdlib>
 #include <cstring>
@@ -48,15 +48,16 @@ static void CheckFocus(int id, const char *name, const char *role) {
   }
 }
 
-static const char *get_localized_string(const std::string &key,
-                                        const std::string &default_val) {
+static const char *get_localized_string(const char *key_cstr,
+                                        const char *default_val_cstr) {
+  std::string key(key_cstr);
   auto it = g_translation_cache.find(key);
   if (it != g_translation_cache.end()) {
     return it->second.c_str();
   }
   if (g_translate_callback != nullptr) {
     const char *result =
-        g_translate_callback(g_active_language.c_str(), key.c_str());
+        g_translate_callback(g_active_language.c_str(), key_cstr);
     if (result != nullptr) {
       std::string res_str(result);
       free((void *)result);
@@ -64,7 +65,7 @@ static const char *get_localized_string(const std::string &key,
       return g_translation_cache[key].c_str();
     }
   }
-  g_translation_cache[key] = default_val;
+  g_translation_cache[key] = default_val_cstr;
   return g_translation_cache[key].c_str();
 }
 
@@ -98,6 +99,7 @@ void set_cpp_hud_state(const HudStateC *state) {
   }
 
   g_resp_z = state->resp_z;
+
   // We don't overwrite g_active_language from state anymore, it's managed by UI
   bool beam_changed = false;
   if (g_beam_state != state->beam_state) {
@@ -145,7 +147,7 @@ void set_cpp_hud_state(const HudStateC *state) {
 } // close extern "C"
 
 static void glfw_error_callback(int error, const char *description) {
-  std::cerr << "GLFW Error " << error << ": " << description << std::endl;
+  std::cerr << "GLFW Error " << error << ": " << description << '\n';
 }
 
 extern "C" void start_cpp_hud_loop(void) {
@@ -167,7 +169,7 @@ extern "C" void start_cpp_hud_loop(void) {
   glfwSwapInterval(1); // Enable vsync
 
   if (glewInit() != GLEW_OK) {
-    std::cerr << "Failed to initialize OpenGL loader!" << std::endl;
+    std::cerr << "Failed to initialize OpenGL loader!\n";
     return;
   }
 
@@ -285,10 +287,12 @@ extern "C" void start_cpp_hud_loop(void) {
                          get_beam_state_localized(g_beam_state));
 
       // Respiratory trace
-      std::vector<float> trace(g_resp_history.begin(), g_resp_history.end());
       ImGui::PlotLines(
           get_localized_string("resp_trace_title", "Respiratory Trace"),
-          trace.data(), trace.size(), 0, NULL, g_trace_scale_min,
+          [](void *data, int idx) {
+            return (*static_cast<std::deque<float> *>(data))[idx];
+          },
+          &g_resp_history, g_resp_history.size(), 0, NULL, g_trace_scale_min,
           g_trace_scale_max, ImVec2(0, 100));
 
       // Point Cloud Info
@@ -314,7 +318,7 @@ extern "C" void start_cpp_hud_loop(void) {
       // simple perspective
       float fov = 45.0f;
       float near_plane = 0.1f, far_plane = 100.0f;
-      float top = tan(fov * 3.14159f / 360.0f) * near_plane;
+      float top = std::tan(fov * 3.14159f / 360.0f) * near_plane;
       float bottom = -top;
       float right = top * ratio;
       float left = -right;

@@ -5,6 +5,8 @@ on:
     branches:
       - develop
       - main
+  pull_request_review:
+    types: [submitted, edited, dismissed]
 
 jobs:
   compliance-checks:
@@ -26,27 +28,16 @@ jobs:
           python -m pip install --break-system-packages --upgrade pip
           pip install --break-system-packages pyyaml
 
-
-      - uses: haskell-actions/setup@v2
-        with:
-          ghc-version: '9.6.7'
-          cabal-version: 'latest'
-
-      - name: Verify Planning Documents (IEC 62304)
-        run: scripts/verify_planning.sh
-
-      - name: Verify Process Boundaries and IPC Architecture
-        run: python scripts/check_process_boundaries.py
-
-      - name: Validate Documentation Metadata
-        run: python scripts/sync_metadata.py --check
-
-      - name: Validate Change Control Records (CCR)
+      - name: Get modified files and evaluate path selector
+        id: path_selector
         run: |
-          set +e
-          if [ -n "${{ github.base_ref }}" ]; then
-            git fetch origin ${{ github.base_ref }} || true
-            git diff --name-only "origin/${{ github.base_ref }}...HEAD" > modified_files.txt
+          BASE_REF="${{ github.base_ref }}"
+          if [ -z "$BASE_REF" ]; then
+            BASE_REF="${{ github.event.pull_request.base.ref }}"
+          fi
+          if [ -n "$BASE_REF" ]; then
+            git fetch origin $BASE_REF || true
+            git diff --name-only "origin/$BASE_REF...HEAD" > modified_files.txt
             if [ $? -ne 0 ]; then
               echo "git diff failed, falling back to git show"
               git show --name-only --format= > modified_files.txt
@@ -56,15 +47,48 @@ jobs:
           fi
           echo "Modified files detected:"
           cat modified_files.txt
+          python scripts/path_selector.py modified_files.txt
+
+      - name: Verify Reviews
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python scripts/verify_reviews.py "${{ steps.path_selector.outputs.prototype_only }}"
+
+      - name: Automated Redundancy Scanning
+        if: steps.path_selector.outputs.prototype_only != 'true'
+        run: |
+          python scripts/similarity_scanner.py modified_files.txt
+
+      - uses: haskell-actions/setup@v2
+        with:
+          ghc-version: '9.6.7'
+          cabal-version: 'latest'
+
+      - name: Verify Planning Documents (IEC 62304)
+        if: steps.path_selector.outputs.prototype_only != 'true'
+        run: scripts/verify_planning.sh
+
+      - name: Verify Process Boundaries and IPC Architecture
+        if: steps.path_selector.outputs.prototype_only != 'true'
+        run: python scripts/check_process_boundaries.py
+
+      - name: Validate Documentation Metadata
+        if: steps.path_selector.outputs.prototype_only != 'true'
+        run: python scripts/sync_metadata.py --check
+
+      - name: Validate Change Control Records (CCR)
+        if: steps.path_selector.outputs.prototype_only != 'true'
+        run: |
           python scripts/ccr_validation.py modified_files.txt
           VAL_CODE=$?
           echo "CCR validation exit code: $VAL_CODE"
           if [ $VAL_CODE -ne 0 ]; then
             exit 1
           fi
-          set -e
 
       - name: Run Promotion Validator
+        if: steps.path_selector.outputs.prototype_only != 'true'
         run: scripts/promotion_validator.sh
 
       - name: Install system dependencies
@@ -72,8 +96,10 @@ jobs:
 
 
       - name: Generate Traceability Matrix
+        if: steps.path_selector.outputs.prototype_only != 'true'
         run: python tools/qa/compliance_engine.py
       - name: Verify Traceability Links
+        if: steps.path_selector.outputs.prototype_only != 'true'
         run: python scripts/verify_traceability_links.py
 
       - name: Build dependencies with coverage
@@ -97,11 +123,13 @@ jobs:
         run: cabal test all | tee test_log.txt
 
       - name: Verify Regulatory Sync
+        if: steps.path_selector.outputs.prototype_only != 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: python scripts/regulatory_sync.py test_log.txt
 
       - name: Calculate and Enforce Coverage
+        if: steps.path_selector.outputs.prototype_only != 'true'
         run: |
           echo "Finding .tix files..."
           find . -name "*.tix"
@@ -129,7 +157,7 @@ jobs:
           python scripts/enforce_coverage.py coverage_report.txt
 
       - name: Generate High-Fidelity Coverage Report (HPC HTML)
-        if: always()
+        if: always() && steps.path_selector.outputs.prototype_only != 'true'
         run: |
           if [ -f "combined.tix" ]; then
             mkdir -p hpc_html
@@ -157,7 +185,7 @@ jobs:
           fi
 
       - name: Generate Safety Audit Report
-        if: always()
+        if: always() && steps.path_selector.outputs.prototype_only != 'true'
         run: |
           python scripts/ccr_reporter.py LATEST
 
