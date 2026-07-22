@@ -6,7 +6,7 @@ import re
 
 def main():
     root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-    scan_dirs = [os.path.join(root_dir, "src"), os.path.join(root_dir, "app"), os.path.join(root_dir, "cbits")]
+    scan_dirs = [os.path.join(root_dir, "src"), os.path.join(root_dir, "app"), os.path.join(root_dir, "cbits"), os.path.join(root_dir, "src-math")]
     
     process_spawning_patterns = [r'\bforkProcess\b', r'\bexecuteFile\b', r'\bcreateProcess\b', r'\bspawnProcess\b']
     ipc_patterns = [r'\bAF_UNIX\b', r'\bcreateNamedPipe\b']

@@ -293,7 +293,7 @@ def main():
             mismatch_msg += f"{err} "
     
     # Requirement parsing
-    src_files = get_files(["src", "app", "cbits"], [".hs", ".cpp", ".c", ".h"])
+    src_files = get_files(["src", "app", "cbits", "src-math"], [".hs", ".cpp", ".c", ".h"])
     test_files = get_files(["test", "bench", "tools", "data-generation", "hardware-simulation", "qa", "system-maintenance", "scripts"], [".hs", ".cpp", ".c", ".h", ".py", ".sh"])
     
     code_tags = find_tags(src_files)
