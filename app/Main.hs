@@ -5,7 +5,7 @@ module Main (main) where
 import Control.Concurrent (setNumCapabilities, threadDelay)
 import Control.Concurrent.STM
 import Control.Exception (IOException, try)
-import Control.Monad (forever, unless)
+import Control.Monad (forever, unless, when)
 import Data.Aeson (FromJSON (..), decode, withObject, (.:))
 import Data.Binary (encode)
 import qualified Data.ByteString as B

@@ -2,7 +2,7 @@ module Main (main) where
 
 import Control.Concurrent (forkIO, killThread, threadDelay)
 import Control.Concurrent.STM
-import Control.Exception (IOException, SomeException, throw, try)
+import Control.Exception (IOException, SomeException, try)
 import Control.Monad (forM_, when)
 import qualified Data.ByteString as B
 import Data.List (isInfixOf)
@@ -307,7 +307,7 @@ testTriggerShutdown = do
 testWatchdogCrashCoverage :: IO Bool
 testWatchdogCrashCoverage = do
   putStr "Test 7: Watchdog Exception Coverage... "
-  res <- try (watchdogLoop throw (userError "fake")) :: IO (Either SomeException ())
+  res <- try (watchdogLoop undefined) :: IO (Either SomeException ())
   case res of
     Left _ -> putStrLn "PASS" >> return True
     Right _ -> putStrLn "FAIL" >> return False
