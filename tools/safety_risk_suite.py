@@ -7,7 +7,7 @@ import argparse
 from pathlib import Path
 
 RMF_PATH = Path('/app/rmf.yaml')
-SRC_DIRS = ['/app/src', '/app/test', '/app/app', '/app/cbits']
+SRC_DIRS = ['/app/src', '/app/src-math', '/app/test', '/app/app', '/app/cbits']
 
 def load_rmf():
     if not RMF_PATH.exists():

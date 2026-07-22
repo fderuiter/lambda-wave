@@ -10,7 +10,7 @@ def resolve_file(item, root_dir):
     if "." in item and not item.endswith(".hs") and not item.endswith(".cpp") and not item.endswith(".h") and not item.endswith(".md") and not item.endswith(".cabal"):
         # it's a module
         rel_path = item.replace(".", "/") + ".hs"
-        for d in ["src", "app"]:
+        for d in ["src", "app", "src-math"]:
             p = os.path.join(root_dir, d, rel_path)
             if os.path.exists(p):
                 return p

@@ -78,6 +78,7 @@ library
     sgrt-radar-math
   exposed-modules:
 
+      Control.Combinators
       Control.Gating
       Control.Mesher
       Data.Config

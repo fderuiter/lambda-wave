@@ -30,7 +30,7 @@ def main():
         modified_files = [line.strip() for line in f if line.strip()]
 
     core_extensions = {'.hs', '.c', '.cpp', '.h'}
-    core_dirs = ('src/', 'cbits/')
+    core_dirs = ('src/', 'src-math/', 'cbits/')
     
     modified_core_files = [
         f for f in modified_files 

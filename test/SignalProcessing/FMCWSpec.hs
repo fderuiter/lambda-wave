@@ -2,7 +2,7 @@
 
 module SignalProcessing.FMCWSpec (spec) where
 
-import Control.Monad (zipWithM_)
+-- import Control.Monad (zipWithM_)
 import Data.Complex
 import Numeric.FloatAssert (shouldBeApprox, shouldBeApproxList)
 import Numeric.Kinematics hiding (magnitude)
@@ -77,8 +77,8 @@ spec = describe "SignalProcessing.FMCW" $ do
 
     it "maintains linearity property" $ do
       let n_samples = 16
-          x = [(fromIntegral n :+ (fromIntegral n * 0.5)) | n <- [0 .. n_samples - 1]]
-          y = [(sin (fromIntegral n) :+ cos (fromIntegral n)) | n <- [0 .. n_samples - 1]]
+          x = [fromIntegral n :+ (fromIntegral n * 0.5) | n <- [0 .. n_samples - 1]]
+          y = [sin (fromIntegral n) :+ cos (fromIntegral n) | n <- [0 .. n_samples - 1]]
           a = 2.0 :+ 1.0
           b = (-0.5) :+ 2.0
           inputCombined = zipWith (+) (map (a *) x) (map (b *) y)
@@ -106,7 +106,7 @@ spec = describe "SignalProcessing.FMCW" $ do
           true_phase = [6 * pi * (fromIntegral i / fromIntegral n_samples) | i <- [0 .. n_samples - 1]] :: [Double]
 
           -- Wrap function: (x + pi) % 2pi - pi
-          wrap x = (x + pi) - (2 * pi) * fromIntegral ((floor ((x + pi) / (2 * pi))) :: Int) - pi
+          wrap x = (x + pi) - (2 * pi) * fromIntegral (floor ((x + pi) / (2 * pi)) :: Int) - pi
 
           wrapped_phase = map wrap true_phase
           unwrapped = unwrapPhase wrapped_phase
@@ -141,7 +141,7 @@ spec = describe "SignalProcessing.FMCW" $ do
   describe "Static Clutter Removal (Requirement FR-DSP-001)" $ do
     it "converges to zero for static input" $ do
       let n_bins = 10
-          config = either error id $ mkMTIConfig 0.1 0.1 0.0
+          config = either error id (mkMTIConfig 0.1 0.1 0.0)
           -- Static input: Constant vector of 1.0 + 0i
           input = replicate n_bins (1.0 :+ 0.0) :: [Complex Double]
           -- Initial mean: Zero
@@ -163,7 +163,7 @@ spec = describe "SignalProcessing.FMCW" $ do
       mag `shouldSatisfy` (< 1.0e-1) -- Relaxed check for list impl
     it "increases suppression strength (alphaMax) when motion is below threshold" $ do
       let n_bins = 5
-          config = either error id $ mkMTIConfig 0.1 0.9 1.0
+          config = either error id (mkMTIConfig 0.1 0.9 1.0)
           prevMean = replicate n_bins (0.0 :+ 0.0)
           -- Low motion input (magnitude squared diff per bin is 0.5^2 = 0.25)
           -- Total motion metric = 5 * 0.25 = 1.25, but threshold is 1.0
@@ -178,7 +178,7 @@ spec = describe "SignalProcessing.FMCW" $ do
 
     it "uses standard suppression strength (alphaBase) when motion is above threshold" $ do
       let n_bins = 5
-          config = either error id $ mkMTIConfig 0.1 0.9 1.0
+          config = either error id (mkMTIConfig 0.1 0.9 1.0)
           prevMean = replicate n_bins (0.0 :+ 0.0)
           -- High motion input (magnitude squared diff per bin is 2.0^2 = 4.0)
           -- Total motion metric = 5 * 4.0 = 20.0 > 1.0
@@ -191,7 +191,7 @@ spec = describe "SignalProcessing.FMCW" $ do
 
     it "uses alphaBase when motionMetric equals threshold" $ do
       let n_bins = 5
-          config = either error id $ mkMTIConfig 0.1 0.9 1.0
+          config = either error id (mkMTIConfig 0.1 0.9 1.0)
           prevMean = replicate n_bins (0.0 :+ 0.0)
           -- Set input so total motion metric = threshold = 1.0
           -- magnitude squared per bin = 1.0 / 5 = 0.2

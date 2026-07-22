@@ -26,7 +26,7 @@ module Hardware.FFI.Bridge
   )
 where
 
-import Control.Concurrent (threadDelay)
+import Control.Combinators (retryAction)
 import Control.Concurrent.STM
 import Control.Monad (unless)
 import Data.Time.HighRes (getMonotonicTimeNS)
@@ -80,25 +80,25 @@ executeBridgeCall auditFn action = executeBridgeCallWith auditFn (fmap (,()) act
 
 -- | Automated retry logic that returns a value on success.
 executeBridgeCallWith :: (HardwareResult -> IO ()) -> IO (HardwareResult, a) -> IO (MustHandle a)
-executeBridgeCallWith auditFn action = go (3 :: Int)
-  where
-    go (0 :: Int) = do
-      auditFn (Common.Failure "Max retries exceeded")
-      return $ MustHandle (Left Timeout)
-    go retries = do
-      (res, val) <- action
-      auditFn res
-      case res of
-        Common.Success -> return $ MustHandle (Right val)
-        Common.SimulationMode -> return $ MustHandle (Left SimulationModeActive)
-        Common.TransientError _ -> do
-          threadDelay 10000 -- 10ms wait
-          go (retries - 1)
-        Common.SystemError err -> return $ MustHandle (Left (SystemError err))
-        Common.DriverError err -> return $ MustHandle (Left (DriverError err))
-        Common.Failure err -> return $ MustHandle (Left (UnknownError err))
-        Common.EOF -> return $ MustHandle (Left ConnectionLost)
-        _ -> return $ MustHandle (Left (UnknownError "Unexpected result"))
+executeBridgeCallWith auditFn action = do
+  let perform = do
+        (res, val) <- action
+        auditFn res
+        return (res, Just val)
+      shouldRetry (res, _) = case res of
+        Common.TransientError _ -> True
+        _ -> False
+  (finalRes, finalValMb) <- retryAction 3 10000 shouldRetry (Common.Failure "Max retries exceeded", Nothing) perform
+  case finalRes of
+    Common.Success -> case finalValMb of
+      Just val -> return $ MustHandle (Right val)
+      Nothing -> return $ MustHandle (Left (UnknownError "Unexpected missing value"))
+    Common.SimulationMode -> return $ MustHandle (Left SimulationModeActive)
+    Common.SystemError err -> return $ MustHandle (Left (SystemError err))
+    Common.DriverError err -> return $ MustHandle (Left (DriverError err))
+    Common.Failure err -> return $ MustHandle (Left (UnknownError err))
+    Common.EOF -> return $ MustHandle (Left ConnectionLost)
+    _ -> return $ MustHandle (Left (UnknownError "Unexpected result"))
 
 -- | Helper to call C functions that return CInt
 bridgeHardwareCall :: TVar SystemState -> String -> IO CInt -> IO (MustHandle ())

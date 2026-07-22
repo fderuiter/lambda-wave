@@ -1,4 +1,3 @@
-{-# LANGUAGE ForeignFunctionInterface #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 
@@ -99,7 +98,7 @@ main = do
   -- 2. Test RingBuffer Creation (Invalid Size)
   putStrLn "[Test] RingBuffer Invalid Size..."
   st <- createDummyState
-  res <- try $ (createRingBuffer st 0 >>= handleHardwareResponse (\e -> throwIO (userError $ show e)) pure)
+  res <- try (createRingBuffer st 0 >>= handleHardwareResponse (\e -> throwIO (userError $ show e)) pure)
   case res of
     Left e -> putStrLn $ "PASS: createRingBuffer(0) threw exception: " ++ show (e :: SomeException)
     Right _ -> do
@@ -107,7 +106,7 @@ main = do
       exitFailure
 
   st' <- createDummyState
-  res2 <- try $ (createRingBuffer st' (-100) >>= handleHardwareResponse (\e -> throwIO (userError $ show e)) pure)
+  res2 <- try (createRingBuffer st' (-100) >>= handleHardwareResponse (\e -> throwIO (userError $ show e)) pure)
   case res2 of
     Left e -> putStrLn $ "PASS: createRingBuffer(-100) threw exception: " ++ show (e :: SomeException)
     Right _ -> do

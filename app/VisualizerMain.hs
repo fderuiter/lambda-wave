@@ -8,7 +8,7 @@ module Main (main) where
 import Control.Concurrent (forkIO, threadDelay)
 import Control.Concurrent.STM
 import Control.Exception (IOException, try)
-import Control.Monad (forever, void, when)
+import Control.Monad (forever, void)
 import Data.Aeson (FromJSON (..), withObject, (.:))
 import qualified Data.Aeson as A
 import Data.Binary (decode)
@@ -50,7 +50,7 @@ foreign import ccall "start_cpp_hud_loop" c_start_cpp_hud_loop :: IO ()
 
 foreign import ccall "set_cpp_hud_state" c_set_cpp_hud_state :: Ptr HudStateC -> IO ()
 
-data HardwareManifest = HardwareManifest
+newtype HardwareManifest = HardwareManifest
   {manifestMountingOffset :: Double}
   deriving (Show)
 

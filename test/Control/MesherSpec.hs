@@ -16,7 +16,7 @@ spec = describe "Control.Mesher" $ do
 
   describe "fitPolynomialSurface" $ do
     it "returns all zeros when there are fewer than 6 points" $ do
-      let pts = [Point3D x y (1 + x + y) 0 0 | x <- [0 .. 4], let y = 0]
+      let pts = [Point3D x y (1 + x + y) 0 0 | let y = 0, x <- [0 .. 4]]
       length pts `shouldBe` 5
       fitPolynomialSurface pts `shouldBe` replicate 6 0.0
 

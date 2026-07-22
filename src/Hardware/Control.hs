@@ -19,9 +19,10 @@ module Hardware.Control
   )
 where
 
-import Control.Concurrent (threadDelay)
+import Control.Combinators (paceMapM_, retryEither)
 import Control.Concurrent.STM (TVar)
 import Control.Exception (IOException, bracket, try)
+import Control.Monad (unless)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as BC
 import Data.Char (isSpace)
@@ -72,17 +73,8 @@ openConfigPort path = openFd path ReadWrite Nothing defaultFileFlags
 #endif
 
 configureSensorWithRetry :: Int -> FilePath -> FilePath -> IO (Either HardwareError ())
-configureSensorWithRetry attempts configPath portPath = go attempts
-  where
-    go n
-      | n <= 0 = return $ Left $ ConfigurationFailed "Max retries exceeded"
-      | otherwise = do
-          res <- configureSensor configPath portPath
-          case res of
-            Right () -> return $ Right ()
-            Left _ -> do
-              threadDelay 100000
-              go (n - 1)
+configureSensorWithRetry attempts configPath portPath =
+  retryEither attempts 100000 (ConfigurationFailed "Max retries exceeded") (configureSensor configPath portPath)
 
 isPathSafe :: FilePath -> Bool
 isPathSafe path = not (isAbsolute path) && ".." `notElem` splitDirectories path
@@ -115,20 +107,19 @@ configureSensor configPath portPath = do
                           Left (ConfigurationFailed err) -> ioError (userError err)
                           Left err -> ioError (userError $ show err)
                           Right () -> do
-                            let handshakeLoop [] = return ()
-                                handshakeLoop (cmd : cmds) = do
+                            paceMapM_
+                              10000
+                              ( \cmd -> do
                                   let packet = BC.pack (cmd ++ "\n")
                                   bytesSent <- fdWrite fd packet
                                   if fromIntegral bytesSent < BC.length packet
                                     then ioError (userError "Failed to send")
                                     else do
                                       ackResult <- readUntilDone fd B.empty
-                                      if not ackResult
-                                        then ioError (userError $ "Handshake failed on command: " ++ cmd)
-                                        else do
-                                          threadDelay 10000 -- 10ms
-                                          handshakeLoop cmds
-                            handshakeLoop commands
+                                      unless ackResult $
+                                        ioError (userError $ "Handshake failed on command: " ++ cmd)
+                              )
+                              commands
                 )
           case result of
             Left ex -> return (Left $ ConfigurationFailed $ show (ex :: IOException))

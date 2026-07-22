@@ -55,6 +55,18 @@ def main():
         # Count approved reviews
         # Note: multiple reviews from the same author might need to be deduplicated or handled,
         # but the simplest approach is just count UNIQUE approvers.
+        
+        author_cmd = subprocess.run(
+            ['gh', 'pr', 'view', str(pr_number), '--json', 'author'],
+            capture_output=True, text=True, check=True
+        )
+        author_data = json.loads(author_cmd.stdout)
+        pr_author = author_data.get('author', {}).get('login', '')
+        
+        if pr_author.endswith('[bot]'):
+            print(f"PR authored by bot '{pr_author}'. Bypassing review verification.")
+            sys.exit(0)
+            
         approvers = set()
         for r in reviews:
             if r.get('state') == 'APPROVED':

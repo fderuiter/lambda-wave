@@ -13,8 +13,8 @@ def main():
         modified_files = [line.strip() for line in f if line.strip()]
         
     # Requirement 3: Identify "Class C" changes based on file paths
-    # We consider anything in src/Safety/ as a Class C safety-critical file
-    safety_modified = any(f.startswith('src/Safety/') for f in modified_files)
+    # We consider anything in src/Safety/ or src-math/Safety/ as a Class C safety-critical file
+    safety_modified = any((f.startswith('src/Safety/') or f.startswith('src-math/Safety/')) for f in modified_files)
     
     # Check for manual overrides of automated Traceability Matrix
     if 'docs/iec_62304/traceability_matrix.md' in modified_files:
@@ -26,13 +26,13 @@ def main():
 
     # Automated check within the CI pipeline that fails if a safety-critical change is detected without an updated risk analysis
     if safety_modified and not rmf_modified:
-        print("ERROR: Class C changes detected in 'src/Safety/' but no updated risk analysis (rmf.yaml) found.")
+        print("ERROR: Class C changes detected in 'src/Safety/' or 'src-math/Safety/' but no updated risk analysis (rmf.yaml) found.")
         print("Please update rmf.yaml with new or updated hazard analysis for this safety-critical change.")
         sys.exit(1)
 
     # Requirement 4: Fail if Class C change is detected without a corresponding CCR
     if safety_modified and not ccr_files_modified:
-        print("ERROR: Class C changes detected in 'src/Safety/' but no CCR file was added or updated in 'docs/ccr/'.")
+        print("ERROR: Class C changes detected in 'src/Safety/' or 'src-math/Safety/' but no CCR file was added or updated in 'docs/ccr/'.")
         print("Please create a Change Control Record (CCR) using docs/ccr/template.md.")
         sys.exit(1)
         

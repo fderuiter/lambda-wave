@@ -1,6 +1,3 @@
-{-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE PatternSynonyms #-}
-
 module Main (main) where
 
 import Control.Concurrent (forkIO, killThread, threadDelay)

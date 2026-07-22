@@ -5,7 +5,7 @@ module Main (main) where
 import qualified Data.ByteString.Lazy as BL
 import Data.Int (Int64)
 import Data.List (isSuffixOf)
-import Data.Maybe (isJust)
+import Data.Maybe (fromMaybe, isJust)
 import Data.Types (Point3D (..), RadarFrame (..))
 import Hardware.Consumer (parseStream)
 import System.Environment (lookupEnv)
@@ -15,7 +15,7 @@ import System.IO (hPutStrLn, stderr)
 main :: IO ()
 main = do
   envPath <- lookupEnv "CAPTURE_FILE"
-  let filePath = maybe "test/fixtures/synthetic_capture.bin" id envPath
+  let filePath = fromMaybe "test/fixtures/synthetic_capture.bin" envPath
 
   putStrLn $ "Reading capture file: " ++ filePath
   content <- BL.readFile filePath

@@ -1,4 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
 -- |
 -- SAFETY-CRITICAL Scaffolded Hardware Integration: Radar
 --
