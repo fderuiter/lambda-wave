@@ -15,7 +15,7 @@ def extract_docstrings(directory):
             if file in excluded_files:
                 continue
                 
-            is_haskell = file.endswith('.hs')
+            is_haskell = file.endswith('.hs') or file.endswith('.hsc')
             is_cpp = file.endswith('.cpp') or file.endswith('.hpp') or file.endswith('.h') or file.endswith('.c')
             
             if not (is_haskell or is_cpp):
@@ -115,7 +115,7 @@ def check_for_missing_docstring_updates():
         def is_tracked_file(f):
             if not f.startswith(safety_dirs):
                 return False
-            if not (f.endswith('.hs') or f.endswith('.cpp') or f.endswith('.hpp') or f.endswith('.h') or f.endswith('.c')):
+            if not (f.endswith('.hs') or f.endswith('.hsc') or f.endswith('.cpp') or f.endswith('.hpp') or f.endswith('.h') or f.endswith('.c')):
                 return False
             name = os.path.basename(f)
             if name in excluded_files:
@@ -136,7 +136,7 @@ def check_for_missing_docstring_updates():
             diff_out = subprocess.check_output(diff_cmd, text=True)
             doc_changed = False
             
-            is_haskell = sf.endswith('.hs')
+            is_haskell = sf.endswith('.hs') or sf.endswith('.hsc')
             is_cpp = sf.endswith('.cpp') or sf.endswith('.hpp') or sf.endswith('.h') or sf.endswith('.c')
             
             for line in diff_out.splitlines():

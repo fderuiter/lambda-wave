@@ -29,7 +29,6 @@ static std::atomic<int> g_pins[256];
 static int g_watchdog_pin = -1;
 
 static volatile uint32_t *gpio_map = nullptr;
-static bool hw_mode = false;
 
 #define BCM2708_PERI_BASE 0x3F000000
 #define GPIO_BASE (BCM2708_PERI_BASE + 0x200000)
@@ -39,7 +38,7 @@ extern "C" {
 
 static void clear_watchdog_safe_state() {
   if (g_watchdog_pin >= 0) {
-    if (hw_mode && gpio_map != nullptr && g_watchdog_pin < 54) {
+    if (gpio_map != nullptr && g_watchdog_pin < 54) {
       int pin = g_watchdog_pin;
       *(gpio_map + 10 + pin / 32) = (1 << (pin % 32));  // GPCLRn is offset 10
     }
@@ -76,10 +75,7 @@ int gpio_init() {
 
   if (gpio_map == MAP_FAILED || gpio_map == nullptr) {
     gpio_map = nullptr;
-    hw_mode = false;
     return 2;  // Simulation Mode
-  } else {
-    hw_mode = true;
   }
 
   std::atexit(clear_watchdog_safe_state);
@@ -93,7 +89,7 @@ int gpio_init() {
 int gpio_write(int pin, int val) {
   if (pin >= 0 && pin < 256) {
     g_pins[pin].store(val);
-    if (hw_mode && gpio_map != nullptr && pin < 54) {
+    if (gpio_map != nullptr && pin < 54) {
       // GPSETn: 7, GPCLRn: 10
       if (val) {
         *(gpio_map + 7 + pin / 32) = (1 << (pin % 32));
@@ -108,7 +104,7 @@ int gpio_write(int pin, int val) {
 
 int gpio_read(int pin) {
   if (pin >= 0 && pin < 256) {
-    if (hw_mode && gpio_map != nullptr && pin < 54) {
+    if (gpio_map != nullptr && pin < 54) {
       // GPLEVn: 13
       uint32_t val = *(gpio_map + 13 + pin / 32);
       return (val & (1 << (pin % 32))) ? 1 : 0;
@@ -122,7 +118,7 @@ int gpio_setup_watchdog(int pin) {
   if (pin >= 0 && pin < 256) {
     g_watchdog_pin = pin;
 
-    if (hw_mode && gpio_map != nullptr && pin < 54) {
+    if (gpio_map != nullptr && pin < 54) {
       // Setup pin as output (GPFSELn)
       int fsel = pin / 10;
       int shift = (pin % 10) * 3;
