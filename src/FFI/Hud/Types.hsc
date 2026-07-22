@@ -13,7 +13,6 @@ module FFI.Hud.Types (
 ) where
 
 import Foreign.Storable (Storable(..))
-import Foreign.C.String (CString)
 import Foreign.Ptr (Ptr)
 import Data.Word (Word64, Word32, Word8)
 
