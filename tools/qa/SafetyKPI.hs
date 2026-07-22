@@ -2,10 +2,9 @@
 
 module Main (main) where
 
-import Control.Exception (IOException, SomeException, catch, try)
-import Control.Monad (when)
+import Control.Exception (SomeException, catch)
 import qualified Data.ByteString as B
-import Data.List (isInfixOf, isPrefixOf)
+import Data.List (isInfixOf)
 import Safety.Crypto (decryptLog)
 import System.Exit (exitFailure, exitSuccess)
 
