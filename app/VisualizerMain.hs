@@ -36,6 +36,7 @@ import Data.Aeson (FromJSON(..), (.:), withObject)
 import qualified Data.Aeson as A
 import System.Exit (exitFailure)
 import Foreign.C.Types (CSize(..))
+
 import FFI.Hud.Types (HudStateC(..), Point3DC(..))
 
 -- C FFI declarations

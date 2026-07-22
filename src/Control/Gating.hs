@@ -30,12 +30,18 @@ import Data.Complex (Complex(..))
 import Hardware.Control (setBeam)
 import Hardware.FFI.Bridge (handleHardwareResponse)
 import Safety.Audit (tryWriteAudit)
+import Safety.Result (SafetyResult(..))
 import Data.I18n (Translations, translateAudit, translateBeamState)
 import qualified Data.Text as T
 import Numeric.Kinematics
     ( Distance(..)
+    , Velocity(..)
+    , Acceleration(..)
     , Time(..)
     , Proxy(..)
+    , KinematicMath(..)
+    , KinematicMultiply(..)
+    , ScalarMultiply(..)
     )
 import Hardware.Manifest (type SystemLatencyMs)
 import Safety.Verification (systemLatencyTime)
@@ -209,32 +215,107 @@ evaluateGating :: Distance    -- ^ Target Height (Distance)
                -> KalmanState -- ^ Current Filter State
                -> BeamState   -- ^ Previous Beam State
                -> BeamState   -- ^ New Beam State
-evaluateGating (Distance target) (Distance tol) (Distance hyst) (Time lat) kState oldBeam =
-    let -- Latency Compensation
-        -- Predict position at (Now + Latency)
-        -- x(t+dt) = x(t) + v(t)*dt + 0.5*a(t)*dt^2
-        (pos, vel, acc) = case x kState of
-            V3 pVal vVal aVal -> (pVal, vVal, aVal)
-            _ -> (0, 0, 0)
+evaluateGating target tol hyst lat kState oldBeam =
+    let (pD, vV, aA) = case x kState of
+            V3 pVal' vVal' aVal' -> (Distance pVal', Velocity vVal', Acceleration aVal')
+            _                    -> (Distance 0, Velocity 0, Acceleration 0)
 
-        -- Check for NaN/Inf
-        invalid = isNaN pos || isNaN vel || isNaN acc || isInfinite pos || isInfinite vel || isInfinite acc
-
-        predPos = pos + vel * lat + 0.5 * acc * lat * lat
-        err = abs (predPos - target)
-
-        -- Thresholds
-        -- ON Threshold: Tolerance
-        -- OFF Threshold: Tolerance + Hysteresis
-        onLimit = tol
-        offLimit = tol + hyst
+        Distance pVal = pD
+        Velocity vVal = vV
+        Acceleration aVal = aA
+        invalid = isNaN pVal || isNaN vVal || isNaN aVal || isInfinite pVal || isInfinite vVal || isInfinite aVal
 
     in if invalid
        then BeamOff
-       else case oldBeam of
-            BeamOff -> if err < onLimit then BeamOn else BeamOff
-            BeamOn  -> if err < offLimit then BeamOn else BeamOff
-            BeamHold -> BeamHold -- Manual override persists
+       else
+            let v_lat_mag = case kabs vV |*| lat of
+                    Safe d -> d
+                    ClampedToMin d -> d
+                    ClampedToMax d -> d
+                    DivByZeroSafe d -> d
+                    Unsafe _ -> Distance 0
+
+                p_v = if vVal < 0
+                      then case pD |-| v_lat_mag of
+                               Safe d -> d
+                               ClampedToMin d -> d
+                               ClampedToMax d -> d
+                               DivByZeroSafe d -> d
+                               Unsafe _ -> pD
+                      else case pD |+| v_lat_mag of
+                               Safe d -> d
+                               ClampedToMin d -> d
+                               ClampedToMax d -> d
+                               DivByZeroSafe d -> d
+                               Unsafe _ -> pD
+
+                a_lat_mag = case kabs aA |*| lat of
+                    Safe a_vel -> a_vel
+                    ClampedToMin a_vel -> a_vel
+                    ClampedToMax a_vel -> a_vel
+                    DivByZeroSafe a_vel -> a_vel
+                    Unsafe _ -> Velocity 0
+
+                a_lat2_mag = case a_lat_mag |*| lat of
+                    Safe d -> d
+                    ClampedToMin d -> d
+                    ClampedToMax d -> d
+                    DivByZeroSafe d -> d
+                    Unsafe _ -> Distance 0
+
+                half_a_lat2 = case 0.5 |* a_lat2_mag of
+                    Safe d -> d
+                    ClampedToMin d -> d
+                    ClampedToMax d -> d
+                    DivByZeroSafe d -> d
+                    Unsafe _ -> Distance 0
+
+                predPos = if aVal < 0
+                          then case p_v |-| half_a_lat2 of
+                                   Safe d -> d
+                                   ClampedToMin d -> d
+                                   ClampedToMax d -> d
+                                   DivByZeroSafe d -> d
+                                   Unsafe _ -> p_v
+                          else case p_v |+| half_a_lat2 of
+                                   Safe d -> d
+                                   ClampedToMin d -> d
+                                   ClampedToMax d -> d
+                                   DivByZeroSafe d -> d
+                                   Unsafe _ -> p_v
+
+                diff1 = case predPos |-| target of
+                    Safe d -> d
+                    ClampedToMin d -> d
+                    ClampedToMax d -> d
+                    DivByZeroSafe d -> d
+                    Unsafe _ -> Distance 0
+
+                diff2 = case target |-| predPos of
+                    Safe d -> d
+                    ClampedToMin d -> d
+                    ClampedToMax d -> d
+                    DivByZeroSafe d -> d
+                    Unsafe _ -> Distance 0
+
+                errD = case diff1 |+| diff2 of
+                    Safe d -> d
+                    ClampedToMin d -> d
+                    ClampedToMax d -> d
+                    DivByZeroSafe d -> d
+                    Unsafe _ -> Distance 0
+
+                offLimit = case tol |+| hyst of
+                    Safe d -> d
+                    ClampedToMin d -> d
+                    ClampedToMax d -> d
+                    DivByZeroSafe d -> d
+                    Unsafe _ -> tol
+
+            in case oldBeam of
+                 BeamOff -> if errD < tol then BeamOn else BeamOff
+                 BeamOn  -> if errD < offLimit then BeamOn else BeamOff
+                 BeamHold -> BeamHold
 
 -- Requirement FR-GAT-001
 

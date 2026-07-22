@@ -38,6 +38,13 @@ Failure Modes: Incorrect dimension conversion.
 Mitigations: Core types strictly define domain bounds.
 Traceability: REQ-SYS-003
 
+### Extracted from `src/FFI/Hud/Types.hsc`
+
+Types for HUD FFI.
+
+Failure Modes: Memory corruption if C struct layout mismatches.
+Mitigations: Explicit Storable instances with fixed byte offsets, now generated via hsc2hs.
+Traceability: REQ-HUD-001
 ### Extracted from `src/FFI/RingBuffer/IO.hs`
 
 High-assurance FFI Bridge Logic for RingBuffer.
