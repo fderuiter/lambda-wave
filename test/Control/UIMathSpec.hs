@@ -5,25 +5,17 @@ import Test.Hspec
 -- Removed unused Control.Monad (unless)
 import GHC.Float (double2Float)
 import UI.Presentation (shouldTriggerAudioAlert)
-import Data.Types (BeamState(..))
-import Numeric.Kinematics (Millimeters(..), Meters(..), mmToMeters)
+import Data.Types (BeamState(..), Point3D(..))
+import Numeric.Units (ConvertUnits(..), Point3DM(..))
 
--- | Mock types for verification
--- Removed unused fields 'v' and 'snr' to satisfy -Wunused-top-binds
-data Point3D = Point3D { px :: Double, py :: Double, pz :: Double }
 data Vertex3 a = Vertex3 a a a deriving (Show, Eq)
 
 -- | Pure transformation logic to verify
 -- Transforms a radar point (mm) to OpenGL coordinates (meters)
 transformPoint :: Point3D -> Vertex3 Float
 transformPoint p =
-    let Meters mx = mmToMeters (Millimeters (px p))
-        Meters my = mmToMeters (Millimeters (py p))
-        Meters mz = mmToMeters (Millimeters (pz p))
-        x = double2Float mx
-        y = double2Float my
-        z = double2Float mz
-    in Vertex3 x y z
+    let p' = convertUnits p
+    in Vertex3 (double2Float $ pxM p') (double2Float $ pyM p') (double2Float $ pzM p')
 
 type Vector3 = (Double, Double, Double)
 
@@ -57,13 +49,13 @@ spec :: Spec
 spec = describe "Control.UI.Math" $ do
     describe "Coordinate Transformation (mm to meters)" $ do
         it "correctly scales and converts Point3D to Vertex3" $ do
-            let p1 = Point3D 1000 2000 3000
+            let p1 = Point3D 1000 2000 3000 0 0
             let v1 = transformPoint p1
             let expected = Vertex3 1.0 2.0 3.0
             v1 `shouldBe` expected
 
         it "handles negative coordinates" $ do
-            let p = Point3D (-500) (-100) 0
+            let p = Point3D (-500) (-100) 0 0 0
             let vec = transformPoint p -- Renamed 'v' to 'vec'
             let expected = Vertex3 (-0.5) (-0.1) 0.0
             vec `shouldBe` expected
