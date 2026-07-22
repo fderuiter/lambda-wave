@@ -22,7 +22,7 @@ static std::mutex g_state_mutex;
 static std::vector<Point3DC> g_points;
 static double g_resp_z = 0.0;
 static std::string g_active_language = "en";
-static std::string g_localized_beam_state = "BEAM OFF";
+static int g_beam_state = -1;
 static int g_calibration_status = 0;
 static float g_beam_color_r = 1.0f;
 static float g_beam_color_g = 0.0f;
@@ -72,6 +72,18 @@ static const char *get_localized_string(const char *key_cstr,
   return g_translation_cache[key].c_str();
 }
 
+static const char *get_beam_state_localized(int state) {
+  switch (state) {
+    case 1:
+      return get_localized_string("BeamOn", "BEAM ON");
+    case 2:
+      return get_localized_string("BeamHold", "BEAM HOLD");
+    case 0:
+    default:
+      return get_localized_string("BeamOff", "BEAM OFF");
+  }
+}
+
 extern "C" {
 void register_translate_callback(TranslateCallback callback) {
   std::lock_guard<std::mutex> lock(g_state_mutex);
@@ -94,18 +106,11 @@ void set_cpp_hud_state(const HudStateC *state) {
 
   g_resp_z = state->resp_z;
 
-  if (state->active_language && g_active_language != state->active_language) {
-    g_active_language = state->active_language;
-    g_translation_cache.clear();
-  }
-
+  // We don't overwrite g_active_language from state anymore, it's managed by UI
   bool beam_changed = false;
-  std::string new_beam_state;
-  if (state->localized_beam_state &&
-      g_localized_beam_state != state->localized_beam_state) {
-    g_localized_beam_state = state->localized_beam_state;
+  if (g_beam_state != state->beam_state) {
+    g_beam_state = state->beam_state;
     beam_changed = true;
-    new_beam_state = g_localized_beam_state;
   }
 
   bool cal_changed = false;
@@ -119,7 +124,7 @@ void set_cpp_hud_state(const HudStateC *state) {
   if (beam_changed) {
     std::string ann = std::string(get_localized_string(
                           "beam_status_changed", "Beam Status Changed: ")) +
-                      " " + new_beam_state;
+                      " " + get_beam_state_localized(g_beam_state);
     g_a11y_announcements.push_back(ann);
   }
   if (cal_changed) {
@@ -146,12 +151,6 @@ void set_cpp_hud_state(const HudStateC *state) {
   }
 }
 }  // close extern "C"
-
-extern "C" void get_cpp_hud_language(char *out_lang, size_t max_len) {
-  std::lock_guard<std::mutex> lock(g_state_mutex);
-  strncpy(out_lang, g_active_language.c_str(), max_len - 1);
-  out_lang[max_len - 1] = '\0';
-}
 
 static void glfw_error_callback(int error, const char *description) {
   std::cerr << "GLFW Error " << error << ": " << description << '\n';
@@ -289,7 +288,7 @@ extern "C" void start_cpp_hud_loop(void) {
           ImVec4(g_beam_color_r, g_beam_color_g, g_beam_color_b, 1.0f);
 
       ImGui::TextColored(beamColor, "STATUS: %s",
-                         g_localized_beam_state.c_str());
+                         get_beam_state_localized(g_beam_state));
 
       // Respiratory trace
       ImGui::PlotLines(

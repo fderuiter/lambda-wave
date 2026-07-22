@@ -1,7 +1,7 @@
 module Main (main) where
 
 import Control.Exception (SomeException, try)
-import Numeric.Kinematics
+import Numeric.Kinematics hiding (dot)
 import SignalProcessing.Matrix
 import System.Exit (exitSuccess)
 

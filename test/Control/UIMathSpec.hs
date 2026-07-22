@@ -3,88 +3,77 @@
 
 module Control.UIMathSpec (spec) where
 
--- Removed unused Control.Monad (unless)
-
-import Data.Types (BeamState (..), Point3D (..))
+import Data.Types (BeamState (..))
 import GHC.Float (double2Float)
-import Numeric.Units (ConvertUnits (..), Point3DM (..))
-import SignalProcessing.Matrix (Vector, dot, normSq, subV, pattern V3)
+import Numeric.Kinematics
+  ( Coordinate (..),
+    Meters (..),
+    Millimeters (..),
+    angleBetween,
+    mmToMeters,
+    pattern Vector3D,
+    sub,
+  )
 import Test.Hspec
 import UI.Presentation (shouldTriggerAudioAlert)
 
+-- | Mock types for verification
 data Vertex3 a = Vertex3 a a a deriving (Show, Eq)
 
 -- | Pure transformation logic to verify
 -- Transforms a radar point (mm) to OpenGL coordinates (meters)
-transformPoint :: Point3D -> Vertex3 Float
+transformPoint :: Coordinate -> Vertex3 Float
 transformPoint p =
-  let p' = convertUnits p
-   in Vertex3 (double2Float $ pxM p') (double2Float $ pyM p') (double2Float $ pzM p')
-
-type Vector3 = Vector
-
-magnitude :: Vector3 -> Double
-magnitude vec = sqrt (normSq vec)
-
-normalize :: Vector3 -> Vector3
-normalize vec =
-  -- Renamed 'v' to 'vec' to avoid shadowing
-  let m = magnitude vec
-   in if m == 0 then V3 0 0 0 else map (/ m) vec
-
-rad2deg :: Double -> Double
-rad2deg r = r * 180.0 / pi
-
-angleBetween :: Vector3 -> Vector3 -> Double
-angleBetween v1 v2 =
-  let n1 = normalize v1
-      n2 = normalize v2
-      d = dot n1 n2
-      -- Clamp d to [-1, 1] to avoid NaN from acos
-      d' = max (-1.0) (min 1.0 d)
-   in rad2deg (acos d')
+  let Meters mx = mmToMeters (Millimeters (coordX p))
+      Meters my = mmToMeters (Millimeters (coordY p))
+      Meters mz = mmToMeters (Millimeters (coordZ p))
+      x = double2Float mx
+      y = double2Float my
+      z = double2Float mz
+   in Vertex3 x y z
 
 spec :: Spec
 spec = describe "Control.UI.Math" $ do
   describe "Coordinate Transformation (mm to meters)" $ do
-    it "correctly scales and converts Point3D to Vertex3" $ do
-      let p1 = Point3D 1000 2000 3000 0 0
+    it "correctly scales and converts Coordinate to Vertex3" $ do
+      let p1 = Vector3D 1000 2000 3000
       let v1 = transformPoint p1
       let expected = Vertex3 1.0 2.0 3.0
       v1 `shouldBe` expected
 
     it "handles negative coordinates" $ do
-      let p = Point3D (-500) (-100) 0 0 0
-      let vec = transformPoint p -- Renamed 'v' to 'vec'
+      let p = Vector3D (-500) (-100) 0
+      let vec = transformPoint p
       let expected = Vertex3 (-0.5) (-0.1) 0.0
       vec `shouldBe` expected
 
   describe "Camera Projection Logic (FOV Coverage)" $ do
     it "ensures a target at (0, 0, 2m) is centered in view from (0, 2, -2)" $ do
-      let cameraPos = V3 0.0 2.0 (-2.0)
-      let lookAtPos = V3 0.0 0.0 2.0
-      let forward = subV lookAtPos cameraPos -- (0, -2, 4) -> (0, -0.447, 0.894)
+      let cameraPos = Vector3D 0.0 2.0 (-2.0)
+      let lookAtPos = Vector3D 0.0 0.0 2.0
+      let forward = sub lookAtPos cameraPos
 
       -- Target is at lookAtPos, so angle should be 0
-      let targetVec = subV lookAtPos cameraPos
-      let angle = angleBetween forward targetVec
+      let targetVec = sub lookAtPos cameraPos
+      let angle = Numeric.Kinematics.angleBetween forward targetVec
       angle `shouldSatisfy` (< 1.0e-5)
 
     it "ensures edge point (2m lateral) is within horizontal FOV" $ do
-      let cameraPos = V3 0.0 2.0 (-2.0)
-      let lookAtPos = V3 0.0 0.0 2.0
-      let forward = subV lookAtPos cameraPos
+      let cameraPos = Vector3D 0.0 2.0 (-2.0)
+      let lookAtPos = Vector3D 0.0 0.0 2.0
+      let forward = sub lookAtPos cameraPos
 
-      let edgePoint = V3 2.0 0.0 2.0
-      let toEdge = subV edgePoint cameraPos
+      let edgePoint = Vector3D 2.0 0.0 2.0
+      let toEdge = sub edgePoint cameraPos
 
-      let angle = angleBetween forward toEdge
+      let angle = Numeric.Kinematics.angleBetween forward toEdge
       -- Angle should be ~24 degrees
       angle `shouldSatisfy` (\x -> x > 24.0 && x < 25.0)
 
       -- Assuming Horizontal FOV > 50 degrees (half > 25), it is visible.
       -- 24.1 < 25.
       angle `shouldSatisfy` (< 35.0) -- Safe margin
+
   describe "Audio Alert Logic (shouldTriggerAudioAlert)" $ do
     it "beeps when transitioning from BeamHold to BeamOff with alerts enabled" $ do
       shouldTriggerAudioAlert True BeamHold BeamOff `shouldBe` True

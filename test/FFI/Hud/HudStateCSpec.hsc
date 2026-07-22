@@ -4,6 +4,7 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE InstanceSigs #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
+{-# OPTIONS_GHC -Wno-type-defaults #-}
 
 module FFI.Hud.HudStateCSpec (spec) where
 
@@ -17,19 +18,19 @@ import Foreign.Ptr (nullPtr)
 
 instance Arbitrary HudStateC where
     arbitrary = do
-        return $ HudStateC 0 nullPtr 0 0.0 0 nullPtr nullPtr 0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0
+        return $ HudStateC 0 nullPtr 0 0.0 0 0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0
 
 spec :: Spec
 spec = do
   describe "HudStateC Storable instance" $ do
-    it "has sizeOf 96" $ do
-      sizeOf (HudStateC 0 nullPtr 0 0.0 0 nullPtr nullPtr 0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0) `shouldBe` 96
+    it "has sizeOf 72" $ do
+      sizeOf (HudStateC 0 nullPtr 0 0.0 0 0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0) `shouldBe` 72
 
     it "has alignment 8" $ do
-      alignment (HudStateC 0 nullPtr 0 0.0 0 nullPtr nullPtr 0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0) `shouldBe` 8
+      alignment (HudStateC 0 nullPtr 0 0.0 0 0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0) `shouldBe` 8
 
     it "calculates offsets consistently (Sanity Check)" $ do
-        sizeOf (HudStateC 0 nullPtr 0 0.0 0 nullPtr nullPtr 0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0) `shouldSatisfy` (>= 96)
+        sizeOf (HudStateC 0 nullPtr 0 0.0 0 0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0) `shouldSatisfy` (>= 72)
 
   describe "HudStateC Automated Layout Safety Verification" $ do
     it "matches documented offset for beam_state (0)" $ do
@@ -42,25 +43,21 @@ spec = do
       #{offset HudStateC, resp_z} `shouldBe` 24
     it "matches documented offset for audio_alert_enabled (32)" $ do
       #{offset HudStateC, audio_alert_enabled} `shouldBe` 32
-    it "matches documented offset for active_language (40)" $ do
-      #{offset HudStateC, active_language} `shouldBe` 40
-    it "matches documented offset for localized_beam_state (48)" $ do
-      #{offset HudStateC, localized_beam_state} `shouldBe` 48
-    it "matches documented offset for calibration_status (56)" $ do
-      #{offset HudStateC, calibration_status} `shouldBe` 56
-    it "matches documented offset for beam_color_r (60)" $ do
-      #{offset HudStateC, beam_color_r} `shouldBe` 60
-    it "matches documented offset for beam_color_g (64)" $ do
-      #{offset HudStateC, beam_color_g} `shouldBe` 64
-    it "matches documented offset for beam_color_b (68)" $ do
-      #{offset HudStateC, beam_color_b} `shouldBe` 68
-    it "matches documented offset for trace_scale_min (72)" $ do
-      #{offset HudStateC, trace_scale_min} `shouldBe` 72
-    it "matches documented offset for trace_scale_max (76)" $ do
-      #{offset HudStateC, trace_scale_max} `shouldBe` 76
-    it "matches documented offset for point_color_r (80)" $ do
-      #{offset HudStateC, point_color_r} `shouldBe` 80
-    it "matches documented offset for point_color_g (84)" $ do
-      #{offset HudStateC, point_color_g} `shouldBe` 84
-    it "matches documented offset for point_color_b (88)" $ do
-      #{offset HudStateC, point_color_b} `shouldBe` 88
+    it "matches documented offset for calibration_status (36)" $ do
+      #{offset HudStateC, calibration_status} `shouldBe` 36
+    it "matches documented offset for beam_color_r (40)" $ do
+      #{offset HudStateC, beam_color_r} `shouldBe` 40
+    it "matches documented offset for beam_color_g (44)" $ do
+      #{offset HudStateC, beam_color_g} `shouldBe` 44
+    it "matches documented offset for beam_color_b (48)" $ do
+      #{offset HudStateC, beam_color_b} `shouldBe` 48
+    it "matches documented offset for trace_scale_min (52)" $ do
+      #{offset HudStateC, trace_scale_min} `shouldBe` 52
+    it "matches documented offset for trace_scale_max (56)" $ do
+      #{offset HudStateC, trace_scale_max} `shouldBe` 56
+    it "matches documented offset for point_color_r (60)" $ do
+      #{offset HudStateC, point_color_r} `shouldBe` 60
+    it "matches documented offset for point_color_g (64)" $ do
+      #{offset HudStateC, point_color_g} `shouldBe` 64
+    it "matches documented offset for point_color_b (68)" $ do
+      #{offset HudStateC, point_color_b} `shouldBe` 68

@@ -13,7 +13,6 @@ module FFI.Hud.Types (
 ) where
 
 import Foreign.Storable (Storable(..))
-import Foreign.C.String (CString)
 import Foreign.Ptr (Ptr)
 import Foreign.C.Types
 
@@ -39,8 +38,6 @@ data HudStateC = HudStateC
     , hscNumPoints :: CSize
     , hscRespZ :: CDouble
     , hscAudioAlertEnabled :: CBool
-    , hscActiveLanguage :: CString
-    , hscLocalizedBeamState :: CString
     , hscCalibrationStatus :: CInt
     , hscBeamColorR :: CFloat
     , hscBeamColorG :: CFloat
@@ -61,8 +58,6 @@ instance Storable HudStateC where
         <*> #{peek HudStateC, num_points} ptr
         <*> #{peek HudStateC, resp_z} ptr
         <*> #{peek HudStateC, audio_alert_enabled} ptr
-        <*> #{peek HudStateC, active_language} ptr
-        <*> #{peek HudStateC, localized_beam_state} ptr
         <*> #{peek HudStateC, calibration_status} ptr
         <*> #{peek HudStateC, beam_color_r} ptr
         <*> #{peek HudStateC, beam_color_g} ptr
@@ -73,14 +68,12 @@ instance Storable HudStateC where
         <*> #{peek HudStateC, point_color_g} ptr
         <*> #{peek HudStateC, point_color_b} ptr
 
-    poke ptr (HudStateC bS pT nP rZ aA aL lBS cS bR bG bB tMin tMax pR pG pB) = do
+    poke ptr (HudStateC bS pT nP rZ aA cS bR bG bB tMin tMax pR pG pB) = do
         #{poke HudStateC, beam_state} ptr bS
         #{poke HudStateC, points} ptr pT
         #{poke HudStateC, num_points} ptr nP
         #{poke HudStateC, resp_z} ptr rZ
         #{poke HudStateC, audio_alert_enabled} ptr aA
-        #{poke HudStateC, active_language} ptr aL
-        #{poke HudStateC, localized_beam_state} ptr lBS
         #{poke HudStateC, calibration_status} ptr cS
         #{poke HudStateC, beam_color_r} ptr bR
         #{poke HudStateC, beam_color_g} ptr bG

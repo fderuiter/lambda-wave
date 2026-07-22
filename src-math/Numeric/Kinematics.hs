@@ -3,6 +3,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
@@ -18,6 +19,7 @@ module Numeric.Kinematics
     Acceleration (..),
     Time (..),
     Frequency (..),
+    Coordinate (..),
 
     -- * Unit Specific Types
     Millimeters (..),
@@ -61,6 +63,16 @@ module Numeric.Kinematics
     ClinicalBounds (..),
     defaultBounds,
 
+    -- * Spatial Functions
+    pattern Vector3D,
+    translate,
+    distance,
+    magnitude,
+    normalize,
+    dot,
+    sub,
+    angleBetween,
+
     -- * Re-exports
     Proxy (..),
   )
@@ -68,6 +80,52 @@ where
 
 import Data.Proxy
 import Safety.Result (SafetyResult (..))
+
+data Coordinate = Coordinate
+  { coordX :: Double,
+    coordY :: Double,
+    coordZ :: Double,
+    coordIntensity :: Double,
+    coordConfidence :: Double
+  }
+  deriving (Show, Eq)
+
+pattern Vector3D :: Double -> Double -> Double -> Coordinate
+pattern Vector3D x y z <- Coordinate x y z _ _
+  where
+    Vector3D x y z = Coordinate x y z 0.0 0.0
+
+{-# COMPLETE Vector3D :: Coordinate #-}
+
+translate :: Coordinate -> Coordinate -> Coordinate
+translate (Coordinate x1 y1 z1 i1 c1) (Coordinate x2 y2 z2 _ _) =
+  Coordinate (x1 + x2) (y1 + y2) (z1 + z2) i1 c1
+
+distance :: Coordinate -> Coordinate -> Double
+distance (Coordinate x1 y1 z1 _ _) (Coordinate x2 y2 z2 _ _) =
+  sqrt ((x1 - x2) ** 2 + (y1 - y2) ** 2 + (z1 - z2) ** 2)
+
+magnitude :: Coordinate -> Double
+magnitude (Coordinate x y z _ _) = sqrt (x * x + y * y + z * z)
+
+normalize :: Coordinate -> Coordinate
+normalize v@(Coordinate x y z _ _) =
+  let m = magnitude v
+   in if m == 0 then Coordinate 0 0 0 0.0 0.0 else Coordinate (x / m) (y / m) (z / m) 0.0 0.0
+
+dot :: Coordinate -> Coordinate -> Double
+dot (Coordinate x1 y1 z1 _ _) (Coordinate x2 y2 z2 _ _) = x1 * x2 + y1 * y2 + z1 * z2
+
+sub :: Coordinate -> Coordinate -> Coordinate
+sub (Coordinate x1 y1 z1 _ _) (Coordinate x2 y2 z2 _ _) = Coordinate (x1 - x2) (y1 - y2) (z1 - z2) 0.0 0.0
+
+angleBetween :: Coordinate -> Coordinate -> Double
+angleBetween v1 v2 =
+  let (Coordinate n1x n1y n1z _ _) = normalize v1
+      (Coordinate n2x n2y n2z _ _) = normalize v2
+      d = n1x * n2x + n1y * n2y + n1z * n2z
+      d' = max (-1.0) (min 1.0 d)
+   in (acos d') * 180.0 / pi
 
 newtype Distance = Distance Double deriving (Show, Eq, Ord)
 
