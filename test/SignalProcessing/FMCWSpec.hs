@@ -4,8 +4,7 @@ module SignalProcessing.FMCWSpec (spec) where
 import Test.Hspec
 import Data.Complex
 import SignalProcessing.FMCW
-import Numeric.Kinematics
-import Control.Monad (zipWithM_)
+import Numeric.Kinematics hiding (magnitude)
 import Numeric.FloatAssert (shouldBeApprox, shouldBeApproxList)
 
 spec :: Spec

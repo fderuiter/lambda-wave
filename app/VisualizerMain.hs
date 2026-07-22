@@ -10,7 +10,7 @@ import Control.Concurrent.STM
 import Control.Exception (try, IOException)
 import System.Posix.IO (openFd, OpenMode(..), defaultFileFlags, OpenFileFlags(..), fdReadBuf)
 import System.Posix.Types (Fd, ByteCount)
-import Control.Monad (forever, void)
+import Control.Monad (forever, void, when)
 import qualified Data.Map.Strict as Map
 import Data.Binary (decode)
 import qualified Data.ByteString.Lazy as BL
@@ -36,7 +36,6 @@ import Data.Aeson (FromJSON(..), (.:), withObject)
 import qualified Data.Aeson as A
 import System.Exit (exitFailure)
 import Foreign.C.Types (CSize(..))
-import Data.Word (Word8, Word64)
 import FFI.Hud.Types (HudStateC(..), Point3DC(..))
 
 -- C FFI declarations

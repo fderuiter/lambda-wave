@@ -3,6 +3,7 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE InstanceSigs #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
+{-# OPTIONS_GHC -Wno-type-defaults #-}
 
 module FFI.Hud.HudStateCSpec (spec) where
 

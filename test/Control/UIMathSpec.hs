@@ -1,4 +1,5 @@
 {-# LANGUAGE StrictData #-}
+{-# LANGUAGE PatternSynonyms #-}
 module Control.UIMathSpec (spec) where
 
 import Test.Hspec
