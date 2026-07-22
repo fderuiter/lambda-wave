@@ -170,7 +170,7 @@ jobs:
             done
             
             SRC_ARGS=""
-            for d in app src test tools bench; do
+            for d in app src src-math test tools bench; do
               if [ -d "$d" ]; then
                 SRC_ARGS="$SRC_ARGS --srcdir=$d"
               fi

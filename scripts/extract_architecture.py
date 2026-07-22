@@ -108,7 +108,7 @@ def check_for_missing_docstring_updates():
         
         modified_files = subprocess.check_output(cmd, text=True).splitlines()
         
-        safety_dirs = ('src/Numeric', 'src/SignalProcessing', 'src/FFI', 'cbits')
+        safety_dirs = ('src-math/Numeric', 'src-math/SignalProcessing', 'src/FFI', 'cbits')
         excluded_files = {"hardware_manifest.h", "RingBuffer.h", "SensorRadar.h", "ring_buffer_ffi.cpp", "hud.cpp", "hud.h", "RingBufferCheck.cpp"}
         excluded_dirs = {"imgui", "thirdparty", "third-party", "build", "Generated"}
         
@@ -209,7 +209,7 @@ def main():
     if args.check:
         check_for_missing_docstring_updates()
     
-    dirs_to_scan = ['src/Numeric', 'src/SignalProcessing', 'src/FFI', 'cbits']
+    dirs_to_scan = ['src-math/Numeric', 'src-math/SignalProcessing', 'src/FFI', 'cbits']
     all_docstrings = []
     for d in dirs_to_scan:
         path = os.path.join('.', d)

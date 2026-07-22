@@ -4,11 +4,11 @@ set -e
 echo "Running Promotion Validator..."
 
 # Requirement 4: Reject external matrix libraries (SOUP dependencies)
-if grep -rEn "import .*hmatrix" src/Numeric/*.hs src/SignalProcessing/*.hs; then
+if grep -rEn "import .*hmatrix" src-math/Numeric/*.hs src-math/SignalProcessing/*.hs 2>/dev/null; then
     echo "ERROR: External matrix libraries (e.g., hmatrix) found!"
     exit 1
 fi
-if grep -rEn "import .*Numeric\.LinearAlgebra" src/Numeric/*.hs src/SignalProcessing/*.hs; then
+if grep -rEn "import .*Numeric\.LinearAlgebra" src-math/Numeric/*.hs src-math/SignalProcessing/*.hs 2>/dev/null; then
     echo "ERROR: External matrix libraries (e.g., Numeric.LinearAlgebra) found!"
     exit 1
 fi
