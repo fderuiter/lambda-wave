@@ -217,7 +217,7 @@ evaluateGating :: Distance    -- ^ Target Height (Distance)
                -> BeamState   -- ^ New Beam State
 evaluateGating target tol hyst lat kState oldBeam =
     let (pD, vV, aA) = case x kState of
-            V3 pVal vVal aVal -> (Distance pVal, Velocity vVal, Acceleration aVal)
+            V3 pVal' vVal' aVal' -> (Distance pVal', Velocity vVal', Acceleration aVal')
             _                 -> (Distance 0, Velocity 0, Acceleration 0)
 
         Distance pVal = pD
@@ -236,10 +236,10 @@ evaluateGating target tol hyst lat kState oldBeam =
                     Unsafe _ -> Distance 0
 
                 a_lat = case aA |*| lat of
-                    Safe v -> v
-                    ClampedToMin v -> v
-                    ClampedToMax v -> v
-                    DivByZeroSafe v -> v
+                    Safe velOut -> velOut
+                    ClampedToMin velOut -> velOut
+                    ClampedToMax velOut -> velOut
+                    DivByZeroSafe velOut -> velOut
                     Unsafe _ -> Velocity 0
 
                 a_lat2 = case a_lat |*| lat of
