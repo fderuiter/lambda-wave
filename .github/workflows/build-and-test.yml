@@ -56,7 +56,7 @@ jobs:
         if: steps.path_selector.outputs.prototype_only != 'true'
         run: |
           cabal build bolt-optimizer
-          find src/ -type f -name "*.hs" | xargs cabal run bolt-optimizer --
+          find src/ src-math/ -type f -name "*.hs" | xargs cabal run bolt-optimizer --
 
       - name: Build
         run: cabal build

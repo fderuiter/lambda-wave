@@ -149,7 +149,7 @@ jobs:
           PARENT_DIR=$(dirname "$MIX_DIR")
           
           # Generate report for Safety modules
-          hpc report combined.tix --srcdir=src --hpcdir=$PARENT_DIR --include=sgrt-radar-system-0.1.0.0-inplace/Safety.Watchdog --include=sgrt-radar-system-0.1.0.0-inplace/Safety.Audit > coverage_report.txt
+          hpc report combined.tix --srcdir=src --srcdir=src-math --hpcdir=$PARENT_DIR --include=sgrt-radar-system-0.1.0.0-inplace/Safety.Watchdog --include=sgrt-radar-system-0.1.0.0-inplace/Safety.Audit > coverage_report.txt
           
           cat coverage_report.txt
           
