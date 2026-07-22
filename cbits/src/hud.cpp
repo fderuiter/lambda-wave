@@ -2,9 +2,9 @@
 #include "../imgui/backends/imgui_impl_glfw.h"
 #include "../imgui/backends/imgui_impl_opengl3.h"
 #include "../imgui/imgui.h"
-#include <a11y_bridge.h>
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
+#include <a11y_bridge.h>
 #include <cmath>
 #include <cstdlib>
 #include <cstring>
