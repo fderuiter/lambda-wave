@@ -85,6 +85,7 @@ data Coordinate = Coordinate
 pattern Vector3D :: Double -> Double -> Double -> Coordinate
 pattern Vector3D x y z <- Coordinate x y z _ _
   where Vector3D x y z = Coordinate x y z 0.0 0.0
+{-# COMPLETE Vector3D #-}
 
 translate :: Coordinate -> Coordinate -> Coordinate
 translate (Coordinate x1 y1 z1 i1 c1) (Coordinate x2 y2 z2 _ _) =
