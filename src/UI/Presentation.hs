@@ -1,4 +1,3 @@
-{-# LANGUAGE PatternSynonyms #-}
 -- Requirement SR-UI-001
 module UI.Presentation (
     BeamDisplayInfo(..),

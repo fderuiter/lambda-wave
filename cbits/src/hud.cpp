@@ -2,9 +2,9 @@
 #include "../imgui/backends/imgui_impl_glfw.h"
 #include "../imgui/backends/imgui_impl_opengl3.h"
 #include "../imgui/imgui.h"
-#include <a11y_bridge.h>
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
+#include <a11y_bridge.h>
 #include <cmath>
 #include <cstdlib>
 #include <cstring>
@@ -90,7 +90,7 @@ void set_cpp_hud_state(const HudStateC *state) {
   }
 
   g_resp_z = state->resp_z;
-  
+
   if (state->active_language && g_active_language != state->active_language) {
     g_active_language = state->active_language;
     g_translation_cache.clear();

@@ -5,9 +5,9 @@
 extern "C" {
 #endif
 
-void *c_create_radar();
-void c_destroy_radar(void *ptr);
-void *c_attach_radar(void *existing_ptr);
+void* c_create_radar();
+void c_destroy_radar(void* ptr);
+void* c_attach_radar(void* existing_ptr);
 
 #ifdef __cplusplus
 }

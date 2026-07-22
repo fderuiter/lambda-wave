@@ -28,6 +28,7 @@ import qualified Data.ByteString as B
 import Foreign.Storable
 import Control.DeepSeq (NFData(..))
 import Control.Concurrent.STM (TBQueue)
+import Foreign.Ptr (Ptr, castPtr)
 import GHC.Generics (Generic)
 import Data.Binary (Binary)
 
