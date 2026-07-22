@@ -101,13 +101,13 @@ magnitude (Coordinate x y z _ _) = sqrt (x*x + y*y + z*z)
 normalize :: Coordinate -> Coordinate
 normalize v@(Coordinate x y z _ _) =
     let m = magnitude v
-    in if m == 0 then Vector3D 0 0 0 else Vector3D (x/m) (y/m) (z/m)
+    in if m == 0 then Coordinate 0 0 0 0.0 0.0 else Coordinate (x/m) (y/m) (z/m) 0.0 0.0
 
 dot :: Coordinate -> Coordinate -> Double
 dot (Coordinate x1 y1 z1 _ _) (Coordinate x2 y2 z2 _ _) = x1*x2 + y1*y2 + z1*z2
 
 sub :: Coordinate -> Coordinate -> Coordinate
-sub (Coordinate x1 y1 z1 _ _) (Coordinate x2 y2 z2 _ _) = Vector3D (x1-x2) (y1-y2) (z1-z2)
+sub (Coordinate x1 y1 z1 _ _) (Coordinate x2 y2 z2 _ _) = Coordinate (x1-x2) (y1-y2) (z1-z2) 0.0 0.0
 
 angleBetween :: Coordinate -> Coordinate -> Double
 angleBetween v1 v2 =
