@@ -51,7 +51,7 @@ main = do
   stateVar <- mkState
 
   -- Cleanup old log
-  let logPath = "test_audit.log"
+  let logPath = "test_audit_heartbeat.log"
   catch (removeLink logPath) (\(_ :: IOException) -> return ())
 
   -- Start Audit Loop

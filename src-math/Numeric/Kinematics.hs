@@ -169,6 +169,9 @@ defaultBounds =
       maxAcceleration = 0.1
     }
 
+clampNonNegative :: (Double -> a) -> Double -> SafetyResult a
+clampNonNegative con r = if r < 0 then ClampedToMin (con 0) else Safe (con r)
+
 clampV :: Double -> SafetyResult Velocity
 clampV v
   | abs v > maxVelocity defaultBounds = ClampedToMax (Velocity (signum v * maxVelocity defaultBounds))
@@ -187,10 +190,9 @@ class KinematicMath a where
   kabs :: a -> a
 
 instance KinematicMath Distance where
-  (Distance a) |+| (Distance b) = let r = a + b in if r < 0 then ClampedToMin (Distance 0) else Safe (Distance r)
-  (Distance a) |-| (Distance b) = let r = a - b in if r < 0 then ClampedToMin (Distance 0) else Safe (Distance r)
+  (Distance a) |+| (Distance b) = clampNonNegative Distance (a + b)
+  (Distance a) |-| (Distance b) = clampNonNegative Distance (a - b)
   kabs (Distance a) = Distance (abs a)
-
 instance KinematicMath Velocity where
   (Velocity a) |+| (Velocity b) = clampV (a + b)
   (Velocity a) |-| (Velocity b) = clampV (a - b)
@@ -202,15 +204,14 @@ instance KinematicMath Acceleration where
   kabs (Acceleration a) = Acceleration (abs a)
 
 instance KinematicMath Time where
-  (Time a) |+| (Time b) = let r = a + b in if r < 0 then ClampedToMin (Time 0) else Safe (Time r)
-  (Time a) |-| (Time b) = let r = a - b in if r < 0 then ClampedToMin (Time 0) else Safe (Time r)
+  (Time a) |+| (Time b) = clampNonNegative Time (a + b)
+  (Time a) |-| (Time b) = clampNonNegative Time (a - b)
   kabs (Time a) = Time (abs a)
 
 instance KinematicMath Frequency where
-  (Frequency a) |+| (Frequency b) = let r = a + b in if r < 0 then ClampedToMin (Frequency 0) else Safe (Frequency r)
-  (Frequency a) |-| (Frequency b) = let r = a - b in if r < 0 then ClampedToMin (Frequency 0) else Safe (Frequency r)
+  (Frequency a) |+| (Frequency b) = clampNonNegative Frequency (a + b)
+  (Frequency a) |-| (Frequency b) = clampNonNegative Frequency (a - b)
   kabs (Frequency a) = Frequency (abs a)
-
 class KinematicMultiply a b c where
   (|*|) :: a -> b -> SafetyResult c
 
@@ -237,11 +238,10 @@ instance KinematicDivide Distance Distance Distance where
   _ |/| _ = Unsafe "Cannot divide Distance by Distance"
 
 instance KinematicMultiply Velocity Time Distance where
-  (Velocity v) |*| (Time t) = let r = v * t in if r < 0 then ClampedToMin (Distance 0) else Safe (Distance r)
+  (Velocity v) |*| (Time t) = clampNonNegative Distance (v * t)
 
 instance KinematicMultiply Time Velocity Distance where
-  (Time t) |*| (Velocity v) = let r = v * t in if r < 0 then ClampedToMin (Distance 0) else Safe (Distance r)
-
+  (Time t) |*| (Velocity v) = clampNonNegative Distance (v * t)
 instance KinematicMultiply Acceleration Time Velocity where
   (Acceleration a) |*| (Time t) = clampV (a * t)
 
@@ -267,25 +267,23 @@ instance KinematicMultiply Distance Frequency Velocity where
   (Distance d) |*| (Frequency f) = clampV (d * f)
 
 instance KinematicDivide Velocity Distance Frequency where
-  (Velocity v) |/| (Distance d) =
-    if abs d < 1e-12
+  (Velocity v) |/| (Distance d) = 
+      if abs d < 1e-12 
       then DivByZeroSafe (Frequency 1000.0)
-      else let r = v / d in if r < 0 then ClampedToMin (Frequency 0) else Safe (Frequency r)
+      else clampNonNegative Frequency (v / d)
 
 instance KinematicDivide Velocity Frequency Distance where
-  (Velocity v) |/| (Frequency f) =
-    if abs f < 1e-12
+  (Velocity v) |/| (Frequency f) = 
+      if abs f < 1e-12 
       then DivByZeroSafe (Distance 1000.0)
-      else let r = v / f in if r < 0 then ClampedToMin (Distance 0) else Safe (Distance r)
-
+      else clampNonNegative Distance (v / f)
 class ScalarMultiply a where
   (|*) :: Double -> a -> SafetyResult a
   (*|) :: a -> Double -> SafetyResult a
 
 instance ScalarMultiply Distance where
-  s |* (Distance d) = let r = s * d in if r < 0 then ClampedToMin (Distance 0) else Safe (Distance r)
-  (Distance d) *| s = let r = s * d in if r < 0 then ClampedToMin (Distance 0) else Safe (Distance r)
-
+  s |* (Distance d) = clampNonNegative Distance (s * d)
+  (Distance d) *| s = clampNonNegative Distance (s * d)
 instance ScalarMultiply Velocity where
   s |* (Velocity v) = clampV (s * v)
   (Velocity v) *| s = clampV (s * v)
@@ -295,9 +293,9 @@ instance ScalarMultiply Acceleration where
   (Acceleration a) *| s = clampA (s * a)
 
 instance ScalarMultiply Time where
-  s |* (Time t) = let r = s * t in if r < 0 then ClampedToMin (Time 0) else Safe (Time r)
-  (Time t) *| s = let r = s * t in if r < 0 then ClampedToMin (Time 0) else Safe (Time r)
+  s |* (Time t) = clampNonNegative Time (s * t)
+  (Time t) *| s = clampNonNegative Time (s * t)
 
 instance ScalarMultiply Frequency where
-  s |* (Frequency f) = let r = s * f in if r < 0 then ClampedToMin (Frequency 0) else Safe (Frequency r)
-  (Frequency f) *| s = let r = s * f in if r < 0 then ClampedToMin (Frequency 0) else Safe (Frequency r)
+  s |* (Frequency f) = clampNonNegative Frequency (s * f)
+  (Frequency f) *| s = clampNonNegative Frequency (s * f)

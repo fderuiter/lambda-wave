@@ -40,6 +40,9 @@ jobs:
       - name: Install pyyaml
         run: pip install --break-system-packages pyyaml
 
+      - name: Validate CODEOWNERS
+        run: python3 ./scripts/validate_codeowners.py
+
       - name: Check Reference Docs Narrative
         run: ./scripts/check_reference_narrative.py
 

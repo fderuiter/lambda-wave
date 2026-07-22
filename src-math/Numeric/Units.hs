@@ -8,7 +8,6 @@ module Numeric.Units
       KalmanStateM(..)
     ) where
 
-import Data.Types (Point3D(..))
 import SignalProcessing.Kalman (KalmanState(..), pattern V3)
 import Numeric.Kinematics (Millimeters(..), MillimetersPerSecond(..), MillimetersPerSecondSquared(..))
 
@@ -26,13 +25,6 @@ instance ConvertUnits MillimetersPerSecondSquared Double where
 
 data Point3DM = Point3DM { pxM :: Double, pyM :: Double, pzM :: Double } deriving (Show, Eq)
 data KalmanStateM = KalmanStateM { posX :: Double, velX :: Double, accX :: Double } deriving (Show, Eq)
-
-instance ConvertUnits Point3D Point3DM where
-    convertUnits pt = Point3DM
-        { pxM = convertUnits (Millimeters (px pt))
-        , pyM = convertUnits (Millimeters (py pt))
-        , pzM = convertUnits (Millimeters (pz pt))
-        }
 
 instance ConvertUnits KalmanState KalmanStateM where
     convertUnits ks =

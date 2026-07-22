@@ -22,4 +22,4 @@ repos:
         entry: bash -c 'command -v hlint >/dev/null 2>&1 || { echo "hlint not found"; exit 1; }; hlint "$@"' --
         language: system
         types: [haskell]
-        files: ^(src|tools)/
+        files: ^(src|src-math|tools|app|test|bench)/
