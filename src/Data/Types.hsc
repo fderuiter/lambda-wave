@@ -29,6 +29,7 @@ import Foreign.Storable
 import Foreign.Ptr (Ptr, castPtr)
 import Control.DeepSeq (NFData(..))
 import Control.Concurrent.STM (TBQueue)
+import Foreign.Ptr (Ptr, castPtr)
 import GHC.Generics (Generic)
 import Data.Binary (Binary)
 
