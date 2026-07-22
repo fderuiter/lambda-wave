@@ -26,6 +26,7 @@ import Data.Word (Word64, Word32)
 import Data.Map.Strict (Map)
 import qualified Data.ByteString as B
 import Foreign.Storable
+import Foreign.Ptr (Ptr, castPtr)
 import Control.DeepSeq (NFData(..))
 import Control.Concurrent.STM (TBQueue)
 import GHC.Generics (Generic)

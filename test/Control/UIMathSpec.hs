@@ -1,4 +1,5 @@
 {-# LANGUAGE StrictData #-}
+{-# LANGUAGE PatternSynonyms #-}
 module Control.UIMathSpec (spec) where
 
 import Test.Hspec
@@ -21,7 +22,7 @@ transformPoint p =
 type Vector3 = Vector
 
 magnitude :: Vector3 -> Double
-magnitude v = sqrt (normSq v)
+magnitude vec = sqrt (normSq vec)
 
 normalize :: Vector3 -> Vector3
 normalize vec = -- Renamed 'v' to 'vec' to avoid shadowing

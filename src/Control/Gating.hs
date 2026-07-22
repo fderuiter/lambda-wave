@@ -217,8 +217,8 @@ evaluateGating :: Distance    -- ^ Target Height (Distance)
                -> BeamState   -- ^ New Beam State
 evaluateGating target tol hyst lat kState oldBeam =
     let (pD, vV, aA) = case x kState of
-            V3 pVal vVal aVal -> (Distance pVal, Velocity vVal, Acceleration aVal)
-            _                 -> (Distance 0, Velocity 0, Acceleration 0)
+            V3 pVal' vVal' aVal' -> (Distance pVal', Velocity vVal', Acceleration aVal')
+            _                    -> (Distance 0, Velocity 0, Acceleration 0)
 
         Distance pVal = pD
         Velocity vVal = vV
@@ -228,47 +228,61 @@ evaluateGating target tol hyst lat kState oldBeam =
     in if invalid
        then BeamOff
        else
-            let v_lat = case vV |*| lat of
+            let v_lat_mag = case kabs vV |*| lat of
                     Safe d -> d
                     ClampedToMin d -> d
                     ClampedToMax d -> d
                     DivByZeroSafe d -> d
                     Unsafe _ -> Distance 0
 
-                a_lat = case aA |*| lat of
-                    Safe v -> v
-                    ClampedToMin v -> v
-                    ClampedToMax v -> v
-                    DivByZeroSafe v -> v
+                p_v = if vVal < 0
+                      then case pD |-| v_lat_mag of
+                               Safe d -> d
+                               ClampedToMin d -> d
+                               ClampedToMax d -> d
+                               DivByZeroSafe d -> d
+                               Unsafe _ -> pD
+                      else case pD |+| v_lat_mag of
+                               Safe d -> d
+                               ClampedToMin d -> d
+                               ClampedToMax d -> d
+                               DivByZeroSafe d -> d
+                               Unsafe _ -> pD
+
+                a_lat_mag = case kabs aA |*| lat of
+                    Safe a_vel -> a_vel
+                    ClampedToMin a_vel -> a_vel
+                    ClampedToMax a_vel -> a_vel
+                    DivByZeroSafe a_vel -> a_vel
                     Unsafe _ -> Velocity 0
 
-                a_lat2 = case a_lat |*| lat of
+                a_lat2_mag = case a_lat_mag |*| lat of
                     Safe d -> d
                     ClampedToMin d -> d
                     ClampedToMax d -> d
                     DivByZeroSafe d -> d
                     Unsafe _ -> Distance 0
 
-                half_a_lat2 = case 0.5 |* a_lat2 of
+                half_a_lat2 = case 0.5 |* a_lat2_mag of
                     Safe d -> d
                     ClampedToMin d -> d
                     ClampedToMax d -> d
                     DivByZeroSafe d -> d
                     Unsafe _ -> Distance 0
 
-                p_v = case pD |+| v_lat of
-                    Safe d -> d
-                    ClampedToMin d -> d
-                    ClampedToMax d -> d
-                    DivByZeroSafe d -> d
-                    Unsafe _ -> pD
-
-                predPos = case p_v |+| half_a_lat2 of
-                    Safe d -> d
-                    ClampedToMin d -> d
-                    ClampedToMax d -> d
-                    DivByZeroSafe d -> d
-                    Unsafe _ -> p_v
+                predPos = if aVal < 0
+                          then case p_v |-| half_a_lat2 of
+                                   Safe d -> d
+                                   ClampedToMin d -> d
+                                   ClampedToMax d -> d
+                                   DivByZeroSafe d -> d
+                                   Unsafe _ -> p_v
+                          else case p_v |+| half_a_lat2 of
+                                   Safe d -> d
+                                   ClampedToMin d -> d
+                                   ClampedToMax d -> d
+                                   DivByZeroSafe d -> d
+                                   Unsafe _ -> p_v
 
                 diff1 = case predPos |-| target of
                     Safe d -> d
