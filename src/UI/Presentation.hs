@@ -1,29 +1,31 @@
 -- Requirement SR-UI-001
-module UI.Presentation (
-    BeamDisplayInfo(..),
+module UI.Presentation
+  ( BeamDisplayInfo (..),
     getBeamDisplayInfo,
     scalePointToMeters,
     scaleKalmanStateToMeters,
     shouldTriggerAudioAlert,
     indicatorScaleLimitMin,
     indicatorScaleLimitMax,
-    pointCloudColorRGB
-) where
+    pointCloudColorRGB,
+  )
+where
 
-import Data.Types (BeamState(..), Point3D(..))
-import SignalProcessing.Kalman (KalmanState(..))
-import Numeric.Units (ConvertUnits(..), Point3DM(..), KalmanStateM(..))
+import Data.Types (BeamState (..), Point3D (..))
+import Numeric.Units (ConvertUnits (..), KalmanStateM (..), Point3DM (..))
+import SignalProcessing.Kalman (KalmanState (..))
 
 data BeamDisplayInfo = BeamDisplayInfo
-    { bdiColorHex   :: String
-    , bdiColorRGB   :: (Float, Float, Float)
-    , bdiShape      :: String
-    , bdiIconSymbol :: String
-    } deriving (Show, Eq)
+  { bdiColorHex :: String,
+    bdiColorRGB :: (Float, Float, Float),
+    bdiShape :: String,
+    bdiIconSymbol :: String
+  }
+  deriving (Show, Eq)
 
 getBeamDisplayInfo :: BeamState -> BeamDisplayInfo
-getBeamDisplayInfo BeamOn   = BeamDisplayInfo "#0f0" (0.0, 0.2, 0.0) "circle" "● "
-getBeamDisplayInfo BeamOff  = BeamDisplayInfo "#f00" (0.2, 0.0, 0.0) "square" "■ "
+getBeamDisplayInfo BeamOn = BeamDisplayInfo "#0f0" (0.0, 0.2, 0.0) "circle" "● "
+getBeamDisplayInfo BeamOff = BeamDisplayInfo "#f00" (0.2, 0.0, 0.0) "square" "■ "
 getBeamDisplayInfo BeamHold = BeamDisplayInfo "#ff0" (0.2, 0.2, 0.0) "triangle" "▲ "
 
 scalePointToMeters :: Point3D -> Point3DM
@@ -34,7 +36,7 @@ scaleKalmanStateToMeters = convertUnits
 
 shouldTriggerAudioAlert :: Bool -> BeamState -> BeamState -> Bool
 shouldTriggerAudioAlert audioEnabled prevState currentState =
-    audioEnabled && prevState /= currentState
+  audioEnabled && prevState /= currentState
 
 indicatorScaleLimitMin :: Float
 indicatorScaleLimitMin = -20.0

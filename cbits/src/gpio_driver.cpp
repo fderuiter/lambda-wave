@@ -15,13 +15,15 @@
 /// * Requirement FR-DAQ-002: Hardware safety interlocks
 /// * Hazard H-HW-001: Uncontrolled pin state
 
-#include "gpio.h"
-#include <atomic>
-#include <csignal>
-#include <cstdlib>
 #include <fcntl.h>
 #include <sys/mman.h>
 #include <unistd.h>
+
+#include <atomic>
+#include <csignal>
+#include <cstdlib>
+
+#include "gpio.h"
 
 static std::atomic<int> g_pins[256];
 static int g_watchdog_pin = -1;
@@ -38,9 +40,9 @@ static void clear_watchdog_safe_state() {
   if (g_watchdog_pin >= 0) {
     if (gpio_map != nullptr && g_watchdog_pin < 54) {
       int pin = g_watchdog_pin;
-      *(gpio_map + 10 + pin / 32) = (1 << (pin % 32)); // GPCLRn is offset 10
+      *(gpio_map + 10 + pin / 32) = (1 << (pin % 32));  // GPCLRn is offset 10
     }
-    g_pins[g_watchdog_pin].store(0); // Hardware interlock safe state
+    g_pins[g_watchdog_pin].store(0);  // Hardware interlock safe state
   }
 }
 
@@ -68,12 +70,12 @@ int gpio_init() {
   }
 
   if (mem_fd >= 0) {
-    close(mem_fd); // mmap keeps it open
+    close(mem_fd);  // mmap keeps it open
   }
 
   if (gpio_map == MAP_FAILED || gpio_map == nullptr) {
     gpio_map = nullptr;
-    return 2; // Simulation Mode
+    return 2;  // Simulation Mode
   }
 
   std::atexit(clear_watchdog_safe_state);
@@ -121,8 +123,8 @@ int gpio_setup_watchdog(int pin) {
       int fsel = pin / 10;
       int shift = (pin % 10) * 3;
       uint32_t val = *(gpio_map + fsel);
-      val &= ~(7 << shift); // clear
-      val |= (1 << shift);  // output
+      val &= ~(7 << shift);  // clear
+      val |= (1 << shift);   // output
       *(gpio_map + fsel) = val;
     }
 

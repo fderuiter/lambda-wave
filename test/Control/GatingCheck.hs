@@ -1,42 +1,45 @@
-{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE PatternSynonyms #-}
+
 module Main (main) where
 
-import System.Exit (exitFailure, exitSuccess)
-import Control.Monad () -- kept as suggested if instances needed, otherwise remove. But warning said redundant. Remove it.
-import SignalProcessing.Kalman (KalmanState(..), pattern V3, pattern M33)
-import Data.Types (BeamState(..))
+-- kept as suggested if instances needed, otherwise remove. But warning said redundant. Remove it.
+
 import qualified Control.Gating as Gating
+import Control.Monad ()
+import Data.Types (BeamState (..))
 import Numeric.Kinematics
+import SignalProcessing.Kalman (KalmanState (..), pattern M33, pattern V3)
+import System.Exit (exitFailure, exitSuccess)
 
 -- | Mock implementation or imports if Gating isn't ready
 -- Since Control.Gating is not yet updated, we might need to rely on the plan to update it.
 -- But for "Test First", we write the test expecting the API.
-
 main :: IO ()
 main = do
-    putStrLn "Running Gating Logic Verification..."
+  putStrLn "Running Gating Logic Verification..."
 
-    let failures = concat
-            [ testHysteresis
-            , testLatencyCompensation
-            , testSafety
-            ]
+  let failures =
+        concat
+          [ testHysteresis,
+            testLatencyCompensation,
+            testSafety
+          ]
 
-    if null failures
-        then do
-            putStrLn "All Checks Passed."
-            exitSuccess
-        else do
-            putStrLn $ "Failures detected:\n" ++ unlines failures
-            exitFailure
+  if null failures
+    then do
+      putStrLn "All Checks Passed."
+      exitSuccess
+    else do
+      putStrLn $ "Failures detected:\n" ++ unlines failures
+      exitFailure
 
 -- | Helper to create a dummy state
 mkState :: Double -> Double -> KalmanState
-mkState pos vel = KalmanState
-    { x = V3 pos vel 0
-    , p = M33 (V3 0 0 0) (V3 0 0 0) (V3 0 0 0)
+mkState pos vel =
+  KalmanState
+    { x = V3 pos vel 0,
+      p = M33 (V3 0 0 0) (V3 0 0 0) (V3 0 0 0)
     }
 
 -- | Test Hysteresis Logic
@@ -45,35 +48,34 @@ mkState pos vel = KalmanState
 -- Hysteresis: 0.5. OFF threshold: > 3.5 error.
 testHysteresis :: [String]
 testHysteresis =
-    let target = Distance 10.0
-        tol = Distance 3.0
-        hyst = Distance 0.5
-        lat = Time 0.0 -- No latency for this test
+  let target = Distance 10.0
+      tol = Distance 3.0
+      hyst = Distance 0.5
+      lat = Time 0.0 -- No latency for this test
 
-        -- Helper
-        eval = Gating.evaluateGating target tol hyst lat
+      -- Helper
+      eval = Gating.evaluateGating target tol hyst lat
 
-        -- Case 1: Inside Tolerance -> ON
-        s1 = mkState 10.0 0.0
-        r1 = eval s1 BeamOff
+      -- Case 1: Inside Tolerance -> ON
+      s1 = mkState 10.0 0.0
+      r1 = eval s1 BeamOff
 
-        -- Case 2: Just outside Tolerance (3.1 error), was OFF -> OFF
-        s2 = mkState 13.1 0.0
-        r2 = eval s2 BeamOff
+      -- Case 2: Just outside Tolerance (3.1 error), was OFF -> OFF
+      s2 = mkState 13.1 0.0
+      r2 = eval s2 BeamOff
 
-        -- Case 3: Just outside Tolerance (3.1 error), was ON -> ON (Hysteresis)
-        s3 = mkState 13.1 0.0
-        r3 = eval s3 BeamOn
+      -- Case 3: Just outside Tolerance (3.1 error), was ON -> ON (Hysteresis)
+      s3 = mkState 13.1 0.0
+      r3 = eval s3 BeamOn
 
-        -- Case 4: Far outside (3.6 error), was ON -> OFF (Exceeds Hysteresis)
-        s4 = mkState 13.6 0.0
-        r4 = eval s4 BeamOn
-
-    in catMaybes
-        [ check "Inside Tol -> ON" BeamOn r1
-        , check "Outside Tol (Fresh) -> OFF" BeamOff r2
-        , check "Outside Tol (Held) -> ON" BeamOn r3
-        , check "Far Outside -> OFF" BeamOff r4
+      -- Case 4: Far outside (3.6 error), was ON -> OFF (Exceeds Hysteresis)
+      s4 = mkState 13.6 0.0
+      r4 = eval s4 BeamOn
+   in catMaybes
+        [ check "Inside Tol -> ON" BeamOn r1,
+          check "Outside Tol (Fresh) -> OFF" BeamOff r2,
+          check "Outside Tol (Held) -> ON" BeamOn r3,
+          check "Far Outside -> OFF" BeamOff r4
         ]
 
 -- | Test Latency Compensation
@@ -83,45 +85,43 @@ testHysteresis =
 -- 12.6 is inside [7, 13]. Should be ON.
 testLatencyCompensation :: [String]
 testLatencyCompensation =
-    let target = Distance 10.0
-        tol = Distance 3.0
-        hyst = Distance 0.0
-        lat = Time 0.05 -- 50ms in S
+  let target = Distance 10.0
+      tol = Distance 3.0
+      hyst = Distance 0.0
+      lat = Time 0.05 -- 50ms in S
+      eval = Gating.evaluateGating target tol hyst lat
 
-        eval = Gating.evaluateGating target tol hyst lat
+      -- Moving towards target, latency comp puts it inside
+      s1 = mkState 13.004 (-0.1)
+      r1 = eval s1 BeamOff -- Should turn ON
 
-        -- Moving towards target, latency comp puts it inside
-        s1 = mkState 13.004 (-0.1)
-        r1 = eval s1 BeamOff -- Should turn ON
-
-        -- Moving away. Pos 12.996 (Inside). Vel 0.1.
-        -- PredPos = 12.996 + 0.005 = 13.001 (Outside).
-        s2 = mkState 12.996 0.1
-        r2 = eval s2 BeamOn -- Should turn OFF
-
-    in catMaybes
-        [ check "Latency Comp (Inbound)" BeamOn r1
-        , check "Latency Comp (Outbound)" BeamOff r2
+      -- Moving away. Pos 12.996 (Inside). Vel 0.1.
+      -- PredPos = 12.996 + 0.005 = 13.001 (Outside).
+      s2 = mkState 12.996 0.1
+      r2 = eval s2 BeamOn -- Should turn OFF
+   in catMaybes
+        [ check "Latency Comp (Inbound)" BeamOn r1,
+          check "Latency Comp (Outbound)" BeamOff r2
         ]
 
 testSafety :: [String]
 testSafety =
-    let eval = Gating.evaluateGating (Distance 10.0) (Distance 3.0) (Distance 0.5) (Time 0.05)
-        nanState = mkState (0/0) 0
-        infState = mkState (1/0) 0
-    in catMaybes
-        [ check "NaN State -> Off" BeamOff (eval nanState BeamOn)
-        , check "Inf State -> Off" BeamOff (eval infState BeamOn)
+  let eval = Gating.evaluateGating (Distance 10.0) (Distance 3.0) (Distance 0.5) (Time 0.05)
+      nanState = mkState (0 / 0) 0
+      infState = mkState (1 / 0) 0
+   in catMaybes
+        [ check "NaN State -> Off" BeamOff (eval nanState BeamOn),
+          check "Inf State -> Off" BeamOff (eval infState BeamOn)
         ]
 
 check :: (Show a, Eq a) => String -> a -> a -> Maybe String
 check name expected actual
-    | expected == actual = Nothing
-    | otherwise = Just $ name ++ ": Expected " ++ show expected ++ ", got " ++ show actual
+  | expected == actual = Nothing
+  | otherwise = Just $ name ++ ": Expected " ++ show expected ++ ", got " ++ show actual
 
 catMaybes :: [Maybe a] -> [a]
 catMaybes [] = []
-catMaybes (Nothing:xs) = catMaybes xs
-catMaybes (Just val:xs) = val : catMaybes xs
+catMaybes (Nothing : xs) = catMaybes xs
+catMaybes (Just val : xs) = val : catMaybes xs
 
 -- Requirement FR-GAT-001

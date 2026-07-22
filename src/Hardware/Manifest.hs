@@ -1,7 +1,8 @@
 -- DO NOT EDIT: This file is auto-generated from the hardware manifest.
 {-# LANGUAGE DataKinds #-}
-module Hardware.Manifest (
-    watchdogPin,
+
+module Hardware.Manifest
+  ( watchdogPin,
     logicPin,
     configBaudRate,
     dataBaudRate,
@@ -9,8 +10,9 @@ module Hardware.Manifest (
     systemLatencyMs,
     mountingOffsetMm,
     WatchdogTimeoutMs,
-    SystemLatencyMs
-) where
+    SystemLatencyMs,
+  )
+where
 
 watchdogPin :: Int
 watchdogPin = 27

@@ -1,17 +1,18 @@
 {-# OPTIONS_GHC -Wno-type-defaults #-}
-import Test.Hspec
-import qualified RegressionSpec
+
 import qualified Control.MesherSpec
-import qualified FFI.RingBuffer.TypesSpec
+import qualified Control.UIMathSpec
 import qualified FFI.Hud.HudStateCSpec
 import qualified FFI.RingBuffer.IOSpec
+import qualified FFI.RingBuffer.TypesSpec
 import qualified Hardware.ConsumerSpec
 import qualified Hardware.ControlSpec
+import qualified RegressionSpec
+import qualified Safety.KinematicsSpec
+import qualified Safety.WatchdogSpec
 import qualified SignalProcessing.FMCWSpec
 import qualified System.RTSSpec
-import qualified Safety.WatchdogSpec
-import qualified Safety.KinematicsSpec
-import qualified Control.UIMathSpec
+import Test.Hspec
 
 main :: IO ()
 main = hspec $ do

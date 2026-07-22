@@ -15,9 +15,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Check for forbidden files
-        run: ./scripts/check-forbidden-files.sh
-
       - name: Set up Haskell
         uses: haskell-actions/setup@v2
         with:
@@ -29,17 +26,16 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Install HLint
-        run: cabal install hlint --ignore-project
+      - name: Install HLint and Ormolu
+        run: |
+          cabal install hlint --ignore-project
+          cabal install ormolu --ignore-project
 
-      - name: Run HLint
-        run: hlint src/ src-math/ tools/ app/ test/ bench/
+      - name: Install Pre-commit
+        run: pip install --break-system-packages pre-commit
 
-      - name: Install clang-format
-        run: sudo apt-get install -y clang-format
-
-      - name: Run clang-format
-        run: find cbits -path "cbits/imgui" -prune -o -type f \( -name "*.c" -o -name "*.h" -o -name "*.cpp" \) -print | xargs clang-format -n -Werror
+      - name: Run Pre-commit
+        run: pre-commit run --all-files --show-diff-on-failure
 
       - name: Install pyyaml
         run: pip install --break-system-packages pyyaml

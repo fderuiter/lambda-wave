@@ -15,10 +15,10 @@ typedef struct {
 } Point3DC;
 
 typedef struct {
-  int beam_state; // 0=Off, 1=On, 2=Hold
+  int beam_state;  // 0=Off, 1=On, 2=Hold
   Point3DC *points;
   size_t num_points;
-  double resp_z; // from kalman state
+  double resp_z;  // from kalman state
   bool audio_alert_enabled;
   int calibration_status;
   float beam_color_r;

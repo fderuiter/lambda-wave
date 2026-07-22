@@ -369,6 +369,18 @@ def generate_all_sensors(data, cbits_include_dir, hs_src_dir, hs_test_dir):
     for sensor in sensors:
         generate_sensor_scaffold(sensor['name'], cbits_include_dir, hs_src_dir, hs_test_dir)
 
+import subprocess
+
+def format_files(files):
+    repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    for f in files:
+        if not os.path.exists(f):
+            continue
+        try:
+            subprocess.run(['pre-commit', 'run', '--files', f], check=False, cwd=repo_root)
+        except Exception as e:
+            print(f"Warning: Failed to format {f}: {e}", file=sys.stderr)
+
 def main():
     parser = argparse.ArgumentParser(description="Unified Hardware Compiler")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -406,21 +418,45 @@ def main():
     args = parser.parse_args()
     data = load_data(args.input)
     
+    generated_files = []
     if args.command == "idl":
         generate_cxx_idl(data, args.out_hdr, args.out_src)
         generate_hs_idl(data, args.out_hs)
+        generated_files.extend([args.out_hdr, args.out_src, args.out_hs])
     elif args.command == "manifest":
         generate_manifest(data, args.out_hdr, args.out_hs, args.out_cfg)
+        generated_files.extend([args.out_hdr, args.out_hs])
     elif args.command == "sensors":
         generate_all_sensors(data, args.cbits_include_dir, args.hs_src_dir, args.hs_test_dir)
+        for s in data.get('sensors', []):
+            name_upper = capitalize_first(s['name'])
+            name_lower = to_snake_case(s['name'])
+            generated_files.extend([
+                os.path.join(args.cbits_include_dir, f"Sensor{name_upper}.h"),
+                os.path.join(args.hs_src_dir, "Hardware", f"{name_upper}.hs"),
+                os.path.join(args.hs_src_dir, "Hardware", "FFI", f"{name_upper}.hs"),
+                os.path.join(args.hs_test_dir, f"{name_upper}Spec.hs")
+            ])
     elif args.command == "all":
         if 'structs' in data:
             generate_cxx_idl(data, args.idl_out_hdr, args.idl_out_src)
             generate_hs_idl(data, args.idl_out_hs)
+            generated_files.extend([args.idl_out_hdr, args.idl_out_src, args.idl_out_hs])
         if 'baud_rates' in data:
             generate_manifest(data, args.man_out_hdr, args.man_out_hs, args.man_out_cfg)
+            generated_files.extend([args.man_out_hdr, args.man_out_hs])
         if 'sensors' in data:
             generate_all_sensors(data, args.cbits_include_dir, args.hs_src_dir, args.hs_test_dir)
+            for s in data.get('sensors', []):
+                name_upper = capitalize_first(s['name'])
+                generated_files.extend([
+                    os.path.join(args.cbits_include_dir, f"Sensor{name_upper}.h"),
+                    os.path.join(args.hs_src_dir, "Hardware", f"{name_upper}.hs"),
+                    os.path.join(args.hs_src_dir, "Hardware", "FFI", f"{name_upper}.hs"),
+                    os.path.join(args.hs_test_dir, f"{name_upper}Spec.hs")
+                ])
+                
+    format_files(generated_files)
 
 if __name__ == '__main__':
     main()

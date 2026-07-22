@@ -3,18 +3,19 @@
 -- Description : System configuration constants
 --
 -- This module defines the static configuration parameters for the Lambda-Wave system.
-module Data.Config (
-    radarMountOffset,
+module Data.Config
+  ( radarMountOffset,
     gantryAngle,
     gatingTolerance,
     hysteresisMargin,
     targetHeight,
     systemLatencyNS,
     watchdogTimeoutNS,
-    uartBaudRate
-) where
+    uartBaudRate,
+  )
+where
 
-import Hardware.Manifest (systemLatencyMs, framePeriodicityMs, dataBaudRate, mountingOffsetMm)
+import Hardware.Manifest (dataBaudRate, framePeriodicityMs, mountingOffsetMm, systemLatencyMs)
 
 -- | System Configuration Constants
 
