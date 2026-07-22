@@ -218,3 +218,13 @@ hazards:
     occurrence: 2
     detection: 2
     rpn: 20
+
+  - id: H-SYS-016
+    description: Code format drift causing review errors
+    cause: Lack of automated formatting leading to noisy diffs
+    effect: Missed logical errors during code review
+    mitigation: Strict CI formatting enforcement and automated FFI formatting
+    severity: 2
+    occurrence: 3
+    detection: 2
+    rpn: 12
