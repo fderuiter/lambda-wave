@@ -1,4 +1,5 @@
 {-# LANGUAGE StrictData #-}
+{-# LANGUAGE PatternSynonyms #-}
 module Control.UIMathSpec (spec) where
 
 import Test.Hspec
@@ -7,6 +8,7 @@ import GHC.Float (double2Float)
 import UI.Presentation (shouldTriggerAudioAlert)
 import Data.Types (BeamState(..), Point3D(..))
 import Numeric.Units (ConvertUnits(..), Point3DM(..))
+import SignalProcessing.Matrix (Vector, pattern V3, subV, dot, normSq)
 
 data Vertex3 a = Vertex3 a a a deriving (Show, Eq)
 
@@ -17,21 +19,15 @@ transformPoint p =
     let p' = convertUnits p
     in Vertex3 (double2Float $ pxM p') (double2Float $ pyM p') (double2Float $ pzM p')
 
-type Vector3 = (Double, Double, Double)
-
-dot :: Vector3 -> Vector3 -> Double
-dot (x1, y1, z1) (x2, y2, z2) = x1*x2 + y1*y2 + z1*z2
+type Vector3 = Vector
 
 magnitude :: Vector3 -> Double
-magnitude (x, y, z) = sqrt (x*x + y*y + z*z)
+magnitude vec = sqrt (normSq vec)
 
 normalize :: Vector3 -> Vector3
-normalize vec@(x, y, z) = -- Renamed 'v' to 'vec' to avoid shadowing
+normalize vec = -- Renamed 'v' to 'vec' to avoid shadowing
     let m = magnitude vec
-    in if m == 0 then (0,0,0) else (x/m, y/m, z/m)
-
-sub :: Vector3 -> Vector3 -> Vector3
-sub (x1, y1, z1) (x2, y2, z2) = (x1-x2, y1-y2, z1-z2)
+    in if m == 0 then V3 0 0 0 else map (/m) vec
 
 rad2deg :: Double -> Double
 rad2deg r = r * 180.0 / pi
@@ -62,22 +58,22 @@ spec = describe "Control.UI.Math" $ do
 
     describe "Camera Projection Logic (FOV Coverage)" $ do
         it "ensures a target at (0, 0, 2m) is centered in view from (0, 2, -2)" $ do
-            let cameraPos = (0.0, 2.0, -2.0)
-            let lookAtPos = (0.0, 0.0, 2.0)
-            let forward = sub lookAtPos cameraPos -- (0, -2, 4) -> (0, -0.447, 0.894)
+            let cameraPos = V3 0.0 2.0 (-2.0)
+            let lookAtPos = V3 0.0 0.0 2.0
+            let forward = subV lookAtPos cameraPos -- (0, -2, 4) -> (0, -0.447, 0.894)
 
             -- Target is at lookAtPos, so angle should be 0
-            let targetVec = sub lookAtPos cameraPos
+            let targetVec = subV lookAtPos cameraPos
             let angle = angleBetween forward targetVec
             angle `shouldSatisfy` (< 1.0e-5)
 
         it "ensures edge point (2m lateral) is within horizontal FOV" $ do
-            let cameraPos = (0.0, 2.0, -2.0)
-            let lookAtPos = (0.0, 0.0, 2.0)
-            let forward = sub lookAtPos cameraPos
+            let cameraPos = V3 0.0 2.0 (-2.0)
+            let lookAtPos = V3 0.0 0.0 2.0
+            let forward = subV lookAtPos cameraPos
 
-            let edgePoint = (2.0, 0.0, 2.0)
-            let toEdge = sub edgePoint cameraPos
+            let edgePoint = V3 2.0 0.0 2.0
+            let toEdge = subV edgePoint cameraPos
 
             let angle = angleBetween forward toEdge
             -- Angle should be ~24 degrees
