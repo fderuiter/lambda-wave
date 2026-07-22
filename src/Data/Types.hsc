@@ -1,6 +1,7 @@
 {-# LANGUAGE StrictData #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 -- |
 -- Module      : Data.Types
@@ -29,10 +30,13 @@ import Foreign.Storable
 import Foreign.Ptr (Ptr, castPtr)
 import Control.DeepSeq (NFData(..))
 import Control.Concurrent.STM (TBQueue)
+import Foreign.Ptr (Ptr, castPtr)
 import GHC.Generics (Generic)
 import Data.Binary (Binary)
 
 import SignalProcessing.Kalman (KalmanState(..))
+import Numeric.Units (ConvertUnits(..), Point3DM(..))
+import Numeric.Kinematics (Millimeters(..))
 import Data.Complex (Complex)
 
 -- | Severity Levels for Audit Logs
@@ -70,6 +74,13 @@ data Point3D = Point3D
 
 instance NFData Point3D where
   rnf (Point3D xVal yVal zVal vel sVal) = rnf xVal `seq` rnf yVal `seq` rnf zVal `seq` rnf vel `seq` rnf sVal
+
+instance ConvertUnits Point3D Point3DM where
+    convertUnits pt = Point3DM
+        { pxM = convertUnits (Millimeters (px pt))
+        , pyM = convertUnits (Millimeters (py pt))
+        , pzM = convertUnits (Millimeters (pz pt))
+        }
 
 -- | Raw Point structure from "Type 1" TLV (4 floats)
 data Point = Point

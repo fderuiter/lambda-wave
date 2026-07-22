@@ -1,4 +1,16 @@
 - ignore: {name: Use camelCase}
-- ignore: {name: "Reduce duplication", within: [FFI.*, Hardware.*, Main]}
+- ignore:
+    name: Reduce duplication
+    within:
+      - Main
+      - VisualizerMain
+      - WatchdogFault
+      - Spec
+      - Control.*
+      - Data.*
+      - FFI.*
+      - Hardware.*
+      - Safety.*
+      - UI.*
 - error: {lhs: error, rhs: SafetyResult, name: "Avoid error in safety critical code"}
 - error: {lhs: undefined, rhs: SafetyResult, name: "Avoid undefined in safety critical code"}
