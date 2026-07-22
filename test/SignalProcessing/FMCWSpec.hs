@@ -2,7 +2,7 @@
 
 module SignalProcessing.FMCWSpec (spec) where
 
-import Control.Monad (zipWithM_)
+-- import Control.Monad (zipWithM_)
 import Data.Complex
 import Numeric.FloatAssert (shouldBeApprox, shouldBeApproxList)
 import Numeric.Kinematics hiding (magnitude)

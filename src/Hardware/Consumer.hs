@@ -18,7 +18,7 @@ module Hardware.Consumer
   )
 where
 
-import Control.Concurrent (threadDelay)
+import Control.Combinators (paceWhen)
 import Control.Concurrent.STM
 import Control.DeepSeq (force)
 import Control.Exception (evaluate)
@@ -94,10 +94,7 @@ consumerLoop mountingOffset translations isPrimary controlFp stateVar = withFore
         let availableBytes = fromIntegral availableBytesC :: Int
 
         if availableBytes == 0
-          then do
-            -- No new data, sleep briefly to avoid busy wait
-            threadDelay 1000 -- 1ms
-            loop readOff
+          then paceWhen True 1000 (loop readOff)
           else do
             let saturation = fromIntegral availableBytes / fromIntegral bufSize :: Double
 
@@ -141,8 +138,7 @@ consumerLoop mountingOffset translations isPrimary controlFp stateVar = withFore
             -- If we consumed 0 bytes and have no error, it means we are stuck
             -- (likely due to a partial magic word at the end of the buffer).
             -- We MUST sleep to allow the producer to add more data.
-            unless (bytesConsumed > 0 || isJust maybeErr) $
-              threadDelay 1000 -- 1ms
+            paceWhen (not (bytesConsumed > 0 || isJust maybeErr)) 1000 $ return ()
 
             -- 5. Force Evaluation (Critical for FFI Safety)
             -- We must ensure all data is copied out of the Ring Buffer (via Lazy ByteString)

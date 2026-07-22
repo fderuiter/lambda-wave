@@ -8,7 +8,7 @@ module Main (main) where
 import Control.Concurrent (forkIO, threadDelay)
 import Control.Concurrent.STM
 import Control.Exception (IOException, try)
-import Control.Monad (forever, void, when)
+import Control.Monad (forever, void)
 import Data.Aeson (FromJSON (..), withObject, (.:))
 import qualified Data.Aeson as A
 import Data.Binary (decode)
