@@ -21,6 +21,17 @@ module Numeric.Kinematics
     Frequency (..),
     Coordinate (..),
 
+    -- * Unit Tags
+    MillimetersUnit,
+    MetersUnit,
+
+    -- * Coordinate Math & Conversions
+    UnitConvert (..),
+    convertPrecision,
+    addCoords,
+    subCoords,
+    scaleCoord,
+
     -- * Unit Specific Types
     Millimeters (..),
     Meters (..),
@@ -80,49 +91,90 @@ where
 
 import Data.Proxy
 import Safety.Result (SafetyResult (..))
+import Foreign.Storable
+import Foreign.Ptr
 
-data Coordinate = Coordinate
-  { coordX :: Double,
-    coordY :: Double,
-    coordZ :: Double,
-    coordIntensity :: Double,
-    coordConfidence :: Double
+-- | Unit Tags for Coordinate unit parameterization
+data MillimetersUnit
+data MetersUnit
+
+-- | Coordinate parameterized by its physical unit dimension and scalar type
+data Coordinate unit scalar = Coordinate
+  { coordX :: !scalar,
+    coordY :: !scalar,
+    coordZ :: !scalar
   }
   deriving (Show, Eq)
 
-pattern Vector3D :: Double -> Double -> Double -> Coordinate
-pattern Vector3D x y z <- Coordinate x y z _ _
-  where
-    Vector3D x y z = Coordinate x y z 0.0 0.0
+instance Storable scalar => Storable (Coordinate unit scalar) where
+  sizeOf _ = 3 * sizeOf (undefined :: scalar)
+  alignment _ = alignment (undefined :: scalar)
+  peek ptr = do
+    x <- peekElemOff (castPtr ptr) 0
+    y <- peekElemOff (castPtr ptr) 1
+    z <- peekElemOff (castPtr ptr) 2
+    return $ Coordinate x y z
+  poke ptr (Coordinate x y z) = do
+    pokeElemOff (castPtr ptr) 0 x
+    pokeElemOff (castPtr ptr) 1 y
+    pokeElemOff (castPtr ptr) 2 z
 
-{-# COMPLETE Vector3D :: Coordinate #-}
+-- | Class for explicit unit conversions
+class UnitConvert from to where
+  convertUnit :: Fractional scalar => Coordinate from scalar -> Coordinate to scalar
 
-translate :: Coordinate -> Coordinate -> Coordinate
-translate (Coordinate x1 y1 z1 i1 c1) (Coordinate x2 y2 z2 _ _) =
-  Coordinate (x1 + x2) (y1 + y2) (z1 + z2) i1 c1
+instance UnitConvert MillimetersUnit MetersUnit where
+  convertUnit (Coordinate x y z) = Coordinate (x / 1000.0) (y / 1000.0) (z / 1000.0)
 
-distance :: Coordinate -> Coordinate -> Double
-distance (Coordinate x1 y1 z1 _ _) (Coordinate x2 y2 z2 _ _) =
+instance UnitConvert MetersUnit MillimetersUnit where
+  convertUnit (Coordinate x y z) = Coordinate (x * 1000.0) (y * 1000.0) (z * 1000.0)
+
+-- | Direct, loss-free precision conversions between Double and Float
+convertPrecision :: (Real f, Fractional t) => Coordinate unit f -> Coordinate unit t
+convertPrecision (Coordinate x y z) = Coordinate (realToFrac x) (realToFrac y) (realToFrac z)
+
+-- | Vector addition requiring matching unit tags and scalar types
+addCoords :: Num scalar => Coordinate unit scalar -> Coordinate unit scalar -> Coordinate unit scalar
+addCoords (Coordinate x1 y1 z1) (Coordinate x2 y2 z2) = Coordinate (x1 + x2) (y1 + y2) (z1 + z2)
+
+-- | Vector subtraction requiring matching unit tags and scalar types
+subCoords :: Num scalar => Coordinate unit scalar -> Coordinate unit scalar -> Coordinate unit scalar
+subCoords (Coordinate x1 y1 z1) (Coordinate x2 y2 z2) = Coordinate (x1 - x2) (y1 - y2) (z1 - z2)
+
+-- | Vector scaling
+scaleCoord :: Num scalar => scalar -> Coordinate unit scalar -> Coordinate unit scalar
+scaleCoord s (Coordinate x y z) = Coordinate (s * x) (s * y) (s * z)
+
+pattern Vector3D :: scalar -> scalar -> scalar -> Coordinate unit scalar
+pattern Vector3D x y z = Coordinate x y z
+
+{-# COMPLETE Vector3D #-}
+
+translate :: Num scalar => Coordinate unit scalar -> Coordinate unit scalar -> Coordinate unit scalar
+translate = addCoords
+
+distance :: Floating scalar => Coordinate unit scalar -> Coordinate unit scalar -> scalar
+distance (Coordinate x1 y1 z1) (Coordinate x2 y2 z2) =
   sqrt ((x1 - x2) ** 2 + (y1 - y2) ** 2 + (z1 - z2) ** 2)
 
-magnitude :: Coordinate -> Double
-magnitude (Coordinate x y z _ _) = sqrt (x * x + y * y + z * z)
+magnitude :: Floating scalar => Coordinate unit scalar -> scalar
+magnitude (Coordinate x y z) = sqrt (x * x + y * y + z * z)
 
-normalize :: Coordinate -> Coordinate
-normalize v@(Coordinate x y z _ _) =
+normalize :: (Floating scalar, Eq scalar) => Coordinate unit scalar -> Coordinate unit scalar
+normalize v@(Coordinate x y z) =
   let m = magnitude v
-   in if m == 0 then Coordinate 0 0 0 0.0 0.0 else Coordinate (x / m) (y / m) (z / m) 0.0 0.0
+   in if m == 0 then Coordinate 0 0 0 else Coordinate (x / m) (y / m) (z / m)
 
-dot :: Coordinate -> Coordinate -> Double
-dot (Coordinate x1 y1 z1 _ _) (Coordinate x2 y2 z2 _ _) = x1 * x2 + y1 * y2 + z1 * z2
+dot :: Num scalar => Coordinate unit scalar -> Coordinate unit scalar -> scalar
+dot (Coordinate x1 y1 z1) (Coordinate x2 y2 z2) = x1 * x2 + y1 * y2 + z1 * z2
 
-sub :: Coordinate -> Coordinate -> Coordinate
-sub (Coordinate x1 y1 z1 _ _) (Coordinate x2 y2 z2 _ _) = Coordinate (x1 - x2) (y1 - y2) (z1 - z2) 0.0 0.0
+sub :: Num scalar => Coordinate unit scalar -> Coordinate unit scalar -> Coordinate unit scalar
+sub = subCoords
 
-angleBetween :: Coordinate -> Coordinate -> Double
+angleBetween :: (RealFloat scalar) => Coordinate unit scalar -> Coordinate unit scalar -> scalar
 angleBetween v1 v2 =
-  let (Coordinate n1x n1y n1z _ _) = normalize v1
-      (Coordinate n2x n2y n2z _ _) = normalize v2
+  let (Coordinate n1x n1y n1z) = normalize v1
+      (Coordinate n2x n2y n2z) = normalize v2
       d = n1x * n2x + n1y * n2y + n1z * n2z
       d' = max (-1.0) (min 1.0 d)
    in acos d' * 180.0 / pi

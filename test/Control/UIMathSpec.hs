@@ -1,16 +1,17 @@
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE StrictData #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Control.UIMathSpec (spec) where
 
 import Data.Types (BeamState (..))
-import GHC.Float (double2Float)
 import Numeric.Kinematics
   ( Coordinate (..),
-    Meters (..),
-    Millimeters (..),
+    MetersUnit,
+    MillimetersUnit,
+    UnitConvert (..),
+    convertPrecision,
     angleBetween,
-    mmToMeters,
     sub,
     pattern Vector3D,
   )
@@ -22,15 +23,11 @@ data Vertex3 a = Vertex3 a a a deriving (Show, Eq)
 
 -- | Pure transformation logic to verify
 -- Transforms a radar point (mm) to OpenGL coordinates (meters)
-transformPoint :: Coordinate -> Vertex3 Float
+transformPoint :: Coordinate MillimetersUnit Double -> Vertex3 Float
 transformPoint p =
-  let Meters mx = mmToMeters (Millimeters (coordX p))
-      Meters my = mmToMeters (Millimeters (coordY p))
-      Meters mz = mmToMeters (Millimeters (coordZ p))
-      x = double2Float mx
-      y = double2Float my
-      z = double2Float mz
-   in Vertex3 x y z
+  let metersFloat :: Coordinate MetersUnit Float
+      metersFloat = convertPrecision (convertUnit p)
+   in Vertex3 (coordX metersFloat) (coordY metersFloat) (coordZ metersFloat)
 
 spec :: Spec
 spec = describe "Control.UI.Math" $ do
@@ -49,8 +46,8 @@ spec = describe "Control.UI.Math" $ do
 
   describe "Camera Projection Logic (FOV Coverage)" $ do
     it "ensures a target at (0, 0, 2m) is centered in view from (0, 2, -2)" $ do
-      let cameraPos = Vector3D 0.0 2.0 (-2.0)
-      let lookAtPos = Vector3D 0.0 0.0 2.0
+      let cameraPos :: Coordinate MetersUnit Double = Vector3D 0.0 2.0 (-2.0)
+      let lookAtPos :: Coordinate MetersUnit Double = Vector3D 0.0 0.0 2.0
       let forward = sub lookAtPos cameraPos
 
       -- Target is at lookAtPos, so angle should be 0
@@ -59,11 +56,11 @@ spec = describe "Control.UI.Math" $ do
       angle `shouldSatisfy` (< 1.0e-5)
 
     it "ensures edge point (2m lateral) is within horizontal FOV" $ do
-      let cameraPos = Vector3D 0.0 2.0 (-2.0)
-      let lookAtPos = Vector3D 0.0 0.0 2.0
+      let cameraPos :: Coordinate MetersUnit Double = Vector3D 0.0 2.0 (-2.0)
+      let lookAtPos :: Coordinate MetersUnit Double = Vector3D 0.0 0.0 2.0
       let forward = sub lookAtPos cameraPos
 
-      let edgePoint = Vector3D 2.0 0.0 2.0
+      let edgePoint :: Coordinate MetersUnit Double = Vector3D 2.0 0.0 2.0
       let toEdge = sub edgePoint cameraPos
 
       let angle = Numeric.Kinematics.angleBetween forward toEdge

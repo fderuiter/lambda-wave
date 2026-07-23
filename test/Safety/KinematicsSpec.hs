@@ -1,8 +1,11 @@
+{-# LANGUAGE ScopedTypeVariables #-}
 module Safety.KinematicsSpec (spec) where
 
 import Numeric.Kinematics
 import Safety.Result (SafetyResult (..))
 import Test.Hspec
+import Foreign.Marshal.Alloc (alloca)
+import Foreign.Storable (peek, poke, sizeOf, alignment)
 
 spec :: Spec
 spec = do
@@ -65,3 +68,50 @@ spec = do
     it "Division returns safe results when valid" $ do
       let r = Distance 0.05 |/| Time 1.0
       r `shouldBe` Safe (Velocity 0.05)
+
+  describe "Unified Coordinate System (Type-Safe Units)" $ do
+    it "instantiates coordinates tagged with physical unit dimensions" $ do
+      let p1 :: Coordinate MillimetersUnit Double = Vector3D 1000 2000 3000
+      coordX p1 `shouldBe` 1000.0
+      coordY p1 `shouldBe` 2000.0
+      coordZ p1 `shouldBe` 3000.0
+
+    it "supports explicit unit conversion from Millimeters to Meters" $ do
+      let p1 :: Coordinate MillimetersUnit Double = Vector3D 1500 2500 3500
+          p2 :: Coordinate MetersUnit Double = convertUnit p1
+      coordX p2 `shouldBe` 1.5
+      coordY p2 `shouldBe` 2.5
+      coordZ p2 `shouldBe` 3.5
+
+    it "supports explicit unit conversion from Meters to Millimeters" $ do
+      let p1 :: Coordinate MetersUnit Double = Vector3D 1.5 2.5 3.5
+          p2 :: Coordinate MillimetersUnit Double = convertUnit p1
+      coordX p2 `shouldBe` 1500.0
+      coordY p2 `shouldBe` 2500.0
+      coordZ p2 `shouldBe` 3500.0
+
+    it "supports direct, loss-free coordinate projection and conversion between double-precision and single-precision formats" $ do
+      let p1 :: Coordinate MillimetersUnit Double = Vector3D 12.34 56.78 90.12
+          p2 :: Coordinate MillimetersUnit Float = convertPrecision p1
+      coordX p2 `shouldBe` (12.34 :: Float)
+      coordY p2 `shouldBe` (56.78 :: Float)
+      coordZ p2 `shouldBe` (90.12 :: Float)
+
+    it "supports standard vector math operations when unit tags match" $ do
+      let p1 :: Coordinate MillimetersUnit Double = Vector3D 100 200 300
+          p2 :: Coordinate MillimetersUnit Double = Vector3D 10 20 30
+          pAdd = addCoords p1 p2
+          pSub = subCoords p1 p2
+          pScale = scaleCoord 2.0 p1
+      pAdd `shouldBe` Vector3D 110.0 220.0 330.0
+      pSub `shouldBe` Vector3D 90.0 180.0 270.0
+      pScale `shouldBe` Vector3D 200.0 400.0 600.0
+
+    it "supports Storable instance sizeOf, alignment, and round-trip peek/poke" $ do
+      let p1 :: Coordinate MillimetersUnit Double = Vector3D 1.2 3.4 5.6
+      sizeOf p1 `shouldBe` (3 * sizeOf (0.0 :: Double))
+      alignment p1 `shouldBe` alignment (0.0 :: Double)
+      alloca $ \ptr -> do
+        poke ptr p1
+        p2 <- peek ptr
+        p2 `shouldBe` p1
