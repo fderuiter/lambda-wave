@@ -307,7 +307,7 @@ testTriggerShutdown = do
 testWatchdogCrashCoverage :: IO Bool
 testWatchdogCrashCoverage = do
   putStr "Test 7: Watchdog Exception Coverage... "
-  res <- try (watchdogLoop undefined) :: IO (Either SomeException ())
+  res <- try (watchdogLoop (errorWithoutStackTrace "crash coverage")) :: IO (Either SomeException ())
   case res of
     Left _ -> putStrLn "PASS" >> return True
     Right _ -> putStrLn "FAIL" >> return False
