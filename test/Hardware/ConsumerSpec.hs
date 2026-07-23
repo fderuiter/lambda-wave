@@ -236,6 +236,64 @@ spec = do
       err `shouldBe` Just DoSAttackDetected
       length frames `shouldBe` 0
 
+    it "Parses valid Type 2 TLV (Surface Coefficients) successfully" $ do
+      let magic = mapM_ P.putWord8 [1, 2, 3, 4, 5, 6, 7, 8]
+          header = do
+            P.putWord32le 0 -- Version
+            P.putWord32le 68 -- Total Len = Header(36) + TLV(32)
+            P.putWord32le 0 -- Platform
+            P.putWord32le 1 -- Frame Num
+            P.putWord32le 0 -- CPU
+            P.putWord32le 1 -- Num TLVs = 1
+            P.putWord32le 0 -- SubFrame
+          tlv = do
+            P.putWord32le 2 -- Type (Surface Coefficients)
+            P.putWord32le 32 -- Length (8 header + 6 * 4 floats)
+            P.putFloatle 1.0 -- c0
+            P.putFloatle 0.0 -- c1
+            P.putFloatle 0.0 -- c2
+            P.putFloatle 0.0 -- c3
+            P.putFloatle 0.0 -- c4
+            P.putFloatle 0.0 -- c5
+          payload = P.runPut (magic >> header >> tlv)
+          (frames, consumed, err) = parseStream 0.0 payload
+
+      err `shouldBe` Nothing
+      length frames `shouldBe` 1
+      case frames of
+        [] -> expectationFailure "Expected parsed frame"
+        (frame : _) -> do
+          length (Data.Types.points frame) `shouldBe` 400
+          map pz (Data.Types.points frame) `shouldBe` replicate 400 1.0
+      consumed `shouldBe` 68
+
+    it "Fails on invalid Type 2 TLV (Surface Coefficients containing NaN)" $ do
+      let magic = mapM_ P.putWord8 [1, 2, 3, 4, 5, 6, 7, 8]
+          header = do
+            P.putWord32le 0 -- Version
+            P.putWord32le 68 -- Total Len = Header(36) + TLV(32)
+            P.putWord32le 0 -- Platform
+            P.putWord32le 1 -- Frame Num
+            P.putWord32le 0 -- CPU
+            P.putWord32le 1 -- Num TLVs = 1
+            P.putWord32le 0 -- SubFrame
+          tlv = do
+            P.putWord32le 2 -- Type (Surface Coefficients)
+            P.putWord32le 32 -- Length
+            P.putFloatle (0/0) -- NaN
+            P.putFloatle 0.0
+            P.putFloatle 0.0
+            P.putFloatle 0.0
+            P.putFloatle 0.0
+            P.putFloatle 0.0
+          payload = P.runPut (magic >> header >> tlv)
+          (frames, consumed, err) = parseStream 0.0 payload
+
+      case err of
+        Just (ParseError _) -> return ()
+        _ -> expectationFailure $ "Expected ParseError from NaN reconstruction, got " ++ show err
+      length frames `shouldBe` 0
+
 instance Arbitrary Point where
   arbitrary = Point <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary
 

@@ -12,6 +12,7 @@
 module Data.Types (
     Point3D(..),
     Point(..),
+    PolynomialSurface(..),
     BeamState(..),
     CalibrationStatus(..),
     DisplayPreset(..),
@@ -73,6 +74,21 @@ data Point3D = Point3D
 
 instance NFData Point3D where
   rnf (Point3D xVal yVal zVal vel sVal) = rnf xVal `seq` rnf yVal `seq` rnf zVal `seq` rnf vel `seq` rnf sVal
+
+-- | 3D Polynomial Surface Coefficients
+-- Model: z = s0 + s1*x + s2*y + s3*x^2 + s4*xy + s5*y^2
+data PolynomialSurface = PolynomialSurface
+  { s0 :: Double
+  , s1 :: Double
+  , s2 :: Double
+  , s3 :: Double
+  , s4 :: Double
+  , s5 :: Double
+  } deriving (Show, Eq, Generic, Binary)
+
+instance NFData PolynomialSurface where
+  rnf (PolynomialSurface c0 c1 c2 c3 c4 c5) =
+    rnf c0 `seq` rnf c1 `seq` rnf c2 `seq` rnf c3 `seq` rnf c4 `seq` rnf c5
 
 instance ConvertUnits Point3D Point3DM where
     convertUnits pt = Point3DM

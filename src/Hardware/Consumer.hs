@@ -400,10 +400,12 @@ parseTLVs mountingOffset count = go count []
             c4 <- G.getFloatle
             c5 <- G.getFloatle
             _padding <- G.getRemainingLazyByteString
-            let coeffs = [float2Double c0, float2Double c1, float2Double c2, float2Double c3, float2Double c4, float2Double c5]
-            let rawPts = reconstructPolynomialSurface coeffs
-            let pts = map (\p -> p {pz = pz p + mountingOffset}) rawPts
-            if null pts then fail "NaN/Inf detected in surface reconstruction" else return pts
+            let coeffs = PolynomialSurface (float2Double c0) (float2Double c1) (float2Double c2) (float2Double c3) (float2Double c4) (float2Double c5)
+            case reconstructPolynomialSurface coeffs of
+              Nothing -> fail "Empty reconstruction result"
+              Just rawPts ->
+                let pts = map (\p -> p {pz = pz p + mountingOffset}) rawPts
+                 in return pts
 
           go (n - 1) (points : acc)
         _ -> do
