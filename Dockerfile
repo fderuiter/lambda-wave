@@ -12,7 +12,7 @@ WORKDIR /app
 COPY sgrt-radar-system.cabal cabal.project cabal.project.freeze ./
 
 # Build dependencies securely
-RUN cabal build --only-dependencies
+RUN cabal update && cabal build --only-dependencies
 
 # Copy source code
 COPY . .

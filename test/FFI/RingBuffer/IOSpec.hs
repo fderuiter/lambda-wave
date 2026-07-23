@@ -55,7 +55,7 @@ spec = do
   describe "FFI.RingBuffer.IO" $ do
     it "createRingBuffer returns a valid pointer" $ do
       dummyState <- createDummyState
-      ptr <- createRingBuffer dummyState 1024 >>= handleHardwareResponse (\e -> throwIO (userError $ show e)) pure
+      ptr <- createRingBuffer dummyState 1_024 >>= handleHardwareResponse (\e -> throwIO (userError $ show e)) pure
       getWriteOffset ptr `shouldReturn` 0
 
     it "createRingBuffer throws error for invalid size" $ do
@@ -68,7 +68,7 @@ spec = do
       (readFd, writeFd) <- createPipe
 
       dummyState <- createDummyState
-      ptr <- createRingBuffer dummyState 4096 >>= handleHardwareResponse (\e -> throwIO (userError $ show e)) pure
+      ptr <- createRingBuffer dummyState 4_096 >>= handleHardwareResponse (\e -> throwIO (userError $ show e)) pure
       wOff <- getWriteOffset ptr
       wOff `shouldBe` 0
 
@@ -92,7 +92,7 @@ spec = do
 
     it "handles high-throughput ingestion without data loss (1M items)" $ do
       (readFd, writeFd) <- createPipe
-      let bufSz = 4096
+      let bufSz = 4_096
       let totalBytes = 1_000_000 :: Int
 
       dummyState <- createDummyState
@@ -102,7 +102,7 @@ spec = do
 
       producerDone <- newEmptyMVar
       _ <- forkIO $ do
-        let chunkSize = 1024
+        let chunkSize = 1_024
 
         let go n | n >= totalBytes = return ()
             go n = do

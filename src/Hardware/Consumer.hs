@@ -229,12 +229,10 @@ createLazyByteString :: ForeignPtr CChar -> Int -> Int -> Int -> BL.ByteString
 createLazyByteString fp bufSize readOff writeOff =
   if writeOff >= readOff
     then -- Contiguous chunk
-
       let len = writeOff - readOff
           chunk = BI.fromForeignPtr (castPtr fp) readOff len
        in BL.fromStrict chunk
     else -- Wrapped: [readOff .. end] + [0 .. writeOff]
-
       let len1 = bufSize - readOff
           chunk1 = BI.fromForeignPtr (castPtr fp) readOff len1
           len2 = writeOff

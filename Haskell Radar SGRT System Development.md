@@ -34,8 +34,8 @@
 ### Extracted from `src-math/Numeric/Kinematics.hs`
 
 Numeric.Kinematics
-Failure Modes: Incorrect dimension conversion.
-Mitigations: Core types strictly define domain bounds.
+Failure Modes: Incorrect dimension conversion, unaligned coordinate operations.
+Mitigations: Core types strictly define domain bounds and unified coordinate representation.
 Traceability: REQ-SYS-003
 
 ### Extracted from `src/FFI/Hud/Types.hsc`
