@@ -90,12 +90,13 @@ module Numeric.Kinematics
 where
 
 import Data.Proxy
-import Safety.Result (SafetyResult (..))
-import Foreign.Storable
 import Foreign.Ptr
+import Foreign.Storable
+import Safety.Result (SafetyResult (..))
 
 -- | Unit Tags for Coordinate unit parameterization
 data MillimetersUnit
+
 data MetersUnit
 
 -- | Coordinate parameterized by its physical unit dimension and scalar type
@@ -106,9 +107,9 @@ data Coordinate unit scalar = Coordinate
   }
   deriving (Show, Eq)
 
-instance Storable scalar => Storable (Coordinate unit scalar) where
-  sizeOf _ = 3 * sizeOf (undefined :: scalar)
-  alignment _ = alignment (undefined :: scalar)
+instance (Storable scalar) => Storable (Coordinate unit scalar) where
+  sizeOf coord = 3 * sizeOf (coordX coord)
+  alignment coord = alignment (coordX coord)
   peek ptr = do
     x <- peekElemOff (castPtr ptr) 0
     y <- peekElemOff (castPtr ptr) 1
@@ -121,7 +122,7 @@ instance Storable scalar => Storable (Coordinate unit scalar) where
 
 -- | Class for explicit unit conversions
 class UnitConvert from to where
-  convertUnit :: Fractional scalar => Coordinate from scalar -> Coordinate to scalar
+  convertUnit :: (Fractional scalar) => Coordinate from scalar -> Coordinate to scalar
 
 instance UnitConvert MillimetersUnit MetersUnit where
   convertUnit (Coordinate x y z) = Coordinate (x / 1000.0) (y / 1000.0) (z / 1000.0)
@@ -134,15 +135,15 @@ convertPrecision :: (Real f, Fractional t) => Coordinate unit f -> Coordinate un
 convertPrecision (Coordinate x y z) = Coordinate (realToFrac x) (realToFrac y) (realToFrac z)
 
 -- | Vector addition requiring matching unit tags and scalar types
-addCoords :: Num scalar => Coordinate unit scalar -> Coordinate unit scalar -> Coordinate unit scalar
+addCoords :: (Num scalar) => Coordinate unit scalar -> Coordinate unit scalar -> Coordinate unit scalar
 addCoords (Coordinate x1 y1 z1) (Coordinate x2 y2 z2) = Coordinate (x1 + x2) (y1 + y2) (z1 + z2)
 
 -- | Vector subtraction requiring matching unit tags and scalar types
-subCoords :: Num scalar => Coordinate unit scalar -> Coordinate unit scalar -> Coordinate unit scalar
+subCoords :: (Num scalar) => Coordinate unit scalar -> Coordinate unit scalar -> Coordinate unit scalar
 subCoords (Coordinate x1 y1 z1) (Coordinate x2 y2 z2) = Coordinate (x1 - x2) (y1 - y2) (z1 - z2)
 
 -- | Vector scaling
-scaleCoord :: Num scalar => scalar -> Coordinate unit scalar -> Coordinate unit scalar
+scaleCoord :: (Num scalar) => scalar -> Coordinate unit scalar -> Coordinate unit scalar
 scaleCoord s (Coordinate x y z) = Coordinate (s * x) (s * y) (s * z)
 
 pattern Vector3D :: scalar -> scalar -> scalar -> Coordinate unit scalar
@@ -150,14 +151,14 @@ pattern Vector3D x y z = Coordinate x y z
 
 {-# COMPLETE Vector3D #-}
 
-translate :: Num scalar => Coordinate unit scalar -> Coordinate unit scalar -> Coordinate unit scalar
+translate :: (Num scalar) => Coordinate unit scalar -> Coordinate unit scalar -> Coordinate unit scalar
 translate = addCoords
 
-distance :: Floating scalar => Coordinate unit scalar -> Coordinate unit scalar -> scalar
+distance :: (Floating scalar) => Coordinate unit scalar -> Coordinate unit scalar -> scalar
 distance (Coordinate x1 y1 z1) (Coordinate x2 y2 z2) =
   sqrt ((x1 - x2) ** 2 + (y1 - y2) ** 2 + (z1 - z2) ** 2)
 
-magnitude :: Floating scalar => Coordinate unit scalar -> scalar
+magnitude :: (Floating scalar) => Coordinate unit scalar -> scalar
 magnitude (Coordinate x y z) = sqrt (x * x + y * y + z * z)
 
 normalize :: (Floating scalar, Eq scalar) => Coordinate unit scalar -> Coordinate unit scalar
@@ -165,10 +166,10 @@ normalize v@(Coordinate x y z) =
   let m = magnitude v
    in if m == 0 then Coordinate 0 0 0 else Coordinate (x / m) (y / m) (z / m)
 
-dot :: Num scalar => Coordinate unit scalar -> Coordinate unit scalar -> scalar
+dot :: (Num scalar) => Coordinate unit scalar -> Coordinate unit scalar -> scalar
 dot (Coordinate x1 y1 z1) (Coordinate x2 y2 z2) = x1 * x2 + y1 * y2 + z1 * z2
 
-sub :: Num scalar => Coordinate unit scalar -> Coordinate unit scalar -> Coordinate unit scalar
+sub :: (Num scalar) => Coordinate unit scalar -> Coordinate unit scalar -> Coordinate unit scalar
 sub = subCoords
 
 angleBetween :: (RealFloat scalar) => Coordinate unit scalar -> Coordinate unit scalar -> scalar

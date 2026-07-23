@@ -1,6 +1,6 @@
 {-# LANGUAGE PatternSynonyms #-}
-{-# LANGUAGE StrictData #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE StrictData #-}
 
 module Control.UIMathSpec (spec) where
 
@@ -10,8 +10,8 @@ import Numeric.Kinematics
     MetersUnit,
     MillimetersUnit,
     UnitConvert (..),
-    convertPrecision,
     angleBetween,
+    convertPrecision,
     sub,
     pattern Vector3D,
   )

@@ -1,11 +1,12 @@
 {-# LANGUAGE ScopedTypeVariables #-}
+
 module Safety.KinematicsSpec (spec) where
 
+import Foreign.Marshal.Alloc (alloca)
+import Foreign.Storable (alignment, peek, poke, sizeOf)
 import Numeric.Kinematics
 import Safety.Result (SafetyResult (..))
 import Test.Hspec
-import Foreign.Marshal.Alloc (alloca)
-import Foreign.Storable (peek, poke, sizeOf, alignment)
 
 spec :: Spec
 spec = do
