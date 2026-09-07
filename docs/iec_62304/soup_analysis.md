@@ -36,14 +36,11 @@ The GHC RTS is deemed acceptable for use in this Class C system because:
 
 ## 6. Pinned Library Dependencies
 <!-- AUTOMATED-DEPENDENCIES-START -->
-- Cabal == 3.16.1.0
-- Cabal-syntax == 3.16.1.0
 - HUnit == 1.6.2.0
 - OneTuple == 0.4.3
 - QuickCheck == 2.18.0.0
 - StateVar == 1.2.2
 - aeson == 2.3.0.0
-- alex == 3.5.4.2
 - ansi-terminal == 1.1.5
 - ansi-terminal-types == 1.1.3
 - array == 0.5.8.0
